@@ -1,29 +1,22 @@
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { APP_SECRET } from "../config";
 import invariant from "tiny-invariant";
+import { APP_SECRET, NOT_AUTHORIZED } from "../config";
 
 export function authMiddleware(
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction,
 ) {
-  const userToken = req.session.userToken;
+  const userToken = req.headers.authorization;
 
-  if (!userToken) {
-    res.status(401).send();
-    return;
-  }
+  invariant(userToken, NOT_AUTHORIZED);
 
-  try {
-    const user = jwt.verify(userToken, APP_SECRET);
+  const user = jwt.verify(userToken.replace('Bearer ', ''), APP_SECRET);
 
-    invariant(typeof user !== 'string', "Token unable to decode into JWT payload");
+  invariant(typeof user !== "string", NOT_AUTHORIZED);
 
-    req.session.user = user;
+  req.session.user = user;
 
-    next();
-  } catch {
-    res.status(401).send();
-  }
+  next();
 }

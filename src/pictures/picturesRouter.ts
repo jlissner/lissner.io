@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { s3 } from "../s3";
+import { s3 } from "../aws/s3";
 
 export const picturesRouter = Router();
 

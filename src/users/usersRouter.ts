@@ -4,22 +4,18 @@ import { usersClient } from './usersClient';
 export const usersRouter = Router();
 
 usersRouter.post('/', async (req, res) => {
-  const { user } = req.session;
+  const { body, session } = req;
 
-  if(user?.sub !== 'jlissner@gmail.com') {
+  if(session.user?.sub !== 'jlissner@gmail.com') {
     res.status(403).send();
 
     return;
   };
+  
+  const result = await usersClient.addUser(body);
 
-
-  const body = req.body;
-  const updated = await usersClient.addUser(body.email);
-
-  console.log(updated);
-
-  res.send(updated);
+  res.send(result);
 });
 
-usersRouter.put('/:userId');
-usersRouter.get('/:userId');
+// usersRouter.put('/:userId');
+// usersRouter.get('/:userId');

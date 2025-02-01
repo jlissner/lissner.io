@@ -1,62 +1,84 @@
-import crypto from "crypto";
-import { google } from "googleapis";
 import { Router } from "express";
-import url from "url";
-import { GOOGLE_APP } from "../config";
 import invariant from "tiny-invariant";
+import { UAParser } from "ua-parser-js";
+import { ses } from "../aws/ses";
+import { loginEmailTemplate } from "../emailTemplates";
+import { usersClient } from "../users/usersClient";
+import { generateLoginCode } from "../utils/generateLoginCode";
+import { auth } from "./auth";
+import { authMiddleware } from "./authMiddleware";
 
 export const authRouter = Router();
 
-const oauth2Client = new google.auth.OAuth2(
-  GOOGLE_APP.id,
-  GOOGLE_APP.secret,
-  "http://localhost:3000/login/google/callback",
-);
+authRouter.get("/me", authMiddleware, async (req, res) => {
+  const { user } = req.session;
 
-authRouter.get("/login/google", (req, res) => {
-  const state = crypto.randomBytes(32).toString("hex");
-  const authorizationUrl = oauth2Client.generateAuthUrl({
-    // 'online' (default) or 'offline' (gets refresh_token)
-    access_type: "offline",
-    /** Pass in the scopes array defined above.
-     * Alternatively, if only one scope is needed, you can pass a scope URL as a string */
-    scope: ["openid", "email"],
-    // Enable incremental authorization. Recommended as a best practice.
-    include_granted_scopes: true,
-    // Include the state parameter to reduce the risk of CSRF attacks.
-    state: state,
-  });
+  invariant(user);
 
-  req.session.state = state;
+  const foundUser = await usersClient.getUserByEmail(user.sub);
 
-  res.redirect(authorizationUrl);
+  res.send(foundUser);
 });
 
-authRouter.get("/login/google/callback", async (req, res) => {
-  const { query } = url.parse(req.url, true);
+authRouter.post("/login", async (req, res) => {
+  const { email } = req.body;
+  const user = await usersClient.getUserByEmail(email);
 
-  if (query.error) { // An error response e.g. error=access_denied
-    console.log("Error:" + query.error);
+  if (user) {
+    const code = generateLoginCode();
+    const ua = UAParser(req.headers["user-agent"]);
 
-    res.end("Error loggin in");
-  } else if (query.state !== req.session.state) { //check state value
-    console.log("State mismatch. Possible CSRF attack");
+    req.session.loginCode = code;
+    req.session.loginEmail = email;
 
-    res.end("State mismatch. Possible CSRF attack");
-  } else {
-    invariant(typeof query.code === 'string', 'No valid code provided');
-    // Get access and refresh tokens (if access_type is offline)
-
-    const { tokens } = await oauth2Client.getToken(query.code);
-
-    oauth2Client.setCredentials(tokens);
-
-    console.log(tokens);
+    await ses.sendEmail(
+      [email],
+      "Login Request from lissner.io",
+      loginEmailTemplate({
+        code,
+        browser: ua.browser.name,
+        os: ua.os.name,
+      }),
+    );
   }
 
-  res.redirect('/');
+  res.status(204).send();
 });
 
-authRouter.post("/logout", (_req, res) => {
-  res.send("logging in");
+authRouter.post("/login/:code", async (req, res) => {
+  const code = req.session.loginCode;
+  const email = req.session.loginEmail;
+  const givenCode = Number(req.params.code);
+
+  req.session.loginCode = undefined;
+  req.session.loginEmail = undefined;
+
+  if (code !== givenCode) {
+    res.status(401).send();
+    return;
+  }
+
+  const user = await usersClient.getUserByEmail(email);
+
+  if (!user) {
+    res.status(401).send();
+    return;
+  }
+
+  invariant(email);
+
+  const token = auth.createAuthToken(email);
+
+  res.send(token);
+});
+
+authRouter.post("/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      res.status(500).send(err);
+      return;
+    }
+
+    res.status(204).send();
+  });
 });

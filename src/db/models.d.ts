@@ -6,13 +6,6 @@ type RootDb = {
   groups: GroupModel[];
 };
 
-type UserModel = {
-  email: string;
-  displayName: string;
-  name: string;
-  groups: GroupId[];
-};
-
 type GroupModel = {
   id: GroupId;
   name: string;

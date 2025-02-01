@@ -1,24 +1,21 @@
+import cors from "cors";
 import express from "express";
 import session from "express-session";
 import memoryStome from "memorystore";
-import invariant from "tiny-invariant";
-import { auth, authMiddleware, authRouter } from "./auth";
-import { APP_SECRET, PORT } from "./config";
+import { authMiddleware, authRouter } from "./auth";
+import { APP_PORT, APP_SECRET } from "./config";
 import { picturesRouter } from "./pictures";
 import { documentsRouter } from "./routers";
 import "./types";
 import { usersRouter } from "./users";
-
-invariant(process.env.CLIENT_ID, "Missing environt variable: CLIENT_ID");
-invariant(
-  process.env.CLIENT_SECRET,
-  "Missing environt variable: CLIENT_SECRET",
-);
+import { authorizationErrorHandler, zodErrorHandler } from "./utils";
 
 const MemoryStore = memoryStome(session);
 const app = express();
 
 const ONE_DAY = 24 * 60 * 60 * 1_000;
+
+app.use(cors());
 
 app.use(
   session({
@@ -33,12 +30,6 @@ app.use(
 );
 app.use(express.json());
 
-app.use((req, _res, next) => {
-  req.session.userToken = auth.createAuthToken("jlissner@gmail.com");
-
-  next();
-});
-
 app.get("/", (req, res) => {
   res.send(req.session);
 });
@@ -48,6 +39,9 @@ app.use("/documents", authMiddleware, documentsRouter);
 app.use("/pictures", authMiddleware, picturesRouter);
 app.use("/users", authMiddleware, usersRouter);
 
-app.listen(PORT).on("listening", () => {
-  console.log(`App started on port ${PORT}`);
+app.use(zodErrorHandler);
+app.use(authorizationErrorHandler);
+
+app.listen(APP_PORT).on("listening", () => {
+  console.log(`App started on port ${APP_PORT}`);
 });

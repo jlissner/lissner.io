@@ -1,12 +1,20 @@
+import {
+  GetObjectCommand,
+  ListBucketsCommand,
+  ListObjectsV2Command,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { GetObjectCommand, ListBucketsCommand, ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { client } from "./client";
+
+export const s3Client = new S3Client({
+  region: "us-west-2",
+});
 
 async function listBuckets(
   ...options: ConstructorParameters<typeof ListBucketsCommand>
 ) {
   const listBucketsCommand = new ListBucketsCommand(...options);
-  const buckets = await client.send(listBucketsCommand);
+  const buckets = await s3Client.send(listBucketsCommand);
 
   return buckets;
 }
@@ -22,7 +30,7 @@ async function listFolders(
     Delimiter: "/",
     ...options,
   });
-  const folders = await client.send(listFoldersCommand);
+  const folders = await s3Client.send(listFoldersCommand);
 
   return folders;
 }
@@ -38,7 +46,7 @@ async function listFiles(
     // Bucket: "documents.lissner.io",
     ...options,
   });
-  const files = await client.send(listFilesCommand);
+  const files = await s3Client.send(listFilesCommand);
 
   return files;
 }
@@ -54,7 +62,9 @@ async function getPictureUrl(
     // Bucket: "documents.lissner.io",
     ...options,
   });
-  const pictureUrl = getSignedUrl(client, getPictureCommand, { expiresIn: 3600 });
+  const pictureUrl = getSignedUrl(s3Client, getPictureCommand, {
+    expiresIn: 3600,
+  });
 
   return pictureUrl;
 }
@@ -65,4 +75,3 @@ export const s3 = {
   listFiles,
   getPictureUrl,
 };
-
