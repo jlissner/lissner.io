@@ -1,0 +1,83 @@
+.login-page {
+  color-scheme: dark;
+  display: grid;
+  gap: var(--space-md);
+  grid-template-columns: 1fr max-content max-content 1fr;
+  grid-template-rows: clamp(0px, 10vw, 25vh) max-content max-content 2fr;
+  grid-template-areas: '. . .'
+                       '. content .'
+                       '. help .'
+                       '. . .';
+                       
+  background: center / cover no-repeat url('/carcassone-at-night.jpg');
+  height: 100%;
+  padding: var(--space-lg);
+
+
+
+
+  label {
+    margin-bottom: var(--space-lg);
+    display: block;
+  }
+
+  form {
+    width: 300px;
+  }
+
+  input {
+    font-size: var(--fz-lg);
+    padding: var(--space-md);
+    width: 100%;
+  }
+
+  input:invalid {
+    padding: calc(var(--space-md) - 1px);
+  }
+
+  input:focus {
+    padding: var(--space-md);
+  }
+}
+
+.login-content {
+  width: min-content;
+  grid-area: content;
+  display: flex;
+  gap: var(--space-lg);
+  flex-wrap: wrap;
+  border: 1px solid silver;
+  border-radius: var(--br);
+  padding: var(--space-xl);
+  background: rgba(0, 0, 0, 0.33);
+  backdrop-filter: blur(10px);
+
+  h2 {
+    font-size: var(--fz-xxxl);
+    text-align: justify;
+    width: 300px;
+    text-transform: capitalize;
+    padding-bottom: var(--space-lg);
+    border-bottom: 1px solid silver;
+  }
+}
+
+.login-help {
+  grid-area: help;
+  margin: 0;
+  text-align: center;
+}
+
+@media (min-width: 786px) {
+  .login-content {
+    width: max-content;
+
+    h2 {
+      padding-right: var(--space-lg);
+      padding-bottom: 0;
+      width: calc(300px + var(--space-lg));
+      border-right: 1px solid silver;
+      border-bottom: none;
+    }
+  }
+}

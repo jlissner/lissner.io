@@ -20,12 +20,13 @@ authRouter.get("/me", authMiddleware, async (req, res) => {
   res.send(foundUser);
 });
 
-authRouter.post("/login", async (req, res) => {
+authRouter.post<unknown, unknown, PostLoginBody>("/login", async (req, res) => {
   const { email } = req.body;
   const user = await usersClient.getUserByEmail(email);
 
   if (user) {
     const code = generateLoginCode();
+    console.log({ code });
     const ua = UAParser(req.headers["user-agent"]);
 
     req.session.loginCode = code;

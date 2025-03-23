@@ -8,11 +8,12 @@ export function authMiddleware(
   _res: Response,
   next: NextFunction,
 ) {
-  const userToken = req.headers.authorization;
+  const { authorization } = req.headers;
 
-  invariant(userToken, NOT_AUTHORIZED);
+  invariant(authorization, NOT_AUTHORIZED);
 
-  const user = jwt.verify(userToken.replace('Bearer ', ''), APP_SECRET);
+  const token = authorization.replace('Bearer ', '');
+  const user = jwt.verify(token, APP_SECRET);
 
   invariant(typeof user !== "string", NOT_AUTHORIZED);
 

@@ -3,7 +3,7 @@ import express from "express";
 import session from "express-session";
 import memoryStome from "memorystore";
 import { authMiddleware, authRouter } from "./auth";
-import { APP_PORT, APP_SECRET } from "./config";
+import { APP_PORT, APP_SECRET, APP_URL } from "./config";
 import { picturesRouter } from "./pictures";
 import { documentsRouter } from "./routers";
 import "./types";
@@ -15,24 +15,28 @@ const app = express();
 
 const ONE_DAY = 24 * 60 * 60 * 1_000;
 
-app.use(cors());
+app.use(
+  cors({
+    credentials: true,
+    origin: APP_URL, // Replace with your React app's origin
+  }),
+);
 
 app.use(
   session({
-    cookie: { maxAge: ONE_DAY },
+    cookie: { 
+      maxAge: ONE_DAY,
+    },
+    resave: false,
+    saveUninitialized: false,
+    secret: APP_SECRET,
     store: new MemoryStore({
       checkPeriod: ONE_DAY, // prune expired entries every 24h
     }),
-    resave: false,
-    secret: APP_SECRET,
-    saveUninitialized: false,
   }),
 );
-app.use(express.json());
 
-app.get("/", (req, res) => {
-  res.send(req.session);
-});
+app.use(express.json());
 
 app.use(authRouter);
 app.use("/documents", authMiddleware, documentsRouter);

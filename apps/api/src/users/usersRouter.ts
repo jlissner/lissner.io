@@ -3,6 +3,13 @@ import { usersClient } from './usersClient';
 
 export const usersRouter = Router();
 
+
+usersRouter.get('/', async (_req, res) => {
+  const users = await usersClient.getUsers();
+
+  res.send(users);
+});
+
 usersRouter.post('/', async (req, res) => {
   const { body, session } = req;
 
@@ -17,5 +24,5 @@ usersRouter.post('/', async (req, res) => {
   res.send(result);
 });
 
-// usersRouter.put('/:userId');
 // usersRouter.get('/:userId');
+// usersRouter.put('/:userId');

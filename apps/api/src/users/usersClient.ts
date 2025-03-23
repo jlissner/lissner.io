@@ -2,6 +2,12 @@ import * as R from "ramda";
 import { db } from "../db";
 import { UserModel } from "./userModels";
 
+async function getUsers() {
+  const currentData = await db.latest();
+
+  return currentData.users;
+}
+
 async function addUser(userInput: unknown) {
   const user = UserModel.parse(userInput);
   const currentData = await db.latest();
@@ -27,4 +33,5 @@ async function getUserByEmail(email: string | undefined) {
 export const usersClient = {
   addUser,
   getUserByEmail,
+  getUsers
 };
