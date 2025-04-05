@@ -5,10 +5,11 @@ import memoryStome from "memorystore";
 import { authMiddleware, authRouter } from "./auth";
 import { APP_PORT, APP_SECRET, APP_URL } from "./config";
 import { picturesRouter } from "./pictures";
-import { documentsRouter } from "./routers";
+import { documentsRouter, usersRouter } from "./routers";
 import "./types";
-import { usersRouter } from "./users";
+import { usersRouter as existingUsersRouter } from "./users";
 import { authorizationErrorHandler, zodErrorHandler } from "./utils";
+import { filesRouter } from "./routers/filesRouter";
 
 const MemoryStore = memoryStome(session);
 const app = express();
@@ -24,7 +25,7 @@ app.use(
 
 app.use(
   session({
-    cookie: { 
+    cookie: {
       maxAge: ONE_DAY,
     },
     resave: false,
@@ -41,7 +42,9 @@ app.use(express.json());
 app.use(authRouter);
 app.use("/documents", authMiddleware, documentsRouter);
 app.use("/pictures", authMiddleware, picturesRouter);
-app.use("/users", authMiddleware, usersRouter);
+app.use("/users", authMiddleware, existingUsersRouter);
+app.use("/dynamodb/users", authMiddleware, usersRouter);
+app.use("/files", authMiddleware, filesRouter);
 
 app.use(zodErrorHandler);
 app.use(authorizationErrorHandler);

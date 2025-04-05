@@ -1,4 +1,9 @@
 import { afetch } from "./utils";
+import type { User } from "@lissner/types";
+
+interface PostLoginBody {
+  email: string;
+}
 
 export async function sendMagicLink(body: PostLoginBody) {
   return await fetch("http://localhost:3000/login", {
@@ -12,12 +17,17 @@ export async function sendMagicLink(body: PostLoginBody) {
 }
 
 export async function exchangeCodeForToken(code: string) {
-  return await fetch(`http://localhost:3000/login/${code}`, {
+  const response = await fetch(`http://localhost:3000/login/${code}`, {
     credentials: "include",
     method: "POST",
-  }).then(x => x.text());
+  });
+  if (!response.ok) {
+    throw new Error("Failed to exchange code for token");
+  }
+  // The token is sent as plain text, not JSON
+  return response.text();
 }
 
 export async function getMe(): Promise<User> {
-  return afetch("http://localhost:3000/me").then(x => x.json());
+  return afetch("http://localhost:3000/me").then((x) => x.json());
 }

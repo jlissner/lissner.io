@@ -1,1 +1,1 @@
-import "@lissner/types"
+import "@lissner/types";

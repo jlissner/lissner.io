@@ -10,8 +10,16 @@ export const zodErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
   next(err);
 };
 
-export const authorizationErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
-  if (err.message.includes(NOT_AUTHORIZED) || err.message.includes('JsonWebTokenError')) {
+export const authorizationErrorHandler: ErrorRequestHandler = (
+  err,
+  _req,
+  res,
+  next,
+) => {
+  if (
+    err.message.includes(NOT_AUTHORIZED) ||
+    err.message.includes("JsonWebTokenError")
+  ) {
     res.status(401).send();
     return;
   }

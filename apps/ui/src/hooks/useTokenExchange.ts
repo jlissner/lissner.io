@@ -12,6 +12,7 @@ export function useTokenExchange() {
 
   useEffect(() => {
     if (code) {
+      console.log("code", code)
       setSearchParams((search) => {
         search.delete("code");
 
@@ -20,6 +21,7 @@ export function useTokenExchange() {
 
       exchangeCodeForToken(code)
         .then((res) => {
+          console.log(res)
           setUserToken(res);
         })
         .catch(console.log);

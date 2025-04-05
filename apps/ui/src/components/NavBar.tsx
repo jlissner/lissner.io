@@ -1,7 +1,7 @@
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { userTokenAtom } from "../state/userAtom";
-import '../styles/navbar.css';
+import "../styles/navbar.css";
 
 type ColorScheme = "light" | "dark";
 function useColorScheme(): [ColorScheme, () => void] {
@@ -27,7 +27,9 @@ export function NavBar() {
     <nav className="navbar">
       <h2>Lissner Family Website</h2>
 
-      <button onClick={toggleColorScheme}>{nextScheme === 'light' ? '☀️' : '🌑'}</button>
+      <button onClick={toggleColorScheme}>
+        {nextScheme === "light" ? "☀️" : "🌑"}
+      </button>
       <button
         disabled={!userToken}
         onClick={() => {

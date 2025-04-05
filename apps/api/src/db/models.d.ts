@@ -1,4 +1,3 @@
-
 type RootDb = {
   users: UserModel[];
   media: MediaModel[];
@@ -21,18 +20,18 @@ type RecipeModel = {
 };
 
 enum RecipeCategory {
-  Appetizer = 'appetizer',
-  Soup = 'soup',
-  Salad = 'salad',
-  Bread = 'bread',
-  LunchBrunch = 'lunchBrunch',
-  Vegetable = 'vegetable',
-  Poultry = 'poultry',
-  MeatFish = 'meatFish',
-  Desserts = 'desserts',
-  CookiesBars = 'cookiesBars',
-  Cakes = 'cakes',
-  Pies = 'pies',
-  CandiesSweets = 'candiesSweets',
-  Other = 'other',
+  Appetizer = "appetizer",
+  Soup = "soup",
+  Salad = "salad",
+  Bread = "bread",
+  LunchBrunch = "lunchBrunch",
+  Vegetable = "vegetable",
+  Poultry = "poultry",
+  MeatFish = "meatFish",
+  Desserts = "desserts",
+  CookiesBars = "cookiesBars",
+  Cakes = "cakes",
+  Pies = "pies",
+  CandiesSweets = "candiesSweets",
+  Other = "other",
 }

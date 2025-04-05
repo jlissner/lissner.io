@@ -1,7 +1,4 @@
-import {
-  SendEmailCommand,
-  SESClient,
-} from "@aws-sdk/client-ses";
+import { SendEmailCommand, SESClient } from "@aws-sdk/client-ses";
 
 // a client can be shared by different commands.
 const client = new SESClient({ region: "us-west-2" });

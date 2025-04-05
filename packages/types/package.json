@@ -1,8 +1,9 @@
 {
   "name": "@lissner/types",
   "version": "1.0.0",
-  "description": "",
+  "description": "Shared types for the Lissner project",
   "main": "src/index.d.ts",
+  "types": "src/index.d.ts",
   "scripts": {},
   "author": "",
   "license": "ISC"

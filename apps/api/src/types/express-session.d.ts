@@ -1,7 +1,7 @@
-import 'express-session';
-import jwt from 'jsonwebtoken';
+import "express-session";
+import jwt from "jsonwebtoken";
 
-declare module 'express-session' {
+declare module "express-session" {
   export interface SessionData {
     user: jwt.JwtPayload | undefined;
     userToken: string | undefined;

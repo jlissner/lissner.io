@@ -24,12 +24,17 @@ function handleSubmit(
 async function handleExchangeCodeForToken(
   code: string,
   setUserToken: (res: string) => void,
+  setState: (v: string) => void,
 ) {
-  await exchangeCodeForToken(code)
-    .then((res) => {
-      setUserToken(res);
-    })
-    .catch(console.log);
+  try {
+    const token = await exchangeCodeForToken(code);
+    console.log("Received token:", token); // Debug log
+    setUserToken(token);
+    setState("success");
+  } catch (error) {
+    console.error("Error exchanging code for token:", error);
+    setState("error");
+  }
 }
 
 export function LoginForm() {
@@ -38,9 +43,30 @@ export function LoginForm() {
   const [code, setCode] = useState("");
   const [state, setState] = useState("initial");
 
+  if (state === "success") {
+    return (
+      <div>
+        <h4 className="mb-md">Successfully logged in!</h4>
+        <button type="button" onClick={() => setState("initial")}>Log out</button>
+      </div>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div>
+        <h4 className="mb-md text-red-500">Failed to log in. Please try again.</h4>
+        <button type="button" onClick={() => setState("initial")}>Try Again</button>
+      </div>
+    );
+  }
+
   if (state === "sent") {
     return (
-      <form onSubmit={() => handleExchangeCodeForToken(code, setUserToken)}>
+      <form onSubmit={(e) => {
+        e.preventDefault();
+        handleExchangeCodeForToken(code, setUserToken, setState);
+      }}>
         <h4 className="mb-md">Magic link sent to {email}</h4>
 
         <input
@@ -52,14 +78,13 @@ export function LoginForm() {
 
         <div className="h-space gap-lg mt-md">
           <button
-            onClick={() => handleExchangeCodeForToken(code, setUserToken)}
             type="submit"
             disabled={code.length !== 6}
           >
             Submit
           </button>
 
-          <button onClick={() => setState("initial")}>Restart</button>
+          <button type="button" onClick={() => setState("initial")}>Restart</button>
         </div>
       </form>
     );
@@ -78,7 +103,6 @@ export function LoginForm() {
       </label>
       <button
         disabled={state === "sending"}
-        onClick={handleSubmit(email, state, setState)}
         type="submit"
       >
         Send Magic Link

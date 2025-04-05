@@ -3,10 +3,15 @@ import invariant from "tiny-invariant";
 import { UAParser } from "ua-parser-js";
 import { ses } from "../aws/ses";
 import { loginEmailTemplate } from "../emailTemplates";
-import { usersClient } from "../users/usersClient";
+import { dynamodb } from "../aws/dynamodb";
 import { generateLoginCode } from "../utils/generateLoginCode";
 import { auth } from "./auth";
 import { authMiddleware } from "./authMiddleware";
+import type { User } from "@lissner/types";
+
+interface PostLoginBody {
+  email: string;
+}
 
 export const authRouter = Router();
 
@@ -14,15 +19,18 @@ authRouter.get("/me", authMiddleware, async (req, res) => {
   const { user } = req.session;
 
   invariant(user);
+  invariant(user.sub);
 
-  const foundUser = await usersClient.getUserByEmail(user.sub);
+  const foundUser = await dynamodb.getUserByEmail(user.sub);
 
   res.send(foundUser);
 });
 
 authRouter.post<unknown, unknown, PostLoginBody>("/login", async (req, res) => {
   const { email } = req.body;
-  const user = await usersClient.getUserByEmail(email);
+  invariant(email);
+
+  const user = await dynamodb.getUserByEmail(email);
 
   if (user) {
     const code = generateLoginCode();
@@ -59,16 +67,18 @@ authRouter.post("/login/:code", async (req, res) => {
     return;
   }
 
-  const user = await usersClient.getUserByEmail(email);
+  invariant(email);
+
+  const user = await dynamodb.getUserByEmail(email);
 
   if (!user) {
     res.status(401).send();
     return;
   }
 
-  invariant(email);
+  invariant(user.id);
 
-  const token = auth.createAuthToken(email);
+  const token = auth.createAuthToken(user.id);
 
   res.send(token);
 });

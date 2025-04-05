@@ -8,13 +8,17 @@
     "start": "concurrently \"npm run start:server\" \"npm run start:client\"",
     "start:client": "vite ./apps/web-ui",
     "start:server": "nodemon ./apps/web-api/src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prettier": "prettier --write \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\"",
+    "prettier:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,json,css,scss,md}\""
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.772.0",
     "@aws-sdk/client-s3": "^3.734.0",
     "@aws-sdk/client-ses": "^3.734.0",
+    "@aws-sdk/lib-dynamodb": "^3.772.0",
     "@aws-sdk/s3-request-presigner": "^3.734.0",
     "@types/ramda": "^0.30.2",
     "cors": "^2.8.5",
@@ -47,5 +51,8 @@
     "ts-node": "^10.9.2",
     "typescript-eslint": "^8.17.0"
   },
-  "workspaces": ["./packages/*", "./apps/*"]
+  "workspaces": [
+    "./packages/*",
+    "./apps/*"
+  ]
 }

@@ -33,5 +33,5 @@ async function getUserByEmail(email: string | undefined) {
 export const usersClient = {
   addUser,
   getUserByEmail,
-  getUsers
+  getUsers,
 };

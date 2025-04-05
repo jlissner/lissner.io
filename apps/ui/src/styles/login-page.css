@@ -4,17 +4,15 @@
   gap: var(--space-md);
   grid-template-columns: 1fr max-content max-content 1fr;
   grid-template-rows: clamp(0px, 10vw, 25vh) max-content max-content 2fr;
-  grid-template-areas: '. . .'
-                       '. content .'
-                       '. help .'
-                       '. . .';
-                       
-  background: center / cover no-repeat url('/carcassone-at-night.jpg');
+  grid-template-areas:
+    ". . ."
+    ". content ."
+    ". help ."
+    ". . .";
+
+  background: center / cover no-repeat url("/carcassone-at-night.jpg");
   height: 100%;
   padding: var(--space-lg);
-
-
-
 
   label {
     margin-bottom: var(--space-lg);

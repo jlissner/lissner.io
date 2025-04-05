@@ -3,8 +3,15 @@ import jwt from "jsonwebtoken";
 import invariant from "tiny-invariant";
 import { APP_SECRET, NOT_AUTHORIZED } from "../config";
 
+// Extend Express Request type to include user
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+  };
+}
+
 export function authMiddleware(
-  req: Request,
+  req: AuthenticatedRequest,
   _res: Response,
   next: NextFunction,
 ) {
@@ -12,12 +19,23 @@ export function authMiddleware(
 
   invariant(authorization, NOT_AUTHORIZED);
 
-  const token = authorization.replace('Bearer ', '');
-  const user = jwt.verify(token, APP_SECRET);
+  const token = authorization.replace("Bearer ", "");
+  console.log("Verifying token:", { token });
 
-  invariant(typeof user !== "string", NOT_AUTHORIZED);
+  try {
+    const user = jwt.verify(token, APP_SECRET);
+    console.log("Verified token payload:", user);
 
-  req.session.user = user;
+    invariant(typeof user !== "string", NOT_AUTHORIZED);
+    invariant(user.sub, NOT_AUTHORIZED);
 
-  next();
+    // Set the user ID in the request for use in routes
+    req.user = { id: user.sub };
+    console.log("Set user in request:", req.user);
+
+    next();
+  } catch (error) {
+    console.error("Token verification failed:", error);
+    throw error;
+  }
 }

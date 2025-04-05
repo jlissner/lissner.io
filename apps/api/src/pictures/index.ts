@@ -1,1 +1,1 @@
-export * from './picturesRouter';
+export * from "./picturesRouter";

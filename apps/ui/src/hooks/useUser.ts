@@ -1,6 +1,6 @@
 import { useAtomValue } from "jotai";
-import { userAtom } from "../state/userAtom";
 import invariant from "tiny-invariant";
+import { userAtom } from "../state/userAtom";
 
 export function useUser() {
   const user = useAtomValue(userAtom);
