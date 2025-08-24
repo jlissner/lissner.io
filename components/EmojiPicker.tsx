@@ -1,11 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
+import { 
+  filterEmojis, 
+  calculatePickerPosition, 
+  isDirectEmojiInput,
+  type EmojiData 
+} from '../utils/emojiUtils'
 
 interface EmojiPickerProps {
   onEmojiSelect: (emoji: string) => void
   onClose: () => void
 }
 
-const EMOJI_DATA = [
+const EMOJI_DATA: EmojiData[] = [
   // Top expressions and reactions
   { emoji: '😂', keywords: ['laugh', 'crying', 'tears', 'joy', 'funny', 'lol', 'hilarious'] },
   { emoji: '❤️', keywords: ['heart', 'love', 'red', 'romance', 'valentine', 'care'] },
@@ -176,29 +182,16 @@ export const EmojiPicker = ({ onEmojiSelect, onClose }: EmojiPickerProps) => {
   const [position, setPosition] = useState<'top' | 'bottom'>('bottom')
   const pickerRef = useRef<HTMLDivElement>(null)
 
-  // Filter emojis based on search term
-  const filteredEmojis = EMOJI_DATA.filter(item => {
-    if (!searchTerm.trim()) return true
-    
-    const term = searchTerm.toLowerCase()
-    return item.keywords.some(keyword => keyword.includes(term)) ||
-           item.emoji.includes(term)
-  })
+  // Filter emojis based on search term using utility function
+  const filteredEmojis = filterEmojis(EMOJI_DATA, searchTerm)
 
-  // Determine optimal position based on available space
+  // Determine optimal position based on available space using utility function
   useEffect(() => {
     if (pickerRef.current) {
       const rect = pickerRef.current.getBoundingClientRect()
       const viewportHeight = window.innerHeight
-      const spaceBelow = viewportHeight - rect.top
-      const spaceAbove = rect.top
-      
-      // Picker height is roughly 200px, so we need at least that much space
-      if (spaceBelow < 200 && spaceAbove > 200) {
-        setPosition('top')
-      } else {
-        setPosition('bottom')
-      }
+      const optimalPosition = calculatePickerPosition(rect, viewportHeight, 200)
+      setPosition(optimalPosition)
     }
   }, [])
 
@@ -209,8 +202,8 @@ export const EmojiPicker = ({ onEmojiSelect, onClose }: EmojiPickerProps) => {
 
   const handleCustomEmojiSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (searchTerm.trim()) {
-      // If it looks like they typed an emoji directly, use it
+    if (isDirectEmojiInput(searchTerm)) {
+      // User typed an emoji or short text directly, use it
       onEmojiSelect(searchTerm.trim())
       onClose()
     }

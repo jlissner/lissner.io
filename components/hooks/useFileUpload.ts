@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
-import { uploadPhotoWithProgress, generateUploadSessionId } from '../utils/photoUtils'
+import { uploadPhotoWithProgress } from '@/lib/api'
+import { generateUploadSessionId } from '../../utils/uploadUtils'
 import { useAuth } from '@/lib/auth-context'
 import toast from 'react-hot-toast'
 
@@ -56,14 +57,14 @@ export const useFileUpload = ({ albumId, onUploadComplete }: UseFileUploadProps)
         try {
           await uploadPhotoWithProgress(
             upload.file,
-            user.email,
-            albumId,
-            globalTags.split(',').map(tag => tag.trim()).filter(Boolean),
-            (progress) => {
+            undefined, // caption
+            globalTags.split(',').map(tag => tag.trim()).filter(Boolean), // tags
+            (progress: number) => {
               setFileUploads(prev => 
                 prev.map(u => u.id === upload.id ? { ...u, progress } : u)
               )
-            }
+            },
+            albumId // uploadSessionId (albumId)
           )
 
           setFileUploads(prev => 

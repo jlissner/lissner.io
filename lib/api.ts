@@ -109,6 +109,11 @@ export const addComment = async (photoId: string, content: string) => {
   return response.data
 }
 
+export const deleteComment = async (photoId: string, commentId: string) => {
+  const response = await api.delete(`/photos/${photoId}/comments/${commentId}`)
+  return response.data
+}
+
 export const addReaction = async (photoId: string, type: string) => {
   if (useMockApi) return mockApi.addReaction(photoId, type)
   const response = await api.post(`/photos/${photoId}/reactions`, { type })

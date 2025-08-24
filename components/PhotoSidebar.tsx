@@ -49,6 +49,7 @@ interface PhotoSidebarProps {
   handleAddTag: (e: React.FormEvent) => void
   handleRemoveTag: (tag: string) => void
   handleAddComment: (e: React.FormEvent) => void
+  handleDeleteComment: (commentId: string) => void
   setNewComment: (value: string) => void
   setNewTag: (value: string) => void
 }
@@ -66,6 +67,7 @@ export const PhotoSidebar = ({
   handleAddTag,
   handleRemoveTag,
   handleAddComment,
+  handleDeleteComment,
   setNewComment,
   setNewTag
 }: PhotoSidebarProps) => {
@@ -99,6 +101,7 @@ export const PhotoSidebar = ({
           isLoading={isLoading}
           onNewCommentChange={setNewComment}
           onAddComment={handleAddComment}
+          onDeleteComment={handleDeleteComment}
         />
       </div>
     </div>

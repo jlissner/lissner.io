@@ -36,7 +36,7 @@ export const UploadModal = ({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[10000]">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] overflow-hidden">
         <div className="flex items-center justify-between p-6 border-b">
-          <h2 className="text-xl font-semibold">Upload Photos</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Upload Photos</h2>
           <button
             onClick={onCancel}
             disabled={isUploading}
@@ -58,17 +58,17 @@ export const UploadModal = ({
               onChange={(e) => onGlobalTagsChange(e.target.value)}
               placeholder="vacation, family, 2024"
               disabled={isUploading}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-900 bg-white placeholder-gray-500"
             />
           </div>
 
           {/* File Upload Progress */}
           <div className="space-y-4">
-            <h3 className="text-lg font-medium">Files to Upload ({fileUploads.length})</h3>
+            <h3 className="text-lg font-medium text-gray-900">Files to Upload ({fileUploads.length})</h3>
             {fileUploads.map((upload) => (
               <div key={upload.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium truncate flex-1 mr-4">
+                  <span className="text-sm font-medium truncate flex-1 mr-4 text-gray-900">
                     {upload.file.name}
                   </span>
                   <span className="text-xs text-gray-500">

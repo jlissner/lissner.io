@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { addComment, addReaction, removeReaction, addTag, removeTag, deletePhoto } from '@/lib/api'
+import { addComment, deleteComment, addReaction, removeReaction, addTag, removeTag, deletePhoto } from '@/lib/api'
 import toast from 'react-hot-toast'
 import { Photo, Comment, Reaction } from '../types/photo'
 
@@ -112,6 +112,26 @@ export const usePhotoActions = ({
     }
   }
 
+  // Delete comment action
+  const handleDeleteComment = async (commentId: string) => {
+    const commentToDelete = localComments.find(c => c.id === commentId)
+    if (!commentToDelete) return
+
+    // Optimistic update - remove comment immediately
+    setLocalComments(prev => prev.filter(c => c.id !== commentId))
+
+    try {
+      await deleteComment(photo.id, commentId)
+      toast.success('Comment deleted!')
+    } catch (error) {
+      // Revert on error
+      setLocalComments(prev => [...prev, commentToDelete].sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ))
+      toast.error('Failed to delete comment')
+    }
+  }
+
   // Tag actions
   const handleAddTag = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -189,6 +209,7 @@ export const usePhotoActions = ({
     
     // Actions
     handleAddComment,
+    handleDeleteComment,
     handleReaction,
     handleAddTag,
     handleRemoveTag,

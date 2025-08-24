@@ -192,6 +192,11 @@ export const GroupModal = ({
               albumPhotos.refreshAlbumPhotos()
               if (onUpdate) onUpdate()
             }}
+            onDelete={() => {
+              modalState.setSelectedPhoto(null) // Close modal immediately
+              albumPhotos.refreshAlbumPhotos() // Refresh album photos
+              if (onUpdate) onUpdate() // Refresh main photo grid
+            }}
             albumPhotos={albumPhotos.albumPhotos}
             albumHasMore={albumPhotos.albumHasMore}
             albumLoadingMore={albumPhotos.albumLoadingMore}

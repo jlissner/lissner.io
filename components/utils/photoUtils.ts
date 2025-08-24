@@ -109,8 +109,4 @@ export const getDisplayName = (email: string) => {
   const name = email.split('@')[0]
   return name.charAt(0).toUpperCase() + name.slice(1).replace(/[._-]/g, ' ')
 }
-
-// Generate a unique ID for upload sessions
-export const generateUploadSessionId = () => {
-  return `upload-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-} 
+ 

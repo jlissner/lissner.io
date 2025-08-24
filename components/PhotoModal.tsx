@@ -258,8 +258,9 @@ export default function PhotoModal({
                     comments={actions.localComments}
                     newComment={actions.newComment}
                     isLoading={actions.isLoading}
+                    onNewCommentChange={actions.setNewComment}
                     onAddComment={actions.handleAddComment}
-                    onCommentChange={actions.setNewComment}
+                    onDeleteComment={actions.handleDeleteComment}
                   />
                 </div>
               </div>
@@ -281,6 +282,7 @@ export default function PhotoModal({
               handleAddTag={actions.handleAddTag}
               handleRemoveTag={actions.handleRemoveTag}
               handleAddComment={actions.handleAddComment}
+              handleDeleteComment={actions.handleDeleteComment}
               setNewComment={actions.setNewComment}
               setNewTag={actions.setNewTag}
             />

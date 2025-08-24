@@ -1,7 +1,14 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: ['lissner-family-photos-bucket.s3.amazonaws.com'], // S3 bucket for family photos
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'lissner-family-photos-bucket.s3.amazonaws.com',
+        port: '',
+        pathname: '/photos/**',
+      },
+    ],
   },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001',

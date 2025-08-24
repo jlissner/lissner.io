@@ -334,6 +334,57 @@ module.exports = (upload) => {
     }
   });
 
+  // Delete comment from photo
+  router.delete('/:photoId/comments/:commentId', async (req, res) => {
+    try {
+      const { photoId, commentId } = req.params;
+
+      // Get the photo
+      const photoResult = await dynamodb.send(new GetCommand({
+        TableName: TABLE_NAMES.PHOTOS,
+        Key: { id: photoId },
+      }));
+
+      if (!photoResult.Item) {
+        return res.status(404).json({ error: 'Photo not found' });
+      }
+
+      const photo = photoResult.Item;
+      const comments = photo.comments || [];
+      
+      // Find the comment to delete
+      const commentIndex = comments.findIndex(c => c.id === commentId);
+      if (commentIndex === -1) {
+        return res.status(404).json({ error: 'Comment not found' });
+      }
+
+      const commentToDelete = comments[commentIndex];
+      
+      // Check if user is authorized (comment author or admin)
+      if (commentToDelete.author !== req.user.email && !req.user.isAdmin) {
+        return res.status(403).json({ error: 'Not authorized to delete this comment' });
+      }
+
+      // Remove the comment from the array
+      const updatedComments = comments.filter(c => c.id !== commentId);
+
+      // Update the photo with the new comments array
+      await dynamodb.send(new UpdateCommand({
+        TableName: TABLE_NAMES.PHOTOS,
+        Key: { id: photoId },
+        UpdateExpression: 'SET comments = :comments',
+        ExpressionAttributeValues: {
+          ':comments': updatedComments,
+        },
+      }));
+
+      res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+      console.error('Delete comment error:', error);
+      res.status(500).json({ error: 'Failed to delete comment' });
+    }
+  });
+
   // Add reaction to photo
   router.post('/:photoId/reactions', async (req, res) => {
     try {
