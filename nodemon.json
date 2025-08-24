@@ -1,5 +1,0 @@
-{
-  "execMap": {
-    "ts": "node --env-file=.env --no-warnings=ExperimentalWarning --experimental-specifier-resolution=node --loader ts-node/esm"
-  }
-}
