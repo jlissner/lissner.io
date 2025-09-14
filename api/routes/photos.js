@@ -1133,5 +1133,65 @@ module.exports = (upload) => {
     }
   });
 
+  // Delete entire album
+  router.delete('/albums/:albumId', async (req, res) => {
+    try {
+      const { albumId } = req.params;
+
+      // Find album by albumId field (upload session ID)
+      const albumQuery = await dynamodb.send(new QueryCommand({
+        TableName: TABLE_NAMES.PHOTOS,
+        IndexName: 'ChronologicalIndex',
+        KeyConditionExpression: 'photoType = :photoType',
+        FilterExpression: 'albumId = :albumId',
+        ExpressionAttributeValues: {
+          ':photoType': 'album',
+          ':albumId': albumId
+        },
+        Limit: 1
+      }));
+
+      if (!albumQuery.Items || albumQuery.Items.length === 0) {
+        return res.status(404).json({ error: 'Album not found' });
+      }
+
+      const album = albumQuery.Items[0];
+
+      // Check if user is authorized (owner or admin)
+      if (album.uploadedBy !== req.user.email && !req.user.isAdmin) {
+        return res.status(403).json({ error: 'Not authorized to delete this album' });
+      }
+
+      // Check if album has any photos remaining
+      const photosQuery = await dynamodb.send(new QueryCommand({
+        TableName: TABLE_NAMES.PHOTOS,
+        IndexName: 'AlbumPhotosIndex',
+        KeyConditionExpression: 'albumId = :albumId',
+        ExpressionAttributeValues: {
+          ':albumId': albumId
+        },
+        Select: 'COUNT',
+        Limit: 1
+      }));
+
+      if (photosQuery.Count > 0) {
+        return res.status(400).json({ 
+          error: 'Cannot delete album that still contains photos. Please delete all photos first.' 
+        });
+      }
+
+      // Delete the album metadata
+      await dynamodb.send(new DeleteCommand({
+        TableName: TABLE_NAMES.PHOTOS,
+        Key: { id: album.id },
+      }));
+
+      res.json({ message: 'Album deleted successfully' });
+    } catch (error) {
+      console.error('Delete album error:', error);
+      res.status(500).json({ error: 'Failed to delete album' });
+    }
+  });
+
   return router;
 }; 

@@ -1,0 +1,322 @@
+# Cursor Rules for Photo Management Application
+
+Start all responses with "Don't Panic."
+
+## Project Overview
+This is a Next.js photo management application with a Node.js/Express API backend, using DynamoDB for storage and S3 for photo hosting. The app supports photo uploads, albums, reactions, comments, and user management.
+
+## Code Style & Standards
+- Prefer functional programming methods
+- Avoid mutation as much as possible
+- Write for readability, clarity, and conciseness.
+- Write tests for new and updated functions
+- Make sure relevant changes are also reflected in the `.cursorrules`, such as file structure changes and updates to APIs.
+
+### TypeScript
+- Use TypeScript for all new components and utilities
+- Prefer explicit types over `any`
+- Use interfaces for component props and API responses
+- Export types from dedicated files in `types/` directories
+
+### React/Next.js
+- Use functional components with hooks
+- Prefer composition over inheritance
+- Use custom hooks for reusable logic
+- Follow the existing component structure: `components/`, `app/`, `hooks/`
+- Use 'use client' directive for client-side components
+
+### API Development
+- All API routes must include proper authentication checks
+- Use proper HTTP status codes and error messages
+- Include request validation and sanitization
+- Follow RESTful conventions
+- Add comprehensive error handling with try/catch blocks
+
+### Database Operations
+- Always check user permissions before database operations
+- Use proper DynamoDB query patterns with indexes
+- Include error handling for all database operations
+- Validate data before storing in database
+
+## File Organization
+
+### UI Directory Structure
+All frontend code is organized under the `ui/` directory:
+- `ui/app/` - Next.js app directory with pages and layouts
+- `ui/components/` - Reusable React components
+- `ui/hooks/` - Custom React hooks
+- `ui/lib/` - Client-side libraries and API clients
+- `ui/utils/` - Frontend utility functions
+- `ui/types/` - TypeScript type definitions
+
+### Components
+- Place reusable components in `ui/components/`
+- Use subdirectories for related components (e.g., `ui/components/album/`)
+- Create test files alongside components in `__tests__/` directories
+- Use descriptive, PascalCase names for components
+- Put as little function logic in components as possible
+
+### Hooks
+- Custom hooks go in `ui/hooks/` directory
+- Use `use` prefix for all custom hooks
+- Export hooks as named exports
+- Include proper TypeScript types
+
+### Utilities
+- Place utility functions in `ui/utils/` directory
+- Group related utilities in the same file
+- Export as named exports
+- Include comprehensive JSDoc comments
+- Abstract as much logic into utility functions as possible
+- Always write and update tests for utility functions
+
+### Import Paths
+- Use `@/ui/*` for UI-related imports
+- Example: `import { PhotoGrid } from '@/ui/components/PhotoGrid'`
+- Example: `import { usePhotoData } from '@/ui/hooks/usePhotoData'`
+
+## Security Guidelines
+
+### Authentication & Authorization
+- Always verify user authentication before sensitive operations
+- Check user permissions (owner, admin) for destructive actions
+- Use `req.user` for authenticated user information
+- Validate user ownership of resources before modifications
+
+### Data Validation
+- Sanitize all user inputs
+- Validate file types and sizes for uploads
+- Use proper error messages that don't leak sensitive information
+- Implement rate limiting for API endpoints
+
+## UI/UX Guidelines
+
+### User Feedback
+- Always show loading states for async operations
+- Include success/error toast notifications using react-hot-toast
+- Show confirmation dialogs for destructive actions
+- Provide clear error messages to users
+
+### Responsive Design
+- Use Tailwind CSS for styling
+- Ensure mobile-first responsive design
+- Use semantic HTML elements
+- Maintain accessibility standards
+
+### Performance
+- Use Image component from Next.js for optimized loading
+- Implement infinite scroll for large datasets
+- Use optimistic updates where appropriate
+- Minimize re-renders with proper React patterns
+
+## Testing
+
+### Component Testing
+- Write tests for complex components in `__tests__/` directories
+- Test user interactions and edge cases
+- Mock external dependencies
+- Use descriptive test names
+
+### API Testing
+- Test authentication and authorization
+- Test error scenarios
+- Validate response formats
+- Test edge cases and boundary conditions
+
+## Error Handling
+
+### Frontend
+- Use try/catch blocks for async operations
+- Show user-friendly error messages
+- Log errors for debugging
+- Gracefully handle network failures
+
+### Backend
+- Use comprehensive error handling in all routes
+- Return appropriate HTTP status codes
+- Log errors with context for debugging
+- Don't expose sensitive information in error messages
+
+## Code Patterns to Follow
+
+### State Management
+- Use React hooks for local state
+- Use custom hooks for complex state logic
+- Implement optimistic updates for better UX
+- Keep state as close to where it's used as possible
+
+### API Integration
+- Use the existing API client pattern in `lib/api.ts`
+- Support both real API and mock API for development
+- Include proper error handling and retries
+- Use consistent response formats
+
+### Photo Management
+- Always handle multiple photo versions (thumbnail, original, optimized)
+- Use proper S3 key management
+- Implement batch operations for multiple photos
+- Include proper cleanup for deleted photos
+
+## Specific Project Rules
+
+### Album Management
+- Albums are created implicitly when photos are uploaded
+- Empty albums can be deleted by owners or admins
+- Album metadata is stored alongside photos in DynamoDB
+- Use upload session IDs as album identifiers
+
+### Photo Operations
+- Support batch operations (upload, delete, download)
+- Always update S3 and database atomically
+- Include proper permission checks
+- Generate thumbnails and optimized versions
+
+### User Management
+- Support magic link authentication
+- Implement role-based permissions (admin, regular user)
+- Include user whitelist functionality
+- Store minimal user information
+
+## Performance Considerations
+
+### Database Queries
+- Use appropriate DynamoDB indexes (ChronologicalIndex, AlbumPhotosIndex, UserPhotosIndex)
+- Implement pagination for large datasets
+- Use batch operations where possible
+- Cache frequently accessed data
+
+### File Handling
+- Process images efficiently with sharp
+- Use streaming for large file operations
+- Implement proper cleanup for failed uploads
+- Generate multiple image sizes (thumbnail, optimized, original)
+
+## Database Schema
+
+### DynamoDB Tables
+
+#### Users Table (`lissner-users-{stage}`)
+**Primary Key:** `id` (String - UUID)
+**Global Secondary Indexes:**
+- `EmailIndex`: Hash key on `email`
+
+**Attributes:**
+```
+id (S) - UUID primary key
+email (S) - User email address
+displayName (S) - User's display name
+isAdmin (BOOL) - Admin privileges flag
+createdAt (S) - ISO timestamp
+lastActive (S) - ISO timestamp
+```
+
+#### Photos Table (`lissner-photos-{stage}`)
+**Primary Key:** `id` (String - UUID)
+**Global Secondary Indexes:**
+- `ChronologicalIndex`: Hash key on `photoType`, Range key on `uploadedAt`
+- `UserPhotosIndex`: Hash key on `userId`, Range key on `uploadedAt`  
+- `AlbumPhotosIndex`: Hash key on `albumId`, Range key on `uploadedAt`
+
+**Attributes:**
+```
+id (S) - UUID primary key
+photoType (S) - "photo" or "album"
+uploadedAt (S) - ISO timestamp
+userId (S) - User ID (uploadedBy)
+albumId (S) - Upload session ID
+albumName (S) - Album display name
+filename (S) - Original filename
+caption (S) - Photo caption
+url (S) - Optimized photo URL
+thumbnailUrl (S) - Thumbnail URL
+originalUrl (S) - Original photo URL
+s3Key (S) - S3 key for optimized version
+thumbnailS3Key (S) - S3 key for thumbnail
+originalS3Key (S) - S3 key for original
+width (N) - Image width in pixels
+height (N) - Image height in pixels
+fileSize (N) - File size in bytes
+tags (SS) - Set of tag strings
+location (M) - Map with lat, lng, address
+comments (L) - List of comment objects
+reactions (L) - List of reaction objects
+```
+
+#### Magic Links Table (`lissner-magic-links-{stage}`)
+**Primary Key:** `token` (String)
+**TTL:** `expiresAt` attribute (automatic cleanup)
+
+**Attributes:**
+```
+token (S) - Unique token primary key
+email (S) - Target email address
+expiresAt (N) - Unix timestamp for TTL
+createdAt (S) - ISO timestamp
+```
+
+### Data Access Patterns
+
+#### Photo Operations
+- Get all photos chronologically: Query `ChronologicalIndex` with `photoType = "photo"`
+- Get user's photos: Query `UserPhotosIndex` with `userId = {userId}`
+- Get album photos: Query `AlbumPhotosIndex` with `albumId = {albumId}`
+- Get single photo: GetItem with `id = {photoId}`
+
+#### Album Operations
+- Get all albums: Query `ChronologicalIndex` with `photoType = "album"`
+- Get album metadata: Query `ChronologicalIndex` with filter `albumId = {albumId}`
+- Get album photo count: Query `AlbumPhotosIndex` with `Select = "COUNT"`
+
+#### User Operations
+- Get user by email: Query `EmailIndex` with `email = {email}`
+- Get user by ID: GetItem with `id = {userId}`
+
+### Database Best Practices
+- Always use appropriate GSI for query patterns
+- Use batch operations for multiple items when possible
+- Implement pagination with `LastEvaluatedKey`
+- Use `ProjectionExpression` to limit returned attributes
+- Use `FilterExpression` for additional filtering after GSI query
+- Validate all write operations before execution
+
+## When Making Changes
+
+### Before Implementing
+1. Check existing patterns and follow them
+2. Consider security implications
+3. Plan for error scenarios
+4. Think about user experience
+5. Consider performance impact
+
+### During Development
+1. Write clean, readable code
+2. Add proper error handling
+3. Include loading states
+4. Test edge cases
+5. Follow existing code style
+
+### After Implementation
+1. Test thoroughly
+2. Check for console errors/warnings
+3. Verify responsive design
+4. Test with different user roles
+5. Update documentation if needed
+
+## Common Anti-Patterns to Avoid
+
+- Don't use `any` type in TypeScript
+- Don't skip error handling
+- Don't expose sensitive data in client-side code
+- Don't perform database operations without permission checks
+- Don't forget to handle loading and error states in UI
+- Don't create overly complex components
+- Don't skip input validation
+- Don't leave console.log statements in production code
+
+## Git Workflow
+
+- Use descriptive commit messages
+- Keep commits focused on single changes
+- Test changes before committing
+- Update TODO.md when completing tasks
+- Follow semantic versioning for releases
