@@ -67,7 +67,7 @@ case $choice in
         # Update frontend to use real API
         sed -i.bak 's/NEXT_PUBLIC_USE_MOCK_API=true/NEXT_PUBLIC_USE_MOCK_API=false/' .env.local
         echo "📡 Starting backend API server..."
-        cd api && npm run dev &
+        cd api && npx nodemon index.js &
         BACKEND_PID=$!
         echo "Backend started with PID $BACKEND_PID"
         cd ..

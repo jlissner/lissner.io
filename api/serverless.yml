@@ -121,5 +121,13 @@ resources:
           AttributeName: expiresAt
           Enabled: true
 
+package:
+  patterns:
+    - '!../node_modules/.cache/**'
+    - '!../ui/**'
+    - '!../.git/**'
+    - '!../*.md'
+  individually: false
+
 plugins:
   - serverless-offline 

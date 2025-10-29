@@ -98,10 +98,18 @@ deploy_api() {
         npm install -g serverless
     fi
     
-    # Install dependencies if node_modules doesn't exist
-    if [ ! -d "node_modules" ]; then
-        echo -e "${YELLOW}📦 Installing API dependencies...${NC}"
-        npm install
+    # Note: Dependencies are now installed in root directory
+    # Make sure root dependencies are installed
+    if [ ! -d "../node_modules" ]; then
+        echo -e "${YELLOW}📦 Installing dependencies in root directory...${NC}"
+        cd .. && npm install && cd api
+    fi
+    
+    # Create symlink to root node_modules for serverless packaging
+    # Serverless needs node_modules in the same directory or it can't package dependencies
+    if [ ! -L "node_modules" ] && [ ! -d "node_modules" ]; then
+        echo -e "${BLUE}🔗 Creating symlink to root node_modules...${NC}"
+        ln -s ../node_modules node_modules
     fi
     
     # Deploy serverless stack

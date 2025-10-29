@@ -69,7 +69,7 @@ switch ($choice) {
         Write-Host "📡 Starting backend API server..." -ForegroundColor Blue
         
         # Start backend in new window
-        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\api'; npm run dev"
+        Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\api'; npx nodemon index.js"
         Start-Sleep 3
     }
     "2" {
