@@ -6,7 +6,6 @@ import { Photo } from './utils/photoUtils'
 
 interface AlbumPhotoGridProps {
   albumPhotos: Photo[]
-  selectionMode: boolean
   selectedPhotos: Set<string>
   isOperationInProgress: boolean
   onPhotoClick: (photo: Photo) => void
@@ -18,7 +17,6 @@ interface AlbumPhotoGridProps {
 
 export const AlbumPhotoGrid = ({
   albumPhotos,
-  selectionMode,
   selectedPhotos,
   isOperationInProgress,
   onPhotoClick,
@@ -43,17 +41,13 @@ export const AlbumPhotoGrid = ({
             return null
           }
           
+          const isSelected = selectedPhotos.has(photo.id)
+          
           return (
             <div
               key={photo.id}
               className="relative cursor-pointer hover:opacity-80 transition-opacity group"
-              onClick={() => {
-                if (selectionMode) {
-                  onPhotoSelect(photo.id)
-                } else {
-                  onPhotoClick(photo)
-                }
-              }}
+              onClick={() => onPhotoClick(photo)}
             >
               <div className="relative w-full h-48 rounded-lg overflow-hidden">
                 <Image
@@ -65,19 +59,29 @@ export const AlbumPhotoGrid = ({
                 />
               </div>
               
-              {/* Selection Checkbox */}
-              {selectionMode && (
+              {/* Selection Checkbox - always visible on hover */}
+              <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  disabled={isOperationInProgress}
+                  onChange={(e) => {
+                    e.stopPropagation()
+                    onPhotoSelect(photo.id)
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                />
+              </div>
+              
+              {/* Selected indicator - always visible when selected */}
+              {isSelected && (
                 <div className="absolute top-2 left-2 z-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedPhotos.has(photo.id)}
-                    disabled={isOperationInProgress}
-                    onChange={(e) => {
-                      e.stopPropagation()
-                      onPhotoSelect(photo.id)
-                    }}
-                    className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
+                  <div className="w-4 h-4 bg-blue-600 border-2 border-white rounded flex items-center justify-center">
+                    <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
                 </div>
               )}
               

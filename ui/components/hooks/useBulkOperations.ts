@@ -11,7 +11,6 @@ interface ProgressState {
 }
 
 export const useBulkOperations = (photos: Photo[], onUpdate?: () => void) => {
-  const [selectionMode, setSelectionMode] = useState(false)
   const [selectedPhotos, setSelectedPhotos] = useState<Set<string>>(new Set())
   const [deleteProgress, setDeleteProgress] = useState<ProgressState>({ 
     isActive: false, 
@@ -42,11 +41,6 @@ export const useBulkOperations = (photos: Photo[], onUpdate?: () => void) => {
 
   const clearSelection = () => {
     setSelectedPhotos(new Set())
-  }
-
-  const exitSelectionMode = () => {
-    setSelectionMode(false)
-    clearSelection()
   }
 
   const handleBulkDelete = async () => {
@@ -113,7 +107,7 @@ export const useBulkOperations = (photos: Photo[], onUpdate?: () => void) => {
       }
       
       setDeleteProgress({ isActive: false, completed: 0, total: 0 })
-      exitSelectionMode()
+      clearSelection()
       
       if (onUpdate) {
         onUpdate()
@@ -228,18 +222,15 @@ export const useBulkOperations = (photos: Photo[], onUpdate?: () => void) => {
 
   return {
     // State
-    selectionMode,
     selectedPhotos,
     deleteProgress,
     downloadProgress,
     isOperationInProgress,
     
     // Actions
-    setSelectionMode,
     togglePhotoSelection,
     selectAllPhotos,
     clearSelection,
-    exitSelectionMode,
     handleBulkDelete,
     handleBulkDownload
   }

@@ -8,7 +8,6 @@ interface ProgressState {
 }
 
 interface BulkOperationsProps {
-  selectionMode: boolean
   selectedPhotos: Set<string>
   deleteProgress: ProgressState
   downloadProgress: ProgressState
@@ -19,7 +18,6 @@ interface BulkOperationsProps {
 }
 
 export const BulkOperations = ({
-  selectionMode,
   selectedPhotos,
   deleteProgress,
   downloadProgress,
@@ -28,7 +26,10 @@ export const BulkOperations = ({
   onBulkDownload,
   onBulkDelete
 }: BulkOperationsProps) => {
-  if (!selectionMode) return null
+  // Show bulk operations bar when photos are selected or operations are in progress
+  if (selectedPhotos.size === 0 && !deleteProgress.isActive && !downloadProgress.isActive) {
+    return null
+  }
 
   return (
     <div className="flex items-center justify-between p-4 bg-gray-50 border-b border-gray-200">

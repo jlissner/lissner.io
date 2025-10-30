@@ -146,12 +146,10 @@ describe('PhotoGrid Core Logic', () => {
 
     it('should validate bulk operations structure', () => {
       const bulkOps = {
-        selectionMode: false,
         selectedPhotos: new Set(['photo1', 'photo2']),
         isOperationInProgress: false,
         deleteProgress: null,
         downloadProgress: null,
-        setSelectionMode: vi.fn(),
         selectAllPhotos: vi.fn(),
         clearSelection: vi.fn(),
         togglePhotoSelection: vi.fn(),
@@ -159,7 +157,6 @@ describe('PhotoGrid Core Logic', () => {
         handleBulkDelete: vi.fn()
       }
 
-      expect(bulkOps.selectionMode).toBe(false)
       expect(bulkOps.selectedPhotos).toBeInstanceOf(Set)
       expect(bulkOps.selectedPhotos.size).toBe(2)
       expect(typeof bulkOps.handleBulkDownload).toBe('function')

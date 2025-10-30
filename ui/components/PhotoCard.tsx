@@ -7,29 +7,31 @@ import { getUserColor, getUserInitials, getDisplayName, getRelativeTime } from '
 
 interface PhotoCardProps {
   photo: Photo
-  selectionMode: boolean
-  selectedPhotos: Set<string>
   selectedTags: string[]
   expandedComments: Set<string>
   onPhotoClick: () => void
-  onSelectionToggle: (photoId: string) => void
   onCommentToggle: (photoId: string, event: React.MouseEvent) => void
+  enableSelection?: boolean
+  selectedPhotos?: Set<string>
+  onSelectionToggle?: (photoId: string) => void
 }
 
 export const PhotoCard = ({
   photo,
-  selectionMode,
-  selectedPhotos,
   selectedTags,
   expandedComments,
   onPhotoClick,
-  onSelectionToggle,
   onCommentToggle,
+  enableSelection = false,
+  selectedPhotos = new Set(),
+  onSelectionToggle,
   priority = false
 }: PhotoCardProps & { priority?: boolean }) => {
+  const isSelected = enableSelection && selectedPhotos.has(photo.id)
+  
   return (
     <div
-      className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200"
+      className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-shadow duration-200 group"
       onClick={onPhotoClick}
     >
       {/* User Info Header */}
@@ -72,19 +74,34 @@ export const PhotoCard = ({
           priority={priority}
         />
         
-        {/* Selection Checkbox */}
-        {selectionMode && (
-          <div className="absolute top-2 left-2 z-10">
-            <input
-              type="checkbox"
-              checked={selectedPhotos.has(photo.id)}
-              onChange={(e) => {
-                e.stopPropagation()
-                onSelectionToggle(photo.id)
-              }}
-              className="w-5 h-5 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-            />
-          </div>
+        {/* Selection Checkbox - only shown when selection is enabled */}
+        {enableSelection && onSelectionToggle && (
+          <>
+            {/* Selection Checkbox - visible on hover */}
+            <div className="absolute top-2 left-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e) => {
+                  e.stopPropagation()
+                  onSelectionToggle(photo.id)
+                }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-5 h-5 text-blue-600 bg-white border-2 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+              />
+            </div>
+            
+            {/* Selected indicator - always visible when selected */}
+            {isSelected && (
+              <div className="absolute top-2 left-2 z-10">
+                <div className="w-5 h-5 bg-blue-600 border-2 border-white rounded flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
       

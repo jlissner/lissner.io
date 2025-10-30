@@ -7,13 +7,10 @@ interface PhotoGridContentProps {
   filteredDisplay: PhotoGroup[]
   selectedTags: string[]
   selectedUsers: string[]
-  selectionMode: boolean
-  selectedPhotos: Set<string>
   expandedComments: Set<string>
   onClearAllFilters: () => void
   onGroupClick: (group: PhotoGroup) => void
   onPhotoClick: (photo: Photo) => void
-  onSelectionToggle: (photoId: string) => void
   onCommentToggle: (photoId: string, event: React.MouseEvent) => void
 }
 
@@ -21,13 +18,10 @@ export function PhotoGridContent({
   filteredDisplay,
   selectedTags,
   selectedUsers,
-  selectionMode,
-  selectedPhotos,
   expandedComments,
   onClearAllFilters,
   onGroupClick,
   onPhotoClick,
-  onSelectionToggle,
   onCommentToggle
 }: PhotoGridContentProps) {
   if (filteredDisplay.length === 0) {
@@ -55,31 +49,19 @@ export function PhotoGridContent({
           {group.isGroup ? (
             <PhotoGroupCard
               group={group}
-              selectionMode={selectionMode}
-              selectedPhotos={selectedPhotos}
               onGroupClick={onGroupClick}
               onPhotoClick={(photoId) => {
                 const photo = group.photos.find(p => p.id === photoId)
                 if (photo) onPhotoClick(photo)
               }}
-              onSelectionToggle={onSelectionToggle}
               priority={index < 2}
             />
           ) : (
             <PhotoCard
               photo={group.photos[0]}
-              selectionMode={selectionMode}
-              selectedPhotos={selectedPhotos}
               selectedTags={selectedTags}
               expandedComments={expandedComments}
-              onPhotoClick={() => {
-                if (selectionMode) {
-                  onSelectionToggle(group.photos[0].id)
-                } else {
-                  onPhotoClick(group.photos[0])
-                }
-              }}
-              onSelectionToggle={onSelectionToggle}
+              onPhotoClick={() => onPhotoClick(group.photos[0])}
               onCommentToggle={onCommentToggle}
               priority={index < 2}
             />

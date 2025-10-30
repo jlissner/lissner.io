@@ -1,15 +1,12 @@
 'use client'
 
 import { usePhotoData } from './hooks/usePhotoData'
-import { useBulkOperations } from './hooks/useBulkOperations'
 import { usePhotoGridState } from '../hooks/usePhotoGridState'
 import { useUrlNavigation } from '../hooks/useUrlNavigation'
 import { 
   getAlbumPhotosForSelectedPhoto,
-  selectAllPhotos,
   countFilteredPhotos
 } from '../utils/photoGridUtils'
-import { PhotoGridControls } from './photo-grid/PhotoGridControls'
 import { PhotoGridSidebar } from './photo-grid/PhotoGridSidebar'
 import { PhotoGridContent } from './photo-grid/PhotoGridContent'
 import { PhotoGridFooter } from './photo-grid/PhotoGridFooter'
@@ -19,7 +16,6 @@ import { Photo, PhotoGroup } from './utils/photoUtils'
 
 export default function PhotoGrid() {
   const photoData = usePhotoData()
-  const bulkOps = useBulkOperations(photoData.photos, photoData.refreshPhotos)
   const {
     selectedPhoto,
     selectedGroup,
@@ -56,13 +52,6 @@ export default function PhotoGrid() {
     setSelectedPhoto,
     setSelectedGroup
   })
-
-  const handleSelectAllPhotos = () => {
-    const allPhotoIds = selectAllPhotos(photoData.filteredDisplay)
-    bulkOps.selectAllPhotos(allPhotoIds)
-  }
-
-
 
   if (photoData.loading) {
     return (
@@ -117,19 +106,6 @@ export default function PhotoGrid() {
 
   return (
     <>
-      <PhotoGridControls
-        selectionMode={bulkOps.selectionMode}
-        isOperationInProgress={bulkOps.isOperationInProgress}
-        selectedPhotos={bulkOps.selectedPhotos}
-        deleteProgress={bulkOps.deleteProgress}
-        downloadProgress={bulkOps.downloadProgress}
-        onSelectionModeToggle={() => bulkOps.setSelectionMode(!bulkOps.selectionMode)}
-        onSelectAll={handleSelectAllPhotos}
-        onClearSelection={bulkOps.clearSelection}
-        onBulkDownload={bulkOps.handleBulkDownload}
-        onBulkDelete={bulkOps.handleBulkDelete}
-      />
-
       {/* Main Content Area with Sidebar */}
       <div className="flex gap-6">
         <PhotoGridSidebar
@@ -151,13 +127,10 @@ export default function PhotoGrid() {
             filteredDisplay={photoData.filteredDisplay}
             selectedTags={photoData.selectedTags}
             selectedUsers={photoData.selectedUsers}
-            selectionMode={bulkOps.selectionMode}
-            selectedPhotos={bulkOps.selectedPhotos}
             expandedComments={expandedComments}
             onClearAllFilters={photoData.clearAllFilters}
             onGroupClick={handleGroupSelect}
             onPhotoClick={handlePhotoSelect}
-            onSelectionToggle={bulkOps.togglePhotoSelection}
             onCommentToggle={toggleComments}
           />
 

@@ -13,8 +13,6 @@ interface AlbumHeaderProps {
   albumPhotos: Photo[]
   onClose: () => void
   onAddPhotos: () => void
-  onToggleSelection: () => void
-  selectionMode: boolean
   isOperationInProgress: boolean
   isUploading: boolean
   onAlbumDeleted?: () => void
@@ -25,8 +23,6 @@ export const AlbumHeader = ({
   albumPhotos,
   onClose,
   onAddPhotos,
-  onToggleSelection,
-  selectionMode,
   isOperationInProgress,
   isUploading,
   onAlbumDeleted
@@ -121,19 +117,6 @@ export const AlbumHeader = ({
           className="px-3 py-1 rounded-lg text-sm font-medium transition-colors bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Add Photos
-        </button>
-        <button
-          onClick={onToggleSelection}
-          disabled={isOperationInProgress || isUploading}
-          className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-            isOperationInProgress || isUploading
-              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-              : selectionMode
-              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          {selectionMode ? '❌ Exit Selection' : '☑️ Select Photos'}
         </button>
         <button
           onClick={onClose}

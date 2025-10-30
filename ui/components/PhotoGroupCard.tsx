@@ -8,19 +8,19 @@ import { AlbumReactionSummary } from './album/AlbumReactionSummary'
 
 interface PhotoGroupCardProps {
   group: PhotoGroup
-  selectionMode: boolean
-  selectedPhotos: Set<string>
   onGroupClick: (group: PhotoGroup) => void
   onPhotoClick: (photoId: string) => void
-  onSelectionToggle: (photoId: string) => void
+  enableSelection?: boolean
+  selectedPhotos?: Set<string>
+  onSelectionToggle?: (photoId: string) => void
 }
 
 export const PhotoGroupCard = ({
   group,
-  selectionMode,
-  selectedPhotos,
   onGroupClick,
   onPhotoClick,
+  enableSelection = false,
+  selectedPhotos = new Set(),
   onSelectionToggle,
   priority = false
 }: PhotoGroupCardProps & { priority?: boolean }) => {
@@ -62,10 +62,10 @@ export const PhotoGroupCard = ({
         photos={group.photos}
         totalPhotos={totalPhotos}
         photosToShow={photosToShow}
-        selectionMode={selectionMode}
-        selectedPhotos={selectedPhotos}
         priority={priority}
         onPhotoClick={onPhotoClick}
+        enableSelection={enableSelection}
+        selectedPhotos={selectedPhotos}
         onSelectionToggle={onSelectionToggle}
       />
       

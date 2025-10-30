@@ -84,15 +84,12 @@ export const GroupModal = ({
           albumPhotos={albumPhotos.albumPhotos}
           onClose={onClose}
           onAddPhotos={fileUpload.openFileDialog}
-          onToggleSelection={() => bulkOps.setSelectionMode(!bulkOps.selectionMode)}
-          selectionMode={bulkOps.selectionMode}
           isOperationInProgress={bulkOps.isOperationInProgress}
           isUploading={fileUpload.isUploading}
           onAlbumDeleted={onUpdate}
         />
 
         <BulkOperations
-          selectionMode={bulkOps.selectionMode}
           selectedPhotos={bulkOps.selectedPhotos}
           deleteProgress={bulkOps.deleteProgress}
           downloadProgress={bulkOps.downloadProgress}
@@ -108,7 +105,6 @@ export const GroupModal = ({
           <div ref={infiniteScroll.scrollContainerRef} className="flex-1 overflow-y-auto">
             <AlbumPhotoGrid
               albumPhotos={albumPhotos.albumPhotos}
-              selectionMode={bulkOps.selectionMode}
               selectedPhotos={bulkOps.selectedPhotos}
               isOperationInProgress={bulkOps.isOperationInProgress}
               onPhotoClick={modalState.setSelectedPhoto}
