@@ -23,6 +23,7 @@ peopleRouter.get("/", (_req, res) => {
   const people = ids.map((id) => ({
     id,
     name: names.get(id) ?? `Person ${id}`,
+    photoCount: db.getMediaCountForPerson(id),
   }));
   res.json(people);
 });

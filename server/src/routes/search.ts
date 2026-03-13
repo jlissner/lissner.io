@@ -47,6 +47,8 @@ searchRouter.get("/index/status", (_req, res) => {
     inProgress: s.inProgress,
     startedAt: s.startedAt,
     elapsedSeconds: elapsed,
+    progressProcessed: s.progressProcessed,
+    progressTotal: s.progressTotal,
     lastResult: s.lastResult,
     lastError: s.lastError,
   });

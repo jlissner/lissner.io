@@ -69,10 +69,11 @@ mediaRouter.get("/", (req, res) => {
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
   const personIdParam = req.query.personId as string | undefined;
   const personId = personIdParam ? parseInt(personIdParam, 10) : undefined;
+  const sortBy = (req.query.sortBy as string) === "taken" ? "taken" : "uploaded";
   const items =
     personId != null && !isNaN(personId)
-      ? db.listMediaPaginated(limit, offset, personId)
-      : db.listMediaPaginated(limit, offset);
+      ? db.listMediaPaginated(limit, offset, personId, sortBy)
+      : db.listMediaPaginated(limit, offset, undefined, sortBy);
   const total =
     personId != null && !isNaN(personId)
       ? db.getMediaCountForPerson(personId)

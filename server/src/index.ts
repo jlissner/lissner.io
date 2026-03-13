@@ -1,8 +1,10 @@
-// Node 23+ removed util.isNullOrUndefined; tfjs-node still uses it
+// Node 23+ removed/deprecated util helpers; tfjs-node and deps still use them
 import util from "util";
 if (typeof (util as any).isNullOrUndefined !== "function") {
   (util as any).isNullOrUndefined = (v: unknown) => v === null || v === undefined;
 }
+// Override deprecated util.isArray to silence deprecation from tfjs/face-api deps
+(util as any).isArray = Array.isArray;
 
 import cors from "cors";
 import express from "express";

@@ -11,6 +11,7 @@ interface MediaItem {
   mimeType: string;
   size: number;
   uploadedAt: string;
+  dateTaken?: string | null;
   indexed?: boolean;
   people?: string[];
 }
@@ -27,8 +28,10 @@ export default function App() {
   const [searching, setSearching] = useState(false);
   const [indexStatus, setIndexStatus] = useState<string | null>(null);
   const [indexElapsed, setIndexElapsed] = useState<number | null>(null);
+  const [indexProgress, setIndexProgress] = useState<{ processed: number; total: number } | null>(null);
   const [indexPolling, setIndexPolling] = useState(false);
   const [columnsPerRow, setColumnsPerRow] = useState(8);
+  const [sortBy, setSortBy] = useState<"uploaded" | "taken">("uploaded");
   const [page, setPage] = useState<PageId>(() =>
     pathToPage(window.location.pathname)
   );
@@ -67,6 +70,7 @@ export default function App() {
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
         offset: "0",
+        sortBy,
       });
       if (personFilter != null) params.set("personId", String(personFilter));
       const res = await fetch(`/api/media?${params}`);
@@ -81,7 +85,7 @@ export default function App() {
     } finally {
       setLoading(false);
     }
-  }, [personFilter]);
+  }, [personFilter, sortBy]);
 
   const loadMore = useCallback(async () => {
     if (loadingMore || items.length >= total) return;
@@ -90,6 +94,7 @@ export default function App() {
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
         offset: String(items.length),
+        sortBy,
       });
       if (personFilter != null) params.set("personId", String(personFilter));
       const res = await fetch(`/api/media?${params}`);
@@ -100,7 +105,7 @@ export default function App() {
     } finally {
       setLoadingMore(false);
     }
-  }, [items.length, loadingMore, total, personFilter]);
+  }, [items.length, loadingMore, total, personFilter, sortBy]);
 
   useEffect(() => {
     if (searchResults !== null || items.length >= total) return;
@@ -204,12 +209,14 @@ export default function App() {
     }
     setIndexStatus("Indexing…");
     setIndexElapsed(0);
+    setIndexProgress(null);
     setIndexPolling(true);
   }, []);
 
   const handleIndex = useCallback(async (force = false) => {
     setIndexStatus(null);
     setIndexElapsed(null);
+    setIndexProgress(null);
     try {
       const res = await fetch(
         `/api/search/index${force ? "?force=true" : ""}`,
@@ -219,6 +226,7 @@ export default function App() {
       if (res.ok && data.started) {
         setIndexStatus("Indexing…");
         setIndexElapsed(0);
+        setIndexProgress(null);
         setIndexPolling(true);
       } else {
         setIndexStatus(data.error || "Indexing failed");
@@ -235,8 +243,15 @@ export default function App() {
       const data = await res.json();
       if (data.inProgress) {
         setIndexElapsed(data.elapsedSeconds ?? 0);
+        if (data.progressTotal > 0) {
+          setIndexProgress({
+            processed: data.progressProcessed ?? 0,
+            total: data.progressTotal,
+          });
+        }
       } else {
         setIndexPolling(false);
+        setIndexProgress(null);
         if (data.lastError) {
           setIndexStatus(data.lastError);
         } else if (data.lastResult) {
@@ -246,6 +261,7 @@ export default function App() {
           setIndexStatus(parts.join(", ") + ".");
         }
         setIndexElapsed(null);
+        setIndexProgress(null);
         fetchItems();
       }
     }, 1000);
@@ -417,6 +433,11 @@ export default function App() {
                   }}
                 >
                   {indexStatus}
+                  {indexProgress && indexProgress.total > 0 && (
+                    <span style={{ marginLeft: 8, opacity: 0.9 }}>
+                      {indexProgress.processed}/{indexProgress.total}
+                    </span>
+                  )}
                   {indexElapsed !== null && (
                     <span style={{ marginLeft: 8, opacity: 0.9 }}>
                       ({Math.floor(indexElapsed / 60)}:
@@ -460,6 +481,31 @@ export default function App() {
                     Clear filter
                   </button>
                 )}
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: "0.875rem",
+                    color: "#64748b",
+                  }}
+                >
+                  <span>Sort:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as "uploaded" | "taken")}
+                    style={{
+                      padding: "4px 8px",
+                      fontSize: "0.875rem",
+                      borderRadius: 6,
+                      border: "1px solid #e2e8f0",
+                      background: "#fff",
+                    }}
+                  >
+                    <option value="uploaded">Date uploaded</option>
+                    <option value="taken">Date taken</option>
+                  </select>
+                </label>
                 <label
                   style={{
                     display: "flex",

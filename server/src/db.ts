@@ -49,6 +49,11 @@ for (const col of ["x", "y", "width", "height"]) {
   }
 }
 
+const mediaCols = (db.prepare("PRAGMA table_info(media)").all() as Array<{ name: string }>).map((c) => c.name);
+if (!mediaCols.includes("date_taken")) {
+  db.exec("ALTER TABLE media ADD COLUMN date_taken TEXT");
+}
+
 export function insertMedia(
   id: string,
   filename: string,
@@ -62,11 +67,15 @@ export function insertMedia(
   ).run(id, filename, originalName, mimeType, size);
 }
 
+export function setMediaDateTaken(mediaId: string, dateTaken: string | null): void {
+  db.prepare("UPDATE media SET date_taken = ? WHERE id = ?").run(dateTaken, mediaId);
+}
+
 export function listMedia() {
   return db
     .prepare(
       `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt
-       FROM media ORDER BY uploaded_at DESC`
+       FROM media ORDER BY uploaded_at DESC, filename ASC`
     )
     .all() as Array<{
     id: string;
@@ -85,14 +94,31 @@ export function getMediaCount(): number {
   return row.count;
 }
 
-export function listMediaPaginated(limit: number, offset: number, personId?: number) {
+export type MediaSortBy = "uploaded" | "taken";
+
+function getMediaOrderBy(sortBy: MediaSortBy, prefix = ""): string {
+  const p = prefix ? `${prefix}.` : "";
+  const dateExpr = sortBy === "taken"
+    ? `COALESCE(${p}date_taken, ${p}uploaded_at)`
+    : `${p}uploaded_at`;
+  return `${dateExpr} DESC, ${p}filename ASC`;
+}
+
+export function listMediaPaginated(
+  limit: number,
+  offset: number,
+  personId?: number,
+  sortBy: MediaSortBy = "uploaded"
+) {
   if (personId != null) {
+    const orderBy = getMediaOrderBy(sortBy, "m");
     return db
       .prepare(
-        `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt
+        `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken
          FROM media m
          JOIN image_people ip ON ip.media_id = m.id AND ip.person_id = ?
-         ORDER BY m.uploaded_at DESC LIMIT ? OFFSET ?`
+         ORDER BY ${orderBy}
+         LIMIT ? OFFSET ?`
       )
       .all(personId, limit, offset) as Array<{
       id: string;
@@ -101,12 +127,14 @@ export function listMediaPaginated(limit: number, offset: number, personId?: num
       mimeType: string;
       size: number;
       uploadedAt: string;
+      dateTaken?: string | null;
     }>;
   }
+  const orderBy = getMediaOrderBy(sortBy);
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt
-       FROM media ORDER BY uploaded_at DESC LIMIT ? OFFSET ?`
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken
+       FROM media ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     )
     .all(limit, offset) as Array<{
     id: string;
@@ -115,6 +143,7 @@ export function listMediaPaginated(limit: number, offset: number, personId?: num
     mimeType: string;
     size: number;
     uploadedAt: string;
+    dateTaken?: string | null;
   }>;
 }
 
@@ -170,10 +199,13 @@ export function setImagePeople(
   entries: Array<{ personId: number; box?: { x: number; y: number; width: number; height: number } }>
 ) {
   db.prepare("DELETE FROM image_people WHERE media_id = ?").run(mediaId);
+  const seen = new Set<number>();
   const insert = db.prepare(
     "INSERT INTO image_people (media_id, person_id, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)"
   );
   for (const { personId, box } of entries) {
+    if (seen.has(personId)) continue;
+    seen.add(personId);
     insert.run(
       mediaId,
       personId,
@@ -267,7 +299,7 @@ export function reassignPersonInMedia(
   if (!row) return false;
   db.prepare("DELETE FROM image_people WHERE media_id = ? AND person_id = ?").run(mediaId, fromPersonId);
   db.prepare(
-    "INSERT OR IGNORE INTO image_people (media_id, person_id, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)"
+    "INSERT OR REPLACE INTO image_people (media_id, person_id, x, y, width, height) VALUES (?, ?, ?, ?, ?, ?)"
   ).run(mediaId, toPersonId, row.x, row.y, row.width, row.height);
   return true;
 }
@@ -349,7 +381,7 @@ export function getMediaForPerson(
        FROM image_people ip
        JOIN media m ON m.id = ip.media_id
        WHERE ip.person_id = ?
-       ORDER BY m.uploaded_at DESC
+       ORDER BY m.uploaded_at DESC, m.filename ASC
        LIMIT ?`
     )
     .all(personId, limit) as Array<{
@@ -372,7 +404,7 @@ export function getMediaByIds(ids: string[]) {
   const placeholders = ids.map(() => "?").join(",");
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken
        FROM media WHERE id IN (${placeholders})`
     )
     .all(...ids) as Array<{
@@ -382,5 +414,6 @@ export function getMediaByIds(ids: string[]) {
     mimeType: string;
     size: number;
     uploadedAt: string;
+    dateTaken?: string | null;
   }>;
 }

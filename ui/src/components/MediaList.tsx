@@ -8,8 +8,46 @@ interface MediaItem {
   mimeType: string;
   size: number;
   uploadedAt: string;
+  dateTaken?: string | null;
   indexed?: boolean;
   people?: string[];
+}
+
+function getItemDateKey(item: MediaItem): string {
+  const dateStr = item.dateTaken ?? item.uploadedAt;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? "unknown" : d.toISOString().slice(0, 10);
+}
+
+function formatDateLabel(dateKey: string): string {
+  if (dateKey === "unknown") return "Unknown date";
+  const d = new Date(dateKey + "T12:00:00");
+  return d.toLocaleDateString(undefined, {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+function groupItemsByDay(items: MediaItem[]): Array<{ dateKey: string; dateLabel: string; items: MediaItem[] }> {
+  const map = new Map<string, MediaItem[]>();
+  for (const item of items) {
+    const key = getItemDateKey(item);
+    const list = map.get(key) ?? [];
+    list.push(item);
+    map.set(key, list);
+  }
+  const keys = [...map.keys()].sort((a, b) => {
+    if (a === "unknown") return 1;
+    if (b === "unknown") return -1;
+    return b.localeCompare(a);
+  });
+  return keys.map((dateKey) => ({
+    dateKey,
+    dateLabel: formatDateLabel(dateKey),
+    items: map.get(dateKey)!,
+  }));
 }
 
 interface MediaListProps {
@@ -142,6 +180,7 @@ export function MediaList({
   }
 
   const selectedCount = selected.size;
+  const groups = groupItemsByDay(items);
 
   return (
     <>
@@ -237,38 +276,52 @@ export function MediaList({
         </div>
       )}
 
-      <ul
-        style={{
-          listStyle: "none",
-          padding: 0,
-          margin: 0,
-          display: "grid",
-          gridTemplateColumns: `repeat(${columnsPerRow}, 1fr)`,
-          gap: 12,
-        }}
-      >
-        {items.map((item) => (
-          <MediaItemCell
-            key={item.id}
-            item={item}
-            selected={selected.has(item.id)}
-            selectionMode={selectionMode}
-            onCheckboxClick={handleCheckboxClick}
-            onCellClick={() => {
-              if (selectionMode) {
-                setSelected((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(item.id)) next.delete(item.id);
-                  else next.add(item.id);
-                  return next;
-                });
-              } else if (isViewable(item.mimeType)) {
-                setViewing(item);
-              }
+      {groups.map(({ dateKey, dateLabel, items: groupItems }) => (
+        <section key={dateKey} style={{ marginBottom: 32 }}>
+          <h3
+            style={{
+              margin: "0 0 12px",
+              fontSize: "0.9375rem",
+              fontWeight: 600,
+              color: "#475569",
             }}
-          />
-        ))}
-      </ul>
+          >
+            {dateLabel}
+          </h3>
+          <ul
+            style={{
+              listStyle: "none",
+              padding: 0,
+              margin: 0,
+              display: "grid",
+              gridTemplateColumns: `repeat(${columnsPerRow}, 1fr)`,
+              gap: 12,
+            }}
+          >
+            {groupItems.map((item) => (
+              <MediaItemCell
+                key={item.id}
+                item={item}
+                selected={selected.has(item.id)}
+                selectionMode={selectionMode}
+                onCheckboxClick={handleCheckboxClick}
+                onCellClick={() => {
+                  if (selectionMode) {
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(item.id)) next.delete(item.id);
+                      else next.add(item.id);
+                      return next;
+                    });
+                  } else if (isViewable(item.mimeType)) {
+                    setViewing(item);
+                  }
+                }}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
     </>
   );
 }
