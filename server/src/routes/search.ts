@@ -35,6 +35,11 @@ searchRouter.post("/index", (req, res) => {
     });
 });
 
+searchRouter.post("/index/clear", (_req, res) => {
+  db.clearAllIndexingData();
+  res.json({ cleared: true });
+});
+
 searchRouter.get("/index/status", (_req, res) => {
   const s = getIndexJobState();
   const elapsed =

@@ -16,8 +16,11 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
   const [searching, setSearching] = useState(false);
   const [columnsPerRow, setColumnsPerRow] = useState(8);
   const [sortBy, setSortBy] = useState<"uploaded" | "taken">("uploaded");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkAction, setBulkAction] = useState<"idle" | "deleting" | "indexing">("idle");
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
   const PAGE_SIZE = 50;
 
   const fetchItems = useCallback(async () => {
@@ -43,20 +46,34 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     useIndexPolling(fetchItems);
 
   const loadMore = useCallback(async () => {
-    if (loadingMore || items.length >= total) return;
+    if (loadingMoreRef.current || items.length >= total) return;
+    loadingMoreRef.current = true;
     setLoadingMore(true);
+    const container = scrollContainerRef.current;
+    const scrollTop = container?.scrollTop ?? 0;
     try {
       const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(items.length), sortBy });
       if (personFilter != null) params.set("personId", String(personFilter));
       const res = await fetch(`/api/media?${params}`);
       if (res.ok) {
         const data = await res.json();
-        setItems((prev) => [...prev, ...(data.items ?? [])]);
+        const newItems = data.items ?? [];
+        setItems((prev) => {
+          const existingIds = new Set(prev.map((i) => i.id));
+          const toAdd = newItems.filter((i: MediaItem) => !existingIds.has(i.id));
+          return toAdd.length > 0 ? [...prev, ...toAdd] : prev;
+        });
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (container) container.scrollTop = scrollTop;
+          });
+        });
       }
     } finally {
+      loadingMoreRef.current = false;
       setLoadingMore(false);
     }
-  }, [items.length, loadingMore, total, personFilter, sortBy]);
+  }, [items.length, total, personFilter, sortBy]);
 
   useEffect(() => {
     if (searchResults !== null || items.length >= total) return;
@@ -138,6 +155,74 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
 
   const displayItems = searchResults ?? items;
   const isSearchMode = searchResults !== null;
+  const selectionMode = selected.size > 0;
+
+  const clearSelection = useCallback(() => {
+    setSelected(new Set());
+  }, []);
+
+  const toggleSelect = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleCheckboxClick = useCallback((id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    toggleSelect(id, e);
+  }, [toggleSelect]);
+
+  const toggleSelectAllForDay = useCallback((groupItems: MediaItem[]) => {
+    const ids = new Set(groupItems.map((i) => i.id));
+    setSelected((prev) => {
+      const allSelected = ids.size > 0 && [...ids].every((id) => prev.has(id));
+      const next = new Set(prev);
+      if (allSelected) ids.forEach((id) => next.delete(id));
+      else ids.forEach((id) => next.add(id));
+      return next;
+    });
+  }, []);
+
+  const handleBulkDownload = useCallback(() => {
+    const ids = Array.from(selected);
+    ids.forEach((id) => {
+      const item = displayItems.find((i) => i.id === id);
+      if (item) {
+        const a = document.createElement("a");
+        a.href = `/api/media/${id}`;
+        a.download = item.originalName;
+        a.click();
+      }
+    });
+  }, [selected, displayItems]);
+
+  const handleBulkDeleteWrapped = useCallback(async () => {
+    const ids = Array.from(selected);
+    if (!ids.length || !confirm(`Delete ${ids.length} file(s)?`)) return;
+    setBulkAction("deleting");
+    try {
+      await handleBulkDelete(ids);
+      clearSelection();
+    } finally {
+      setBulkAction("idle");
+    }
+  }, [selected, handleBulkDelete, clearSelection]);
+
+  const handleBulkIndexWrapped = useCallback(async () => {
+    const ids = Array.from(selected);
+    if (!ids.length) return;
+    setBulkAction("indexing");
+    try {
+      await handleBulkIndex(ids);
+      clearSelection();
+    } finally {
+      setBulkAction("idle");
+    }
+  }, [selected, handleBulkIndex, clearSelection]);
 
   return {
     fetchItems,
@@ -165,5 +250,16 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     handleDelete,
     handleBulkDelete,
     handleBulkIndex,
+    selected,
+    setSelected,
+    selectionMode,
+    clearSelection,
+    toggleSelect,
+    handleCheckboxClick,
+    toggleSelectAllForDay,
+    handleBulkDownload,
+    handleBulkDeleteWrapped,
+    handleBulkIndexWrapped,
+    bulkAction,
   };
 }

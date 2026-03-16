@@ -22,6 +22,7 @@ export function usePeoplePage(onUpdate?: () => void) {
   const [editDraft, setEditDraft] = useState("");
   const [mergeModal, setMergeModal] = useState<Person | null>(null);
   const [mergeTargetId, setMergeTargetId] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   const fetchPeople = useCallback(async () => {
     setLoading(true);
@@ -113,6 +114,43 @@ export function usePeoplePage(onUpdate?: () => void) {
     [fetchPeople, onUpdate]
   );
 
+  const handleAddPerson = useCallback(
+    async (name: string) => {
+      const res = await fetch("/api/people", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (res.ok) {
+        setAddModalOpen(false);
+        fetchPeople();
+        onUpdate?.();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to add person");
+      }
+    },
+    [fetchPeople, onUpdate]
+  );
+
+  const handleDeletePerson = useCallback(
+    async (p: Person) => {
+      if (!confirm(`Delete "${p.name}"? All their face tags will be removed.`)) return;
+      const res = await fetch(`/api/people/${p.id}`, { method: "DELETE" });
+      if (res.ok) {
+        if (selectedId === p.id) setSelectedId(null);
+        setEditModal((m) => (m?.id === p.id ? null : m));
+        setMergeModal((m) => (m?.id === p.id ? null : m));
+        fetchPeople();
+        onUpdate?.();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert(err.error || "Failed to delete");
+      }
+    },
+    [selectedId, fetchPeople, onUpdate]
+  );
+
   const handleSaveName = useCallback(
     async () => {
       if (!editModal) return;
@@ -139,6 +177,7 @@ export function usePeoplePage(onUpdate?: () => void) {
         setViewingMedia(null);
         setEditModal(null);
         setMergeModal(null);
+        setAddModalOpen(false);
         setMenuOpen(null);
       }
     };
@@ -169,5 +208,9 @@ export function usePeoplePage(onUpdate?: () => void) {
     handleRemoveFromPhoto,
     handleMerge,
     handleSaveName,
+    handleAddPerson,
+    handleDeletePerson,
+    addModalOpen,
+    setAddModalOpen,
   };
 }

@@ -78,42 +78,20 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [handleCancel]);
 
-  const overlayStyle = {
-    position: "fixed" as const,
-    inset: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    zIndex: 1100,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  };
-
-  const modalStyle = {
-    background: "#fff",
-    borderRadius: 12,
-    padding: 24,
-    minWidth: 360,
-    maxWidth: "100%",
-    maxHeight: "90vh",
-    overflow: "auto" as const,
-    boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
-  };
-
   return (
-    <div style={overlayStyle} onClick={handleCancel}>
-      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-        <h2 style={{ margin: "0 0 16px", fontSize: "1.25rem", fontWeight: 600, color: "#1e293b" }}>Upload files</h2>
+    <div className="modal" onClick={handleCancel} role="presentation">
+      <div className="modal__content" style={{ minWidth: 360, maxHeight: "90vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-title">
+        <h2 id="upload-title" className="modal__title">Upload files</h2>
         {!hasFiles ? (
           <div
+            className="upload-zone"
             onDrop={handleDrop}
             onDragOver={handleDragOver}
-            style={{ border: "2px dashed #cbd5e1", borderRadius: 8, padding: "2rem", textAlign: "center", backgroundColor: "#f8fafc", cursor: "pointer" }}
           >
-            <input type="file" multiple onChange={handleInputChange} style={{ display: "none" }} id="upload-modal-input" />
+            <input type="file" multiple onChange={handleInputChange} className="u-sr-only" id="upload-modal-input" />
             <label htmlFor="upload-modal-input" style={{ cursor: "pointer" }}>
-              <span style={{ display: "block", marginBottom: 4 }}>Drop files here or <strong>click to browse</strong></span>
-              <span style={{ fontSize: "0.875rem", color: "#64748b" }}>Images, videos, documents</span>
+              <span className="upload-zone__title">Drop files here or <strong>click to browse</strong></span>
+              <span className="upload-zone__hint">Images, videos, documents</span>
             </label>
           </div>
         ) : (

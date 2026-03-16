@@ -2,10 +2,11 @@ import type { FaceBox, TaggedFace } from "./mediaViewerTypes";
 
 interface MediaViewerFaceOverlayProps {
   imgRef: React.RefObject<HTMLImageElement | null>;
-  faces: { detected: FaceBox[]; tagged: TaggedFace[] };
+  faces: { detected: FaceBox[]; tagged: TaggedFace[] } | null;
+  assigningFace?: FaceBox | null;
 }
 
-export function MediaViewerFaceOverlay({ imgRef, faces }: MediaViewerFaceOverlayProps) {
+export function MediaViewerFaceOverlay({ imgRef, faces, assigningFace }: MediaViewerFaceOverlayProps) {
   const img = imgRef.current;
   if (!img) return null;
 
@@ -15,7 +16,21 @@ export function MediaViewerFaceOverlay({ imgRef, faces }: MediaViewerFaceOverlay
 
   return (
     <>
-      {faces.tagged.map((t, i) => (
+      {assigningFace && (
+        <div
+          style={{
+            position: "absolute",
+            left: assigningFace.x * scaleX,
+            top: assigningFace.y * scaleY,
+            width: assigningFace.width * scaleX,
+            height: assigningFace.height * scaleY,
+            border: "2px solid #f59e0b",
+            borderRadius: 4,
+            backgroundColor: "rgba(245, 158, 11, 0.2)",
+          }}
+        />
+      )}
+      {(faces?.tagged ?? []).map((t, i) => (
         <div
           key={`t-${i}`}
           style={{
@@ -42,7 +57,7 @@ export function MediaViewerFaceOverlay({ imgRef, faces }: MediaViewerFaceOverlay
           {t.name}
         </div>
       ))}
-      {faces.detected.map((d, i) => (
+      {(faces?.detected ?? []).map((d, i) => (
         <div
           key={`d-${i}`}
           style={{

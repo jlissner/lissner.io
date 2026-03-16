@@ -3,7 +3,7 @@ import util from "util";
 if (typeof (util as any).isNullOrUndefined !== "function") {
   (util as any).isNullOrUndefined = (v: unknown) => v === null || v === undefined;
 }
-// Override deprecated util.isArray to silence deprecation from tfjs/face-api deps
+// Override deprecated util.isArray to silence deprecation from tfjs deps
 (util as any).isArray = Array.isArray;
 
 import cors from "cors";
@@ -20,6 +20,7 @@ const dataDir = path.join(__dirname, "../../../data");
 const uiDistDir = path.join(__dirname, "../../../ui/dist");
 mkdirSync(path.join(dataDir, "media"), { recursive: true });
 mkdirSync(path.join(dataDir, "db"), { recursive: true });
+mkdirSync(path.join(dataDir, "thumbnails"), { recursive: true });
 
 const app = express();
 

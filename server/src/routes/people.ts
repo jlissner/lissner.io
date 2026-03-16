@@ -3,6 +3,20 @@ import * as db from "../db.js";
 
 export const peopleRouter = Router();
 
+peopleRouter.get("/review/queue", (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit as string, 10) || 100, 500);
+  const items = db.getFacesNeedingReview(limit);
+  const names = db.getPersonNames();
+  const enriched = items.map((item) => {
+    const others = db.getImagePeople(item.mediaId).filter((id) => id !== item.personId);
+    return {
+      ...item,
+      otherPeopleInPhoto: others.map((id) => ({ id, name: names.get(id) ?? `Person ${id}` })),
+    };
+  });
+  res.json(enriched);
+});
+
 peopleRouter.get("/:id/media", (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (isNaN(id) || id < 1) {
@@ -26,6 +40,31 @@ peopleRouter.get("/", (_req, res) => {
     photoCount: db.getMediaCountForPerson(id),
   }));
   res.json(people);
+});
+
+peopleRouter.post("/", (req, res) => {
+  const name = req.body?.name;
+  if (typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "Name required" });
+    return;
+  }
+  const id = db.createPerson(name.trim());
+  res.status(201).json({ id, name: name.trim() });
+});
+
+peopleRouter.delete("/:id", (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id) || id < 1) {
+    res.status(400).json({ error: "Invalid person ID" });
+    return;
+  }
+  const allIds = db.getAllPersonIds();
+  if (!allIds.includes(id)) {
+    res.status(404).json({ error: "Person not found" });
+    return;
+  }
+  db.deletePerson(id);
+  res.json({ deleted: id });
 });
 
 peopleRouter.post("/:id/merge", (req, res) => {

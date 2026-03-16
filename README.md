@@ -60,6 +60,18 @@ Create the directory structure and base config:
 - [x] Index documents and media with AI
 - [x] AI documents and media search
 - [x] Face recognition: detect and group people across photos
+- [ ] Move upload to top nav bar
+- [ ] Bug fixes
+  - [ ] Size of top nav changes when entering/leaving selection mode
+  - [ ] When sorting by date uploaded, the section date is still date taken
+- [ ] Additional family features
+  - [ ] Family tree
+  - [ ] Contact information
+  - [ ] Family cookbook
+  - [ ] Event planning
+  - [ ] Blog
+- [ ] AWS S3 backup
+- [ ] Recipies feature
 
 ---
 

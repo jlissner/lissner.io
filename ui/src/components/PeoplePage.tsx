@@ -3,6 +3,7 @@ import { PeopleSidebar } from "./people/PeopleSidebar";
 import { PeopleDetail } from "./people/PeopleDetail";
 import { PeopleEditModal } from "./people/PeopleEditModal";
 import { PeopleMergeModal } from "./people/PeopleMergeModal";
+import { PeopleAddModal } from "./people/PeopleAddModal";
 import { PeopleImageViewer } from "./people/PeopleImageViewer";
 import { usePeoplePage } from "./people/usePeoplePage";
 
@@ -36,6 +37,10 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     handleRemoveFromPhoto,
     handleMerge,
     handleSaveName,
+    handleAddPerson,
+    handleDeletePerson,
+    addModalOpen,
+    setAddModalOpen,
   } = usePeoplePage(onUpdate);
 
   const selectedPerson = people.find((p) => p.id === selectedId);
@@ -43,14 +48,14 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
 
   if (loading) {
     return (
-      <div style={{ padding: 24, color: "#64748b", fontSize: "0.875rem" }}>
+      <div className="u-p-6 u-text-muted u-text-sm">
         Loading people…
       </div>
     );
   }
 
   return (
-    <div style={{ display: "flex", gap: 0, minHeight: 0, flex: 1, overflow: "hidden" }}>
+    <div className="u-flex u-flex-1 u-min-h-0 u-overflow-hidden">
       <PeopleSidebar
         people={people}
         selectedId={selectedId}
@@ -62,6 +67,8 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
           setEditDraft(p.name.startsWith("Person ") ? "" : p.name);
         }}
         onMerge={setMergeModal}
+        onDelete={handleDeletePerson}
+        onAddPerson={() => setAddModalOpen(true)}
         menuRef={menuRef}
       />
       <PeopleDetail
@@ -73,6 +80,12 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
         onViewAllPhotos={onViewAllPhotos}
         onPhotoClick={setViewingMedia}
       />
+      {addModalOpen && (
+        <PeopleAddModal
+          onAdd={handleAddPerson}
+          onClose={() => setAddModalOpen(false)}
+        />
+      )}
       {editModal && (
         <PeopleEditModal
           person={editModal}

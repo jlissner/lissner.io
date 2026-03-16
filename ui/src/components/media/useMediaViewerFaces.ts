@@ -5,12 +5,14 @@ interface UseMediaViewerFacesOptions {
   mediaId: string | undefined;
   taggingMode: boolean;
   onUpdate?: () => void;
+  onTagChange?: () => void;
 }
 
 export function useMediaViewerFaces({
   mediaId,
   taggingMode,
   onUpdate,
+  onTagChange,
 }: UseMediaViewerFacesOptions) {
   const [faces, setFaces] = useState<{ detected: FaceBox[]; tagged: TaggedFace[] } | null>(null);
   const [facesLoading, setFacesLoading] = useState(false);
@@ -64,12 +66,14 @@ export function useMediaViewerFaces({
         setAssigningFace(null);
         loadFaces();
         onUpdate?.();
+        onTagChange?.();
+        window.dispatchEvent(new CustomEvent("review-queue-refresh"));
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Failed to add tag");
       }
     },
-    [mediaId, assigningFace, loadFaces, onUpdate]
+    [mediaId, assigningFace, loadFaces, onUpdate, onTagChange]
   );
 
   const handleReassignFace = useCallback(
@@ -83,6 +87,8 @@ export function useMediaViewerFaces({
           setReassigningFace(null);
           loadFaces();
           onUpdate?.();
+          onTagChange?.();
+          window.dispatchEvent(new CustomEvent("review-queue-refresh"));
         } else {
           const err = await res.json().catch(() => ({}));
           alert(err.error || "Failed to remove tag");
@@ -98,6 +104,8 @@ export function useMediaViewerFaces({
           setReassigningFace(null);
           loadFaces();
           onUpdate?.();
+          onTagChange?.();
+          window.dispatchEvent(new CustomEvent("review-queue-refresh"));
         } else {
           const err = await res.json().catch(() => ({}));
           alert(err.error || "Failed to reassign");
@@ -113,12 +121,14 @@ export function useMediaViewerFaces({
         setReassigningFace(null);
         loadFaces();
         onUpdate?.();
+        onTagChange?.();
+        window.dispatchEvent(new CustomEvent("review-queue-refresh"));
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Failed to reassign");
       }
     },
-    [mediaId, reassigningFace, loadFaces, onUpdate]
+    [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange]
   );
 
   return {

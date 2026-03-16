@@ -4,16 +4,6 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-const btnSecondary = {
-  padding: "8px 16px",
-  fontSize: "0.875rem",
-  borderRadius: 8,
-  border: "1px solid #e2e8f0",
-  background: "#fff",
-  color: "#475569",
-  cursor: "pointer",
-} as const;
-
 interface UploadModalConfirmProps {
   fileCount: number;
   totalBytes: number;
@@ -33,36 +23,21 @@ export function UploadModalConfirm({
   onCancel,
   onConfirm,
 }: UploadModalConfirmProps) {
-  const disabled = uploading ? { ...btnSecondary, cursor: "not-allowed" as const } : btnSecondary;
   return (
     <>
-      <p style={{ margin: "0 0 16px", fontSize: "0.9375rem", color: "#475569" }}>
+      <p className="modal__body u-mb-4 u-text-muted">
         You are about to upload <strong>{fileCount}</strong> {fileCount === 1 ? "file" : "files"} ({formatBytes(totalBytes)} total).
       </p>
-      <p style={{ margin: "0 0 20px", fontSize: "0.875rem", color: "#64748b" }}>Would you like to continue?</p>
-      {error && <p style={{ color: "#dc2626", marginBottom: 16, fontSize: "0.875rem" }}>{error}</p>}
-      <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
-        <button type="button" onClick={onChooseDifferent} disabled={uploading} style={disabled}>
+      <p className="u-mb-5 u-text-muted u-text-sm">Would you like to continue?</p>
+      {error && <p className="u-text-danger u-mb-4 u-text-sm">{error}</p>}
+      <div className="modal__actions">
+        <button type="button" className="btn btn--secondary" onClick={onChooseDifferent} disabled={uploading}>
           Choose different files
         </button>
-        <button type="button" onClick={onCancel} disabled={uploading} style={disabled}>
+        <button type="button" className="btn btn--secondary" onClick={onCancel} disabled={uploading}>
           Cancel
         </button>
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={uploading}
-          style={{
-            padding: "8px 16px",
-            fontSize: "0.875rem",
-            fontWeight: 500,
-            borderRadius: 8,
-            border: "none",
-            background: "#4f46e5",
-            color: "#fff",
-            cursor: uploading ? "not-allowed" : "pointer",
-          }}
-        >
+        <button type="button" className="btn btn--primary" onClick={onConfirm} disabled={uploading}>
           {uploading ? "Uploading…" : "Continue"}
         </button>
       </div>

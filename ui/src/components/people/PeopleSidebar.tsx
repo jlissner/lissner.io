@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { peopleLayoutStyles as s } from "./peopleStylesLayout";
 import type { Person } from "./peopleTypes";
 
 export type { Person };
@@ -12,6 +11,8 @@ interface PeopleSidebarProps {
   onMenuToggle: (id: number | null) => void;
   onEdit: (p: Person) => void;
   onMerge: (p: Person) => void;
+  onDelete: (p: Person) => void;
+  onAddPerson: () => void;
   menuRef: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -23,6 +24,8 @@ export function PeopleSidebar({
   onMenuToggle,
   onEdit,
   onMerge,
+  onDelete,
+  onAddPerson,
   menuRef,
 }: PeopleSidebarProps) {
   useEffect(() => {
@@ -36,53 +39,48 @@ export function PeopleSidebar({
   }, [menuRef, onMenuToggle]);
 
   return (
-    <aside style={s.sidebar}>
-      <div style={s.sidebarHeader}>
-        <h2 style={s.sidebarTitle}>People</h2>
-        <p style={s.sidebarSubtitle}>
-          {people.length} {people.length === 1 ? "person" : "people"} detected
+    <aside className="sidebar">
+      <div className="sidebar__header">
+        <h2 className="sidebar__title">People</h2>
+        <p className="sidebar__subtitle">
+          {people.length} {people.length === 1 ? "person" : "people"}
         </p>
+        <button type="button" className="btn btn--ghost sidebar__add" onClick={onAddPerson}>
+          + Add person
+        </button>
       </div>
-      <div style={s.peopleList}>
+      <div className="sidebar__list">
         {people.length === 0 ? (
-          <p style={{ padding: 20, color: "#64748b", fontSize: "0.875rem" }}>
-            No people yet. Index your photos to detect faces.
+          <p className="empty">
+            No people yet. Add a person or index your photos to detect faces.
           </p>
         ) : (
           people.map((p) => (
-            <div key={p.id} style={{ position: "relative" }} ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}>
+            <div key={p.id} className="u-flex" style={{ position: "relative" }} ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}>
               <button
                 type="button"
-                style={{ ...s.personRow(selectedId === p.id) }}
+                className={`person-row ${selectedId === p.id ? "person-row--selected" : ""}`}
                 onClick={() => {
                   onSelect(selectedId === p.id ? null : p.id);
                   onMenuToggle(null);
                 }}
-                onMouseEnter={(e) => {
-                  if (selectedId !== p.id) e.currentTarget.style.backgroundColor = "#f1f5f9";
-                }}
-                onMouseLeave={(e) => {
-                  if (selectedId !== p.id) e.currentTarget.style.backgroundColor = "transparent";
-                }}
               >
-                <div style={s.avatar}>
+                <div className={`person-row__avatar ${!p.name.startsWith("Person ") ? "person-row__avatar--initial" : ""}`}>
                   {p.name.startsWith("Person ") ? (
                     <span>👤</span>
                   ) : (
-                    <span style={{ fontSize: "1.125rem", fontWeight: 600 }}>
-                      {p.name.charAt(0).toUpperCase()}
-                    </span>
+                    <span>{p.name.charAt(0).toUpperCase()}</span>
                   )}
                 </div>
-                <div style={s.personInfo}>
-                  <div style={s.personName}>{p.name}</div>
-                  <div style={s.personCount}>
+                <div className="person-row__info">
+                  <div className="person-row__name">{p.name}</div>
+                  <div className="person-row__count">
                     {(p.photoCount ?? 0)} {(p.photoCount ?? 0) === 1 ? "photo" : "photos"}
                   </div>
                 </div>
                 <button
                   type="button"
-                  style={s.menuButton}
+                  className="person-row__menu"
                   onClick={(e) => {
                     e.stopPropagation();
                     onMenuToggle(menuOpen === p.id ? null : p.id);
@@ -94,15 +92,22 @@ export function PeopleSidebar({
                 </button>
               </button>
               {menuOpen === p.id && (
-                <div style={s.dropdown}>
-                  <button type="button" style={s.dropdownItem} onClick={() => { onEdit(p); onMenuToggle(null); }}>
+                <div className="dropdown">
+                  <button type="button" className="dropdown__item" onClick={() => { onEdit(p); onMenuToggle(null); }}>
                     Edit name
                   </button>
                   {people.length > 1 && (
-                    <button type="button" style={s.dropdownItem} onClick={() => { onMerge(p); onMenuToggle(null); }}>
+                    <button type="button" className="dropdown__item" onClick={() => { onMerge(p); onMenuToggle(null); }}>
                       Merge into another person
                     </button>
                   )}
+                  <button
+                    type="button"
+                    className="dropdown__item dropdown__item--danger"
+                    onClick={() => { onDelete(p); onMenuToggle(null); }}
+                  >
+                    Delete person
+                  </button>
                 </div>
               )}
             </div>

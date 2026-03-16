@@ -1,4 +1,4 @@
-export type PageId = "home" | "people";
+export type PageId = "home" | "people" | "review";
 
 export interface NavItem {
   id: PageId;
@@ -9,17 +9,20 @@ export interface NavItem {
 export const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Home" },
   { id: "people", label: "People" },
+  { id: "review", label: "Review faces" },
 ];
 
 const PAGE_TO_PATH: Record<PageId, string> = {
   home: "/",
   people: "/people",
+  review: "/review",
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = {
   "/": "home",
   "/home": "home",
   "/people": "people",
+  "/review": "review",
 };
 
 export function pageToPath(page: PageId): string {

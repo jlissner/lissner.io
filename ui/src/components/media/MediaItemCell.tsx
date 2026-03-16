@@ -2,6 +2,48 @@ import { useState } from "react";
 import { isViewable, isImage, isVideo } from "./mediaUtils";
 import type { MediaItem } from "./mediaUtils";
 
+function FallbackImage({
+  src,
+  alt,
+  fallbackIcon,
+  className,
+  onLoad,
+}: {
+  src: string;
+  alt: string;
+  fallbackIcon: string;
+  className: string;
+  onLoad?: () => void;
+}) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <span className={className.replace("media-cell__img", "media-cell__icon")}>{fallbackIcon}</span>;
+  }
+  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} onLoad={onLoad} />;
+}
+
+function VideoThumbnail({ item }: { item: { id: string; originalName: string } }) {
+  const [thumbLoaded, setThumbLoaded] = useState(false);
+  return (
+    <div className="media-cell__video-wrap">
+      <FallbackImage
+        src={`/api/media/${item.id}/thumbnail`}
+        alt={item.originalName}
+        fallbackIcon="🎬"
+        className="media-cell__img"
+        onLoad={() => setThumbLoaded(true)}
+      />
+      {thumbLoaded && (
+        <span className="media-cell__play-overlay" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="media-cell__play-icon">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface MediaItemCellProps {
   item: MediaItem;
   selected: boolean;
@@ -22,41 +64,17 @@ export function MediaItemCell({
 
   return (
     <li
-      style={{
-        aspectRatio: "1",
-        borderRadius: 8,
-        overflow: "hidden",
-        backgroundColor: "#f1f5f9",
-        position: "relative",
-      }}
+      className="media-cell"
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <button
         type="button"
         onClick={onCellClick}
-        style={{
-          display: "block",
-          width: "100%",
-          height: "100%",
-          border: "none",
-          padding: 0,
-          background: "none",
-          cursor: selectionMode ? "default" : isViewable(item.mimeType) ? "pointer" : "default",
-          textAlign: "left",
-        }}
+        className={`media-cell__btn ${selectionMode ? "media-cell__btn--default" : ""}`}
+        style={{ cursor: selectionMode ? "default" : isViewable(item.mimeType) ? "pointer" : "default" }}
       >
-        <div
-          style={{
-            width: "100%",
-            height: "100%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
-            position: "relative",
-          }}
-        >
+        <div className="media-cell__inner">
           {showCheckbox && (
             <div style={{ position: "absolute", top: 8, right: 8, zIndex: 2, opacity: selectionMode ? 1 : 0.6 }}>
               <input
@@ -64,25 +82,26 @@ export function MediaItemCell({
                 checked={selected}
                 onChange={() => {}}
                 onClick={(e) => onCheckboxClick(item.id, e)}
-                style={{ width: 20, height: 20, cursor: "pointer", accentColor: "#4f46e5" }}
+                className="media-cell__checkbox"
               />
             </div>
           )}
           {!selectionMode && item.indexed && (
-            <span style={{ position: "absolute", top: 8, left: 8, zIndex: 1, fontSize: "0.875rem" }} title="Indexed for AI search">
+            <span className="media-cell__badge" title="Indexed for AI search">
               ✨
             </span>
           )}
           {isImage(item.mimeType) ? (
-            <img
+            <FallbackImage
               src={`/api/media/${item.id}/preview`}
               alt={item.originalName}
-              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              fallbackIcon="📷"
+              className="media-cell__img"
             />
           ) : isVideo(item.mimeType) ? (
-            <span style={{ fontSize: "2rem", color: "#94a3b8" }}>🎬</span>
+            <VideoThumbnail item={item} />
           ) : (
-            <span style={{ fontSize: "2rem", color: "#94a3b8" }}>📄</span>
+            <span className="media-cell__icon">📄</span>
           )}
         </div>
       </button>

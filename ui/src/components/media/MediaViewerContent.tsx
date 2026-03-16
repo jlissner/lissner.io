@@ -1,8 +1,9 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { isImage, isText, isVideo } from "./mediaUtils";
 import { MediaViewerFaceOverlay } from "./MediaViewerFaceOverlay";
 import { MediaViewerAssignModal } from "./MediaViewerAssignModal";
 import { MediaViewerReassignModal } from "./MediaViewerReassignModal";
+import { MediaViewerDetails } from "./MediaViewerDetails";
 import { useMediaViewerFaces } from "./useMediaViewerFaces";
 import { useMediaViewerImageClick } from "./useMediaViewerImageClick";
 import type { MediaItem } from "./mediaUtils";
@@ -28,6 +29,8 @@ export function MediaViewerContent({
 }: MediaViewerContentProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const previewUrl = `/api/media/${item.id}/preview`;
+  const [detailsRefreshKey, setDetailsRefreshKey] = useState(0);
+  const handleTagChange = useCallback(() => setDetailsRefreshKey((k) => k + 1), []);
   const {
     faces,
     facesLoading,
@@ -38,7 +41,7 @@ export function MediaViewerContent({
     people,
     handleAssignFace,
     handleReassignFace,
-  } = useMediaViewerFaces({ mediaId: item.id, taggingMode, onUpdate });
+  } = useMediaViewerFaces({ mediaId: item.id, taggingMode, onUpdate, onTagChange: handleTagChange });
   const handleImageClick = useMediaViewerImageClick(
     imgRef,
     faces,
@@ -72,9 +75,9 @@ export function MediaViewerContent({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      style={{ maxWidth: "100%", maxHeight: "100%", display: "flex", flexDirection: "column", alignItems: "center" }}
+      className="viewer-content"
     >
-      <div style={{ position: "absolute", top: 16, right: 16, display: "flex", gap: 8 }}>
+      <div className="viewer-content__actions">
         {isImage(item.mimeType) && (
           <button
             onClick={() => setTaggingMode((p) => !p)}
@@ -85,8 +88,10 @@ export function MediaViewerContent({
         )}
         <button onClick={onClose} style={btnStyle}>Close</button>
       </div>
-      <p style={{ color: "#94a3b8", marginBottom: 16, fontSize: "0.875rem" }}>{item.originalName}</p>
-      {isImage(item.mimeType) && (
+      <div className="viewer-content__body">
+        <div className="viewer-content__media">
+          <p className="viewer-content__filename">{item.originalName}</p>
+          {isImage(item.mimeType) && (
         <div style={{ position: "relative", display: "inline-block" }}>
           <img
             ref={imgRef}
@@ -95,54 +100,59 @@ export function MediaViewerContent({
             onClick={handleImageClick}
             style={{ maxWidth: "100%", maxHeight: "85vh", objectFit: "contain", cursor: taggingMode ? "crosshair" : "default" }}
           />
-          {taggingMode && faces && (
+          {taggingMode && (
             <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none" }}>
-              <MediaViewerFaceOverlay imgRef={imgRef} faces={faces} />
+              <MediaViewerFaceOverlay imgRef={imgRef} faces={faces} assigningFace={assigningFace} />
             </div>
           )}
         </div>
       )}
-      {taggingMode && facesLoading && (
-        <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.875rem" }}>Detecting faces…</p>
-      )}
-      {assigningFace && (
-        <MediaViewerAssignModal people={people} onAssign={handleAssignFace} onCancel={() => setAssigningFace(null)} />
-      )}
-      {reassigningFace && (
-        <MediaViewerReassignModal
-          reassigningFace={reassigningFace}
-          people={people}
-          onReassign={handleReassignFace}
-          onCancel={() => setReassigningFace(null)}
-        />
-      )}
-      {isVideo(item.mimeType) && (
-        <video src={previewUrl} controls autoPlay style={{ maxWidth: "100%", maxHeight: "85vh" }} />
-      )}
-      {isText(item.mimeType) && (
-        <pre
-          style={{
-            backgroundColor: "#1e293b",
-            color: "#e2e8f0",
-            padding: 24,
-            borderRadius: 8,
-            maxWidth: "90vw",
-            maxHeight: "80vh",
-            overflow: "auto",
-            textAlign: "left",
-            fontSize: "0.875rem",
-            lineHeight: 1.5,
-          }}
-        >
-          {textError ?? textContent ?? "Loading…"}
-        </pre>
-      )}
-      {!isImage(item.mimeType) && !isVideo(item.mimeType) && !isText(item.mimeType) && (
-        <p style={{ color: "#94a3b8" }}>
-          Preview not available.{" "}
-          <a href={`/api/media/${item.id}`} download={item.originalName} style={{ color: "#60a5fa" }}>Download</a>
-        </p>
-      )}
+          {taggingMode && facesLoading && (
+            <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.875rem" }}>Detecting faces…</p>
+          )}
+              {assigningFace && (
+            <MediaViewerAssignModal people={people} onAssign={handleAssignFace} onCancel={() => setAssigningFace(null)} />
+          )}
+          {reassigningFace && (
+            <MediaViewerReassignModal
+              reassigningFace={reassigningFace}
+              people={people}
+              onReassign={handleReassignFace}
+              onCancel={() => setReassigningFace(null)}
+            />
+          )}
+              {isVideo(item.mimeType) && (
+            <video src={previewUrl} controls autoPlay style={{ maxWidth: "100%", maxHeight: "85vh" }} />
+          )}
+              {isText(item.mimeType) && (
+            <pre
+              style={{
+                backgroundColor: "#1e293b",
+                color: "#e2e8f0",
+                padding: 24,
+                borderRadius: 8,
+                maxWidth: "90vw",
+                maxHeight: "80vh",
+                overflow: "auto",
+                textAlign: "left",
+                fontSize: "0.875rem",
+                lineHeight: 1.5,
+              }}
+            >
+              {textError ?? textContent ?? "Loading…"}
+            </pre>
+          )}
+          {!isImage(item.mimeType) && !isVideo(item.mimeType) && !isText(item.mimeType) && (
+            <p style={{ color: "#94a3b8" }}>
+              Preview not available.{" "}
+              <a href={`/api/media/${item.id}`} download={item.originalName} style={{ color: "#60a5fa" }}>Download</a>
+            </p>
+          )}
+        </div>
+        <aside className="viewer-content__details">
+          <MediaViewerDetails item={item} refreshTrigger={detailsRefreshKey} />
+        </aside>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,6 @@
+import { useEffect, useState } from "react";
 import { MediaList } from "./MediaList";
-import { HomePageToolbar } from "./HomePageToolbar";
-import { HomePageFilters } from "./HomePageFilters";
+import { HomePageHeaderBar } from "./HomePageHeaderBar";
 import { useHomePage } from "./useHomePage";
 
 interface HomePageProps {
@@ -36,11 +36,22 @@ export function HomePage({
     setColumnsPerRow,
     sortBy,
     setSortBy,
-    handleDelete,
-    handleBulkDelete,
-    handleBulkIndex,
-    fetchItems,
+    selected,
+    setSelected,
+    selectionMode,
+    clearSelection,
+    handleCheckboxClick,
+    toggleSelectAllForDay,
+    handleBulkDownload,
+    handleBulkDeleteWrapped,
+    handleBulkIndexWrapped,
+    bulkAction,
   } = useHomePage({ personFilter });
+
+  const [headerContainer, setHeaderContainer] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setHeaderContainer(document.getElementById("home-header-actions"));
+  }, []);
 
   const title = isSearchMode
     ? "Search results"
@@ -50,7 +61,8 @@ export function HomePage({
 
   return (
     <>
-      <HomePageToolbar
+      <HomePageHeaderBar
+        container={headerContainer}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSearch={handleSearch}
@@ -60,30 +72,37 @@ export function HomePage({
         indexStatus={indexStatus}
         indexProgress={indexProgress}
         indexElapsed={indexElapsed}
-      />
-      <HomePageFilters
         title={title}
         onClearFilter={personFilterName ? onClearPersonFilter : undefined}
         sortBy={sortBy}
         setSortBy={setSortBy}
         columnsPerRow={columnsPerRow}
         setColumnsPerRow={setColumnsPerRow}
+        selectedCount={selected.size}
+        onBulkDownload={handleBulkDownload}
+        onBulkDelete={handleBulkDeleteWrapped}
+        onBulkIndex={handleBulkIndexWrapped}
+        onCancelSelection={clearSelection}
+        bulkDeleting={bulkAction === "deleting"}
+        bulkIndexing={bulkAction === "indexing"}
       />
-      <div ref={scrollContainerRef} style={{ flex: 1, minHeight: 0, overflow: "auto" }}>
+      <div ref={scrollContainerRef} className="u-flex-1 u-min-h-0 u-overflow-auto">
         <MediaList
           items={displayItems}
           loading={loading && !isSearchMode}
           columnsPerRow={columnsPerRow}
-          onDelete={handleDelete}
-          onBulkDelete={handleBulkDelete}
-          onBulkIndex={handleBulkIndex}
-          onUpdate={fetchItems}
+          selected={selected}
+          setSelected={setSelected}
+          selectionMode={selectionMode}
+          onCheckboxClick={handleCheckboxClick}
+          onToggleSelectAllForDay={toggleSelectAllForDay}
+          onUpdate={undefined}
         />
         {!isSearchMode && items.length < total && total > 0 && (
-          <div ref={sentinelRef} style={{ height: 20, flexShrink: 0 }} aria-hidden />
+          <div ref={sentinelRef} className="u-flex-shrink-0" style={{ height: 20 }} aria-hidden />
         )}
         {loadingMore && !isSearchMode && (
-          <p style={{ textAlign: "center", padding: "1rem", fontSize: "0.875rem", color: "#64748b" }}>
+          <p className="empty">
             Loading more…
           </p>
         )}

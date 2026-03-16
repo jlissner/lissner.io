@@ -12,13 +12,14 @@
     "dev:ui": "vite --config ui/vite.config.ts",
     "build": "tsc -b && vite build --config ui/vite.config.ts",
     "start": "node server/dist/index.js",
+    "clear-index": "curl -s -X POST http://localhost:3000/api/search/index/clear",
     "lint": "eslint .",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@canvas/image": "^2.0.0",
     "@tensorflow/tfjs-node": "^4.22.0",
-    "@vladmandic/face-api": "^1.7.15",
+    "@vladmandic/human": "^3.3.6",
     "better-sqlite3": "^12.6.2",
     "cors": "^2.8.5",
     "exifr": "^7.1.3",

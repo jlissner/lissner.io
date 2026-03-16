@@ -1,7 +1,11 @@
 import { readFile } from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import exifr from "exifr";
+
+const execFileAsync = promisify(execFile);
 import * as db from "./db.js";
 import { getEmbedding } from "./embeddings.js";
 import { setIndexProgress } from "./index-job.js";
@@ -67,27 +71,80 @@ async function getTextForItem(
   return item.originalName;
 }
 
-async function extractDateTaken(filePath: string): Promise<string | null> {
+interface ExifData {
+  dateTaken: string | null;
+  latitude: number | null;
+  longitude: number | null;
+}
+
+async function extractExifData(filePath: string): Promise<ExifData> {
   try {
-    const tags = await exifr.parse(filePath, { pick: ["DateTimeOriginal", "CreateDate", "ModifyDate"] });
+    const tags = await exifr.parse(filePath, {
+      pick: ["DateTimeOriginal", "CreateDate", "ModifyDate", "latitude", "longitude"],
+    });
     const date = tags?.DateTimeOriginal ?? tags?.CreateDate ?? tags?.ModifyDate;
-    if (date instanceof Date) return date.toISOString();
-    if (typeof date === "string") return new Date(date).toISOString();
-    return null;
+    const dateTaken =
+      date instanceof Date ? date.toISOString() : typeof date === "string" ? new Date(date).toISOString() : null;
+    const lat = typeof tags?.latitude === "number" ? tags.latitude : null;
+    const lng = typeof tags?.longitude === "number" ? tags.longitude : null;
+    return { dateTaken, latitude: lat, longitude: lng };
   } catch {
-    return null;
+    return { dateTaken: null, latitude: null, longitude: null };
   }
 }
 
+const FFPROBE_NOT_FOUND =
+  "ffprobe not found. Install ffmpeg to extract video metadata (e.g. apt install ffmpeg).";
+
+async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: string | null }> {
+  let stdout: string;
+  try {
+    const result = await execFileAsync("ffprobe", [
+      "-v",
+      "quiet",
+      "-print_format",
+      "json",
+      "-show_format",
+      "-show_streams",
+      filePath,
+    ]);
+    stdout = result.stdout;
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") {
+      throw new Error(FFPROBE_NOT_FOUND);
+    }
+    throw new Error(
+      `ffprobe failed: ${err instanceof Error ? err.message : String(err)}`
+    );
+  }
+  const data = JSON.parse(stdout) as {
+    format?: { tags?: { creation_time?: string } };
+    streams?: Array<{ tags?: { creation_time?: string } }>;
+  };
+  const formatDate = data.format?.tags?.creation_time;
+  const streamDate = data.streams?.[0]?.tags?.creation_time;
+  const dateStr = formatDate ?? streamDate;
+  if (!dateStr) return { dateTaken: null };
+  const d = new Date(dateStr);
+  return { dateTaken: isNaN(d.getTime()) ? null : d.toISOString() };
+}
+
 export async function indexMediaItem(item: MediaItem): Promise<boolean> {
+  const filePath = path.join(mediaDir, item.filename);
   if (item.mimeType.startsWith("image/")) {
     try {
-      const filePath = path.join(mediaDir, item.filename);
-      const dateTaken = await extractDateTaken(filePath);
-      if (dateTaken) db.setMediaDateTaken(item.id, dateTaken);
+      const exif = await extractExifData(filePath);
+      if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
+      if (exif.latitude != null && exif.longitude != null) {
+        db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+      }
     } catch {
       // ignore
     }
+  } else if (item.mimeType.startsWith("video/")) {
+    const meta = await extractVideoMetadata(filePath);
+    if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
   }
   const text = await getTextForItem(item);
   if (!text.trim()) return false;
@@ -107,8 +164,15 @@ export async function indexMediaItems(
   setIndexProgress(0, toIndex.length);
 
   const imageItems = toIndex.filter((i) => i.mimeType.startsWith("image/"));
+  const videoItems = toIndex.filter((i) => i.mimeType.startsWith("video/"));
   const imageIds = [...new Set(imageItems.map((i) => i.id))];
   const imageItemsById = new Map(imageItems.map((i) => [i.id, i]));
+
+  for (const item of videoItems) {
+    const filePath = path.join(mediaDir, item.filename);
+    const meta = await extractVideoMetadata(filePath);
+    if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
+  }
 
   // Clear existing person tags for images we're re-indexing (manual tags get replaced)
   for (const id of imageIds) {
@@ -125,18 +189,30 @@ export async function indexMediaItems(
       if (!item) continue;
       try {
         const filePath = path.join(mediaDir, item.filename);
-        const [faces, dateTaken] = await Promise.all([
+        const [faces, exif] = await Promise.all([
           extractFacesFromImage(filePath, item.id),
-          extractDateTaken(filePath),
+          extractExifData(filePath),
         ]);
-        if (dateTaken) db.setMediaDateTaken(item.id, dateTaken);
+        if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
+        if (exif.latitude != null && exif.longitude != null) {
+          db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+        }
         allFaces.push(...faces);
       } catch (err) {
         console.error(`Face extraction failed for ${item.originalName}:`, err);
       }
     }
     if (allFaces.length > 0) {
-      const entriesMap = clusterAllFaces(allFaces);
+      const entriesMap = await clusterAllFaces(allFaces);
+      const personIds = new Set<number>();
+      for (const entries of entriesMap.values()) {
+        for (const e of entries) personIds.add(e.personId);
+      }
+      for (const pid of personIds) {
+        if (!db.getPersonName(pid)) {
+          db.setPersonName(pid, `Person ${pid}`);
+        }
+      }
       for (const [mediaId, entries] of entriesMap) {
         db.setImagePeople(mediaId, entries);
         imagePersonEntries.set(mediaId, entries);

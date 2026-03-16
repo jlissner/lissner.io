@@ -1,5 +1,3 @@
-import { peopleStyles as s } from "./peopleStyles";
-
 interface Person {
   id: number;
   name: string;
@@ -15,10 +13,10 @@ interface PeopleEditModalProps {
 
 export function PeopleEditModal({ person, draft, onDraftChange, onSave, onClose }: PeopleEditModalProps) {
   return (
-    <div style={s.modalOverlay} onClick={onClose}>
-      <div style={s.modal} onClick={(e) => e.stopPropagation()}>
-        <h3 style={s.modalTitle}>Edit name</h3>
-        <p style={{ margin: "0 0 12px", fontSize: "0.875rem", color: "#64748b" }}>{person.name}</p>
+    <div className="modal" onClick={onClose} role="presentation">
+      <div className="modal__content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="edit-person-title">
+        <h3 id="edit-person-title" className="modal__title">Edit name</h3>
+        <p className="modal__body u-text-muted u-text-sm u-mb-3">{person.name}</p>
         <input
           type="text"
           value={draft}
@@ -29,13 +27,13 @@ export function PeopleEditModal({ person, draft, onDraftChange, onSave, onClose 
           }}
           placeholder="Enter name"
           autoFocus
-          style={s.input}
+          className="form__input u-mb-4"
         />
-        <div style={s.modalActions}>
-          <button type="button" style={s.secondaryButton} onClick={onClose}>
+        <div className="modal__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
             Cancel
           </button>
-          <button type="button" style={s.primaryButton} onClick={onSave}>
+          <button type="button" className="btn btn--primary" onClick={onSave}>
             Save
           </button>
         </div>

@@ -1,5 +1,3 @@
-import { peopleStyles as s } from "./peopleStyles";
-
 interface MediaPreview {
   id: string;
   mimeType: string;
@@ -24,52 +22,23 @@ export function PeopleImageViewer({
 }: PeopleImageViewerProps) {
   return (
     <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.9)",
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
+      className="viewer-overlay"
       onClick={onClose}
     >
-      <div
-        style={{
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          minHeight: 0,
-          width: "100%",
-        }}
-      >
+      <div className="viewer-overlay__content">
         <img
           src={`/api/media/${media.id}/preview`}
           alt=""
-          style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+          className="viewer-overlay__img"
           onClick={(e) => e.stopPropagation()}
         />
       </div>
-      <div
-        style={{
-          display: "flex",
-          gap: 12,
-          marginTop: 16,
-          flexShrink: 0,
-          alignItems: "center",
-          flexWrap: "wrap",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button type="button" style={s.secondaryButton} onClick={onClose}>
+      <div className="viewer-overlay__actions" onClick={(e) => e.stopPropagation()}>
+        <button type="button" className="btn btn--secondary" onClick={onClose}>
           Close
         </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <label style={{ fontSize: "0.875rem", color: "#94a3b8" }}>Reassign to:</label>
+        <div className="u-flex u-items-center u-gap-2">
+          <label className="u-text-sm u-text-subtle">Reassign to:</label>
           <select
             value=""
             onChange={(e) => {
@@ -78,14 +47,7 @@ export function PeopleImageViewer({
               else if (v) onReassign(media.id, parseInt(v, 10));
               e.target.value = "";
             }}
-            style={{
-              padding: "8px 12px",
-              fontSize: "0.875rem",
-              borderRadius: 8,
-              border: "1px solid #e2e8f0",
-              background: "#fff",
-              color: "#1e293b",
-            }}
+            className="form__select"
           >
             <option value="">Select person</option>
             {people
@@ -98,7 +60,7 @@ export function PeopleImageViewer({
             <option value="new">Create new person</option>
           </select>
         </div>
-        <button type="button" style={s.dangerButton} onClick={() => onRemove(media.id)}>
+        <button type="button" className="btn btn--danger" onClick={() => onRemove(media.id)}>
           Remove from photo
         </button>
       </div>

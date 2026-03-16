@@ -1,35 +1,42 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import { readFile } from "fs/promises";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const modelPath = path.join(
-  __dirname,
-  "../../node_modules/@vladmandic/face-api/model"
-);
+const require = createRequire(import.meta.url);
 
-let initialized = false;
+// Load tfjs-node before Human (required for Node.js backend)
+await import("@tensorflow/tfjs-node");
 
-async function ensureInitialized() {
-  if (initialized) return;
-  await import("@tensorflow/tfjs-node");
-  const faceapi = (await import("@vladmandic/face-api")) as typeof import("@vladmandic/face-api");
-  await faceapi.nets.ssdMobilenetv1.loadFromDisk(modelPath);
-  await faceapi.nets.faceLandmark68Net.loadFromDisk(modelPath);
-  await faceapi.nets.faceRecognitionNet.loadFromDisk(modelPath);
-  initialized = true;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const Human = require("@vladmandic/human").default as new (config?: object) => {
+  tf: { node: { decodeImage: (buf: Buffer, channels?: number) => unknown }; dispose: (t: unknown) => void };
+  detect: (input: unknown) => Promise<{ face: Array<{ box: [number, number, number, number]; embedding?: number[] }> }>;
+  match: { similarity: (a: number[], b: number[]) => number };
+};
+
+let humanInstance: InstanceType<typeof Human> | null = null;
+
+async function getHuman() {
+  if (humanInstance) return humanInstance;
+  const humanEntry = require.resolve("@vladmandic/human");
+  const humanPackageDir = path.join(path.dirname(humanEntry), "..");
+  const modelPath = `file://${path.join(humanPackageDir, "models")}`;
+  humanInstance = new Human({
+    backend: "tensorflow",
+    modelBasePath: modelPath,
+    face: {
+      enabled: true,
+      detector: { rotation: true, return: true, maxDetected: 20 },
+      mesh: { enabled: true },
+      description: { enabled: true },
+    },
+  });
+  return humanInstance;
 }
 
-function euclideanDistance(a: number[], b: number[]): number {
-  let sum = 0;
-  for (let i = 0; i < a.length; i++) {
-    const d = a[i] - b[i];
-    sum += d * d;
-  }
-  return Math.sqrt(sum);
-}
-
-const FACE_MATCH_THRESHOLD = 0.6;
+const FACE_SIMILARITY_THRESHOLD = 0.5;
 
 export interface FaceInImage {
   imageId: string;
@@ -43,17 +50,20 @@ export interface PersonCluster {
   faces: Array<{ imageId: string; box?: { x: number; y: number; width: number; height: number } }>;
 }
 
-function clusterFaces(faces: FaceInImage[]): PersonCluster[] {
+function clusterFaces(
+  faces: FaceInImage[],
+  similarityFn: (a: number[], b: number[]) => number
+): PersonCluster[] {
   const clusters: PersonCluster[] = [];
 
   for (const face of faces) {
     let bestCluster: PersonCluster | null = null;
-    let bestDist = FACE_MATCH_THRESHOLD;
+    let bestSim = FACE_SIMILARITY_THRESHOLD;
 
     for (const cluster of clusters) {
-      const dist = euclideanDistance(face.descriptor, cluster.descriptor);
-      if (dist < bestDist) {
-        bestDist = dist;
+      const sim = similarityFn(face.descriptor, cluster.descriptor);
+      if (sim > bestSim) {
+        bestSim = sim;
         bestCluster = cluster;
       }
     }
@@ -81,60 +91,93 @@ export async function extractFacesFromImage(
   imagePath: string,
   imageId: string
 ): Promise<FaceInImage[]> {
-  await ensureInitialized();
-  const faceapi = (await import("@vladmandic/face-api")) as any;
-  const tf = faceapi.tf as any;
-
+  const human = await getHuman();
+  const tf = human.tf;
   const buffer = await readFile(imagePath);
-  const inputTensor = tf.tidy(() => {
-    const decode = tf.node.decodeImage(buffer, 3);
-    const expand = tf.expandDims(decode, 0);
-    return tf.cast(expand, "float32");
-  });
 
+  const tensor = tf.node.decodeImage(buffer, 3);
+  const result = await human.detect(tensor);
+  tf.dispose(tensor);
 
-  const options = new faceapi.SsdMobilenetv1Options({
-    minConfidence: 0.2,
-    maxResults: 20,
-  });
-
-  const detections = await faceapi
-    .detectAllFaces(inputTensor, options)
-    .withFaceLandmarks()
-    .withFaceDescriptors();
-
-  inputTensor.dispose?.();
-
-  return detections
-    .filter((d: { descriptor?: number[] }) => d.descriptor)
-    .map((d: {
-      descriptor: number[];
-      detection?: { box: { x: number; y: number; width: number; height: number } };
-      alignedRect?: { box: { x: number; y: number; width: number; height: number } };
-    }) => {
-      const box = d.detection?.box ?? d.alignedRect?.box;
-      return {
-        imageId,
-        descriptor: Array.from(d.descriptor),
-        box: box ? { x: box.x, y: box.y, width: box.width, height: box.height } : undefined,
-      };
+  const faces: FaceInImage[] = [];
+  for (const f of result.face) {
+    if (!f.embedding) continue;
+    const box = f.box;
+    faces.push({
+      imageId,
+      descriptor: Array.from(f.embedding),
+      box: box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined,
     });
+  }
+  return faces;
 }
 
 export interface ImagePersonEntry {
   personId: number;
   box?: { x: number; y: number; width: number; height: number };
+  confidence: number;
 }
 
-export function clusterAllFaces(faces: FaceInImage[]): Map<string, ImagePersonEntry[]> {
-  const clusters = clusterFaces(faces);
+interface ClusterFace {
+  imageId: string;
+  box?: { x: number; y: number; width: number; height: number };
+  confidence: number;
+}
+
+function clusterFacesWithConfidence(
+  faces: FaceInImage[],
+  similarityFn: (a: number[], b: number[]) => number
+): Array<{ id: number; descriptor: number[]; faces: ClusterFace[] }> {
+  const clusters: Array<{ id: number; descriptor: number[]; faces: ClusterFace[] }> = [];
+
+  for (const face of faces) {
+    let bestCluster: (typeof clusters)[0] | null = null;
+    let bestSim = FACE_SIMILARITY_THRESHOLD;
+
+    for (const cluster of clusters) {
+      const sim = similarityFn(face.descriptor, cluster.descriptor);
+      if (sim > bestSim) {
+        bestSim = sim;
+        bestCluster = cluster;
+      }
+    }
+
+    if (bestCluster) {
+      bestCluster.faces.push({
+        imageId: face.imageId,
+        box: face.box,
+        confidence: bestSim,
+      });
+      const n = bestCluster.faces.length;
+      for (let i = 0; i < bestCluster.descriptor.length; i++) {
+        bestCluster.descriptor[i] =
+          (bestCluster.descriptor[i] * (n - 1) + face.descriptor[i]) / n;
+      }
+    } else {
+      clusters.push({
+        id: clusters.length + 1,
+        descriptor: [...face.descriptor],
+        faces: [{ imageId: face.imageId, box: face.box, confidence: 1 }],
+      });
+    }
+  }
+
+  return clusters;
+}
+
+export async function clusterAllFaces(
+  faces: FaceInImage[]
+): Promise<Map<string, ImagePersonEntry[]>> {
+  const human = await getHuman();
+  const similarityFn = (a: number[], b: number[]) => human.match.similarity(a, b);
+  const clusters = clusterFacesWithConfidence(faces, similarityFn);
   const imageToEntries = new Map<string, ImagePersonEntry[]>();
 
   for (const cluster of clusters) {
-    for (const { imageId, box } of cluster.faces) {
+    for (const { imageId, box, confidence } of cluster.faces) {
       const existing = imageToEntries.get(imageId) ?? [];
       if (!existing.some((e) => e.personId === cluster.id)) {
-        existing.push({ personId: cluster.id, box });
+        existing.push({ personId: cluster.id, box, confidence });
         imageToEntries.set(imageId, existing);
       }
     }

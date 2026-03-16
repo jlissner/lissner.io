@@ -1,7 +1,6 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { MediaViewer } from "./MediaViewer";
 import { MediaItemCell } from "./media/MediaItemCell";
-import { MediaListBulkActions } from "./media/MediaListBulkActions";
 import {
   groupItemsByDay,
   isViewable,
@@ -12,9 +11,11 @@ interface MediaListProps {
   items: MediaItem[];
   loading: boolean;
   columnsPerRow?: number;
-  onDelete?: (id: string) => Promise<void>;
-  onBulkDelete?: (ids: string[]) => Promise<void>;
-  onBulkIndex?: (ids: string[]) => Promise<void>;
+  selected: Set<string>;
+  setSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
+  selectionMode: boolean;
+  onCheckboxClick: (id: string, e: React.MouseEvent) => void;
+  onToggleSelectAllForDay: (groupItems: MediaItem[]) => void;
   onUpdate?: () => void;
 }
 
@@ -22,136 +23,57 @@ export function MediaList({
   items,
   loading,
   columnsPerRow = 8,
-  onDelete,
-  onBulkDelete,
-  onBulkIndex,
+  selected,
+  setSelected,
+  selectionMode,
+  onCheckboxClick,
+  onToggleSelectAllForDay,
   onUpdate,
 }: MediaListProps) {
   const [viewing, setViewing] = useState<MediaItem | null>(null);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkAction, setBulkAction] = useState<"idle" | "deleting" | "indexing">("idle");
 
-  useEffect(() => {
-    if (selected.size === 0) setSelectionMode(false);
-  }, [selected.size]);
-
-  const toggleSelect = useCallback((id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
-
-  const handleCheckboxClick = useCallback(
-    (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      if (!selectionMode) setSelectionMode(true);
-      toggleSelect(id, e);
-    },
-    [selectionMode, toggleSelect]
-  );
-
-  const clearSelection = useCallback(() => {
-    setSelected(new Set());
-    setSelectionMode(false);
-  }, []);
-
-  const handleBulkDownload = useCallback(() => {
-    const ids = Array.from(selected);
-    ids.forEach((id) => {
-      const item = items.find((i) => i.id === id);
-      if (item) {
-        const a = document.createElement("a");
-        a.href = `/api/media/${id}`;
-        a.download = item.originalName;
-        a.click();
-      }
-    });
-  }, [selected, items]);
-
-  const handleBulkDelete = useCallback(async () => {
-    const ids = Array.from(selected);
-    if (!ids.length || !confirm(`Delete ${ids.length} file(s)?`)) return;
-    setBulkAction("deleting");
-    try {
-      if (onBulkDelete) await onBulkDelete(ids);
-      else if (onDelete) for (const id of ids) await onDelete(id);
-      clearSelection();
-    } finally {
-      setBulkAction("idle");
-    }
-  }, [selected, onBulkDelete, onDelete, clearSelection]);
-
-  const handleBulkIndex = useCallback(async () => {
-    const ids = Array.from(selected);
-    if (!ids.length) return;
-    setBulkAction("indexing");
-    try {
-      if (onBulkIndex) await onBulkIndex(ids);
-      clearSelection();
-    } finally {
-      setBulkAction("idle");
-    }
-  }, [selected, onBulkIndex, clearSelection]);
-
-  if (loading) {
-    return (
-      <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>
-        Loading…
-      </p>
-    );
+  if (loading && !viewing) {
+    return <p className="empty">Loading…</p>;
   }
 
-  if (items.length === 0) {
-    return (
-      <p style={{ color: "#64748b", textAlign: "center", padding: "2rem" }}>
-        No files yet. Upload some to get started.
-      </p>
-    );
+  if (items.length === 0 && !viewing) {
+    return <p className="empty">No files yet. Upload some to get started.</p>;
   }
 
   const groups = groupItemsByDay(items);
+  const gridClass = `media-grid media-grid--cols-${columnsPerRow}`;
 
   return (
     <>
       <MediaViewer item={viewing} onClose={() => setViewing(null)} onUpdate={onUpdate} />
-      {selected.size > 0 && (
-        <MediaListBulkActions
-          count={selected.size}
-          onDownload={handleBulkDownload}
-          onDelete={onDelete ? handleBulkDelete : undefined}
-          onIndex={onBulkIndex ? handleBulkIndex : undefined}
-          onCancel={clearSelection}
-          deleting={bulkAction === "deleting"}
-          indexing={bulkAction === "indexing"}
-        />
-      )}
-      {groups.map(({ dateKey, dateLabel, items: groupItems }) => (
-        <section key={dateKey} style={{ marginBottom: 32 }}>
-          <h3 style={{ margin: "0 0 12px", fontSize: "0.9375rem", fontWeight: 600, color: "#475569" }}>
-            {dateLabel}
-          </h3>
-          <ul
-            style={{
-              listStyle: "none",
-              padding: 0,
-              margin: 0,
-              display: "grid",
-              gridTemplateColumns: `repeat(${columnsPerRow}, 1fr)`,
-              gap: 12,
-            }}
-          >
+      {groups.map(({ dateKey, dateLabel, items: groupItems }) => {
+        const ids = groupItems.map((i) => i.id);
+        const selectedCount = ids.filter((id) => selected.has(id)).length;
+        const allSelected = ids.length > 0 && selectedCount === ids.length;
+        const someSelected = selectedCount > 0;
+        return (
+        <section key={dateKey} className="section">
+          <label className="section__header">
+            <span className="section__title">{dateLabel}</span>
+            <input
+              type="checkbox"
+              className="section__checkbox"
+              checked={allSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someSelected && !allSelected;
+              }}
+              onChange={() => onToggleSelectAllForDay(groupItems)}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </label>
+          <ul className={gridClass} style={{ listStyle: "none", padding: 0, margin: 0 }}>
             {groupItems.map((item) => (
               <MediaItemCell
                 key={item.id}
                 item={item}
                 selected={selected.has(item.id)}
                 selectionMode={selectionMode}
-                onCheckboxClick={handleCheckboxClick}
+                onCheckboxClick={onCheckboxClick}
                 onCellClick={() => {
                   if (selectionMode) {
                     setSelected((prev) => {
@@ -168,7 +90,8 @@ export function MediaList({
             ))}
           </ul>
         </section>
-      ))}
+        );
+      })}
     </>
   );
 }

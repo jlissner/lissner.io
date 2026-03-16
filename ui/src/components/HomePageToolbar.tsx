@@ -21,59 +21,52 @@ export function HomePageToolbar({
   indexProgress,
   indexElapsed,
 }: HomePageToolbarProps) {
+  const statusClass =
+    indexStatus?.startsWith("Indexed")
+      ? "toolbar__status--success"
+      : indexStatus?.startsWith("Indexing")
+        ? "toolbar__status--primary"
+        : "toolbar__status--danger";
+
   return (
     <>
-      <div style={{ display: "flex", gap: 8, marginTop: "1.5rem", marginBottom: "1rem", flexWrap: "wrap" }}>
+      <div className="toolbar">
         <input
           type="search"
           placeholder="Search your media…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSearch()}
-          style={{ flex: 1, minWidth: 200, padding: "8px 12px", borderRadius: 8, border: "1px solid #e2e8f0", fontSize: "0.9375rem" }}
+          className="form__input toolbar__search"
         />
         <button
           type="button"
+          className="btn btn--primary"
           onClick={onSearch}
           disabled={searching}
-          style={{
-            padding: "8px 16px",
-            borderRadius: 8,
-            border: "none",
-            background: "#4f46e5",
-            color: "#fff",
-            fontWeight: 500,
-            cursor: searching ? "not-allowed" : "pointer",
-          }}
         >
           {searching ? "Searching…" : "Search"}
         </button>
         <button
           type="button"
+          className="btn btn--secondary"
           onClick={() => onIndex(false)}
           disabled={indexPolling}
-          style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", cursor: indexPolling ? "not-allowed" : "pointer" }}
         >
           Index for AI search
         </button>
         <button
           type="button"
+          className="btn btn--secondary btn--sm"
           onClick={() => onIndex(true)}
           disabled={indexPolling}
           title="Re-index all files (including already indexed)"
-          style={{ padding: "8px 16px", borderRadius: 8, border: "1px solid #e2e8f0", background: "#fff", cursor: indexPolling ? "not-allowed" : "pointer", fontSize: "0.8125rem" }}
         >
           Re-index all
         </button>
       </div>
       {indexStatus && (
-        <p
-          style={{
-            marginBottom: "1rem",
-            fontSize: "0.875rem",
-            color: indexStatus.startsWith("Indexed") ? "#059669" : indexStatus.startsWith("Indexing") ? "#4f46e5" : "#dc2626",
-          }}
-        >
+        <p className={`toolbar__status ${statusClass}`}>
           {indexStatus}
           {indexProgress && indexProgress.total > 0 && (
             <span style={{ marginLeft: 8, opacity: 0.9 }}>{indexProgress.processed}/{indexProgress.total}</span>

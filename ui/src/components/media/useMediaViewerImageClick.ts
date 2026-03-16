@@ -27,36 +27,52 @@ export function useMediaViewerImageClick(
     const scaleY = img.naturalHeight / rect.height;
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
-    return { x, y };
+    return { x, y, imgWidth: img.naturalWidth, imgHeight: img.naturalHeight };
   }, [imgRef]);
 
   return useCallback(
     (e: React.MouseEvent) => {
-      if (!taggingMode || !faces) return;
+      if (!taggingMode) return;
       const coords = getImageCoords(e);
       if (!coords) return;
-      const tagged = faces.tagged.find(
-        (t) =>
-          coords.x >= t.x &&
-          coords.x <= t.x + t.width &&
-          coords.y >= t.y &&
-          coords.y <= t.y + t.height
-      );
-      if (tagged) {
-        setReassigningFace(tagged);
-        return;
-      }
-      const face = faces.detected.find((box) => {
-        const alreadyTagged = faces.tagged.some((t) => overlaps(box, t));
-        return (
-          !alreadyTagged &&
-          coords.x >= box.x &&
-          coords.x <= box.x + box.width &&
-          coords.y >= box.y &&
-          coords.y <= box.y + box.height
+
+      if (faces) {
+        const tagged = faces.tagged.find(
+          (t) =>
+            coords.x >= t.x &&
+            coords.x <= t.x + t.width &&
+            coords.y >= t.y &&
+            coords.y <= t.y + t.height
         );
-      });
-      if (face) setAssigningFace(face);
+        if (tagged) {
+          setReassigningFace(tagged);
+          return;
+        }
+        const face = faces.detected.find((box) => {
+          const alreadyTagged = faces.tagged.some((t) => overlaps(box, t));
+          return (
+            !alreadyTagged &&
+            coords.x >= box.x &&
+            coords.x <= box.x + box.width &&
+            coords.y >= box.y &&
+            coords.y <= box.y + box.height
+          );
+        });
+        if (face) {
+          setAssigningFace(face);
+          return;
+        }
+      }
+
+      const size = Math.max(60, Math.min(150, Math.min(coords.imgWidth, coords.imgHeight) * 0.12));
+      const half = size / 2;
+      const manualBox: FaceBox = {
+        x: Math.max(0, Math.min(coords.imgWidth - size, coords.x - half)),
+        y: Math.max(0, Math.min(coords.imgHeight - size, coords.y - half)),
+        width: size,
+        height: size,
+      };
+      setAssigningFace(manualBox);
     },
     [taggingMode, faces, getImageCoords, setAssigningFace, setReassigningFace]
   );

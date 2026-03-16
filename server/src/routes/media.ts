@@ -1,16 +1,20 @@
 import { Router } from "express";
 import multer from "multer";
 import path from "path";
-import { readFile, unlink } from "fs/promises";
+import { readFile, unlink, access } from "fs/promises";
 import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
+import { execFile } from "child_process";
+import { promisify } from "util";
 import sharp from "sharp";
 import * as db from "../db.js";
 import { indexMediaItem } from "../index-media.js";
 import { extractFacesFromImage } from "../faces.js";
 
+const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const mediaDir = path.join(__dirname, "../../../../data/media");
+const thumbnailsDir = path.join(__dirname, "../../../../data/thumbnails");
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -20,10 +24,7 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({
-  storage,
-  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
-});
+const upload = multer({ storage });
 
 export const mediaRouter = Router();
 
@@ -171,6 +172,26 @@ mediaRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
   res.json({ newPersonId: newId });
 });
 
+mediaRouter.post("/:id/people/:personId/confirm", (req, res) => {
+  const item = db.getMediaById(req.params.id);
+  if (!item) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const personId = parseInt(req.params.personId, 10);
+  if (isNaN(personId) || personId < 1) {
+    res.status(400).json({ error: "Invalid person ID" });
+    return;
+  }
+  const hasTag = db.getImagePeople(item.id).includes(personId);
+  if (!hasTag) {
+    res.status(404).json({ error: "Person not tagged in this image" });
+    return;
+  }
+  db.confirmFace(item.id, personId);
+  res.json({ confirmed: true });
+});
+
 mediaRouter.delete("/:id", async (req, res) => {
   const item = db.getMediaById(req.params.id);
   if (!item) {
@@ -180,6 +201,10 @@ mediaRouter.delete("/:id", async (req, res) => {
   try {
     const filePath = path.join(mediaDir, item.filename);
     await unlink(filePath);
+    if (item.mimeType.startsWith("video/")) {
+      const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
+      await unlink(thumbPath).catch(() => {});
+    }
     db.deleteMedia(item.id);
     res.status(204).send();
   } catch (err) {
@@ -292,6 +317,69 @@ mediaRouter.get("/:id/preview", (req, res) => {
   }
   const filePath = path.join(mediaDir, item.filename);
   res.sendFile(filePath, { headers: { "Content-Type": item.mimeType } });
+});
+
+mediaRouter.get("/:id/details", (req, res) => {
+  const item = db.getMediaById(req.params.id);
+  if (!item) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const personIds = db.getImagePeople(item.id);
+  const personNames = db.getPersonNames();
+  const people = personIds.map((pid) => personNames.get(pid) ?? `Person ${pid}`);
+  const indexedIds = db.getIndexedMediaIds();
+  res.json({
+    ...item,
+    people: people.length ? people : undefined,
+    indexed: indexedIds.has(item.id),
+  });
+});
+
+mediaRouter.get("/:id/thumbnail", async (req, res) => {
+  const item = db.getMediaById(req.params.id);
+  if (!item) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (item.mimeType.startsWith("image/")) {
+    const filePath = path.join(mediaDir, item.filename);
+    res.sendFile(filePath, { headers: { "Content-Type": item.mimeType } });
+    return;
+  }
+  if (!item.mimeType.startsWith("video/")) {
+    res.status(400).json({ error: "Thumbnail only supported for images and videos" });
+    return;
+  }
+  const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
+  try {
+    try {
+      await access(thumbPath);
+    } catch {
+      const srcPath = path.join(mediaDir, item.filename);
+      await execFileAsync("ffmpeg", [
+        "-ss", "0.5",
+        "-i", srcPath,
+        "-vframes", "1",
+        "-f", "image2",
+        "-an",
+        "-y",
+        thumbPath,
+      ]);
+    }
+    res.setHeader("Content-Type", "image/jpeg");
+    res.sendFile(thumbPath);
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") {
+      res.status(503).json({
+        error: "ffmpeg not found. Install ffmpeg to generate video thumbnails (e.g. apt install ffmpeg).",
+      });
+      return;
+    }
+    console.error("Video thumbnail error:", err);
+    res.status(500).json({ error: "Failed to generate video thumbnail" });
+  }
 });
 
 const TEXT_MIMES = new Set([
