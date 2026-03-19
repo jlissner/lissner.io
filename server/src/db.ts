@@ -3,7 +3,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, "../../../data/db/media.db");
+const dbPath = path.join(__dirname, "../../data/db/media.db");
 
 const db = new Database(dbPath);
 
@@ -59,22 +59,217 @@ if (!mediaCols.includes("latitude")) {
 if (!mediaCols.includes("longitude")) {
   db.exec("ALTER TABLE media ADD COLUMN longitude REAL");
 }
+if (!mediaCols.includes("owner_id")) {
+  db.exec("ALTER TABLE media ADD COLUMN owner_id INTEGER");
+}
+if (!mediaCols.includes("backed_up_at")) {
+  db.exec("ALTER TABLE media ADD COLUMN backed_up_at TEXT");
+}
+
+const VALID_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
+
+function validateTableName(name: string): void {
+  if (!VALID_IDENT.test(name)) throw new Error("Invalid table name");
+}
+
+export function getDataExplorerTables(): string[] {
+  const rows = db
+    .prepare(
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+    )
+    .all() as Array<{ name: string }>;
+  return rows.map((r) => r.name);
+}
+
+export interface DataExplorerColumn {
+  name: string;
+  type: string;
+  notnull: number;
+  pk: number;
+}
+
+export function getDataExplorerTableSchema(tableName: string): DataExplorerColumn[] {
+  validateTableName(tableName);
+  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+    name: string;
+    type: string;
+    notnull: number;
+    pk: number;
+  }>;
+  if (rows.length === 0) throw new Error("Table not found");
+  return rows;
+}
+
+export function getDataExplorerRows(
+  tableName: string,
+  limit: number,
+  offset: number
+): Record<string, unknown>[] {
+  validateTableName(tableName);
+  const stmt = db.prepare(
+    `SELECT * FROM ${tableName} LIMIT ? OFFSET ?`
+  );
+  return stmt.all(Math.min(Math.max(1, limit), 500), Math.max(0, offset)) as Record<
+    string,
+    unknown
+  >[];
+}
+
+export function getDataExplorerRowCount(tableName: string): number {
+  validateTableName(tableName);
+  const row = db.prepare(`SELECT COUNT(*) as c FROM ${tableName}`).get() as { c: number };
+  return row.c;
+}
+
+export function insertDataExplorerRow(
+  tableName: string,
+  data: Record<string, unknown>
+): number {
+  validateTableName(tableName);
+  const schema = getDataExplorerTableSchema(tableName);
+  const cols = schema.filter((c) => c.name in data && data[c.name] !== undefined && data[c.name] !== "");
+  if (cols.length === 0) throw new Error("No columns to insert");
+  const colNames = cols.map((c) => c.name);
+  const placeholders = colNames.map(() => "?").join(", ");
+  const values = colNames.map((n) => data[n]);
+  const sql = `INSERT INTO ${tableName} (${colNames.join(", ")}) VALUES (${placeholders})`;
+  const result = db.prepare(sql).run(...values);
+  return result.lastInsertRowid as number;
+}
+
+export function updateDataExplorerRow(
+  tableName: string,
+  pk: Record<string, unknown>,
+  data: Record<string, unknown>
+): number {
+  validateTableName(tableName);
+  const schema = getDataExplorerTableSchema(tableName);
+  const pkCols = schema.filter((c) => c.pk).map((c) => c.name);
+  if (pkCols.length === 0) throw new Error("Table has no primary key");
+  for (const c of pkCols) {
+    if (!(c in pk)) throw new Error(`Primary key ${c} required`);
+  }
+  const setCols = schema
+    .filter((c) => !c.pk && c.name in data)
+    .map((c) => c.name);
+  if (setCols.length === 0) throw new Error("No columns to update");
+  const setClause = setCols.map((c) => `${c} = ?`).join(", ");
+  const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
+  const values = [...setCols.map((n) => data[n]), ...pkCols.map((n) => pk[n])];
+  const sql = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause}`;
+  const result = db.prepare(sql).run(...values);
+  return result.changes;
+}
+
+export function deleteDataExplorerRow(
+  tableName: string,
+  pk: Record<string, unknown>
+): number {
+  validateTableName(tableName);
+  const schema = getDataExplorerTableSchema(tableName);
+  const pkCols = schema.filter((c) => c.pk).map((c) => c.name);
+  if (pkCols.length === 0) throw new Error("Table has no primary key");
+  for (const c of pkCols) {
+    if (!(c in pk)) throw new Error(`Primary key ${c} required`);
+  }
+  const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
+  const values = pkCols.map((n) => pk[n]);
+  const sql = `DELETE FROM ${tableName} WHERE ${whereClause}`;
+  const result = db.prepare(sql).run(...values);
+  return result.changes;
+}
+
+export function runSql(
+  query: string
+): { type: "select"; columns: string[]; rows: Record<string, unknown>[] } | { type: "write"; changes: number; lastInsertRowid: number } {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    throw new Error("Empty query");
+  }
+  const stmt = db.prepare(trimmed);
+  const isSelect = /^\s*SELECT\b/i.test(trimmed);
+  if (isSelect) {
+    const rows = stmt.all() as Record<string, unknown>[];
+    const columns = stmt.columns().map((c) => c.name);
+    return { type: "select", columns, rows };
+  }
+  const result = stmt.run();
+  return { type: "write", changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) };
+}
+
+export function migrateNullOwnersToDefault(getDefaultOwnerId: () => number | null): void {
+  const defaultOwnerId = getDefaultOwnerId();
+  if (defaultOwnerId) {
+    const result = db.prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL").run(defaultOwnerId);
+    if (result.changes > 0) {
+      console.log(`[db] Assigned ${result.changes} media with null owner to default owner`);
+    }
+  }
+}
 
 export function insertMedia(
   id: string,
   filename: string,
   originalName: string,
   mimeType: string,
-  size: number
+  size: number,
+  ownerId: number
 ) {
   db.prepare(
-    `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now'))`
-  ).run(id, filename, originalName, mimeType, size);
+    `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at, owner_id)
+     VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`
+  ).run(id, filename, originalName, mimeType, size, ownerId);
+}
+
+/** Insert media row from backup (for S3 sync merge). Uses INSERT OR IGNORE. ownerId required. */
+export function insertMediaFromBackup(
+  row: {
+    id: string;
+    filename: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: string;
+    dateTaken?: string | null;
+    latitude?: number | null;
+    longitude?: number | null;
+  },
+  ownerId: number
+): boolean {
+  const result = db
+    .prepare(
+      `INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, size, uploaded_at, date_taken, latitude, longitude, owner_id, backed_up_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+    )
+    .run(
+      row.id,
+      row.filename,
+      row.originalName,
+      row.mimeType,
+      row.size,
+      row.uploadedAt,
+      row.dateTaken ?? null,
+      row.latitude ?? null,
+      row.longitude ?? null,
+      ownerId
+    );
+  return result.changes > 0;
 }
 
 export function setMediaDateTaken(mediaId: string, dateTaken: string | null): void {
   db.prepare("UPDATE media SET date_taken = ? WHERE id = ?").run(dateTaken, mediaId);
+}
+
+export function markMediaBackedUp(mediaId: string): void {
+  db.prepare("UPDATE media SET backed_up_at = datetime('now') WHERE id = ?").run(mediaId);
+}
+
+export function markMediaBackedUpByFilenames(filenames: string[]): void {
+  if (filenames.length === 0) return;
+  const placeholders = filenames.map(() => "?").join(", ");
+  db.prepare(`UPDATE media SET backed_up_at = datetime('now') WHERE filename IN (${placeholders})`).run(
+    ...filenames
+  );
 }
 
 export function setMediaLocation(
@@ -92,7 +287,7 @@ export function setMediaLocation(
 export function listMedia() {
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, backed_up_at as backedUpAt
        FROM media ORDER BY uploaded_at DESC, filename ASC`
     )
     .all() as Array<{
@@ -102,6 +297,7 @@ export function listMedia() {
     mimeType: string;
     size: number;
     uploadedAt: string;
+    backedUpAt?: string | null;
   }>;
 }
 
@@ -132,7 +328,7 @@ export function listMediaPaginated(
     const orderBy = getMediaOrderBy(sortBy, "m");
     return db
       .prepare(
-        `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude
+        `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude, m.backed_up_at as backedUpAt
          FROM media m
          JOIN image_people ip ON ip.media_id = m.id AND ip.person_id = ?
          ORDER BY ${orderBy}
@@ -148,12 +344,13 @@ export function listMediaPaginated(
       dateTaken?: string | null;
       latitude?: number | null;
       longitude?: number | null;
+      backedUpAt?: string | null;
     }>;
   }
   const orderBy = getMediaOrderBy(sortBy);
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude, backed_up_at as backedUpAt
        FROM media ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     )
     .all(limit, offset) as Array<{
@@ -166,6 +363,7 @@ export function listMediaPaginated(
     dateTaken?: string | null;
     latitude?: number | null;
     longitude?: number | null;
+    backedUpAt?: string | null;
   }>;
 }
 
@@ -180,7 +378,7 @@ export function getMediaById(id: string) {
   return db
     .prepare(
       `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt,
-        date_taken as dateTaken, latitude, longitude
+        date_taken as dateTaken, latitude, longitude, owner_id as ownerId, backed_up_at as backedUpAt
        FROM media WHERE id = ?`
     )
     .get(id) as
@@ -194,8 +392,17 @@ export function getMediaById(id: string) {
         dateTaken?: string | null;
         latitude?: number | null;
         longitude?: number | null;
+        ownerId?: number | null;
+        backedUpAt?: string | null;
       }
     | undefined;
+}
+
+export function getMediaOwnerId(mediaId: string): number | null {
+  const row = db
+    .prepare("SELECT owner_id FROM media WHERE id = ?")
+    .get(mediaId) as { owner_id: number | null } | undefined;
+  return row?.owner_id ?? null;
 }
 
 export function upsertEmbedding(mediaId: string, embedding: number[]) {
@@ -444,10 +651,18 @@ export function getFaceBox(
 export function getMediaForPerson(
   personId: number,
   limit: number
-): Array<{ id: string; mimeType: string; x?: number; y?: number; width?: number; height?: number }> {
+): Array<{
+  id: string;
+  mimeType: string;
+  x?: number;
+  y?: number;
+  width?: number;
+  height?: number;
+  backedUpAt?: string | null;
+}> {
   return db
     .prepare(
-      `SELECT m.id, m.mime_type as mimeType, ip.x, ip.y, ip.width, ip.height
+      `SELECT m.id, m.mime_type as mimeType, ip.x, ip.y, ip.width, ip.height, m.backed_up_at as backedUpAt
        FROM image_people ip
        JOIN media m ON m.id = ip.media_id
        WHERE ip.person_id = ?
@@ -461,6 +676,7 @@ export function getMediaForPerson(
     y?: number;
     width?: number;
     height?: number;
+    backedUpAt?: string | null;
   }>;
 }
 
@@ -506,7 +722,7 @@ export function getMediaByIds(ids: string[]) {
   const placeholders = ids.map(() => "?").join(",");
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, backed_up_at as backedUpAt
        FROM media WHERE id IN (${placeholders})`
     )
     .all(...ids) as Array<{
@@ -517,5 +733,6 @@ export function getMediaByIds(ids: string[]) {
     size: number;
     uploadedAt: string;
     dateTaken?: string | null;
+    backedUpAt?: string | null;
   }>;
 }

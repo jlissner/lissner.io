@@ -17,7 +17,7 @@ import {
 } from "./faces.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const mediaDir = path.join(__dirname, "../../../data/media");
+const mediaDir = path.join(__dirname, "../../data/media");
 
 const TEXT_MIMES = new Set([
   "text/plain",

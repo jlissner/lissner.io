@@ -8,13 +8,19 @@ import { execFile } from "child_process";
 import { promisify } from "util";
 import sharp from "sharp";
 import * as db from "../db.js";
+import * as authDb from "../auth-db.js";
 import { indexMediaItem } from "../index-media.js";
 import { extractFacesFromImage } from "../faces.js";
+import {
+  tryRestoreMediaFromBackup,
+  tryRestoreVideoThumbnailFromBackup,
+  scheduleBackupSyncAfterUpload,
+} from "../s3-sync.js";
 
 const execFileAsync = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const mediaDir = path.join(__dirname, "../../../../data/media");
-const thumbnailsDir = path.join(__dirname, "../../../../data/thumbnails");
+const mediaDir = path.join(__dirname, "../../../data/media");
+const thumbnailsDir = path.join(__dirname, "../../../data/thumbnails");
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -26,6 +32,27 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
+
+/** If the file is missing locally but the row says it was backed up, pull it from S3. */
+async function ensureLocalMediaFile(item: MediaItemRow): Promise<boolean> {
+  const filePath = path.join(mediaDir, item.filename);
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    if (!item.backedUpAt) return false;
+    const ok = await tryRestoreMediaFromBackup(item);
+    if (!ok) return false;
+    try {
+      await access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 export const mediaRouter = Router();
 
 mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
@@ -34,13 +61,22 @@ mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
     return;
   }
   const id = path.parse(req.file.filename).name;
+  const ownerId = req.session?.userId ?? authDb.getDefaultOwnerId();
+  if (ownerId == null) {
+    res.status(500).json({
+      error: "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
+    });
+    return;
+  }
   db.insertMedia(
     id,
     req.file.filename,
     req.file.originalname,
     req.file.mimetype,
-    req.file.size
+    req.file.size,
+    ownerId
   );
+  scheduleBackupSyncAfterUpload();
   const item = {
     id,
     filename: req.file.filename,
@@ -87,16 +123,22 @@ mediaRouter.get("/", (req, res) => {
     return {
       ...item,
       indexed: indexedIds.has(item.id),
+      backedUp: !!item.backedUpAt,
       people: people.length ? people : undefined,
     };
   });
   res.json({ items: enriched, total });
 });
 
-mediaRouter.get("/:id", (req, res) => {
+mediaRouter.get("/:id", async (req, res) => {
   const item = db.getMediaById(req.params.id);
   if (!item) {
     res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    res.status(404).json({ error: "File not found" });
     return;
   }
   const filePath = path.join(mediaDir, item.filename);
@@ -198,6 +240,14 @@ mediaRouter.delete("/:id", async (req, res) => {
     res.status(404).json({ error: "Not found" });
     return;
   }
+  const ownerId = db.getMediaOwnerId(item.id);
+  const userId = req.session?.userId;
+  const isAdmin = req.session?.isAdmin;
+  const canDelete = isAdmin || (ownerId != null && userId === ownerId);
+  if (!canDelete) {
+    res.status(403).json({ error: "Only the owner or an admin can delete this file" });
+    return;
+  }
   try {
     const filePath = path.join(mediaDir, item.filename);
     await unlink(filePath);
@@ -217,6 +267,11 @@ mediaRouter.get("/:id/faces", async (req, res) => {
   const item = db.getMediaById(req.params.id);
   if (!item || !item.mimeType.startsWith("image/")) {
     res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    res.status(404).json({ error: "File not found" });
     return;
   }
   const filePath = path.join(mediaDir, item.filename);
@@ -287,6 +342,11 @@ mediaRouter.get("/:id/face/:personId", async (req, res) => {
     res.status(404).json({ error: "Person not in this image" });
     return;
   }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    res.status(404).json({ error: "File not found" });
+    return;
+  }
   const box = db.getFaceBox(item.id, personId);
   const filePath = path.join(mediaDir, item.filename);
   try {
@@ -309,10 +369,15 @@ mediaRouter.get("/:id/face/:personId", async (req, res) => {
   }
 });
 
-mediaRouter.get("/:id/preview", (req, res) => {
+mediaRouter.get("/:id/preview", async (req, res) => {
   const item = db.getMediaById(req.params.id);
   if (!item) {
     res.status(404).json({ error: "Not found" });
+    return;
+  }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    res.status(404).json({ error: "File not found" });
     return;
   }
   const filePath = path.join(mediaDir, item.filename);
@@ -333,6 +398,7 @@ mediaRouter.get("/:id/details", (req, res) => {
     ...item,
     people: people.length ? people : undefined,
     indexed: indexedIds.has(item.id),
+    backedUp: !!item.backedUpAt,
   });
 });
 
@@ -343,6 +409,11 @@ mediaRouter.get("/:id/thumbnail", async (req, res) => {
     return;
   }
   if (item.mimeType.startsWith("image/")) {
+    const ok = await ensureLocalMediaFile(item);
+    if (!ok) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
     const filePath = path.join(mediaDir, item.filename);
     res.sendFile(filePath, { headers: { "Content-Type": item.mimeType } });
     return;
@@ -351,21 +422,33 @@ mediaRouter.get("/:id/thumbnail", async (req, res) => {
     res.status(400).json({ error: "Thumbnail only supported for images and videos" });
     return;
   }
+  const mediaOk = await ensureLocalMediaFile(item);
+  if (!mediaOk) {
+    res.status(404).json({ error: "File not found" });
+    return;
+  }
   const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
+  const srcPath = path.join(mediaDir, item.filename);
   try {
     try {
       await access(thumbPath);
     } catch {
-      const srcPath = path.join(mediaDir, item.filename);
-      await execFileAsync("ffmpeg", [
-        "-ss", "0.5",
-        "-i", srcPath,
-        "-vframes", "1",
-        "-f", "image2",
-        "-an",
-        "-y",
-        thumbPath,
-      ]);
+      if (item.backedUpAt) {
+        await tryRestoreVideoThumbnailFromBackup(item.id);
+      }
+      try {
+        await access(thumbPath);
+      } catch {
+        await execFileAsync("ffmpeg", [
+          "-ss", "0.5",
+          "-i", srcPath,
+          "-vframes", "1",
+          "-f", "image2",
+          "-an",
+          "-y",
+          thumbPath,
+        ]);
+      }
     }
     res.setHeader("Content-Type", "image/jpeg");
     res.sendFile(thumbPath);
@@ -404,6 +487,11 @@ mediaRouter.get("/:id/content", async (req, res) => {
     return;
   }
   try {
+    const ok = await ensureLocalMediaFile(item);
+    if (!ok) {
+      res.status(404).json({ error: "File not found" });
+      return;
+    }
     const filePath = path.join(mediaDir, item.filename);
     const content = await readFile(filePath, "utf-8");
     res.type("text/plain").send(content);

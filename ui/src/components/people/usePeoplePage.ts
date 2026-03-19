@@ -8,6 +8,7 @@ interface MediaPreview {
   y?: number;
   width?: number;
   height?: number;
+  backedUp?: boolean;
 }
 
 export function usePeoplePage(onUpdate?: () => void) {

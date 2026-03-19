@@ -5,6 +5,7 @@ interface MediaPreview {
   y?: number;
   width?: number;
   height?: number;
+  backedUp?: boolean;
 }
 
 interface PeopleDetailProps {
@@ -59,8 +60,19 @@ export function PeopleDetail({
             const hasBox = selectedId && m.x != null && m.width != null && m.width > 0;
             const thumbSrc = hasBox ? `/api/media/${m.id}/face/${selectedId}` : `/api/media/${m.id}/preview`;
             return (
-              <button key={m.id} type="button" className="detail__thumb" onClick={() => onPhotoClick(m)}>
+              <button
+                key={m.id}
+                type="button"
+                className={`detail__thumb ${m.backedUp ? "detail__thumb--backed-up" : ""}`}
+                onClick={() => onPhotoClick(m)}
+                title={m.backedUp ? "Backed up to cloud" : "Not backed up yet"}
+              >
                 <img src={thumbSrc} alt="" />
+                {m.backedUp && (
+                  <span className="detail__thumb-backup" aria-hidden>
+                    ☁
+                  </span>
+                )}
               </button>
             );
           })}

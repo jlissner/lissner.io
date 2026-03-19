@@ -1,8 +1,9 @@
-export type PageId = "home" | "people" | "review";
+export type PageId = "home" | "people" | "review" | "backup" | "admin";
 
 export interface NavItem {
   id: PageId;
   label: string;
+  adminOnly?: boolean;
 }
 
 /** Add new pages here; extend PageId union above when adding. */
@@ -10,12 +11,16 @@ export const NAV_ITEMS: NavItem[] = [
   { id: "home", label: "Home" },
   { id: "people", label: "People" },
   { id: "review", label: "Review faces" },
+  { id: "backup", label: "Sync" },
+  { id: "admin", label: "Admin", adminOnly: true },
 ];
 
 const PAGE_TO_PATH: Record<PageId, string> = {
   home: "/",
   people: "/people",
   review: "/review",
+  backup: "/backup",
+  admin: "/admin",
 };
 
 const PATH_TO_PAGE: Record<string, PageId> = {
@@ -23,6 +28,8 @@ const PATH_TO_PAGE: Record<string, PageId> = {
   "/home": "home",
   "/people": "people",
   "/review": "review",
+  "/backup": "backup",
+  "/admin": "admin",
 };
 
 export function pageToPath(page: PageId): string {

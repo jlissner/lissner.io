@@ -57,12 +57,20 @@ export function PeopleSidebar({
         ) : (
           people.map((p) => (
             <div key={p.id} className="u-flex" style={{ position: "relative" }} ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}>
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 className={`person-row ${selectedId === p.id ? "person-row--selected" : ""}`}
                 onClick={() => {
                   onSelect(selectedId === p.id ? null : p.id);
                   onMenuToggle(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onSelect(selectedId === p.id ? null : p.id);
+                    onMenuToggle(null);
+                  }
                 }}
               >
                 <div className={`person-row__avatar ${!p.name.startsWith("Person ") ? "person-row__avatar--initial" : ""}`}>
@@ -90,7 +98,7 @@ export function PeopleSidebar({
                 >
                   ⋮
                 </button>
-              </button>
+              </div>
               {menuOpen === p.id && (
                 <div className="dropdown">
                   <button type="button" className="dropdown__item" onClick={() => { onEdit(p); onMenuToggle(null); }}>

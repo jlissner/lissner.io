@@ -1,0 +1,276 @@
+import Database from "better-sqlite3";
+import path from "path";
+import { fileURLToPath } from "url";
+import { randomBytes, createHash } from "crypto";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const dbPath = path.join(__dirname, "../../data/db/media.db");
+const db = new Database(dbPath);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS auth_whitelist (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    is_admin INTEGER NOT NULL DEFAULT 0,
+    invited_at TEXT NOT NULL DEFAULT (datetime('now')),
+    invited_by_user_id INTEGER,
+    person_id INTEGER REFERENCES person_names(person_id)
+  )
+`);
+
+// Migration: add person_id to auth_whitelist if missing
+const whitelistCols = (db.prepare("PRAGMA table_info(auth_whitelist)").all() as Array<{ name: string }>).map(
+  (c) => c.name
+);
+if (!whitelistCols.includes("person_id")) {
+  db.exec("ALTER TABLE auth_whitelist ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)");
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT NOT NULL UNIQUE,
+    is_admin INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    person_id INTEGER REFERENCES person_names(person_id)
+  )
+`);
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS user_people (
+    user_id INTEGER NOT NULL,
+    person_id INTEGER NOT NULL,
+    PRIMARY KEY (user_id, person_id),
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (person_id) REFERENCES person_names(person_id)
+  )
+`);
+
+// Migration: add person_id to users if missing (legacy schema)
+const userCols = (db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>).map((c) => c.name);
+if (!userCols.includes("person_id")) {
+  db.exec("ALTER TABLE users ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)");
+}
+// Backfill: create a person for each user with null person_id
+const usersToBackfill = db.prepare("SELECT id, email FROM users WHERE person_id IS NULL").all() as Array<{
+  id: number;
+  email: string;
+}>;
+for (const u of usersToBackfill) {
+  const maxRow = db
+    .prepare(
+      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
+    )
+    .get() as { m: number | null };
+  const newPersonId = (maxRow?.m ?? 0) + 1;
+  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(newPersonId, u.email);
+  db.prepare("UPDATE users SET person_id = ? WHERE id = ?").run(newPersonId, u.id);
+  db.prepare("INSERT OR IGNORE INTO user_people (user_id, person_id) VALUES (?, ?)").run(u.id, newPersonId);
+}
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS magic_link_tokens (
+    token_hash TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used_at TEXT
+  )
+`);
+
+export function isEmailWhitelisted(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  const firstAdmin = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
+  if (firstAdmin && normalized === firstAdmin) return true;
+
+  const row = db
+    .prepare("SELECT 1 FROM auth_whitelist WHERE LOWER(email) = ?")
+    .get(normalized) as { "1": number } | undefined;
+  return !!row;
+}
+
+export function isEmailAdmin(email: string): boolean {
+  const normalized = email.trim().toLowerCase();
+  const firstAdmin = process.env.FIRST_ADMIN_EMAIL?.trim().toLowerCase();
+  if (firstAdmin && normalized === firstAdmin) return true;
+
+  const row = db
+    .prepare("SELECT is_admin FROM auth_whitelist WHERE LOWER(email) = ?")
+    .get(normalized) as { is_admin: number } | undefined;
+  return row?.is_admin === 1;
+}
+
+export function getUserByEmail(
+  email: string
+): { id: number; email: string; isAdmin: boolean; personId: number } | null {
+  const normalized = email.trim().toLowerCase();
+  const row = db
+    .prepare("SELECT id, email, is_admin as isAdmin, person_id as personId FROM users WHERE LOWER(email) = ?")
+    .get(normalized) as { id: number; email: string; isAdmin: number; personId: number | null } | undefined;
+  if (!row || row.personId == null) return null;
+  return { ...row, isAdmin: row.isAdmin === 1, personId: row.personId };
+}
+
+function createPersonForUser(email: string): number {
+  const maxRow = db
+    .prepare(
+      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
+    )
+    .get() as { m: number | null };
+  const newPersonId = (maxRow?.m ?? 0) + 1;
+  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(newPersonId, email);
+  return newPersonId;
+}
+
+function getWhitelistPersonIdForEmail(email: string): number | null {
+  const row = db
+    .prepare("SELECT person_id as personId FROM auth_whitelist WHERE LOWER(email) = ?")
+    .get(email.trim().toLowerCase()) as { personId: number | null } | undefined;
+  return row?.personId ?? null;
+}
+
+export function getOrCreateUser(
+  email: string,
+  isAdmin: boolean
+): { id: number; email: string; isAdmin: boolean; personId: number } {
+  const normalized = email.trim().toLowerCase();
+  const existing = getUserByEmail(normalized);
+  if (existing) return { ...existing, personId: existing.personId };
+
+  const whitelistPersonId = getWhitelistPersonIdForEmail(normalized);
+  const personId = whitelistPersonId ?? createPersonForUser(normalized);
+  const result = db
+    .prepare("INSERT INTO users (email, is_admin, person_id) VALUES (?, ?, ?)")
+    .run(normalized, isAdmin ? 1 : 0, personId);
+  const id = result.lastInsertRowid as number;
+  db.prepare("INSERT OR IGNORE INTO user_people (user_id, person_id) VALUES (?, ?)").run(id, personId);
+  return { id, email: normalized, isAdmin, personId };
+}
+
+/** The person this user IS (their identity). Required for every user. */
+export function getUserPersonId(userId: number): number | null {
+  const row = db.prepare("SELECT person_id as personId FROM users WHERE id = ?").get(userId) as
+    | { personId: number | null }
+    | undefined;
+  return row?.personId ?? null;
+}
+
+/** Returns the user ID for FIRST_ADMIN_EMAIL (creates user if needed). Used when AUTH_ENABLED=false. */
+export function getDefaultOwnerId(): number | null {
+  const email = process.env.FIRST_ADMIN_EMAIL?.trim();
+  if (!email) return null;
+  const user = getOrCreateUser(email, true);
+  return user.id;
+}
+
+function deleteExpiredMagicLinkTokens(): void {
+  db.prepare("DELETE FROM magic_link_tokens WHERE expires_at < datetime('now')").run();
+}
+
+export function createMagicLinkToken(email: string): { token: string; expiresAt: string } {
+  deleteExpiredMagicLinkTokens();
+
+  const normalized = email.trim().toLowerCase();
+  const token = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
+
+  db.prepare(
+    "INSERT INTO magic_link_tokens (token_hash, email, expires_at) VALUES (?, ?, ?)"
+  ).run(tokenHash, normalized, expiresAt);
+
+  return { token, expiresAt };
+}
+
+export function consumeMagicLinkToken(token: string): { email: string } | null {
+  deleteExpiredMagicLinkTokens();
+
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const row = db
+    .prepare(
+      "SELECT email FROM magic_link_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')"
+    )
+    .get(tokenHash) as { email: string } | undefined;
+
+  if (!row) return null;
+
+  db.prepare("UPDATE magic_link_tokens SET used_at = datetime('now') WHERE token_hash = ?").run(tokenHash);
+  return row;
+}
+
+export function getWhitelist(): Array<{
+  id: number;
+  email: string;
+  isAdmin: boolean;
+  invitedAt: string;
+  personId: number | null;
+}> {
+  const rows = db
+    .prepare(
+      "SELECT id, email, is_admin as isAdmin, invited_at as invitedAt, person_id as personId FROM auth_whitelist ORDER BY invited_at DESC"
+    )
+    .all() as Array<{ id: number; email: string; isAdmin: number; invitedAt: string; personId: number | null }>;
+  return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
+}
+
+export function addToWhitelist(
+  email: string,
+  isAdmin: boolean,
+  invitedByUserId?: number,
+  personId?: number | null
+): number {
+  const normalized = email.trim().toLowerCase();
+  const result = db
+    .prepare(
+      "INSERT INTO auth_whitelist (email, is_admin, invited_by_user_id, person_id) VALUES (?, ?, ?, ?)"
+    )
+    .run(normalized, isAdmin ? 1 : 0, invitedByUserId ?? null, personId ?? null);
+  return result.lastInsertRowid as number;
+}
+
+export function updateWhitelistPerson(id: number, personId: number | null): boolean {
+  const result = db.prepare("UPDATE auth_whitelist SET person_id = ? WHERE id = ?").run(personId, id);
+  return result.changes > 0;
+}
+
+export function removeFromWhitelist(id: number): boolean {
+  const result = db.prepare("DELETE FROM auth_whitelist WHERE id = ?").run(id);
+  return result.changes > 0;
+}
+
+export function getUserPeople(userId: number): number[] {
+  const rows = db
+    .prepare("SELECT person_id FROM user_people WHERE user_id = ?")
+    .all(userId) as Array<{ person_id: number }>;
+  return rows.map((r) => r.person_id);
+}
+
+/** Set the people this user can act on behalf of. Always includes the user's own person (identity). */
+export function setUserPeople(userId: number, personIds: number[]): void {
+  const ownPersonId = getUserPersonId(userId);
+  const ids = new Set(personIds);
+  if (ownPersonId != null) ids.add(ownPersonId);
+
+  db.prepare("DELETE FROM user_people WHERE user_id = ?").run(userId);
+  const insert = db.prepare("INSERT INTO user_people (user_id, person_id) VALUES (?, ?)");
+  for (const pid of ids) {
+    insert.run(userId, pid);
+  }
+}
+
+export function getUsers(): Array<{
+  id: number;
+  email: string;
+  isAdmin: boolean;
+  createdAt: string;
+  personId: number | null;
+}> {
+  const rows = db
+    .prepare(
+      "SELECT id, email, is_admin as isAdmin, created_at as createdAt, person_id as personId FROM users ORDER BY created_at DESC"
+    )
+    .all() as Array<{ id: number; email: string; isAdmin: number; createdAt: string; personId: number | null }>;
+  return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
+}
+
+// Clean up expired tokens on server startup
+deleteExpiredMagicLinkTokens();

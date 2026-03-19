@@ -12,6 +12,8 @@ interface MediaDetails {
   longitude?: number | null;
   people?: string[];
   indexed?: boolean;
+  backedUp?: boolean;
+  backedUpAt?: string | null;
 }
 
 function formatDate(iso: string): string {
@@ -105,6 +107,19 @@ export function MediaViewerDetails({ item, refreshTrigger = 0 }: MediaViewerDeta
             </dd>
           </>
         )}
+        <dt className="viewer-details__term">Backup</dt>
+        <dd className="viewer-details__value">
+          {details.backedUp ? (
+            <>
+              <span className="viewer-details__badge viewer-details__badge--success">Backed up</span>
+              {details.backedUpAt && (
+                <span className="viewer-details__sub"> {formatDate(details.backedUpAt)}</span>
+              )}
+            </>
+          ) : (
+            <span className="viewer-details__muted">Not backed up yet</span>
+          )}
+        </dd>
         {hasLocation && (
           <>
             <dt className="viewer-details__term">Location</dt>

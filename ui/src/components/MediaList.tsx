@@ -11,6 +11,7 @@ interface MediaListProps {
   items: MediaItem[];
   loading: boolean;
   columnsPerRow?: number;
+  sortBy?: "uploaded" | "taken";
   selected: Set<string>;
   setSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
   selectionMode: boolean;
@@ -23,6 +24,7 @@ export function MediaList({
   items,
   loading,
   columnsPerRow = 8,
+  sortBy = "taken",
   selected,
   setSelected,
   selectionMode,
@@ -40,7 +42,7 @@ export function MediaList({
     return <p className="empty">No files yet. Upload some to get started.</p>;
   }
 
-  const groups = groupItemsByDay(items);
+  const groups = groupItemsByDay(items, sortBy);
   const gridClass = `media-grid media-grid--cols-${columnsPerRow}`;
 
   return (

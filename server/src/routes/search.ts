@@ -120,6 +120,7 @@ searchRouter.get("/", async (req, res) => {
         return {
           ...item,
           indexed: true,
+          backedUp: !!item.backedUpAt,
           people: people.length ? people : undefined,
         };
       })

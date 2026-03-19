@@ -91,6 +91,7 @@ export function HomePage({
           items={displayItems}
           loading={loading && !isSearchMode}
           columnsPerRow={columnsPerRow}
+          sortBy={sortBy}
           selected={selected}
           setSelected={setSelected}
           selectionMode={selectionMode}

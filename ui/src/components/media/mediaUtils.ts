@@ -7,11 +7,18 @@ export interface MediaItem {
   uploadedAt: string;
   dateTaken?: string | null;
   indexed?: boolean;
+  backedUp?: boolean;
   people?: string[];
 }
 
 export function getItemDateKey(item: MediaItem): string {
   const dateStr = item.dateTaken ?? item.uploadedAt;
+  const d = new Date(dateStr);
+  return isNaN(d.getTime()) ? "unknown" : d.toISOString().slice(0, 10);
+}
+
+export function getItemDateKeyForSort(item: MediaItem, sortBy: "uploaded" | "taken"): string {
+  const dateStr = sortBy === "uploaded" ? item.uploadedAt : (item.dateTaken ?? item.uploadedAt);
   const d = new Date(dateStr);
   return isNaN(d.getTime()) ? "unknown" : d.toISOString().slice(0, 10);
 }
@@ -28,11 +35,12 @@ export function formatDateLabel(dateKey: string): string {
 }
 
 export function groupItemsByDay(
-  items: MediaItem[]
+  items: MediaItem[],
+  sortBy: "uploaded" | "taken" = "taken"
 ): Array<{ dateKey: string; dateLabel: string; items: MediaItem[] }> {
   const map = new Map<string, MediaItem[]>();
   for (const item of items) {
-    const key = getItemDateKey(item);
+    const key = getItemDateKeyForSort(item, sortBy);
     const list = map.get(key) ?? [];
     list.push(item);
     map.set(key, list);

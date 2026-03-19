@@ -52,6 +52,14 @@ interface MediaItemCellProps {
   onCellClick: () => void;
 }
 
+/** Shown when not indexed and/or not backed up; hover lists what’s missing. */
+function indexingBackupWarningTitle(item: MediaItem): string | null {
+  const issues: string[] = [];
+  if (!item.indexed) issues.push("Not indexed for AI search");
+  if (!item.backedUp) issues.push("Not backed up to cloud");
+  return issues.length ? issues.join(" · ") : null;
+}
+
 export function MediaItemCell({
   item,
   selected,
@@ -61,6 +69,8 @@ export function MediaItemCell({
 }: MediaItemCellProps) {
   const [hovered, setHovered] = useState(false);
   const showCheckbox = selectionMode || hovered;
+  const needsIndexingBackupAttention = !item.indexed || !item.backedUp;
+  const warningTitle = indexingBackupWarningTitle(item);
 
   return (
     <li
@@ -86,10 +96,17 @@ export function MediaItemCell({
               />
             </div>
           )}
-          {!selectionMode && item.indexed && (
-            <span className="media-cell__badge" title="Indexed for AI search">
-              ✨
-            </span>
+          {!selectionMode && needsIndexingBackupAttention && warningTitle && (
+            <div
+              className="media-cell__badges media-cell__badges--warning"
+              title={warningTitle}
+              aria-label={warningTitle}
+              role="img"
+            >
+              <span className="media-cell__badges-item" aria-hidden>
+                ⚠️
+              </span>
+            </div>
           )}
           {isImage(item.mimeType) ? (
             <FallbackImage

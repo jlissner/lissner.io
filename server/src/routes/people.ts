@@ -28,7 +28,17 @@ peopleRouter.get("/:id/media", (req, res) => {
     500
   );
   const media = db.getMediaForPerson(id, limit);
-  res.json(media);
+  res.json(
+    media.map((m) => ({
+      id: m.id,
+      mimeType: m.mimeType,
+      x: m.x,
+      y: m.y,
+      width: m.width,
+      height: m.height,
+      backedUp: !!m.backedUpAt,
+    }))
+  );
 });
 
 peopleRouter.get("/", (_req, res) => {
