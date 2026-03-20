@@ -695,37 +695,6 @@ export function getMediaForPerson(
   }>;
 }
 
-/** Faces needing review: confidence < 0.75. Excludes manually confirmed (confidence 1) and auto-confident matches. */
-export function getFacesNeedingReview(limit: number): Array<{
-  mediaId: string;
-  personId: number;
-  confidence: number | null;
-  isSingleFace: boolean;
-}> {
-  const rows = db
-    .prepare(
-      `SELECT ip.media_id as mediaId, ip.person_id as personId, ip.confidence,
-        (SELECT COUNT(*) FROM image_people ip2 WHERE ip2.person_id = ip.person_id) as clusterSize
-       FROM image_people ip
-       WHERE ip.x IS NOT NULL AND ip.y IS NOT NULL AND ip.width IS NOT NULL AND ip.height IS NOT NULL
-       AND (ip.confidence IS NULL OR ip.confidence < 0.75)
-       ORDER BY COALESCE(ip.confidence, 0) ASC
-       LIMIT ?`
-    )
-    .all(limit) as Array<{
-    mediaId: string;
-    personId: number;
-    confidence: number | null;
-    clusterSize: number;
-  }>;
-  return rows.map((r) => ({
-    mediaId: r.mediaId,
-    personId: r.personId,
-    confidence: r.confidence,
-    isSingleFace: r.clusterSize === 1,
-  }));
-}
-
 export function deleteMedia(id: string) {
   db.prepare("DELETE FROM image_people WHERE media_id = ?").run(id);
   db.prepare("DELETE FROM embeddings WHERE media_id = ?").run(id);

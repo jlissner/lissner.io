@@ -68,17 +68,6 @@ export interface PersonSummary {
     name: string;
     photoCount: number;
 }
-/** GET /api/people/review/queue */
-export interface ReviewQueueItem {
-    mediaId: string;
-    personId: number;
-    confidence: number | null;
-    isSingleFace: boolean;
-    otherPeopleInPhoto: Array<{
-        id: number;
-        name: string;
-    }>;
-}
 /** GET /api/people/:id/media */
 export interface PersonMediaPreviewItem {
     id: string;

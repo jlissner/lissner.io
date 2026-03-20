@@ -5,14 +5,12 @@ import {
   mergePersonBodySchema,
   personIdParamsSchema,
   personMediaQuerySchema,
-  reviewQueueQuerySchema,
   updatePersonBodySchema,
 } from "../validation/people-schemas.js";
 import {
   createPersonNamed,
   deletePersonById,
   getPersonMediaPreview,
-  getReviewQueue,
   listPeopleSummary,
   mergePeople,
   renamePerson,
@@ -29,12 +27,6 @@ peopleRouter.post(
     res.json(result);
   })
 );
-
-peopleRouter.get("/review/queue", (req, res) => {
-  const q = reviewQueueQuerySchema.parse(req.query);
-  const limit = q.limit ?? 100;
-  res.json(getReviewQueue(limit));
-});
 
 peopleRouter.get(
   "/:id/merge-suggestions",

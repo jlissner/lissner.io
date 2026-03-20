@@ -67,7 +67,6 @@ export function useMediaViewerFaces({
         loadFaces();
         onUpdate?.();
         onTagChange?.();
-        window.dispatchEvent(new CustomEvent("review-queue-refresh"));
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Failed to add tag");
@@ -88,7 +87,6 @@ export function useMediaViewerFaces({
           loadFaces();
           onUpdate?.();
           onTagChange?.();
-          window.dispatchEvent(new CustomEvent("review-queue-refresh"));
         } else {
           const err = await res.json().catch(() => ({}));
           alert(err.error || "Failed to remove tag");
@@ -105,7 +103,6 @@ export function useMediaViewerFaces({
           loadFaces();
           onUpdate?.();
           onTagChange?.();
-          window.dispatchEvent(new CustomEvent("review-queue-refresh"));
         } else {
           const err = await res.json().catch(() => ({}));
           alert(err.error || "Failed to reassign");
@@ -122,7 +119,6 @@ export function useMediaViewerFaces({
         loadFaces();
         onUpdate?.();
         onTagChange?.();
-        window.dispatchEvent(new CustomEvent("review-queue-refresh"));
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Failed to reassign");

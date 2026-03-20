@@ -23,7 +23,6 @@ export type {
   MergePeopleResponse,
   PersonMediaPreviewItem,
   PersonSummary,
-  ReviewQueueItem,
   SearchIndexStatusResponse,
   SearchMediaResponse,
   SearchResultItem,

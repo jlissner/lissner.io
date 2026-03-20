@@ -21,6 +21,8 @@ function MatchFaceReviewCard({
   onMergeOther,
   onRename,
   onDiscard,
+  onRemoveTagFromPreview,
+  onDeletePerson,
 }: {
   current: FaceMatchReviewItem;
   namedPeople: Person[];
@@ -31,6 +33,8 @@ function MatchFaceReviewCard({
   onMergeOther: (targetId: number) => void;
   onRename: (name: string) => void;
   onDiscard: () => void;
+  onRemoveTagFromPreview: () => void;
+  onDeletePerson: () => void;
 }) {
   const namedOptions = useMemo(
     () => namedPeople.filter((p) => !p.name.trim().startsWith("Person")),
@@ -47,6 +51,11 @@ function MatchFaceReviewCard({
 
   const [otherTargetId, setOtherTargetId] = useState(defaultOtherId);
   const [renameDraft, setRenameDraft] = useState("");
+
+  const faceTagCount = useMemo(() => {
+    const p = namedPeople.find((x) => x.id === current.placeholderPersonId);
+    return p?.photoCount;
+  }, [namedPeople, current.placeholderPersonId]);
 
   return (
     <section className="match-faces-modal__section" aria-label="Review">
@@ -158,6 +167,28 @@ function MatchFaceReviewCard({
         <Button type="button" variant="ghost" disabled={busy} onClick={onDiscard}>
           Skip for now
         </Button>
+        <div className="match-faces-modal__bad-match" aria-label="Wrong or not a face">
+          <p className="match-faces-modal__bad-match-title">Wrong tag or not a face?</p>
+          {current.previewMediaId ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={busy}
+              onClick={onRemoveTagFromPreview}
+            >
+              Remove tag from this photo
+            </Button>
+          ) : (
+            <p className="match-faces-modal__bad-match-hint u-text-muted u-text-sm">
+              No preview image — use delete below if this person should be removed entirely.
+            </p>
+          )}
+          <Button type="button" variant="danger" disabled={busy} onClick={onDeletePerson}>
+            {faceTagCount != null
+              ? `Delete person (${faceTagCount} face ${faceTagCount === 1 ? "tag" : "tags"})`
+              : "Delete person (all face tags)"}
+          </Button>
+        </div>
       </div>
     </section>
   );
@@ -259,6 +290,51 @@ export function PeopleMatchFacesWizard({
     popQueue();
   }, [popQueue]);
 
+  const handleRemoveTagFromPreview = useCallback(async () => {
+    if (!current?.previewMediaId) return;
+    setBusy(true);
+    try {
+      const res = await fetch(
+        `/api/media/${current.previewMediaId}/people/${current.placeholderPersonId}`,
+        { method: "DELETE" }
+      );
+      if (res.ok) popQueue();
+      else {
+        const err = await res.json().catch(() => ({}));
+        alert((err as { error?: string }).error ?? "Could not remove tag");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [current, popQueue]);
+
+  const handleDeletePerson = useCallback(async () => {
+    if (!current) return;
+    const count = namedPeople.find((p) => p.id === current.placeholderPersonId)?.photoCount;
+    const skipConfirm =
+      count === 1 &&
+      current.topMatch != null &&
+      current.topMatch.score < 0.5;
+    if (!skipConfirm) {
+      const confirmMsg =
+        count != null
+          ? `Delete "${current.placeholderName}"? This will remove ${count} face tag${count === 1 ? "" : "s"}.`
+          : `Delete "${current.placeholderName}"? All face tags for this person will be removed.`;
+      if (!confirm(confirmMsg)) return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/people/${current.placeholderPersonId}`, { method: "DELETE" });
+      if (res.ok) popQueue();
+      else {
+        const err = await res.json().catch(() => ({}));
+        alert((err as { error?: string }).error ?? "Could not delete person");
+      }
+    } finally {
+      setBusy(false);
+    }
+  }, [current, namedPeople, popQueue]);
+
   return (
     <ModalRoot onBackdropClick={busy ? () => {} : onClose}>
       <ModalPanel className="match-faces-modal" onEscape={busy ? undefined : onClose}>
@@ -301,6 +377,8 @@ export function PeopleMatchFacesWizard({
               onMergeOther={(id) => void handleMergeOther(id)}
               onRename={(name) => void handleRename(name)}
               onDiscard={handleDiscard}
+              onRemoveTagFromPreview={() => void handleRemoveTagFromPreview()}
+              onDeletePerson={() => void handleDeletePerson()}
             />
           )}
         </ModalBody>

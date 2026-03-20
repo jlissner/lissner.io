@@ -23,10 +23,6 @@ const PeoplePage = lazy(async () => {
   const m = await import("@/features/people/components/people-page");
   return { default: m.PeoplePage };
 });
-const ReviewPage = lazy(async () => {
-  const m = await import("@/features/review/components/review-page");
-  return { default: m.ReviewPage };
-});
 const BackupPage = lazy(async () => {
   const m = await import("@/features/backup/components/backup-page");
   return { default: m.BackupPage };
@@ -162,7 +158,6 @@ export function AuthenticatedApp() {
                 onViewAllPhotos={(personId) => navigateTo("home", `person=${personId}`)}
               />
             )}
-            {page === "review" && <ReviewPage onUpdate={fetchItems} />}
             {page === "backup" && <BackupPage onSyncComplete={fetchItems} />}
             {page === "admin" && user?.isAdmin && <AdminPage />}
           </Suspense>

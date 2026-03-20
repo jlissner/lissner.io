@@ -172,7 +172,11 @@ export function usePeoplePage(onUpdate?: () => void) {
 
   const handleDeletePerson = useCallback(
     async (p: Person) => {
-      if (!confirm(`Delete "${p.name}"? All their face tags will be removed.`)) return;
+      const msg =
+        p.photoCount != null
+          ? `Delete "${p.name}"? This will remove ${p.photoCount} face tag${p.photoCount === 1 ? "" : "s"}.`
+          : `Delete "${p.name}"? All their face tags will be removed.`;
+      if (!confirm(msg)) return;
       const res = await fetch(`/api/people/${p.id}`, { method: "DELETE" });
       if (res.ok) {
         if (selectedId === p.id) setSelectedId(null);

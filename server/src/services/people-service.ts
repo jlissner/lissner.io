@@ -2,22 +2,9 @@ import type {
   CreatePersonResponse,
   PersonMediaPreviewItem,
   PersonSummary,
-  ReviewQueueItem,
   UpdatePersonResponse,
 } from "../../../shared/src/api.js";
 import * as db from "../db/media.js";
-
-export function getReviewQueue(limit: number): ReviewQueueItem[] {
-  const items = db.getFacesNeedingReview(limit);
-  const names = db.getPersonNames();
-  return items.map((item) => {
-    const others = db.getImagePeople(item.mediaId).filter((id) => id !== item.personId);
-    return {
-      ...item,
-      otherPeopleInPhoto: others.map((id) => ({ id, name: names.get(id) ?? `Person ${id}` })),
-    };
-  });
-}
 
 export function getPersonMediaPreview(
   personId: number,

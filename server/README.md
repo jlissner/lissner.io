@@ -20,7 +20,7 @@ Dependencies flow **inward**: HTTP and middleware sit at the edge; they call **s
 | `auth-service.ts` | URL helpers for magic links (e.g. `getMagicLinkBaseUrl`). |
 | `backup-service.ts` | S3 sync status + `prepareSync()` (validate before background run). |
 | `media-service.ts` | Media CRUD, tagging, faces, thumbnails, text content — **core** domain logic for `/api/media`. |
-| `people-service.ts` | People list, merge, review queue enrichment. |
+| `people-service.ts` | People list, merge, person media preview. |
 | `search-service.ts` | Bulk indexing job, index status, semantic search. |
 
 Add new modules under `src/services/` when a flow is reused or a route grows beyond ~30–40 lines of logic.
