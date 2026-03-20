@@ -1,7 +1,7 @@
 import { Router } from "express";
-import * as authDb from "../auth-db.js";
-import * as db from "../db.js";
-import { requireAuth, requireAdmin, getAuthUser } from "../auth.js";
+import * as authDb from "../db/auth.js";
+import * as db from "../db/media.js";
+import { requireAuth, requireAdmin, getAuthUser } from "../auth/middleware.js";
 
 export const adminRouter = Router();
 
@@ -9,15 +9,11 @@ adminRouter.use(requireAuth);
 adminRouter.use(requireAdmin);
 
 function isSqlExplorerAvailable(): boolean {
-  return (
-    process.env.SQL_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production"
-  );
+  return process.env.SQL_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
 }
 
 function isDataExplorerAvailable(): boolean {
-  return (
-    process.env.DATA_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production"
-  );
+  return process.env.DATA_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
 }
 
 adminRouter.get("/sql-explorer-available", (_req, res) => {
@@ -26,7 +22,9 @@ adminRouter.get("/sql-explorer-available", (_req, res) => {
 
 adminRouter.post("/sql", (req, res) => {
   if (!isSqlExplorerAvailable()) {
-    res.status(403).json({ error: "SQL explorer is only available locally with SQL_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "SQL explorer is only available locally with SQL_EXPLORER_ENABLED=true" });
     return;
   }
   const query = req.body?.query?.trim();
@@ -49,7 +47,9 @@ adminRouter.get("/data-explorer-available", (_req, res) => {
 
 adminRouter.get("/data-explorer/tables", (req, res) => {
   if (!isDataExplorerAvailable()) {
-    res.status(403).json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
     return;
   }
   try {
@@ -61,7 +61,9 @@ adminRouter.get("/data-explorer/tables", (req, res) => {
 
 adminRouter.get("/data-explorer/tables/:table", (req, res) => {
   if (!isDataExplorerAvailable()) {
-    res.status(403).json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
     return;
   }
   try {
@@ -75,7 +77,9 @@ adminRouter.get("/data-explorer/tables/:table", (req, res) => {
 
 adminRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
   if (!isDataExplorerAvailable()) {
-    res.status(403).json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
     return;
   }
   try {
@@ -90,7 +94,9 @@ adminRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
 
 adminRouter.post("/data-explorer/tables/:table", (req, res) => {
   if (!isDataExplorerAvailable()) {
-    res.status(403).json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
     return;
   }
   try {
@@ -103,7 +109,9 @@ adminRouter.post("/data-explorer/tables/:table", (req, res) => {
 
 adminRouter.put("/data-explorer/tables/:table", (req, res) => {
   if (!isDataExplorerAvailable()) {
-    res.status(403).json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
     return;
   }
   try {
@@ -121,7 +129,9 @@ adminRouter.put("/data-explorer/tables/:table", (req, res) => {
 
 adminRouter.delete("/data-explorer/tables/:table", (req, res) => {
   if (!isDataExplorerAvailable()) {
-    res.status(403).json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
+    res
+      .status(403)
+      .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
     return;
   }
   try {
@@ -147,7 +157,9 @@ adminRouter.post("/whitelist", (req, res) => {
   const personIdRaw = req.body?.personId;
   const personId =
     personIdRaw != null && personIdRaw !== ""
-      ? (typeof personIdRaw === "number" ? personIdRaw : parseInt(String(personIdRaw), 10))
+      ? typeof personIdRaw === "number"
+        ? personIdRaw
+        : parseInt(String(personIdRaw), 10)
       : undefined;
   const validPersonId = personId != null && !isNaN(personId) ? personId : undefined;
 
@@ -159,8 +171,10 @@ adminRouter.post("/whitelist", (req, res) => {
   try {
     const user = getAuthUser(req);
     const id = authDb.addToWhitelist(email, isAdmin, user?.id, validPersonId);
-    res.status(201).json({ id, email: email.toLowerCase(), isAdmin, personId: validPersonId ?? null });
-  } catch (err) {
+    res
+      .status(201)
+      .json({ id, email: email.toLowerCase(), isAdmin, personId: validPersonId ?? null });
+  } catch (_err) {
     res.status(400).json({ error: "Email may already be on whitelist" });
   }
 });

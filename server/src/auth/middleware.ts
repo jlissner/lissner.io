@@ -1,7 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import session from "express-session";
-import * as authDb from "./auth-db.js";
-import { sendMagicLink } from "./email.js";
+import * as authDb from "../db/auth.js";
 
 declare module "express-session" {
   interface SessionData {

@@ -6,24 +6,13 @@ import {
 } from "@aws-sdk/client-s3";
 import { readdir, readFile, writeFile, access, unlink } from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
-import { Readable } from "stream";
+import type { Readable } from "stream";
 import Database from "better-sqlite3";
-import * as db from "./db.js";
-import * as authDb from "./auth-db.js";
+import * as db from "../db/media.js";
+import * as authDb from "../db/auth.js";
+import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../config/paths.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dataDir = path.join(__dirname, "../../data");
-const mediaDir = path.join(dataDir, "media");
-const thumbnailsDir = path.join(dataDir, "thumbnails");
-const dbPath = path.join(dataDir, "db/media.db");
-
-const S3_VARS = [
-  "AWS_ACCESS_KEY_ID",
-  "AWS_SECRET_ACCESS_KEY",
-  "AWS_REGION",
-  "S3_BUCKET",
-] as const;
+const S3_VARS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET"] as const;
 
 export function getS3Config(): {
   configured: boolean;
@@ -52,24 +41,41 @@ export function createS3Client(): S3Client | null {
 const S3_PREFIX = "backup";
 
 export interface SyncProgress {
-  phase: "listing" | "upload-media" | "upload-thumbnails" | "upload-db" | "download-media" | "download-thumbnails" | "merge-db" | "done" | "error";
+  phase:
+    | "listing"
+    | "upload-media"
+    | "upload-thumbnails"
+    | "upload-db"
+    | "download-media"
+    | "download-thumbnails"
+    | "merge-db"
+    | "done"
+    | "error";
   current: number;
   total: number;
   message: string;
   error?: string;
 }
 
-let syncState: {
-  inProgress: boolean;
-  startedAt: string | null;
-  lastResult: SyncProgress | null;
-  lastError: string | null;
-} = {
+const syncState = {
   inProgress: false,
-  startedAt: null,
-  lastResult: null,
-  lastError: null,
+  startedAt: null as string | null,
+  lastResult: null as SyncProgress | null,
+  lastError: null as string | null,
 };
+
+const syncBridge = {
+  listener: null as (() => void) | null,
+};
+
+/** Wired in `index.ts` to push WebSocket activity updates. */
+export function setSyncChangeListener(fn: (() => void) | null): void {
+  syncBridge.listener = fn;
+}
+
+function emitSyncChanged(): void {
+  syncBridge.listener?.();
+}
 
 export function getSyncState() {
   return { ...syncState };
@@ -80,11 +86,13 @@ export function isSyncInProgress() {
 }
 
 /** If a sync is running when an auto-backup was requested, run again when it finishes. */
-let pendingSyncAfterCurrent = false;
+const syncDefer = {
+  pendingAfterCurrent: false,
+  debounceTimer: null as ReturnType<typeof setTimeout> | null,
+};
 
 /** Debounce multiple uploads into one sync (ms). */
 const AUTO_BACKUP_DEBOUNCE_MS = 3500;
-let autoBackupDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Queue a full S3 sync after local changes (e.g. new upload). Debounced so bursts of uploads
@@ -94,15 +102,15 @@ let autoBackupDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 export function scheduleBackupSyncAfterUpload(): void {
   if (!getS3Config().configured) return;
 
-  if (autoBackupDebounceTimer) {
-    clearTimeout(autoBackupDebounceTimer);
-    autoBackupDebounceTimer = null;
+  if (syncDefer.debounceTimer) {
+    clearTimeout(syncDefer.debounceTimer);
+    syncDefer.debounceTimer = null;
   }
 
-  autoBackupDebounceTimer = setTimeout(() => {
-    autoBackupDebounceTimer = null;
+  syncDefer.debounceTimer = setTimeout(() => {
+    syncDefer.debounceTimer = null;
     if (syncState.inProgress) {
-      pendingSyncAfterCurrent = true;
+      syncDefer.pendingAfterCurrent = true;
       return;
     }
     void runSync().catch((err) => {
@@ -117,25 +125,27 @@ async function listAllS3Keys(
   prefix: string
 ): Promise<Set<string>> {
   const keys = new Set<string>();
-  let continuationToken: string | undefined;
+  const paging = { token: undefined as string | undefined };
   do {
     const res = await client.send(
       new ListObjectsV2Command({
         Bucket: bucket,
         Prefix: prefix,
-        ContinuationToken: continuationToken,
+        ContinuationToken: paging.token,
       })
     );
     for (const obj of res.Contents ?? []) {
       if (obj.Key) keys.add(obj.Key);
     }
-    continuationToken = res.NextContinuationToken;
-  } while (continuationToken);
+    paging.token = res.NextContinuationToken;
+  } while (paging.token);
   return keys;
 }
 
 function fileExists(filePath: string): Promise<boolean> {
-  return access(filePath).then(() => true).catch(() => false);
+  return access(filePath)
+    .then(() => true)
+    .catch(() => false);
 }
 
 async function streamToBuffer(stream: Readable): Promise<Buffer> {
@@ -146,9 +156,7 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
-export async function runSync(
-  onProgress?: (p: SyncProgress) => void
-): Promise<SyncProgress> {
+export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<SyncProgress> {
   const client = createS3Client();
   if (!client) {
     const { missingVars } = getS3Config();
@@ -161,6 +169,7 @@ export async function runSync(
     };
     syncState.lastResult = err;
     syncState.lastError = err.error ?? null;
+    emitSyncChanged();
     throw new Error(err.error);
   }
 
@@ -171,19 +180,23 @@ export async function runSync(
   syncState.inProgress = true;
   syncState.startedAt = new Date().toISOString();
   syncState.lastError = null;
+  emitSyncChanged();
 
   const bucket = process.env.S3_BUCKET!;
 
   const report = (p: SyncProgress) => {
     syncState.lastResult = p;
     onProgress?.(p);
+    emitSyncChanged();
   };
 
-  let uploadedMedia = 0;
-  let uploadedThumbs = 0;
-  let downloadedMedia = 0;
-  let downloadedThumbs = 0;
-  let mergedMedia = 0;
+  const tally = {
+    uploadedMedia: 0,
+    uploadedThumbs: 0,
+    downloadedMedia: 0,
+    downloadedThumbs: 0,
+    mergedMedia: 0,
+  };
 
   try {
     // 1. List what's in S3
@@ -223,8 +236,7 @@ export async function runSync(
       message: `Uploading ${toUploadMedia.length} new media files…`,
     });
 
-    for (let i = 0; i < toUploadMedia.length; i++) {
-      const m = toUploadMedia[i];
+    for (const [i, m] of toUploadMedia.entries()) {
       const filePath = path.join(mediaDir, m.filename);
       const body = await readFile(filePath);
       await client.send(
@@ -235,7 +247,7 @@ export async function runSync(
         })
       );
       db.markMediaBackedUp(m.id);
-      uploadedMedia++;
+      tally.uploadedMedia++;
       report({
         phase: "upload-media",
         current: i + 1,
@@ -258,8 +270,7 @@ export async function runSync(
       message: `Uploading ${toUploadThumbs.length} new thumbnails…`,
     });
 
-    for (let i = 0; i < toUploadThumbs.length; i++) {
-      const filename = toUploadThumbs[i];
+    for (const [i, filename] of toUploadThumbs.entries()) {
       const filePath = path.join(thumbnailsDir, filename);
       const body = await readFile(filePath);
       await client.send(
@@ -269,7 +280,7 @@ export async function runSync(
           Body: body,
         })
       );
-      uploadedThumbs++;
+      tally.uploadedThumbs++;
       report({
         phase: "upload-thumbnails",
         current: i + 1,
@@ -297,26 +308,33 @@ export async function runSync(
     );
 
     // 5. Download missing media from S3
-    const sortedDbKeys = [...s3DbKeys].filter((k) => k.endsWith(".db")).sort().reverse();
-    let backupDbPath: string | null = null;
+    const sortedDbKeys = [...s3DbKeys]
+      .filter((k) => k.endsWith(".db"))
+      .sort()
+      .reverse();
 
-    if (sortedDbKeys.length > 0) {
-      const latestDbKey = sortedDbKeys[0];
-      const getRes = await client.send(
-        new GetObjectCommand({ Bucket: bucket, Key: latestDbKey })
-      );
-      const dbStream = getRes.Body;
-      if (dbStream) {
-        const dbBuffer2 = await streamToBuffer(dbStream as Readable);
-        backupDbPath = path.join(dataDir, ".sync_temp_db.db");
-        await writeFile(backupDbPath, dbBuffer2);
-      }
-    }
+    const backupDbPath: string | null =
+      sortedDbKeys.length > 0
+        ? await (async (): Promise<string | null> => {
+            const latestDbKey = sortedDbKeys[0];
+            const getRes = await client.send(
+              new GetObjectCommand({ Bucket: bucket, Key: latestDbKey })
+            );
+            const dbStream = getRes.Body;
+            if (!dbStream) return null;
+            const dbBuffer2 = await streamToBuffer(dbStream as Readable);
+            await writeFile(syncTempDbPath, dbBuffer2);
+            return syncTempDbPath;
+          })()
+        : null;
 
     // Download: media in our DB but file missing, and exists in S3
     const toDownloadMedia: typeof localMedia = [];
     for (const m of localMedia) {
-      if (!(await fileExists(path.join(mediaDir, m.filename))) && s3MediaFilenames.has(m.filename)) {
+      if (
+        !(await fileExists(path.join(mediaDir, m.filename))) &&
+        s3MediaFilenames.has(m.filename)
+      ) {
         toDownloadMedia.push(m);
       }
     }
@@ -328,8 +346,7 @@ export async function runSync(
       message: `Downloading ${toDownloadMedia.length} missing media files…`,
     });
 
-    for (let i = 0; i < toDownloadMedia.length; i++) {
-      const m = toDownloadMedia[i];
+    for (const [i, m] of toDownloadMedia.entries()) {
       const getRes = await client.send(
         new GetObjectCommand({
           Bucket: bucket,
@@ -341,7 +358,7 @@ export async function runSync(
         const buf = await streamToBuffer(stream as Readable);
         await writeFile(path.join(mediaDir, m.filename), buf);
         db.markMediaBackedUp(m.id);
-        downloadedMedia++;
+        tally.downloadedMedia++;
       }
       report({
         phase: "download-media",
@@ -357,7 +374,10 @@ export async function runSync(
     );
     const toDownloadThumbs: string[] = [];
     for (const id of videoIds) {
-      if (!(await fileExists(path.join(thumbnailsDir, `${id}.jpg`))) && s3ThumbFilenames.has(`${id}.jpg`)) {
+      if (
+        !(await fileExists(path.join(thumbnailsDir, `${id}.jpg`))) &&
+        s3ThumbFilenames.has(`${id}.jpg`)
+      ) {
         toDownloadThumbs.push(id);
       }
     }
@@ -369,17 +389,14 @@ export async function runSync(
       message: `Downloading ${toDownloadThumbs.length} missing thumbnails…`,
     });
 
-    for (let i = 0; i < toDownloadThumbs.length; i++) {
-      const id = toDownloadThumbs[i];
+    for (const [i, id] of toDownloadThumbs.entries()) {
       const key = `${S3_PREFIX}/thumbnails/${id}.jpg`;
-      const getRes = await client.send(
-        new GetObjectCommand({ Bucket: bucket, Key: key })
-      );
+      const getRes = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
       const stream = getRes.Body;
       if (stream) {
         const buf = await streamToBuffer(stream as Readable);
         await writeFile(path.join(thumbnailsDir, `${id}.jpg`), buf);
-        downloadedThumbs++;
+        tally.downloadedThumbs++;
       }
       report({
         phase: "download-thumbnails",
@@ -399,16 +416,16 @@ export async function runSync(
           `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude FROM media`
         )
         .all() as Array<{
-          id: string;
-          filename: string;
-          originalName: string;
-          mimeType: string;
-          size: number;
-          uploadedAt: string;
-          dateTaken?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
-        }>;
+        id: string;
+        filename: string;
+        originalName: string;
+        mimeType: string;
+        size: number;
+        uploadedAt: string;
+        dateTaken?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+      }>;
 
       const toMerge = backupRows.filter((r) => !localIds.has(r.id));
       report({
@@ -418,8 +435,7 @@ export async function runSync(
         message: `Adding ${toMerge.length} media from backup…`,
       });
 
-      for (let i = 0; i < toMerge.length; i++) {
-        const r = toMerge[i];
+      for (const [i, r] of toMerge.entries()) {
         const inserted = db.insertMediaFromBackup(
           {
             id: r.id,
@@ -434,7 +450,7 @@ export async function runSync(
           },
           defaultOwnerId
         );
-        if (inserted) mergedMedia++;
+        if (inserted) tally.mergedMedia++;
 
         // Download file if in S3 and not local
         if (s3MediaFilenames.has(r.filename)) {
@@ -450,7 +466,7 @@ export async function runSync(
             if (stream) {
               const buf = await streamToBuffer(stream as Readable);
               await writeFile(localPath, buf);
-              downloadedMedia++;
+              tally.downloadedMedia++;
             }
           }
         }
@@ -473,11 +489,11 @@ export async function runSync(
       total: 1,
       message: [
         `Sync complete.`,
-        uploadedMedia > 0 && `Uploaded ${uploadedMedia} media`,
-        uploadedThumbs > 0 && `Uploaded ${uploadedThumbs} thumbnails`,
-        downloadedMedia > 0 && `Downloaded ${downloadedMedia} media`,
-        downloadedThumbs > 0 && `Downloaded ${downloadedThumbs} thumbnails`,
-        mergedMedia > 0 && `Added ${mergedMedia} from backup`,
+        tally.uploadedMedia > 0 && `Uploaded ${tally.uploadedMedia} media`,
+        tally.uploadedThumbs > 0 && `Uploaded ${tally.uploadedThumbs} thumbnails`,
+        tally.downloadedMedia > 0 && `Downloaded ${tally.downloadedMedia} media`,
+        tally.downloadedThumbs > 0 && `Downloaded ${tally.downloadedThumbs} thumbnails`,
+        tally.mergedMedia > 0 && `Added ${tally.mergedMedia} from backup`,
       ]
         .filter(Boolean)
         .join(". "),
@@ -499,8 +515,9 @@ export async function runSync(
     throw err;
   } finally {
     syncState.inProgress = false;
-    if (pendingSyncAfterCurrent) {
-      pendingSyncAfterCurrent = false;
+    emitSyncChanged();
+    if (syncDefer.pendingAfterCurrent) {
+      syncDefer.pendingAfterCurrent = false;
       setImmediate(() => {
         void runSync().catch((err) => {
           console.error("[s3-sync] Queued backup sync failed:", err);

@@ -1,10 +1,7 @@
 import { Router } from "express";
-import {
-  getS3Config,
-  getSyncState,
-  isSyncInProgress,
-  runSync,
-} from "../s3-sync.js";
+import { buildActivitySnapshot } from "../activity/snapshot.js";
+import { getIndexJobState } from "../indexing/job-store.js";
+import { getS3Config, getSyncState, isSyncInProgress, runSync } from "../s3/sync.js";
 
 export const backupRouter = Router();
 
@@ -13,13 +10,14 @@ backupRouter.get("/config", (_req, res) => {
 });
 
 backupRouter.get("/status", (_req, res) => {
-  const state = getSyncState();
+  const snap = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
+  const s = snap.sync;
   res.json({
-    configured: getS3Config().configured,
-    inProgress: state.inProgress,
-    startedAt: state.startedAt,
-    lastResult: state.lastResult,
-    lastError: state.lastError,
+    configured: s.configured,
+    inProgress: s.inProgress,
+    startedAt: s.startedAt,
+    lastResult: s.lastResult,
+    lastError: s.lastError,
   });
 });
 

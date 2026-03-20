@@ -221,9 +221,7 @@ export function DataExplorer() {
                   <input
                     type={col.type.includes("INT") ? "number" : "text"}
                     value={newRow[col.name] ?? ""}
-                    onChange={(e) =>
-                      setNewRow((prev) => ({ ...prev, [col.name]: e.target.value }))
-                    }
+                    onChange={(e) => setNewRow((prev) => ({ ...prev, [col.name]: e.target.value }))}
                     className="form__input"
                     placeholder={col.pk ? "(optional for auto)" : ""}
                   />

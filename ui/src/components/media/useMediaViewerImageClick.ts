@@ -19,16 +19,19 @@ export function useMediaViewerImageClick(
   setAssigningFace: (f: FaceBox | null) => void,
   setReassigningFace: (f: TaggedFace | null) => void
 ) {
-  const getImageCoords = useCallback((e: React.MouseEvent) => {
-    const img = imgRef.current;
-    if (!img) return null;
-    const rect = img.getBoundingClientRect();
-    const scaleX = img.naturalWidth / rect.width;
-    const scaleY = img.naturalHeight / rect.height;
-    const x = (e.clientX - rect.left) * scaleX;
-    const y = (e.clientY - rect.top) * scaleY;
-    return { x, y, imgWidth: img.naturalWidth, imgHeight: img.naturalHeight };
-  }, [imgRef]);
+  const getImageCoords = useCallback(
+    (e: React.MouseEvent) => {
+      const img = imgRef.current;
+      if (!img) return null;
+      const rect = img.getBoundingClientRect();
+      const scaleX = img.naturalWidth / rect.width;
+      const scaleY = img.naturalHeight / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top) * scaleY;
+      return { x, y, imgWidth: img.naturalWidth, imgHeight: img.naturalHeight };
+    },
+    [imgRef]
+  );
 
   return useCallback(
     (e: React.MouseEvent) => {

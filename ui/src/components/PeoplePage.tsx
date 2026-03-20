@@ -44,14 +44,12 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   } = usePeoplePage(onUpdate);
 
   const selectedPerson = people.find((p) => p.id === selectedId);
-  const photoCount = selectedPerson?.photoCount ?? previewMedia.filter((m) => m.mimeType.startsWith("image/")).length;
+  const photoCount =
+    selectedPerson?.photoCount ??
+    previewMedia.filter((m) => m.mimeType.startsWith("image/")).length;
 
   if (loading) {
-    return (
-      <div className="u-p-6 u-text-muted u-text-sm">
-        Loading people…
-      </div>
-    );
+    return <div className="u-p-6 u-text-muted u-text-sm">Loading people…</div>;
   }
 
   return (
@@ -81,10 +79,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
         onPhotoClick={setViewingMedia}
       />
       {addModalOpen && (
-        <PeopleAddModal
-          onAdd={handleAddPerson}
-          onClose={() => setAddModalOpen(false)}
-        />
+        <PeopleAddModal onAdd={handleAddPerson} onClose={() => setAddModalOpen(false)} />
       )}
       {editModal && (
         <PeopleEditModal

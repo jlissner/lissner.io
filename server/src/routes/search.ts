@@ -1,13 +1,15 @@
 import { Router } from "express";
-import * as db from "../db.js";
+import * as db from "../db/media.js";
 import { getEmbedding, cosineSimilarity } from "../embeddings.js";
-import { indexMediaItems } from "../index-media.js";
+import { indexMediaItems } from "../indexing/media.js";
+import { buildActivitySnapshot } from "../activity/snapshot.js";
 import {
   getIndexJobState,
   startIndexJob,
   finishIndexJob,
   failIndexJob,
-} from "../index-job.js";
+} from "../indexing/job-store.js";
+import { getSyncState, getS3Config } from "../s3/sync.js";
 
 export const searchRouter = Router();
 
@@ -21,9 +23,10 @@ searchRouter.post("/index", (req, res) => {
   res.json({ started: true });
 
   const allItems = db.listMedia();
-  const items = Array.isArray(mediaIds) && mediaIds.length > 0
-    ? allItems.filter((i) => mediaIds.includes(i.id))
-    : allItems;
+  const items =
+    Array.isArray(mediaIds) && mediaIds.length > 0
+      ? allItems.filter((i) => mediaIds.includes(i.id))
+      : allItems;
 
   indexMediaItems(items, { skipIndexed: !force })
     .then(({ indexed, skipped }) => {
@@ -41,17 +44,12 @@ searchRouter.post("/index/clear", (_req, res) => {
 });
 
 searchRouter.get("/index/status", (_req, res) => {
-  const s = getIndexJobState();
-  const elapsed =
-    s.inProgress && s.startedAt
-      ? Math.floor(
-          (Date.now() - new Date(s.startedAt).getTime()) / 1000
-        )
-      : null;
+  const snap = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
+  const s = snap.index;
   res.json({
     inProgress: s.inProgress,
     startedAt: s.startedAt,
-    elapsedSeconds: elapsed,
+    elapsedSeconds: s.elapsedSeconds,
     progressProcessed: s.progressProcessed,
     progressTotal: s.progressTotal,
     lastResult: s.lastResult,
@@ -69,18 +67,18 @@ searchRouter.get("/", async (req, res) => {
   try {
     const personNames = db.getPersonNames();
     const queryLower = q.trim().toLowerCase();
-    const matchingPersonIds = Array.from(personNames.entries()).filter(
-      ([, name]) => name.toLowerCase().includes(queryLower)
-    ).map(([id]) => id);
+    const matchingPersonIds = Array.from(personNames.entries())
+      .filter(([, name]) => name.toLowerCase().includes(queryLower))
+      .map(([id]) => id);
 
-    let mediaIds: string[] = [];
+    const mediaIds: string[] = [];
     if (matchingPersonIds.length > 0) {
       const personMediaIds = new Set<string>();
       for (const personId of matchingPersonIds) {
         const media = db.getMediaForPerson(personId, 100);
         for (const m of media) personMediaIds.add(m.id);
       }
-      mediaIds = Array.from(personMediaIds);
+      mediaIds.push(...personMediaIds);
     }
 
     const stored = db.getEmbeddings();
@@ -88,10 +86,7 @@ searchRouter.get("/", async (req, res) => {
       const queryEmbedding = await getEmbedding(q);
       const scored = stored.map(({ mediaId, embedding }) => ({
         mediaId,
-        score: cosineSimilarity(
-          queryEmbedding,
-          JSON.parse(embedding) as number[]
-        ),
+        score: cosineSimilarity(queryEmbedding, JSON.parse(embedding) as number[]),
       }));
       scored.sort((a, b) => b.score - a.score);
       const topFromEmbedding = scored.slice(0, 20).map((s) => s.mediaId);

@@ -21,10 +21,7 @@ export function PeopleImageViewer({
   onRemove,
 }: PeopleImageViewerProps) {
   return (
-    <div
-      className="viewer-overlay"
-      onClick={onClose}
-    >
+    <div className="viewer-overlay" onClick={onClose}>
       <div className="viewer-overlay__content">
         <img
           src={`/api/media/${media.id}/preview`}

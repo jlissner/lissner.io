@@ -2,25 +2,22 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import { readFile, unlink, access } from "fs/promises";
-import { fileURLToPath } from "url";
 import { randomUUID } from "crypto";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import sharp from "sharp";
-import * as db from "../db.js";
-import * as authDb from "../auth-db.js";
-import { indexMediaItem } from "../index-media.js";
+import * as db from "../db/media.js";
+import * as authDb from "../db/auth.js";
+import { indexMediaItem } from "../indexing/media.js";
 import { extractFacesFromImage } from "../faces.js";
 import {
   tryRestoreMediaFromBackup,
   tryRestoreVideoThumbnailFromBackup,
   scheduleBackupSyncAfterUpload,
-} from "../s3-sync.js";
+} from "../s3/sync.js";
+import { mediaDir, thumbnailsDir } from "../config/paths.js";
 
 const execFileAsync = promisify(execFile);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const mediaDir = path.join(__dirname, "../../../data/media");
-const thumbnailsDir = path.join(__dirname, "../../../data/thumbnails");
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -99,10 +96,7 @@ mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 mediaRouter.get("/", (req, res) => {
-  const limit = Math.min(
-    Math.max(1, parseInt(req.query.limit as string, 10) || 50),
-    100
-  );
+  const limit = Math.min(Math.max(1, parseInt(req.query.limit as string, 10) || 50), 100);
   const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
   const personIdParam = req.query.personId as string | undefined;
   const personId = personIdParam ? parseInt(personIdParam, 10) : undefined;
@@ -112,9 +106,7 @@ mediaRouter.get("/", (req, res) => {
       ? db.listMediaPaginated(limit, offset, personId, sortBy)
       : db.listMediaPaginated(limit, offset, undefined, sortBy);
   const total =
-    personId != null && !isNaN(personId)
-      ? db.getMediaCountForPerson(personId)
-      : db.getMediaCount();
+    personId != null && !isNaN(personId) ? db.getMediaCountForPerson(personId) : db.getMediaCount();
   const indexedIds = db.getIndexedMediaIds();
   const personNames = db.getPersonNames();
   const enriched = items.map((item) => {
@@ -277,7 +269,9 @@ mediaRouter.get("/:id/faces", async (req, res) => {
   const filePath = path.join(mediaDir, item.filename);
   try {
     const faces = await extractFacesFromImage(filePath, item.id);
-    const detected = faces.map((f) => f.box).filter((b): b is { x: number; y: number; width: number; height: number } => !!b);
+    const detected = faces
+      .map((f) => f.box)
+      .filter((b): b is { x: number; y: number; width: number; height: number } => !!b);
     const tagged = db.getTaggedFacesInMedia(item.id);
     const personNames = db.getPersonNames();
     res.json({
@@ -302,26 +296,33 @@ mediaRouter.post("/:id/people", (req, res) => {
   const personId = req.body?.personId;
   const box = req.body?.box;
   const createNew = req.body?.createNew === true;
-  if (!box || typeof box.x !== "number" || typeof box.y !== "number" || typeof box.width !== "number" || typeof box.height !== "number") {
+  if (
+    !box ||
+    typeof box.x !== "number" ||
+    typeof box.y !== "number" ||
+    typeof box.width !== "number" ||
+    typeof box.height !== "number"
+  ) {
     res.status(400).json({ error: "box { x, y, width, height } required" });
     return;
   }
-  let targetPersonId: number;
   if (createNew) {
-    targetPersonId = db.createNewPerson();
-  } else {
-    const id = parseInt(String(personId ?? ""), 10);
-    if (isNaN(id) || id < 1) {
-      res.status(400).json({ error: "personId required when not createNew" });
-      return;
-    }
-    const allIds = db.getAllPersonIds();
-    if (!allIds.includes(id)) {
-      res.status(400).json({ error: "Person not found" });
-      return;
-    }
-    targetPersonId = id;
+    const targetPersonId = db.createNewPerson();
+    db.addPersonToMedia(item.id, targetPersonId, box);
+    res.status(201).json({ personId: targetPersonId });
+    return;
   }
+  const id = parseInt(String(personId ?? ""), 10);
+  if (isNaN(id) || id < 1) {
+    res.status(400).json({ error: "personId required when not createNew" });
+    return;
+  }
+  const allIds = db.getAllPersonIds();
+  if (!allIds.includes(id)) {
+    res.status(400).json({ error: "Person not found" });
+    return;
+  }
+  const targetPersonId = id;
   db.addPersonToMedia(item.id, targetPersonId, box);
   res.status(201).json({ personId: targetPersonId });
 });
@@ -355,9 +356,7 @@ mediaRouter.get("/:id/face/:personId", async (req, res) => {
       const top = Math.round(Math.max(0, box.y));
       const width = Math.round(Math.max(1, box.width));
       const height = Math.round(Math.max(1, box.height));
-      const buffer = await sharp(filePath)
-        .extract({ left, top, width, height })
-        .toBuffer();
+      const buffer = await sharp(filePath).extract({ left, top, width, height }).toBuffer();
       res.setHeader("Content-Type", item.mimeType);
       res.send(buffer);
     } else {
@@ -440,10 +439,14 @@ mediaRouter.get("/:id/thumbnail", async (req, res) => {
         await access(thumbPath);
       } catch {
         await execFileAsync("ffmpeg", [
-          "-ss", "0.5",
-          "-i", srcPath,
-          "-vframes", "1",
-          "-f", "image2",
+          "-ss",
+          "0.5",
+          "-i",
+          srcPath,
+          "-vframes",
+          "1",
+          "-f",
+          "image2",
           "-an",
           "-y",
           thumbPath,
@@ -456,7 +459,8 @@ mediaRouter.get("/:id/thumbnail", async (req, res) => {
     const code = (err as NodeJS.ErrnoException)?.code;
     if (code === "ENOENT") {
       res.status(503).json({
-        error: "ffmpeg not found. Install ffmpeg to generate video thumbnails (e.g. apt install ffmpeg).",
+        error:
+          "ffmpeg not found. Install ffmpeg to generate video thumbnails (e.g. apt install ffmpeg).",
       });
       return;
     }

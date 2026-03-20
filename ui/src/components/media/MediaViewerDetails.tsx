@@ -111,7 +111,9 @@ export function MediaViewerDetails({ item, refreshTrigger = 0 }: MediaViewerDeta
         <dd className="viewer-details__value">
           {details.backedUp ? (
             <>
-              <span className="viewer-details__badge viewer-details__badge--success">Backed up</span>
+              <span className="viewer-details__badge viewer-details__badge--success">
+                Backed up
+              </span>
               {details.backedUpAt && (
                 <span className="viewer-details__sub"> {formatDate(details.backedUpAt)}</span>
               )}

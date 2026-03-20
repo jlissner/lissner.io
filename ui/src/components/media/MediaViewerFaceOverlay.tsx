@@ -6,7 +6,11 @@ interface MediaViewerFaceOverlayProps {
   assigningFace?: FaceBox | null;
 }
 
-export function MediaViewerFaceOverlay({ imgRef, faces, assigningFace }: MediaViewerFaceOverlayProps) {
+export function MediaViewerFaceOverlay({
+  imgRef,
+  faces,
+  assigningFace,
+}: MediaViewerFaceOverlayProps) {
   const img = imgRef.current;
   if (!img) return null;
 

@@ -6,12 +6,12 @@ function isSESConfigured(): boolean {
   return sesVars.every((v) => process.env[v]?.trim());
 }
 
-let client: SESClient | null = null;
+const sesHolder = { client: null as SESClient | null };
 
 function getSESClient(): SESClient | null {
   if (!isSESConfigured()) return null;
-  if (!client) {
-    client = new SESClient({
+  if (!sesHolder.client) {
+    sesHolder.client = new SESClient({
       region: process.env.AWS_REGION!,
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
@@ -19,7 +19,7 @@ function getSESClient(): SESClient | null {
       },
     });
   }
-  return client;
+  return sesHolder.client;
 }
 
 export function isEmailConfigured(): boolean {
@@ -31,7 +31,7 @@ export async function sendMagicLink(email: string, link: string): Promise<void> 
   const from = process.env.SES_FROM_EMAIL?.trim();
 
   if (!ses || !from) {
-    console.log(`\n📧 Magic link for ${email}:\n   ${link}\n`);
+    console.warn(`\n📧 Magic link for ${email}:\n   ${link}\n`);
     return;
   }
 

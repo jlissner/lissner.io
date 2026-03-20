@@ -21,12 +21,19 @@ export function HomePageToolbar({
   indexProgress,
   indexElapsed,
 }: HomePageToolbarProps) {
-  const statusClass =
-    indexStatus?.startsWith("Indexed")
-      ? "toolbar__status--success"
-      : indexStatus?.startsWith("Indexing")
-        ? "toolbar__status--primary"
-        : "toolbar__status--danger";
+  // indexStatus is only set when the user starts indexing in this tab session. After a
+  // refresh, activity from the server/WebSocket still has inProgress but indexStatus is
+  // null — show progress from activity anyway.
+  const showStatusLine = Boolean(indexStatus || indexPolling);
+  const statusLabel = indexStatus || (indexPolling ? "Indexing…" : null);
+
+  const statusClass = statusLabel?.startsWith("Indexed")
+    ? "toolbar__status--success"
+    : statusLabel?.startsWith("Indexing")
+      ? "toolbar__status--primary"
+      : statusLabel
+        ? "toolbar__status--danger"
+        : "toolbar__status--primary";
 
   return (
     <>
@@ -39,12 +46,7 @@ export function HomePageToolbar({
           onKeyDown={(e) => e.key === "Enter" && onSearch()}
           className="form__input toolbar__search"
         />
-        <button
-          type="button"
-          className="btn btn--primary"
-          onClick={onSearch}
-          disabled={searching}
-        >
+        <button type="button" className="btn btn--primary" onClick={onSearch} disabled={searching}>
           {searching ? "Searching…" : "Search"}
         </button>
         <button
@@ -65,11 +67,13 @@ export function HomePageToolbar({
           Re-index all
         </button>
       </div>
-      {indexStatus && (
+      {showStatusLine && (
         <p className={`toolbar__status ${statusClass}`}>
-          {indexStatus}
+          {statusLabel}
           {indexProgress && indexProgress.total > 0 && (
-            <span style={{ marginLeft: 8, opacity: 0.9 }}>{indexProgress.processed}/{indexProgress.total}</span>
+            <span style={{ marginLeft: 8, opacity: 0.9 }}>
+              {indexProgress.processed}/{indexProgress.total}
+            </span>
           )}
           {indexElapsed !== null && (
             <span style={{ marginLeft: 8, opacity: 0.9 }}>

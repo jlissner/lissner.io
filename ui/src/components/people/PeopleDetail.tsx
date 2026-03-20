@@ -47,7 +47,11 @@ export function PeopleDetail({
           </p>
         </div>
         {onViewAllPhotos && (
-          <button type="button" className="btn btn--primary" onClick={() => onViewAllPhotos(selectedId)}>
+          <button
+            type="button"
+            className="btn btn--primary"
+            onClick={() => onViewAllPhotos(selectedId)}
+          >
             View all in gallery
           </button>
         )}
@@ -58,7 +62,9 @@ export function PeopleDetail({
         <div className="detail__grid">
           {images.map((m) => {
             const hasBox = selectedId && m.x != null && m.width != null && m.width > 0;
-            const thumbSrc = hasBox ? `/api/media/${m.id}/face/${selectedId}` : `/api/media/${m.id}/preview`;
+            const thumbSrc = hasBox
+              ? `/api/media/${m.id}/face/${selectedId}`
+              : `/api/media/${m.id}/preview`;
             return (
               <button
                 key={m.id}
@@ -77,7 +83,9 @@ export function PeopleDetail({
             );
           })}
           {images.length === 0 && (
-            <p className="u-text-muted u-text-sm" style={{ gridColumn: "1 / -1" }}>No photos</p>
+            <p className="u-text-muted u-text-sm" style={{ gridColumn: "1 / -1" }}>
+              No photos
+            </p>
           )}
         </div>
       )}

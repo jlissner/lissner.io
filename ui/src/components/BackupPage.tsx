@@ -1,54 +1,30 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useActivity } from "../activity/ActivityProvider";
 
 interface BackupPageProps {
   onSyncComplete?: () => void;
 }
 
-interface BackupConfig {
-  configured: boolean;
-  missingVars: string[];
-}
-
-interface BackupStatus {
-  configured: boolean;
-  inProgress: boolean;
-  startedAt: string | null;
-  lastResult: {
-    phase: string;
-    current: number;
-    total: number;
-    message: string;
-    error?: string;
-  } | null;
-  lastError: string | null;
-}
-
 export function BackupPage({ onSyncComplete }: BackupPageProps) {
-  const [config, setConfig] = useState<BackupConfig | null>(null);
-  const [status, setStatus] = useState<BackupStatus | null>(null);
-  const [running, setRunning] = useState(false);
+  const activity = useActivity();
   const wasInProgress = useRef(false);
+  const [running, setRunning] = useState(false);
 
-  const fetchConfig = useCallback(async () => {
-    const res = await fetch("/api/backup/config");
-    if (res.ok) setConfig(await res.json());
-  }, []);
+  const config =
+    activity != null
+      ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
+      : null;
 
-  const fetchStatus = useCallback(async () => {
-    const res = await fetch("/api/backup/status");
-    if (res.ok) setStatus(await res.json());
-  }, []);
-
-  useEffect(() => {
-    fetchConfig();
-    fetchStatus();
-  }, [fetchConfig, fetchStatus]);
-
-  useEffect(() => {
-    if (!status?.inProgress) return;
-    const id = setInterval(fetchStatus, 1000);
-    return () => clearInterval(id);
-  }, [status?.inProgress, fetchStatus]);
+  const status =
+    activity != null
+      ? {
+          configured: activity.sync.configured,
+          inProgress: activity.sync.inProgress,
+          startedAt: activity.sync.startedAt,
+          lastResult: activity.sync.lastResult,
+          lastError: activity.sync.lastError,
+        }
+      : null;
 
   useEffect(() => {
     if (status?.inProgress) {
@@ -68,17 +44,16 @@ export function BackupPage({ onSyncComplete }: BackupPageProps) {
         alert(data.error || "Backup failed");
         return;
       }
-      await fetchStatus();
     } finally {
       setRunning(false);
     }
-  }, [fetchStatus]);
+  }, []);
 
-  if (config === null) {
+  if (config === null || status === null) {
     return <p className="empty">Loading…</p>;
   }
 
-  const lastResult = status?.lastResult;
+  const lastResult = status.lastResult;
 
   return (
     <div className="backup-page">
@@ -87,9 +62,7 @@ export function BackupPage({ onSyncComplete }: BackupPageProps) {
       {!config.configured ? (
         <div className="alert alert--warning">
           <strong>S3 sync is not configured.</strong>
-          <p>
-            Set these environment variables on the server to enable sync:
-          </p>
+          <p>Set these environment variables on the server to enable sync:</p>
           <ul>
             {config.missingVars.map((v) => (
               <li key={v}>
@@ -101,19 +74,19 @@ export function BackupPage({ onSyncComplete }: BackupPageProps) {
       ) : (
         <>
           <p className="backup-page__desc">
-            Sync your media with AWS S3. Uploads only new files, downloads
-            missing files from S3, and merges media from other devices.
+            Sync your media with AWS S3. Uploads only new files, downloads missing files from S3,
+            and merges media from other devices.
           </p>
           <button
             type="button"
             className="btn btn--primary"
             onClick={handleRun}
-            disabled={status?.inProgress || running}
+            disabled={status.inProgress || running}
           >
-            {status?.inProgress ? "Syncing…" : "Sync now"}
+            {status.inProgress ? "Syncing…" : "Sync now"}
           </button>
 
-          {status?.inProgress && lastResult && (
+          {status.inProgress && lastResult && (
             <div className="backup-page__progress">
               <p>{lastResult.message}</p>
               {lastResult.total > 0 && (
@@ -126,7 +99,7 @@ export function BackupPage({ onSyncComplete }: BackupPageProps) {
             </div>
           )}
 
-          {!status?.inProgress && lastResult && (
+          {!status.inProgress && lastResult && (
             <div
               className={`alert ${
                 lastResult.phase === "error"
@@ -141,9 +114,7 @@ export function BackupPage({ onSyncComplete }: BackupPageProps) {
                   <strong>Error:</strong> {lastResult.error}
                 </p>
               )}
-              {lastResult.phase === "done" && (
-                <p>{lastResult.message}</p>
-              )}
+              {lastResult.phase === "done" && <p>{lastResult.message}</p>}
             </div>
           )}
         </>

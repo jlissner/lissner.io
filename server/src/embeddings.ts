@@ -10,9 +10,7 @@ export async function getEmbedding(text: string): Promise<number[]> {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(
-      `Ollama embedding failed. Run: ollama run nomic-embed-text. ${err}`
-    );
+    throw new Error(`Ollama embedding failed. Run: ollama run nomic-embed-text. ${err}`);
   }
 
   const data = (await res.json()) as { embedding: number[] };
@@ -21,14 +19,13 @@ export async function getEmbedding(text: string): Promise<number[]> {
 
 export function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length) return 0;
-  let dot = 0;
-  let normA = 0;
-  let normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+  const sums = { dot: 0, normA: 0, normB: 0 };
+  for (const [i, ai] of a.entries()) {
+    const bi = b[i]!;
+    sums.dot += ai * bi;
+    sums.normA += ai * ai;
+    sums.normB += bi * bi;
   }
-  const denom = Math.sqrt(normA) * Math.sqrt(normB);
-  return denom === 0 ? 0 : dot / denom;
+  const denom = Math.sqrt(sums.normA) * Math.sqrt(sums.normB);
+  return denom === 0 ? 0 : sums.dot / denom;
 }

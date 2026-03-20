@@ -38,7 +38,6 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
     [onUpload, disabled, uploading]
   );
 
-
   useEffect(() => {
     const onDragOver = (e: DragEvent) => {
       if (!e.dataTransfer?.types?.includes("Files") || disabled || uploading) return;
@@ -108,33 +107,29 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
           opacity: disabled || uploading ? 0.7 : 1,
         }}
       >
-      <input
-        type="file"
-        multiple
-        onChange={handleChange}
-        disabled={disabled || uploading}
-        style={{ display: "none" }}
-        id="file-upload"
-      />
-      <label htmlFor="file-upload" style={{ cursor: "inherit" }}>
-        {uploading ? (
-          <span>Uploading…</span>
-        ) : (
-          <>
-            <span style={{ display: "block", marginBottom: 4 }}>
-              Drop files here or <strong>click to browse</strong>
-            </span>
-            <span style={{ fontSize: "0.875rem", color: "#64748b" }}>
-              Images, videos, documents
-            </span>
-          </>
-        )}
-      </label>
-      {error && (
-        <p style={{ color: "#dc2626", marginTop: 8, fontSize: "0.875rem" }}>
-          {error}
-        </p>
-      )}
+        <input
+          type="file"
+          multiple
+          onChange={handleChange}
+          disabled={disabled || uploading}
+          style={{ display: "none" }}
+          id="file-upload"
+        />
+        <label htmlFor="file-upload" style={{ cursor: "inherit" }}>
+          {uploading ? (
+            <span>Uploading…</span>
+          ) : (
+            <>
+              <span style={{ display: "block", marginBottom: 4 }}>
+                Drop files here or <strong>click to browse</strong>
+              </span>
+              <span style={{ fontSize: "0.875rem", color: "#64748b" }}>
+                Images, videos, documents
+              </span>
+            </>
+          )}
+        </label>
+        {error && <p style={{ color: "#dc2626", marginTop: 8, fontSize: "0.875rem" }}>{error}</p>}
       </div>
     </>
   );

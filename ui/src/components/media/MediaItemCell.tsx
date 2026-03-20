@@ -17,9 +17,21 @@ function FallbackImage({
 }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return <span className={className.replace("media-cell__img", "media-cell__icon")}>{fallbackIcon}</span>;
+    return (
+      <span className={className.replace("media-cell__img", "media-cell__icon")}>
+        {fallbackIcon}
+      </span>
+    );
   }
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} onLoad={onLoad} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      onError={() => setFailed(true)}
+      onLoad={onLoad}
+    />
+  );
 }
 
 function VideoThumbnail({ item }: { item: { id: string; originalName: string } }) {
@@ -82,11 +94,21 @@ export function MediaItemCell({
         type="button"
         onClick={onCellClick}
         className={`media-cell__btn ${selectionMode ? "media-cell__btn--default" : ""}`}
-        style={{ cursor: selectionMode ? "default" : isViewable(item.mimeType) ? "pointer" : "default" }}
+        style={{
+          cursor: selectionMode ? "default" : isViewable(item.mimeType) ? "pointer" : "default",
+        }}
       >
         <div className="media-cell__inner">
           {showCheckbox && (
-            <div style={{ position: "absolute", top: 8, right: 8, zIndex: 2, opacity: selectionMode ? 1 : 0.6 }}>
+            <div
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 8,
+                zIndex: 2,
+                opacity: selectionMode ? 1 : 0.6,
+              }}
+            >
               <input
                 type="checkbox"
                 checked={selected}

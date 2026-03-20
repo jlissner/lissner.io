@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
+import { ActivityProvider, useActivity } from "./activity/ActivityProvider";
+import { GlobalActivityOverlay } from "./activity/GlobalActivityOverlay";
 import { HomePage } from "./components/HomePage";
 import { PeoplePage } from "./components/PeoplePage";
 import { ReviewPage } from "./components/ReviewPage";
@@ -9,13 +11,16 @@ import { UploadModal } from "./components/UploadModal";
 import { useAuth } from "./useAuth";
 import { NAV_ITEMS, pageToPath, pathToPage, getPersonIdFromSearch, type PageId } from "./nav";
 
-export default function App() {
-  const { authEnabled, user, loading, needsLogin, logout, refresh } = useAuth();
+function AuthenticatedApp() {
+  const { authEnabled, user, logout } = useAuth();
+  const activity = useActivity();
+  const s3Config = activity
+    ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
+    : null;
   const [page, setPage] = useState<PageId>(() => pathToPage(window.location.pathname));
   const [personFilter, setPersonFilter] = useState<number | null>(() => getPersonIdFromSearch());
   const [personFilterName, setPersonFilterName] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [s3Config, setS3Config] = useState<{ configured: boolean; missingVars: string[] } | null>(null);
   const [s3AlertDismissed, setS3AlertDismissed] = useState(false);
 
   useEffect(() => {
@@ -25,13 +30,6 @@ export default function App() {
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/backup/config")
-      .then((r) => r.json())
-      .then(setS3Config)
-      .catch(() => setS3Config({ configured: false, missingVars: [] }));
   }, []);
 
   const navigateTo = useCallback((pageId: PageId, search?: string) => {
@@ -65,20 +63,9 @@ export default function App() {
     window.dispatchEvent(new CustomEvent("home-refresh"));
   }, []);
 
-  const showS3Alert =
-    s3Config &&
-    !s3Config.configured &&
-    !s3AlertDismissed;
+  const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
-
-  if (loading) {
-    return <div className="app app--loading">Loading…</div>;
-  }
-
-  if (needsLogin) {
-    return <LoginPage onSent={refresh} />;
-  }
 
   return (
     <div className="app">
@@ -86,7 +73,13 @@ export default function App() {
         <div className="app__alert" role="alert">
           <span>
             S3 sync not configured. Missing: {s3Config.missingVars.join(", ")}.{" "}
-            <a href="/backup" onClick={(e) => { e.preventDefault(); navigateTo("backup"); }}>
+            <a
+              href="/backup"
+              onClick={(e) => {
+                e.preventDefault();
+                navigateTo("backup");
+              }}
+            >
               Learn more
             </a>
           </span>
@@ -109,9 +102,7 @@ export default function App() {
             </p>
           </div>
           <div className="header__top-actions">
-            {page === "home" && (
-              <div id="home-header-actions" className="header__actions" />
-            )}
+            {page === "home" && <div id="home-header-actions" className="header__actions" />}
             <button
               type="button"
               className="btn btn--primary header__upload"
@@ -122,11 +113,7 @@ export default function App() {
             {authEnabled && user && (
               <div className="header__user">
                 <span className="header__user-email">{user.email}</span>
-                <button
-                  type="button"
-                  className="btn btn--ghost btn--sm"
-                  onClick={() => logout()}
-                >
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => logout()}>
                   Logout
                 </button>
               </div>
@@ -169,11 +156,27 @@ export default function App() {
         </main>
       </div>
       {uploadModalOpen && (
-        <UploadModal
-          onClose={() => setUploadModalOpen(false)}
-          onUploadComplete={fetchItems}
-        />
+        <UploadModal onClose={() => setUploadModalOpen(false)} onUploadComplete={fetchItems} />
       )}
+      <GlobalActivityOverlay />
     </div>
+  );
+}
+
+export default function App() {
+  const { loading, needsLogin, refresh } = useAuth();
+
+  if (loading) {
+    return <div className="app app--loading">Loading…</div>;
+  }
+
+  if (needsLogin) {
+    return <LoginPage onSent={refresh} />;
+  }
+
+  return (
+    <ActivityProvider>
+      <AuthenticatedApp />
+    </ActivityProvider>
   );
 }

@@ -1,0 +1,11 @@
+node_modules
+dist
+dist-types
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+data
+*.min.js
+*.min.css
+coverage
+.turbo

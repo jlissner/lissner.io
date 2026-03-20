@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useActivity } from "../activity/ActivityProvider";
 import type { MediaItem } from "./media/mediaUtils";
-import { useIndexPolling } from "./useIndexPolling";
 
 interface UseHomePageOptions {
   personFilter: number | null;
@@ -23,6 +23,8 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
   const loadingMoreRef = useRef(false);
   const PAGE_SIZE = 50;
 
+  const activity = useActivity();
+
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
@@ -42,8 +44,53 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     }
   }, [personFilter, sortBy]);
 
-  const { indexStatus, setIndexStatus, indexElapsed, indexProgress, indexPolling, startPolling } =
-    useIndexPolling(fetchItems);
+  const [indexStatus, setIndexStatus] = useState<string | null>(null);
+  const prevIndexInProgress = useRef(false);
+  /** True while either AI indexing or S3 sync is running — refetch when both are idle so indexed/backedUp flags refresh. */
+  const prevActivityBusy = useRef(false);
+
+  const indexPolling = activity?.index.inProgress ?? false;
+  const indexElapsed = activity?.index.elapsedSeconds ?? null;
+  const indexProgress =
+    activity && activity.index.progressTotal > 0
+      ? {
+          processed: activity.index.progressProcessed,
+          total: activity.index.progressTotal,
+        }
+      : null;
+
+  useEffect(() => {
+    const ip = activity?.index.inProgress ?? false;
+    if (prevIndexInProgress.current && !ip && activity) {
+      if (activity.index.lastError) {
+        setIndexStatus(activity.index.lastError);
+      } else if (activity.index.lastResult) {
+        const r = activity.index.lastResult;
+        setIndexStatus(
+          `Indexed ${r.indexed} files${r.skipped > 0 ? `, ${r.skipped} already indexed` : ""}.`
+        );
+      }
+    }
+    prevIndexInProgress.current = ip;
+  }, [activity]);
+
+  useEffect(() => {
+    if (!activity) {
+      prevActivityBusy.current = false;
+      return;
+    }
+    const indexBusy = activity.index.inProgress;
+    const syncBusy = activity.sync.configured && activity.sync.inProgress;
+    const busy = indexBusy || syncBusy;
+    if (prevActivityBusy.current && !busy) {
+      void fetchItems();
+    }
+    prevActivityBusy.current = busy;
+  }, [activity, fetchItems]);
+
+  const startPolling = useCallback(() => {
+    setIndexStatus("Indexing…");
+  }, []);
 
   const loadMore = useCallback(async () => {
     if (loadingMoreRef.current || items.length >= total) return;
@@ -52,7 +99,11 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     const container = scrollContainerRef.current;
     const scrollTop = container?.scrollTop ?? 0;
     try {
-      const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(items.length), sortBy });
+      const params = new URLSearchParams({
+        limit: String(PAGE_SIZE),
+        offset: String(items.length),
+        sortBy,
+      });
       if (personFilter != null) params.set("personId", String(personFilter));
       const res = await fetch(`/api/media?${params}`);
       if (res.ok) {
@@ -81,7 +132,9 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     const container = scrollContainerRef.current;
     if (!el || !container) return;
     const observer = new IntersectionObserver(
-      (entries) => { if (entries[0]?.isIntersecting) loadMore(); },
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
       { root: container, rootMargin: "200px", threshold: 0 }
     );
     observer.observe(el);
@@ -115,43 +168,58 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     }
   }, [searchQuery, setIndexStatus]);
 
-  const handleDelete = useCallback(async (id: string) => {
-    const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Delete failed");
-    await fetchItems();
-    if (searchResults) setSearchResults((prev) => prev?.filter((i) => i.id !== id) ?? null);
-  }, [fetchItems, searchResults]);
-
-  const handleBulkDelete = useCallback(async (ids: string[]) => {
-    for (const id of ids) {
+  const handleDelete = useCallback(
+    async (id: string) => {
       const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Delete failed");
-    }
-    await fetchItems();
-    if (searchResults) setSearchResults((prev) => prev?.filter((i) => !ids.includes(i.id)) ?? null);
-  }, [fetchItems, searchResults]);
+      await fetchItems();
+      if (searchResults) setSearchResults((prev) => prev?.filter((i) => i.id !== id) ?? null);
+    },
+    [fetchItems, searchResults]
+  );
 
-  const handleBulkIndex = useCallback(async (ids: string[]) => {
-    const res = await fetch("/api/search/index?force=true", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ mediaIds: ids }),
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Index failed");
-    startPolling();
-  }, [startPolling]);
+  const handleBulkDelete = useCallback(
+    async (ids: string[]) => {
+      for (const id of ids) {
+        const res = await fetch(`/api/media/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Delete failed");
+      }
+      await fetchItems();
+      if (searchResults)
+        setSearchResults((prev) => prev?.filter((i) => !ids.includes(i.id)) ?? null);
+    },
+    [fetchItems, searchResults]
+  );
 
-  const handleIndex = useCallback(async (force = false) => {
-    setIndexStatus(null);
-    try {
-      const res = await fetch(`/api/search/index${force ? "?force=true" : ""}`, { method: "POST" });
-      const data = await res.json();
-      if (res.ok && data.started) startPolling();
-      else setIndexStatus(data.error || "Indexing failed");
-    } catch {
-      setIndexStatus("Indexing failed");
-    }
-  }, [startPolling, setIndexStatus]);
+  const handleBulkIndex = useCallback(
+    async (ids: string[]) => {
+      const res = await fetch("/api/search/index?force=true", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mediaIds: ids }),
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "Index failed");
+      startPolling();
+    },
+    [startPolling]
+  );
+
+  const handleIndex = useCallback(
+    async (force = false) => {
+      setIndexStatus(null);
+      try {
+        const res = await fetch(`/api/search/index${force ? "?force=true" : ""}`, {
+          method: "POST",
+        });
+        const data = await res.json();
+        if (res.ok && data.started) startPolling();
+        else setIndexStatus(data.error || "Indexing failed");
+      } catch {
+        setIndexStatus("Indexing failed");
+      }
+    },
+    [startPolling, setIndexStatus]
+  );
 
   const displayItems = searchResults ?? items;
   const isSearchMode = searchResults !== null;
@@ -171,10 +239,13 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     });
   }, []);
 
-  const handleCheckboxClick = useCallback((id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    toggleSelect(id, e);
-  }, [toggleSelect]);
+  const handleCheckboxClick = useCallback(
+    (id: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      toggleSelect(id, e);
+    },
+    [toggleSelect]
+  );
 
   const toggleSelectAllForDay = useCallback((groupItems: MediaItem[]) => {
     const ids = new Set(groupItems.map((i) => i.id));

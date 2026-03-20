@@ -9,11 +9,7 @@ interface HomePageProps {
   onClearPersonFilter: () => void;
 }
 
-export function HomePage({
-  personFilter,
-  personFilterName,
-  onClearPersonFilter,
-}: HomePageProps) {
+export function HomePage({ personFilter, personFilterName, onClearPersonFilter }: HomePageProps) {
   const {
     displayItems,
     loading,
@@ -102,11 +98,7 @@ export function HomePage({
         {!isSearchMode && items.length < total && total > 0 && (
           <div ref={sentinelRef} className="u-flex-shrink-0" style={{ height: 20 }} aria-hidden />
         )}
-        {loadingMore && !isSearchMode && (
-          <p className="empty">
-            Loading more…
-          </p>
-        )}
+        {loadingMore && !isSearchMode && <p className="empty">Loading more…</p>}
       </div>
     </>
   );

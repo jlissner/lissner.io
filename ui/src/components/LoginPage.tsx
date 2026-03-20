@@ -69,16 +69,10 @@ export function LoginPage({ onSent }: LoginPageProps) {
             className="form__input"
             autoComplete="email"
           />
-          <button
-            type="submit"
-            className="btn btn--primary"
-            disabled={status === "sending"}
-          >
+          <button type="submit" className="btn btn--primary" disabled={status === "sending"}>
             {status === "sending" ? "Sending…" : "Send magic link"}
           </button>
-          {status === "error" && (
-            <p className="login-page__error">{error}</p>
-          )}
+          {status === "error" && <p className="login-page__error">{error}</p>}
         </form>
       )}
     </div>

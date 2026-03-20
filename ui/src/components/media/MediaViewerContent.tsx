@@ -41,7 +41,12 @@ export function MediaViewerContent({
     people,
     handleAssignFace,
     handleReassignFace,
-  } = useMediaViewerFaces({ mediaId: item.id, taggingMode, onUpdate, onTagChange: handleTagChange });
+  } = useMediaViewerFaces({
+    mediaId: item.id,
+    taggingMode,
+    onUpdate,
+    onTagChange: handleTagChange,
+  });
   const handleImageClick = useMediaViewerImageClick(
     imgRef,
     faces,
@@ -73,10 +78,7 @@ export function MediaViewerContent({
   } as const;
 
   return (
-    <div
-      onClick={(e) => e.stopPropagation()}
-      className="viewer-content"
-    >
+    <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       <div className="viewer-content__actions">
         {isImage(item.mimeType) && (
           <button
@@ -86,32 +88,56 @@ export function MediaViewerContent({
             {taggingMode ? "Exit tagging" : "Tagging mode"}
           </button>
         )}
-        <button onClick={onClose} style={btnStyle}>Close</button>
+        <button onClick={onClose} style={btnStyle}>
+          Close
+        </button>
       </div>
       <div className="viewer-content__body">
         <div className="viewer-content__media">
           <p className="viewer-content__filename">{item.originalName}</p>
           {isImage(item.mimeType) && (
-        <div style={{ position: "relative", display: "inline-block" }}>
-          <img
-            ref={imgRef}
-            src={previewUrl}
-            alt={item.originalName}
-            onClick={handleImageClick}
-            style={{ maxWidth: "100%", maxHeight: "85vh", objectFit: "contain", cursor: taggingMode ? "crosshair" : "default" }}
-          />
-          {taggingMode && (
-            <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0, pointerEvents: "none" }}>
-              <MediaViewerFaceOverlay imgRef={imgRef} faces={faces} assigningFace={assigningFace} />
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <img
+                ref={imgRef}
+                src={previewUrl}
+                alt={item.originalName}
+                onClick={handleImageClick}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "85vh",
+                  objectFit: "contain",
+                  cursor: taggingMode ? "crosshair" : "default",
+                }}
+              />
+              {taggingMode && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <MediaViewerFaceOverlay
+                    imgRef={imgRef}
+                    faces={faces}
+                    assigningFace={assigningFace}
+                  />
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
           {taggingMode && facesLoading && (
             <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.875rem" }}>Detecting faces…</p>
           )}
-              {assigningFace && (
-            <MediaViewerAssignModal people={people} onAssign={handleAssignFace} onCancel={() => setAssigningFace(null)} />
+          {assigningFace && (
+            <MediaViewerAssignModal
+              people={people}
+              onAssign={handleAssignFace}
+              onCancel={() => setAssigningFace(null)}
+            />
           )}
           {reassigningFace && (
             <MediaViewerReassignModal
@@ -121,10 +147,15 @@ export function MediaViewerContent({
               onCancel={() => setReassigningFace(null)}
             />
           )}
-              {isVideo(item.mimeType) && (
-            <video src={previewUrl} controls autoPlay style={{ maxWidth: "100%", maxHeight: "85vh" }} />
+          {isVideo(item.mimeType) && (
+            <video
+              src={previewUrl}
+              controls
+              autoPlay
+              style={{ maxWidth: "100%", maxHeight: "85vh" }}
+            />
           )}
-              {isText(item.mimeType) && (
+          {isText(item.mimeType) && (
             <pre
               style={{
                 backgroundColor: "#1e293b",
@@ -145,7 +176,13 @@ export function MediaViewerContent({
           {!isImage(item.mimeType) && !isVideo(item.mimeType) && !isText(item.mimeType) && (
             <p style={{ color: "#94a3b8" }}>
               Preview not available.{" "}
-              <a href={`/api/media/${item.id}`} download={item.originalName} style={{ color: "#60a5fa" }}>Download</a>
+              <a
+                href={`/api/media/${item.id}`}
+                download={item.originalName}
+                style={{ color: "#60a5fa" }}
+              >
+                Download
+              </a>
             </p>
           )}
         </div>

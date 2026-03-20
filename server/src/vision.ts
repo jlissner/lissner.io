@@ -20,9 +20,7 @@ export async function describeImage(imagePath: string): Promise<string> {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(
-      `Vision model failed. Run: ollama pull ${VISION_MODEL}. ${err}`
-    );
+    throw new Error(`Vision model failed. Run: ollama pull ${VISION_MODEL}. ${err}`);
   }
 
   const data = (await res.json()) as { response: string };

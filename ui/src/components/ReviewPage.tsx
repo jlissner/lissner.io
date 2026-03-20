@@ -72,7 +72,12 @@ export function ReviewPage({ onUpdate }: { onUpdate: () => void }) {
 
   const handleDiscard = useCallback(async () => {
     if (!current) return;
-    if (!confirm("Remove this face tag from the photo? If this is the only photo of this person, they will have 0 photos.")) return;
+    if (
+      !confirm(
+        "Remove this face tag from the photo? If this is the only photo of this person, they will have 0 photos."
+      )
+    )
+      return;
     const res = await fetch(`/api/media/${current.mediaId}/people/${current.personId}`, {
       method: "DELETE",
     });
@@ -135,7 +140,10 @@ export function ReviewPage({ onUpdate }: { onUpdate: () => void }) {
           <p className="u-mt-2 u-text-muted u-text-sm">
             Face tagged as <strong>{personName}</strong>
             {confPct != null && (
-              <span> ({confPct}% match{current.isSingleFace ? ", new face" : ""})</span>
+              <span>
+                {" "}
+                ({confPct}% match{current.isSingleFace ? ", new face" : ""})
+              </span>
             )}
           </p>
         </div>
@@ -147,7 +155,9 @@ export function ReviewPage({ onUpdate }: { onUpdate: () => void }) {
             </button>
             {current.otherPeopleInPhoto && current.otherPeopleInPhoto.length > 0 && (
               <>
-                <p className="u-text-sm u-text-muted u-mt-2 u-mb-1">Or same as someone already in photo:</p>
+                <p className="u-text-sm u-text-muted u-mt-2 u-mb-1">
+                  Or same as someone already in photo:
+                </p>
                 {current.otherPeopleInPhoto.map(({ id, name }) => (
                   <button
                     key={id}

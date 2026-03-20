@@ -51,12 +51,15 @@ export function PeopleSidebar({
       </div>
       <div className="sidebar__list">
         {people.length === 0 ? (
-          <p className="empty">
-            No people yet. Add a person or index your photos to detect faces.
-          </p>
+          <p className="empty">No people yet. Add a person or index your photos to detect faces.</p>
         ) : (
           people.map((p) => (
-            <div key={p.id} className="u-flex" style={{ position: "relative" }} ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}>
+            <div
+              key={p.id}
+              className="u-flex"
+              style={{ position: "relative" }}
+              ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}
+            >
               <div
                 role="button"
                 tabIndex={0}
@@ -73,7 +76,9 @@ export function PeopleSidebar({
                   }
                 }}
               >
-                <div className={`person-row__avatar ${!p.name.startsWith("Person ") ? "person-row__avatar--initial" : ""}`}>
+                <div
+                  className={`person-row__avatar ${!p.name.startsWith("Person ") ? "person-row__avatar--initial" : ""}`}
+                >
                   {p.name.startsWith("Person ") ? (
                     <span>👤</span>
                   ) : (
@@ -83,7 +88,7 @@ export function PeopleSidebar({
                 <div className="person-row__info">
                   <div className="person-row__name">{p.name}</div>
                   <div className="person-row__count">
-                    {(p.photoCount ?? 0)} {(p.photoCount ?? 0) === 1 ? "photo" : "photos"}
+                    {p.photoCount ?? 0} {(p.photoCount ?? 0) === 1 ? "photo" : "photos"}
                   </div>
                 </div>
                 <button
@@ -101,18 +106,35 @@ export function PeopleSidebar({
               </div>
               {menuOpen === p.id && (
                 <div className="dropdown">
-                  <button type="button" className="dropdown__item" onClick={() => { onEdit(p); onMenuToggle(null); }}>
+                  <button
+                    type="button"
+                    className="dropdown__item"
+                    onClick={() => {
+                      onEdit(p);
+                      onMenuToggle(null);
+                    }}
+                  >
                     Edit name
                   </button>
                   {people.length > 1 && (
-                    <button type="button" className="dropdown__item" onClick={() => { onMerge(p); onMenuToggle(null); }}>
+                    <button
+                      type="button"
+                      className="dropdown__item"
+                      onClick={() => {
+                        onMerge(p);
+                        onMenuToggle(null);
+                      }}
+                    >
                       Merge into another person
                     </button>
                   )}
                   <button
                     type="button"
                     className="dropdown__item dropdown__item--danger"
-                    onClick={() => { onDelete(p); onMenuToggle(null); }}
+                    onClick={() => {
+                      onDelete(p);
+                      onMenuToggle(null);
+                    }}
                   >
                     Delete person
                   </button>

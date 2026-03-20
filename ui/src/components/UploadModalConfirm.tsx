@@ -26,15 +26,26 @@ export function UploadModalConfirm({
   return (
     <>
       <p className="modal__body u-mb-4 u-text-muted">
-        You are about to upload <strong>{fileCount}</strong> {fileCount === 1 ? "file" : "files"} ({formatBytes(totalBytes)} total).
+        You are about to upload <strong>{fileCount}</strong> {fileCount === 1 ? "file" : "files"} (
+        {formatBytes(totalBytes)} total).
       </p>
       <p className="u-mb-5 u-text-muted u-text-sm">Would you like to continue?</p>
       {error && <p className="u-text-danger u-mb-4 u-text-sm">{error}</p>}
       <div className="modal__actions">
-        <button type="button" className="btn btn--secondary" onClick={onChooseDifferent} disabled={uploading}>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={onChooseDifferent}
+          disabled={uploading}
+        >
           Choose different files
         </button>
-        <button type="button" className="btn btn--secondary" onClick={onCancel} disabled={uploading}>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={onCancel}
+          disabled={uploading}
+        >
           Cancel
         </button>
         <button type="button" className="btn btn--primary" onClick={onConfirm} disabled={uploading}>

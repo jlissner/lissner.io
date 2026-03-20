@@ -1,23 +1,21 @@
 import { readFile } from "fs/promises";
 import path from "path";
-import { fileURLToPath } from "url";
 import { execFile } from "child_process";
 import { promisify } from "util";
 import exifr from "exifr";
 
 const execFileAsync = promisify(execFile);
-import * as db from "./db.js";
-import { getEmbedding } from "./embeddings.js";
-import { setIndexProgress } from "./index-job.js";
-import { describeImage } from "./vision.js";
+import * as db from "../db/media.js";
+import { getEmbedding } from "../embeddings.js";
 import {
-  extractFacesFromImage,
-  clusterAllFaces,
-  type FaceInImage,
-} from "./faces.js";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const mediaDir = path.join(__dirname, "../../data/media");
+  beginBackgroundIndex,
+  endBackgroundIndex,
+  isBulkIndexJobRunning,
+  setIndexProgress,
+} from "./job-store.js";
+import { describeImage } from "../vision.js";
+import { extractFacesFromImage, clusterAllFaces, type FaceInImage } from "../faces.js";
+import { mediaDir } from "../config/paths.js";
 
 const TEXT_MIMES = new Set([
   "text/plain",
@@ -56,13 +54,13 @@ async function getTextForItem(
     try {
       const filePath = path.join(mediaDir, item.filename);
       const description = await describeImage(filePath);
-      let text = `Image: ${item.originalName}. ${description || ""}`;
+      const base = `Image: ${item.originalName}. ${description || ""}`;
       const personIds = imagePersonIds?.get(item.id);
-      if (personIds?.length) {
-        const labels = personIds.map(formatPersonLabel);
-        text += ` People in photo: ${labels.join(", ")}.`;
-      }
-      return text.trim();
+      const suffix =
+        personIds?.length && personIds.length > 0
+          ? ` People in photo: ${personIds.map(formatPersonLabel).join(", ")}.`
+          : "";
+      return `${base}${suffix}`.trim();
     } catch (err) {
       console.error(`Image description failed for ${item.originalName}:`, err);
       return `Image: ${item.originalName}`;
@@ -84,7 +82,11 @@ async function extractExifData(filePath: string): Promise<ExifData> {
     });
     const date = tags?.DateTimeOriginal ?? tags?.CreateDate ?? tags?.ModifyDate;
     const dateTaken =
-      date instanceof Date ? date.toISOString() : typeof date === "string" ? new Date(date).toISOString() : null;
+      date instanceof Date
+        ? date.toISOString()
+        : typeof date === "string"
+          ? new Date(date).toISOString()
+          : null;
     const lat = typeof tags?.latitude === "number" ? tags.latitude : null;
     const lng = typeof tags?.longitude === "number" ? tags.longitude : null;
     return { dateTaken, latitude: lat, longitude: lng };
@@ -97,27 +99,26 @@ const FFPROBE_NOT_FOUND =
   "ffprobe not found. Install ffmpeg to extract video metadata (e.g. apt install ffmpeg).";
 
 async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: string | null }> {
-  let stdout: string;
-  try {
-    const result = await execFileAsync("ffprobe", [
-      "-v",
-      "quiet",
-      "-print_format",
-      "json",
-      "-show_format",
-      "-show_streams",
-      filePath,
-    ]);
-    stdout = result.stdout;
-  } catch (err) {
-    const code = (err as NodeJS.ErrnoException)?.code;
-    if (code === "ENOENT") {
-      throw new Error(FFPROBE_NOT_FOUND);
+  const stdout: string = await (async () => {
+    try {
+      const result = await execFileAsync("ffprobe", [
+        "-v",
+        "quiet",
+        "-print_format",
+        "json",
+        "-show_format",
+        "-show_streams",
+        filePath,
+      ]);
+      return result.stdout;
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (code === "ENOENT") {
+        throw new Error(FFPROBE_NOT_FOUND);
+      }
+      throw new Error(`ffprobe failed: ${err instanceof Error ? err.message : String(err)}`);
     }
-    throw new Error(
-      `ffprobe failed: ${err instanceof Error ? err.message : String(err)}`
-    );
-  }
+  })();
   const data = JSON.parse(stdout) as {
     format?: { tags?: { creation_time?: string } };
     streams?: Array<{ tags?: { creation_time?: string } }>;
@@ -131,26 +132,32 @@ async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: stri
 }
 
 export async function indexMediaItem(item: MediaItem): Promise<boolean> {
-  const filePath = path.join(mediaDir, item.filename);
-  if (item.mimeType.startsWith("image/")) {
-    try {
-      const exif = await extractExifData(filePath);
-      if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
-      if (exif.latitude != null && exif.longitude != null) {
-        db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+  const trackBackground = !isBulkIndexJobRunning();
+  if (trackBackground) beginBackgroundIndex();
+  try {
+    const filePath = path.join(mediaDir, item.filename);
+    if (item.mimeType.startsWith("image/")) {
+      try {
+        const exif = await extractExifData(filePath);
+        if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
+        if (exif.latitude != null && exif.longitude != null) {
+          db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+        }
+      } catch {
+        // ignore
       }
-    } catch {
-      // ignore
+    } else if (item.mimeType.startsWith("video/")) {
+      const meta = await extractVideoMetadata(filePath);
+      if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
     }
-  } else if (item.mimeType.startsWith("video/")) {
-    const meta = await extractVideoMetadata(filePath);
-    if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
+    const text = await getTextForItem(item);
+    if (!text.trim()) return false;
+    const embedding = await getEmbedding(text.slice(0, 8000));
+    db.upsertEmbedding(item.id, embedding);
+    return true;
+  } finally {
+    if (trackBackground) endBackgroundIndex();
   }
-  const text = await getTextForItem(item);
-  if (!text.trim()) return false;
-  const embedding = await getEmbedding(text.slice(0, 8000));
-  db.upsertEmbedding(item.id, embedding);
-  return true;
 }
 
 export async function indexMediaItems(
@@ -179,8 +186,11 @@ export async function indexMediaItems(
     db.setImagePeople(id, []);
   }
 
-  let imagePersonIds = new Map<string, number[]>();
-  const imagePersonEntries = new Map<string, Array<{ personId: number; box?: { x: number; y: number; width: number; height: number } }>>();
+  const imagePersonIds = new Map<string, number[]>();
+  const imagePersonEntries = new Map<
+    string,
+    Array<{ personId: number; box?: { x: number; y: number; width: number; height: number } }>
+  >();
 
   if (imageIds.length > 0) {
     const allFaces: FaceInImage[] = [];
@@ -216,32 +226,34 @@ export async function indexMediaItems(
       for (const [mediaId, entries] of entriesMap) {
         db.setImagePeople(mediaId, entries);
         imagePersonEntries.set(mediaId, entries);
-        imagePersonIds.set(mediaId, entries.map((e) => e.personId));
+        imagePersonIds.set(
+          mediaId,
+          entries.map((e) => e.personId)
+        );
       }
     }
   }
 
-  let indexed = 0;
-  let processed = 0;
+  const progress = { indexed: 0, processed: 0 };
 
   for (const item of toIndex) {
     try {
       const text = await getTextForItem(item, imagePersonIds);
       if (!text.trim()) {
-        processed++;
-        setIndexProgress(processed, toIndex.length);
+        progress.processed++;
+        setIndexProgress(progress.processed, toIndex.length);
         continue;
       }
       const embedding = await getEmbedding(text.slice(0, 8000));
       db.upsertEmbedding(item.id, embedding);
-      indexed++;
+      progress.indexed++;
     } catch (err) {
       console.error(`Failed to index ${item.originalName}:`, err);
     }
-    processed++;
-    setIndexProgress(processed, toIndex.length);
+    progress.processed++;
+    setIndexProgress(progress.processed, toIndex.length);
   }
 
-  const skipped = items.length - indexed;
-  return { indexed, skipped };
+  const skipped = items.length - progress.indexed;
+  return { indexed: progress.indexed, skipped };
 }

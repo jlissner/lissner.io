@@ -25,12 +25,22 @@ export function MediaListBulkActions({
           Download
         </button>
         {onDelete && (
-          <button type="button" className="btn btn--danger btn--sm" onClick={onDelete} disabled={deleting}>
+          <button
+            type="button"
+            className="btn btn--danger btn--sm"
+            onClick={onDelete}
+            disabled={deleting}
+          >
             {deleting ? "Deleting…" : "Delete"}
           </button>
         )}
         {onIndex && (
-          <button type="button" className="btn btn--secondary btn--sm" onClick={onIndex} disabled={indexing}>
+          <button
+            type="button"
+            className="btn btn--secondary btn--sm"
+            onClick={onIndex}
+            disabled={indexing}
+          >
             {indexing ? "Indexing…" : "Index for AI"}
           </button>
         )}

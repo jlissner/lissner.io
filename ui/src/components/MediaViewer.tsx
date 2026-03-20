@@ -25,7 +25,7 @@ export function MediaViewer({ item, onClose, onUpdate }: MediaViewerProps) {
       setTextContent(null);
       setTextError(null);
     }
-  }, [item?.id, item?.mimeType]);
+  }, [item]);
 
   if (!item) return null;
 

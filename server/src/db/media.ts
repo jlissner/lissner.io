@@ -1,9 +1,5 @@
 import Database from "better-sqlite3";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const dbPath = path.join(__dirname, "../../data/db/media.db");
+import { dbPath } from "../config/paths.js";
 
 const db = new Database(dbPath);
 
@@ -42,14 +38,18 @@ db.exec(`
   )
 `);
 
-const imagePeopleCols = (db.prepare("PRAGMA table_info(image_people)").all() as Array<{ name: string }>).map((c) => c.name);
+const imagePeopleCols = (
+  db.prepare("PRAGMA table_info(image_people)").all() as Array<{ name: string }>
+).map((c) => c.name);
 for (const col of ["x", "y", "width", "height", "confidence"]) {
   if (!imagePeopleCols.includes(col)) {
     db.exec(`ALTER TABLE image_people ADD COLUMN ${col} REAL`);
   }
 }
 
-const mediaCols = (db.prepare("PRAGMA table_info(media)").all() as Array<{ name: string }>).map((c) => c.name);
+const mediaCols = (db.prepare("PRAGMA table_info(media)").all() as Array<{ name: string }>).map(
+  (c) => c.name
+);
 if (!mediaCols.includes("date_taken")) {
   db.exec("ALTER TABLE media ADD COLUMN date_taken TEXT");
 }
@@ -106,9 +106,7 @@ export function getDataExplorerRows(
   offset: number
 ): Record<string, unknown>[] {
   validateTableName(tableName);
-  const stmt = db.prepare(
-    `SELECT * FROM ${tableName} LIMIT ? OFFSET ?`
-  );
+  const stmt = db.prepare(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`);
   return stmt.all(Math.min(Math.max(1, limit), 500), Math.max(0, offset)) as Record<
     string,
     unknown
@@ -121,13 +119,12 @@ export function getDataExplorerRowCount(tableName: string): number {
   return row.c;
 }
 
-export function insertDataExplorerRow(
-  tableName: string,
-  data: Record<string, unknown>
-): number {
+export function insertDataExplorerRow(tableName: string, data: Record<string, unknown>): number {
   validateTableName(tableName);
   const schema = getDataExplorerTableSchema(tableName);
-  const cols = schema.filter((c) => c.name in data && data[c.name] !== undefined && data[c.name] !== "");
+  const cols = schema.filter(
+    (c) => c.name in data && data[c.name] !== undefined && data[c.name] !== ""
+  );
   if (cols.length === 0) throw new Error("No columns to insert");
   const colNames = cols.map((c) => c.name);
   const placeholders = colNames.map(() => "?").join(", ");
@@ -149,9 +146,7 @@ export function updateDataExplorerRow(
   for (const c of pkCols) {
     if (!(c in pk)) throw new Error(`Primary key ${c} required`);
   }
-  const setCols = schema
-    .filter((c) => !c.pk && c.name in data)
-    .map((c) => c.name);
+  const setCols = schema.filter((c) => !c.pk && c.name in data).map((c) => c.name);
   if (setCols.length === 0) throw new Error("No columns to update");
   const setClause = setCols.map((c) => `${c} = ?`).join(", ");
   const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
@@ -161,10 +156,7 @@ export function updateDataExplorerRow(
   return result.changes;
 }
 
-export function deleteDataExplorerRow(
-  tableName: string,
-  pk: Record<string, unknown>
-): number {
+export function deleteDataExplorerRow(tableName: string, pk: Record<string, unknown>): number {
   validateTableName(tableName);
   const schema = getDataExplorerTableSchema(tableName);
   const pkCols = schema.filter((c) => c.pk).map((c) => c.name);
@@ -181,7 +173,9 @@ export function deleteDataExplorerRow(
 
 export function runSql(
   query: string
-): { type: "select"; columns: string[]; rows: Record<string, unknown>[] } | { type: "write"; changes: number; lastInsertRowid: number } {
+):
+  | { type: "select"; columns: string[]; rows: Record<string, unknown>[] }
+  | { type: "write"; changes: number; lastInsertRowid: number } {
   const trimmed = query.trim();
   if (!trimmed) {
     throw new Error("Empty query");
@@ -194,15 +188,21 @@ export function runSql(
     return { type: "select", columns, rows };
   }
   const result = stmt.run();
-  return { type: "write", changes: result.changes, lastInsertRowid: Number(result.lastInsertRowid) };
+  return {
+    type: "write",
+    changes: result.changes,
+    lastInsertRowid: Number(result.lastInsertRowid),
+  };
 }
 
 export function migrateNullOwnersToDefault(getDefaultOwnerId: () => number | null): void {
   const defaultOwnerId = getDefaultOwnerId();
   if (defaultOwnerId) {
-    const result = db.prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL").run(defaultOwnerId);
+    const result = db
+      .prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL")
+      .run(defaultOwnerId);
     if (result.changes > 0) {
-      console.log(`[db] Assigned ${result.changes} media with null owner to default owner`);
+      console.warn(`[db] Assigned ${result.changes} media with null owner to default owner`);
     }
   }
 }
@@ -267,9 +267,9 @@ export function markMediaBackedUp(mediaId: string): void {
 export function markMediaBackedUpByFilenames(filenames: string[]): void {
   if (filenames.length === 0) return;
   const placeholders = filenames.map(() => "?").join(", ");
-  db.prepare(`UPDATE media SET backed_up_at = datetime('now') WHERE filename IN (${placeholders})`).run(
-    ...filenames
-  );
+  db.prepare(
+    `UPDATE media SET backed_up_at = datetime('now') WHERE filename IN (${placeholders})`
+  ).run(...filenames);
 }
 
 export function setMediaLocation(
@@ -312,9 +312,8 @@ export type MediaSortBy = "uploaded" | "taken";
 
 function getMediaOrderBy(sortBy: MediaSortBy, prefix = ""): string {
   const p = prefix ? `${prefix}.` : "";
-  const dateExpr = sortBy === "taken"
-    ? `COALESCE(${p}date_taken, ${p}uploaded_at)`
-    : `${p}uploaded_at`;
+  const dateExpr =
+    sortBy === "taken" ? `COALESCE(${p}date_taken, ${p}uploaded_at)` : `${p}uploaded_at`;
   return `${dateExpr} DESC, ${p}filename ASC`;
 }
 
@@ -399,9 +398,9 @@ export function getMediaById(id: string) {
 }
 
 export function getMediaOwnerId(mediaId: string): number | null {
-  const row = db
-    .prepare("SELECT owner_id FROM media WHERE id = ?")
-    .get(mediaId) as { owner_id: number | null } | undefined;
+  const row = db.prepare("SELECT owner_id FROM media WHERE id = ?").get(mediaId) as
+    | { owner_id: number | null }
+    | undefined;
   return row?.owner_id ?? null;
 }
 
@@ -414,9 +413,7 @@ export function upsertEmbedding(mediaId: string, embedding: number[]) {
 
 export function getEmbeddings() {
   return db
-    .prepare(
-      `SELECT media_id as mediaId, embedding, indexed_at as indexedAt FROM embeddings`
-    )
+    .prepare(`SELECT media_id as mediaId, embedding, indexed_at as indexedAt FROM embeddings`)
     .all() as Array<{ mediaId: string; embedding: string; indexedAt: string }>;
 }
 
@@ -463,9 +460,9 @@ export function setImagePeople(
 }
 
 export function getPersonName(personId: number): string | null {
-  const row = db
-    .prepare("SELECT name FROM person_names WHERE person_id = ?")
-    .get(personId) as { name: string } | undefined;
+  const row = db.prepare("SELECT name FROM person_names WHERE person_id = ?").get(personId) as
+    | { name: string }
+    | undefined;
   return row?.name ?? null;
 }
 
@@ -476,19 +473,20 @@ export function setPersonName(personId: number, name: string) {
 }
 
 export function getPersonNames(): Map<number, string> {
-  const rows = db
-    .prepare("SELECT person_id, name FROM person_names")
-    .all() as Array<{ person_id: number; name: string }>;
+  const rows = db.prepare("SELECT person_id, name FROM person_names").all() as Array<{
+    person_id: number;
+    name: string;
+  }>;
   return new Map(rows.map((r) => [r.person_id, r.name]));
 }
 
 export function getAllPersonIds(): number[] {
-  const fromImagePeople = db
-    .prepare("SELECT DISTINCT person_id FROM image_people")
-    .all() as Array<{ person_id: number }>;
-  const fromNames = db
-    .prepare("SELECT person_id FROM person_names")
-    .all() as Array<{ person_id: number }>;
+  const fromImagePeople = db.prepare("SELECT DISTINCT person_id FROM image_people").all() as Array<{
+    person_id: number;
+  }>;
+  const fromNames = db.prepare("SELECT person_id FROM person_names").all() as Array<{
+    person_id: number;
+  }>;
   const ids = new Set([
     ...fromImagePeople.map((r) => r.person_id),
     ...fromNames.map((r) => r.person_id),
@@ -499,9 +497,7 @@ export function getAllPersonIds(): number[] {
 export function mergePeople(keepId: number, mergeFromId: number): void {
   if (keepId === mergeFromId) return;
   const rows = db
-    .prepare(
-      "SELECT media_id, x, y, width, height FROM image_people WHERE person_id = ?"
-    )
+    .prepare("SELECT media_id, x, y, width, height FROM image_people WHERE person_id = ?")
     .all(mergeFromId) as Array<{
     media_id: string;
     x: number | null;
@@ -546,32 +542,44 @@ export function reassignPersonInMedia(
 ): boolean {
   const row = db
     .prepare("SELECT x, y, width, height FROM image_people WHERE media_id = ? AND person_id = ?")
-    .get(mediaId, fromPersonId) as { x: number | null; y: number | null; width: number | null; height: number | null } | undefined;
+    .get(mediaId, fromPersonId) as
+    | { x: number | null; y: number | null; width: number | null; height: number | null }
+    | undefined;
   if (!row) return false;
-  db.prepare("DELETE FROM image_people WHERE media_id = ? AND person_id = ?").run(mediaId, fromPersonId);
+  db.prepare("DELETE FROM image_people WHERE media_id = ? AND person_id = ?").run(
+    mediaId,
+    fromPersonId
+  );
   db.prepare(
     "INSERT OR REPLACE INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run(mediaId, toPersonId, row.x, row.y, row.width, row.height, 1);
   return true;
 }
 
-export function createNewPersonForMedia(
-  mediaId: string,
-  fromPersonId: number
-): number | null {
+export function createNewPersonForMedia(mediaId: string, fromPersonId: number): number | null {
   const row = db
     .prepare("SELECT x, y, width, height FROM image_people WHERE media_id = ? AND person_id = ?")
-    .get(mediaId, fromPersonId) as { x: number | null; y: number | null; width: number | null; height: number | null } | undefined;
+    .get(mediaId, fromPersonId) as
+    | { x: number | null; y: number | null; width: number | null; height: number | null }
+    | undefined;
   if (!row) return null;
-  const maxRow = db.prepare(
-    "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
-  ).get() as { m: number | null };
+  const maxRow = db
+    .prepare(
+      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
+    )
+    .get() as { m: number | null };
   const newId = (maxRow?.m ?? 0) + 1;
-  db.prepare("DELETE FROM image_people WHERE media_id = ? AND person_id = ?").run(mediaId, fromPersonId);
+  db.prepare("DELETE FROM image_people WHERE media_id = ? AND person_id = ?").run(
+    mediaId,
+    fromPersonId
+  );
   db.prepare(
     "INSERT INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
   ).run(mediaId, newId, row.x, row.y, row.width, row.height, 1);
-  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(newId, `Person ${newId}`);
+  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(
+    newId,
+    `Person ${newId}`
+  );
   return newId;
 }
 
@@ -617,19 +625,26 @@ export function addPersonToMedia(
 }
 
 export function createNewPerson(): number {
-  const maxRow = db.prepare(
-    "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
-  ).get() as { m: number | null };
+  const maxRow = db
+    .prepare(
+      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
+    )
+    .get() as { m: number | null };
   const newId = (maxRow?.m ?? 0) + 1;
-  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(newId, `Person ${newId}`);
+  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(
+    newId,
+    `Person ${newId}`
+  );
   return newId;
 }
 
 /** Create a person with a name (no photo required). */
 export function createPerson(name: string): number {
-  const maxRow = db.prepare(
-    "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
-  ).get() as { m: number | null };
+  const maxRow = db
+    .prepare(
+      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
+    )
+    .get() as { m: number | null };
   const newId = (maxRow?.m ?? 0) + 1;
   db.prepare("INSERT INTO person_names (person_id, name) VALUES (?, ?)").run(newId, name.trim());
   return newId;

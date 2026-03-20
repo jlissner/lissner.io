@@ -73,24 +73,39 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   const totalBytes = pendingFiles.reduce((sum, f) => sum + f.size, 0);
 
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => { if (e.key === "Escape") handleCancel(); };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") handleCancel();
+    };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [handleCancel]);
 
   return (
     <div className="modal" onClick={handleCancel} role="presentation">
-      <div className="modal__content" style={{ minWidth: 360, maxHeight: "90vh", overflow: "auto" }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="upload-title">
-        <h2 id="upload-title" className="modal__title">Upload files</h2>
+      <div
+        className="modal__content"
+        style={{ minWidth: 360, maxHeight: "90vh", overflow: "auto" }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-title"
+      >
+        <h2 id="upload-title" className="modal__title">
+          Upload files
+        </h2>
         {!hasFiles ? (
-          <div
-            className="upload-zone"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-          >
-            <input type="file" multiple onChange={handleInputChange} className="u-sr-only" id="upload-modal-input" />
+          <div className="upload-zone" onDrop={handleDrop} onDragOver={handleDragOver}>
+            <input
+              type="file"
+              multiple
+              onChange={handleInputChange}
+              className="u-sr-only"
+              id="upload-modal-input"
+            />
             <label htmlFor="upload-modal-input" style={{ cursor: "pointer" }}>
-              <span className="upload-zone__title">Drop files here or <strong>click to browse</strong></span>
+              <span className="upload-zone__title">
+                Drop files here or <strong>click to browse</strong>
+              </span>
               <span className="upload-zone__hint">Images, videos, documents</span>
             </label>
           </div>

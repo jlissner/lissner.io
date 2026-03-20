@@ -1,5 +1,6 @@
-import { Router, Request, Response, NextFunction } from "express";
-import * as authDb from "../auth-db.js";
+import { Router } from "express";
+import type { NextFunction, Request, Response } from "express";
+import * as authDb from "../db/auth.js";
 import { sendMagicLink } from "../email.js";
 
 export const authRouter = Router();
@@ -18,9 +19,9 @@ function getBaseUrl(req: Request): string {
   if (env) return env.replace(/\/$/, "");
 
   const protocol = req.protocol ?? "http";
-  let host = typeof req.get === "function" ? req.get("host") : undefined;
+  const rawHost = typeof req.get === "function" ? req.get("host") : undefined;
   // In dev, API is at :3000 but UI is at :5173; redirect to the UI
-  if (host === "localhost:3000") host = "localhost:5173";
+  const host = rawHost === "localhost:3000" ? "localhost:5173" : rawHost;
   return `${protocol}://${host ?? "localhost:5173"}`;
 }
 

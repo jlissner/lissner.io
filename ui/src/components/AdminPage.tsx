@@ -62,7 +62,7 @@ export function AdminPage() {
     }
     if (pRes.ok) {
       const pData = await pRes.json();
-      setPeople(Array.isArray(pData) ? pData : pData.people ?? []);
+      setPeople(Array.isArray(pData) ? pData : (pData.people ?? []));
     }
     if (sqlAvailRes.ok) {
       const { available } = await sqlAvailRes.json();
@@ -186,7 +186,9 @@ export function AdminPage() {
           <select
             className="form__select"
             value={newPersonId === "" ? "" : newPersonId}
-            onChange={(e) => setNewPersonId(e.target.value === "" ? "" : parseInt(e.target.value, 10))}
+            onChange={(e) =>
+              setNewPersonId(e.target.value === "" ? "" : parseInt(e.target.value, 10))
+            }
             title="Assign existing person (optional)"
           >
             <option value="">No person</option>
@@ -204,7 +206,8 @@ export function AdminPage() {
         </form>
         <ul className="admin-page__list">
           {whitelist.map((w) => {
-            const assignedPerson = w.personId != null ? people.find((p) => p.id === w.personId) : null;
+            const assignedPerson =
+              w.personId != null ? people.find((p) => p.id === w.personId) : null;
             return (
               <li key={w.id} className="admin-page__list-item">
                 <span>{w.email}</span>
@@ -213,13 +216,13 @@ export function AdminPage() {
                   <span className="admin-page__meta">→ {assignedPerson.name}</span>
                 )}
                 <button
-                type="button"
-                className="btn btn--ghost btn--sm"
-                onClick={() => handleRemoveWhitelist(w.id)}
-              >
-                Remove
-              </button>
-            </li>
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  onClick={() => handleRemoveWhitelist(w.id)}
+                >
+                  Remove
+                </button>
+              </li>
             );
           })}
         </ul>
@@ -233,16 +236,15 @@ export function AdminPage() {
         </p>
         <ul className="admin-page__list">
           {users.map((u) => {
-            const identityPerson = u.personId != null ? people.find((p) => p.id === u.personId) : null;
+            const identityPerson =
+              u.personId != null ? people.find((p) => p.id === u.personId) : null;
             return (
               <li key={u.id} className="admin-page__list-item admin-page__list-item--stacked">
                 <div>
                   <span>{u.email}</span>
                   {u.isAdmin && <span className="admin-page__badge">admin</span>}
                   {identityPerson && (
-                    <span className="admin-page__meta">
-                      is {identityPerson.name}
-                    </span>
+                    <span className="admin-page__meta">is {identityPerson.name}</span>
                   )}
                 </div>
                 <div className="admin-page__people">
@@ -300,7 +302,8 @@ export function AdminPage() {
         <section className="admin-page__section">
           <h3>SQL Explorer</h3>
           <p className="admin-page__desc">
-            Run SQL directly against the database. Only available locally with SQL_EXPLORER_ENABLED=true.
+            Run SQL directly against the database. Only available locally with
+            SQL_EXPLORER_ENABLED=true.
           </p>
           <div className="admin-page__sql">
             <textarea
@@ -340,9 +343,7 @@ export function AdminPage() {
                         {sqlResult.rows.map((row, i) => (
                           <tr key={i}>
                             {sqlResult.columns.map((c) => (
-                              <td key={c}>
-                                {row[c] == null ? "NULL" : String(row[c])}
-                              </td>
+                              <td key={c}>{row[c] == null ? "NULL" : String(row[c])}</td>
                             ))}
                           </tr>
                         ))}
@@ -355,7 +356,8 @@ export function AdminPage() {
                 ) : (
                   <p className="admin-page__sql-meta">
                     {sqlResult.changes} row(s) affected
-                    {sqlResult.lastInsertRowid > 0 && `, last insert id: ${sqlResult.lastInsertRowid}`}
+                    {sqlResult.lastInsertRowid > 0 &&
+                      `, last insert id: ${sqlResult.lastInsertRowid}`}
                   </p>
                 )}
               </div>

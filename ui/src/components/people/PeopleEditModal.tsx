@@ -11,11 +11,25 @@ interface PeopleEditModalProps {
   onClose: () => void;
 }
 
-export function PeopleEditModal({ person, draft, onDraftChange, onSave, onClose }: PeopleEditModalProps) {
+export function PeopleEditModal({
+  person,
+  draft,
+  onDraftChange,
+  onSave,
+  onClose,
+}: PeopleEditModalProps) {
   return (
     <div className="modal" onClick={onClose} role="presentation">
-      <div className="modal__content" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="edit-person-title">
-        <h3 id="edit-person-title" className="modal__title">Edit name</h3>
+      <div
+        className="modal__content"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="edit-person-title"
+      >
+        <h3 id="edit-person-title" className="modal__title">
+          Edit name
+        </h3>
         <p className="modal__body u-text-muted u-text-sm u-mb-3">{person.name}</p>
         <input
           type="text"

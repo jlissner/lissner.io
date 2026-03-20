@@ -1,0 +1,40 @@
+---
+description: Use const only — never declare variables with let in JS/TS
+alwaysApply: true
+---
+
+# No `let` — use `const`
+
+- Do **not** use `let` to declare variables. Always use `const`.
+- Prefer immutable patterns: derive new values instead of reassigning.
+
+```typescript
+// ❌ BAD
+let count = 0;
+for (const x of items) {
+  count += 1;
+}
+
+// ✅ GOOD
+const count = items.length;
+// or
+const count = items.reduce((n) => n + 1, 0);
+```
+
+```typescript
+// ❌ BAD
+for (let i = 0; i < arr.length; i++) {
+  console.log(arr[i]);
+}
+
+// ✅ GOOD
+for (const [i, x] of arr.entries()) {
+  console.log(x);
+}
+// or
+arr.forEach((x, i) => { ... });
+```
+
+- If you truly need a mutable accumulator in a tight loop, wrap updates in a **block-scoped `const` object** (e.g. `const acc = { n: 0 }; acc.n += 1`) or use `reduce` / functional helpers instead of `let x = ...; x = ...`.
+
+This matches the preference: **no `let` bindings in application code.**

@@ -1,11 +1,7 @@
 import { useState } from "react";
 import { MediaViewer } from "./MediaViewer";
 import { MediaItemCell } from "./media/MediaItemCell";
-import {
-  groupItemsByDay,
-  isViewable,
-  type MediaItem,
-} from "./media/mediaUtils";
+import { groupItemsByDay, isViewable, type MediaItem } from "./media/mediaUtils";
 
 interface MediaListProps {
   items: MediaItem[];
@@ -54,44 +50,44 @@ export function MediaList({
         const allSelected = ids.length > 0 && selectedCount === ids.length;
         const someSelected = selectedCount > 0;
         return (
-        <section key={dateKey} className="section">
-          <label className="section__header">
-            <span className="section__title">{dateLabel}</span>
-            <input
-              type="checkbox"
-              className="section__checkbox"
-              checked={allSelected}
-              ref={(el) => {
-                if (el) el.indeterminate = someSelected && !allSelected;
-              }}
-              onChange={() => onToggleSelectAllForDay(groupItems)}
-              onClick={(e) => e.stopPropagation()}
-            />
-          </label>
-          <ul className={gridClass} style={{ listStyle: "none", padding: 0, margin: 0 }}>
-            {groupItems.map((item) => (
-              <MediaItemCell
-                key={item.id}
-                item={item}
-                selected={selected.has(item.id)}
-                selectionMode={selectionMode}
-                onCheckboxClick={onCheckboxClick}
-                onCellClick={() => {
-                  if (selectionMode) {
-                    setSelected((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(item.id)) next.delete(item.id);
-                      else next.add(item.id);
-                      return next;
-                    });
-                  } else if (isViewable(item.mimeType)) {
-                    setViewing(item);
-                  }
+          <section key={dateKey} className="section">
+            <label className="section__header">
+              <span className="section__title">{dateLabel}</span>
+              <input
+                type="checkbox"
+                className="section__checkbox"
+                checked={allSelected}
+                ref={(el) => {
+                  if (el) el.indeterminate = someSelected && !allSelected;
                 }}
+                onChange={() => onToggleSelectAllForDay(groupItems)}
+                onClick={(e) => e.stopPropagation()}
               />
-            ))}
-          </ul>
-        </section>
+            </label>
+            <ul className={gridClass} style={{ listStyle: "none", padding: 0, margin: 0 }}>
+              {groupItems.map((item) => (
+                <MediaItemCell
+                  key={item.id}
+                  item={item}
+                  selected={selected.has(item.id)}
+                  selectionMode={selectionMode}
+                  onCheckboxClick={onCheckboxClick}
+                  onCellClick={() => {
+                    if (selectionMode) {
+                      setSelected((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(item.id)) next.delete(item.id);
+                        else next.add(item.id);
+                        return next;
+                      });
+                    } else if (isViewable(item.mimeType)) {
+                      setViewing(item);
+                    }
+                  }}
+                />
+              ))}
+            </ul>
+          </section>
         );
       })}
     </>

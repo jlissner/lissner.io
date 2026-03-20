@@ -1,29 +1,31 @@
 import path from "path";
-import { fileURLToPath } from "url";
 import { createRequire } from "module";
 import { readFile } from "fs/promises";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
 
 // Load tfjs-node before Human (required for Node.js backend)
 await import("@tensorflow/tfjs-node");
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const Human = require("@vladmandic/human").default as new (config?: object) => {
-  tf: { node: { decodeImage: (buf: Buffer, channels?: number) => unknown }; dispose: (t: unknown) => void };
-  detect: (input: unknown) => Promise<{ face: Array<{ box: [number, number, number, number]; embedding?: number[] }> }>;
+  tf: {
+    node: { decodeImage: (buf: Buffer, channels?: number) => unknown };
+    dispose: (t: unknown) => void;
+  };
+  detect: (
+    input: unknown
+  ) => Promise<{ face: Array<{ box: [number, number, number, number]; embedding?: number[] }> }>;
   match: { similarity: (a: number[], b: number[]) => number };
 };
 
-let humanInstance: InstanceType<typeof Human> | null = null;
+const humanSingleton = { instance: null as InstanceType<typeof Human> | null };
 
 async function getHuman() {
-  if (humanInstance) return humanInstance;
+  if (humanSingleton.instance) return humanSingleton.instance;
   const humanEntry = require.resolve("@vladmandic/human");
   const humanPackageDir = path.join(path.dirname(humanEntry), "..");
   const modelPath = `file://${path.join(humanPackageDir, "models")}`;
-  humanInstance = new Human({
+  humanSingleton.instance = new Human({
     backend: "tensorflow",
     modelBasePath: modelPath,
     face: {
@@ -33,7 +35,7 @@ async function getHuman() {
       description: { enabled: true },
     },
   });
-  return humanInstance;
+  return humanSingleton.instance;
 }
 
 const FACE_SIMILARITY_THRESHOLD = 0.5;
@@ -42,49 +44,6 @@ export interface FaceInImage {
   imageId: string;
   descriptor: number[];
   box?: { x: number; y: number; width: number; height: number };
-}
-
-export interface PersonCluster {
-  id: number;
-  descriptor: number[];
-  faces: Array<{ imageId: string; box?: { x: number; y: number; width: number; height: number } }>;
-}
-
-function clusterFaces(
-  faces: FaceInImage[],
-  similarityFn: (a: number[], b: number[]) => number
-): PersonCluster[] {
-  const clusters: PersonCluster[] = [];
-
-  for (const face of faces) {
-    let bestCluster: PersonCluster | null = null;
-    let bestSim = FACE_SIMILARITY_THRESHOLD;
-
-    for (const cluster of clusters) {
-      const sim = similarityFn(face.descriptor, cluster.descriptor);
-      if (sim > bestSim) {
-        bestSim = sim;
-        bestCluster = cluster;
-      }
-    }
-
-    if (bestCluster) {
-      bestCluster.faces.push({ imageId: face.imageId, box: face.box });
-      const n = bestCluster.faces.length;
-      for (let i = 0; i < bestCluster.descriptor.length; i++) {
-        bestCluster.descriptor[i] =
-          (bestCluster.descriptor[i] * (n - 1) + face.descriptor[i]) / n;
-      }
-    } else {
-      clusters.push({
-        id: clusters.length + 1,
-        descriptor: [...face.descriptor],
-        faces: [{ imageId: face.imageId, box: face.box }],
-      });
-    }
-  }
-
-  return clusters;
 }
 
 export async function extractFacesFromImage(
@@ -131,28 +90,30 @@ function clusterFacesWithConfidence(
   const clusters: Array<{ id: number; descriptor: number[]; faces: ClusterFace[] }> = [];
 
   for (const face of faces) {
-    let bestCluster: (typeof clusters)[0] | null = null;
-    let bestSim = FACE_SIMILARITY_THRESHOLD;
+    const match = {
+      bestCluster: null as (typeof clusters)[0] | null,
+      bestSim: FACE_SIMILARITY_THRESHOLD,
+    };
 
     for (const cluster of clusters) {
       const sim = similarityFn(face.descriptor, cluster.descriptor);
-      if (sim > bestSim) {
-        bestSim = sim;
-        bestCluster = cluster;
+      if (sim > match.bestSim) {
+        match.bestSim = sim;
+        match.bestCluster = cluster;
       }
     }
 
-    if (bestCluster) {
+    if (match.bestCluster) {
+      const bestCluster = match.bestCluster;
       bestCluster.faces.push({
         imageId: face.imageId,
         box: face.box,
-        confidence: bestSim,
+        confidence: match.bestSim,
       });
       const n = bestCluster.faces.length;
-      for (let i = 0; i < bestCluster.descriptor.length; i++) {
-        bestCluster.descriptor[i] =
-          (bestCluster.descriptor[i] * (n - 1) + face.descriptor[i]) / n;
-      }
+      bestCluster.descriptor.forEach((_, i) => {
+        bestCluster.descriptor[i] = (bestCluster.descriptor[i] * (n - 1) + face.descriptor[i]!) / n;
+      });
     } else {
       clusters.push({
         id: clusters.length + 1,

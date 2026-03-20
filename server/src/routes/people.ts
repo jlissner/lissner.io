@@ -1,5 +1,5 @@
 import { Router } from "express";
-import * as db from "../db.js";
+import * as db from "../db/media.js";
 
 export const peopleRouter = Router();
 
@@ -23,10 +23,7 @@ peopleRouter.get("/:id/media", (req, res) => {
     res.status(400).json({ error: "Invalid person ID" });
     return;
   }
-  const limit = Math.min(
-    Math.max(1, parseInt(req.query.limit as string, 10) || 100),
-    500
-  );
+  const limit = Math.min(Math.max(1, parseInt(req.query.limit as string, 10) || 100), 500);
   const media = db.getMediaForPerson(id, limit);
   res.json(
     media.map((m) => ({

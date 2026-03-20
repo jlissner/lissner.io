@@ -56,14 +56,18 @@ export function usePeoplePage(onUpdate?: () => void) {
   const handleReassign = useCallback(
     async (mediaId: string, assignTo: number | "new") => {
       if (!selectedId) return;
-      const url = assignTo === "new"
-        ? `/api/media/${mediaId}/people/${selectedId}/reassign-new`
-        : `/api/media/${mediaId}/people/${selectedId}`;
-      const opts = assignTo === "new" ? { method: "POST" } : {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignTo }),
-      };
+      const url =
+        assignTo === "new"
+          ? `/api/media/${mediaId}/people/${selectedId}/reassign-new`
+          : `/api/media/${mediaId}/people/${selectedId}`;
+      const opts =
+        assignTo === "new"
+          ? { method: "POST" }
+          : {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ assignTo }),
+            };
       const res = await fetch(url, opts);
       if (res.ok) {
         const data = assignTo === "new" ? await res.json() : null;
@@ -152,25 +156,22 @@ export function usePeoplePage(onUpdate?: () => void) {
     [selectedId, fetchPeople, onUpdate]
   );
 
-  const handleSaveName = useCallback(
-    async () => {
-      if (!editModal) return;
-      const name = editDraft.trim();
-      if (!name) return;
-      const res = await fetch(`/api/people/${editModal.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (res.ok) {
-        setEditModal(null);
-        setEditDraft("");
-        fetchPeople();
-        onUpdate?.();
-      }
-    },
-    [editModal, editDraft, fetchPeople, onUpdate]
-  );
+  const handleSaveName = useCallback(async () => {
+    if (!editModal) return;
+    const name = editDraft.trim();
+    if (!name) return;
+    const res = await fetch(`/api/people/${editModal.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (res.ok) {
+      setEditModal(null);
+      setEditDraft("");
+      fetchPeople();
+      onUpdate?.();
+    }
+  }, [editModal, editDraft, fetchPeople, onUpdate]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
