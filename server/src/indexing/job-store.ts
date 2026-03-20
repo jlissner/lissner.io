@@ -1,6 +1,7 @@
 /**
  * Singleton store for the current index job. All mutations go through pure reducers in `./job.js`.
  */
+import { randomUUID } from "node:crypto";
 import {
   cloneIndexJobState,
   initialIndexJobState,
@@ -10,6 +11,8 @@ import {
   withProgress,
   type IndexJobState,
 } from "./job.js";
+
+let bulkAbortController: AbortController | null = null;
 
 const store = {
   state: initialIndexJobState() as IndexJobState,
@@ -72,6 +75,7 @@ export function getIndexJobState(): IndexJobState {
     return {
       ...s,
       inProgress: true,
+      jobId: null,
       startedAt: store.backgroundStartedAt,
       progressProcessed: store.backgroundWaveDone,
       progressTotal: Math.max(1, store.backgroundWaveStarted),
@@ -80,11 +84,22 @@ export function getIndexJobState(): IndexJobState {
   return s;
 }
 
-export function startIndexJob(): boolean {
-  const result = tryStartJob(store.state, new Date().toISOString());
-  if (!result.ok) return false;
+export function startIndexJob():
+  | { ok: true; jobId: string; signal: AbortSignal }
+  | { ok: false } {
+  const jobId = randomUUID();
+  const result = tryStartJob(store.state, new Date().toISOString(), jobId);
+  if (!result.ok) return { ok: false };
   store.state = result.state;
+  bulkAbortController = new AbortController();
   emitIndexJobChanged();
+  return { ok: true, jobId, signal: bulkAbortController.signal };
+}
+
+/** Request cooperative cancellation of the bulk index job with this id (no-op if mismatch). */
+export function cancelBulkIndexJob(jobId: string): boolean {
+  if (!store.state.inProgress || store.state.jobId !== jobId) return false;
+  bulkAbortController?.abort();
   return true;
 }
 
@@ -93,12 +108,19 @@ export function setIndexProgress(processed: number, total: number): void {
   emitIndexJobChanged();
 }
 
-export function finishIndexJob(result: { indexed: number; skipped: number; total: number }): void {
+export function finishIndexJob(result: {
+  indexed: number;
+  skipped: number;
+  total: number;
+  cancelled?: boolean;
+}): void {
+  bulkAbortController = null;
   store.state = withFinish(store.state, result);
   emitIndexJobChanged();
 }
 
 export function failIndexJob(error: string): void {
+  bulkAbortController = null;
   store.state = withFail(store.state, error);
   emitIndexJobChanged();
 }

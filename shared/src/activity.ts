@@ -10,12 +10,14 @@ export interface SyncProgressMessage {
 
 export interface IndexActivitySlice {
   inProgress: boolean;
+  /** Set while a bulk index job from POST /api/search/index is running. */
+  jobId: string | null;
   startedAt: string | null;
   /** Seconds since startedAt when in progress; null otherwise. */
   elapsedSeconds: number | null;
   progressProcessed: number;
   progressTotal: number;
-  lastResult: { indexed: number; skipped: number; total: number } | null;
+  lastResult: { indexed: number; skipped: number; total: number; cancelled?: boolean } | null;
   lastError: string | null;
 }
 

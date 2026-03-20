@@ -1,0 +1,30 @@
+---
+description: Server layering — routes vs services vs db/infrastructure
+globs: server/**/*.ts
+alwaysApply: false
+---
+
+# Server architecture
+
+## Dependency direction
+
+```
+routes/  →  services/  →  db/, s3/, indexing/, email/, faces/, …
+```
+
+- **`routes/`** — Express `Router` only: read `req`, validate, call **`services/`**, set status, `res.json` / `sendFile` / redirects. Middleware (`multer`, session) stays here or in `auth/middleware.ts`.
+- **`services/`** — Use-cases and orchestration. Accept plain data (ids, strings, flags). Return results or discriminated unions; **do not** take `Request` / `Response`.
+- **`db/`**, **`s3/`**, etc. — Infrastructure; no imports from `routes/` or `services/` that depend on HTTP (services **may** import `db` and infra).
+
+## When to add a service
+
+- A route handler does more than wire parameters and map status codes → move logic to `services/<area>-service.ts`.
+- The same flow is needed from two routes → **one** service function.
+
+## Naming
+
+- `*-service.ts` in `server/src/services/` (e.g. `media-service.ts`, `search-service.ts`).
+
+## Docs
+
+See **`server/README.md`** and root **`README.md`** (Architecture → `./server/`).

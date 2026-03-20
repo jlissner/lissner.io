@@ -1,15 +1,17 @@
 export interface IndexJobState {
   inProgress: boolean;
+  jobId: string | null;
   startedAt: string | null;
   progressProcessed: number;
   progressTotal: number;
-  lastResult: { indexed: number; skipped: number; total: number } | null;
+  lastResult: { indexed: number; skipped: number; total: number; cancelled?: boolean } | null;
   lastError: string | null;
 }
 
 export function initialIndexJobState(): IndexJobState {
   return {
     inProgress: false,
+    jobId: null,
     startedAt: null,
     progressProcessed: 0,
     progressTotal: 0,
@@ -31,7 +33,8 @@ export function cloneIndexJobState(state: IndexJobState): IndexJobState {
  */
 export function tryStartJob(
   state: IndexJobState,
-  startedAt: string
+  startedAt: string,
+  jobId: string
 ): { ok: true; state: IndexJobState } | { ok: false; state: IndexJobState } {
   if (state.inProgress) {
     return { ok: false, state };
@@ -41,6 +44,7 @@ export function tryStartJob(
     state: {
       ...state,
       inProgress: true,
+      jobId,
       startedAt,
       progressProcessed: 0,
       progressTotal: 0,
@@ -64,11 +68,12 @@ export function withProgress(
 
 export function withFinish(
   state: IndexJobState,
-  result: { indexed: number; skipped: number; total: number }
+  result: { indexed: number; skipped: number; total: number; cancelled?: boolean }
 ): IndexJobState {
   return {
     ...state,
     inProgress: false,
+    jobId: null,
     lastResult: { ...result },
     lastError: null,
   };
@@ -78,6 +83,7 @@ export function withFail(state: IndexJobState, error: string): IndexJobState {
   return {
     ...state,
     inProgress: false,
+    jobId: null,
     lastError: error,
   };
 }

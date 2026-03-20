@@ -1,13 +1,5 @@
-import { config } from "dotenv";
 import { existsSync, mkdirSync } from "fs";
 import path from "path";
-
-// Load .env and .env.local (local overrides)
-config();
-const envLocal = path.join(process.cwd(), ".env.local");
-if (existsSync(envLocal)) {
-  config({ path: envLocal, override: true });
-}
 
 // Node 23+ removed/deprecated util helpers; tfjs-node and deps still use them
 import util from "util";
@@ -45,7 +37,10 @@ import { setIndexJobChangeListener } from "./indexing/job-store.js";
 import { getS3Config, setSyncChangeListener } from "./s3/sync.js";
 import * as authDb from "./db/auth.js";
 import * as db from "./db/media.js";
+import { PORT } from "./config/env.js";
 import { dbDir, mediaDir, thumbnailsDir, uiDistDir } from "./config/paths.js";
+import { errorHandler } from "./middleware/error-handler.js";
+import { logger, requestLogger } from "./logger.js";
 
 mkdirSync(mediaDir, { recursive: true });
 mkdirSync(dbDir, { recursive: true });
@@ -54,6 +49,7 @@ mkdirSync(thumbnailsDir, { recursive: true });
 const app = express();
 
 app.use(cors({ origin: true, credentials: true }));
+app.use(requestLogger);
 app.use(express.json());
 app.use(sessionMiddleware());
 app.use(impersonateFirstAdminWhenAuthDisabled);
@@ -80,13 +76,13 @@ if (existsSync(uiDistDir)) {
   app.get("/", (_req, res) => res.send("Hello world"));
 }
 
+app.use(errorHandler);
+
 try {
   db.migrateNullOwnersToDefault(authDb.getDefaultOwnerId);
 } catch (err) {
-  console.error("[db] migrateNullOwnersToDefault failed (continuing startup):", err);
+  logger.error({ err }, "[db] migrateNullOwnersToDefault failed (continuing startup)");
 }
-
-const PORT = 3000;
 
 const server = createServer(app);
 
@@ -95,23 +91,24 @@ setSyncChangeListener(() => broadcastActivity());
 attachActivityWebSocket(server);
 
 server.listen(PORT, () => {
-  console.warn(`Server running at http://localhost:${PORT}`);
+  logger.info({ port: PORT }, "Server listening");
 
   const s3 = getS3Config();
   if (!s3.configured) {
-    console.warn("\n⚠ S3 backup not configured. Missing:", s3.missingVars.join(", "));
-    console.warn(
-      "  Set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and S3_BUCKET to enable S3 sync.\n"
+    logger.warn(
+      { missingVars: s3.missingVars },
+      "S3 backup not configured; set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and S3_BUCKET to enable sync"
     );
   }
 });
 server.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {
-    console.error(
-      `\n✖ Port ${PORT} is already in use. Stop the other process using it, or change PORT in server/src/index.ts (and the /api proxy in ui/vite.config.ts).\n`
+    logger.error(
+      { port: PORT, err },
+      "Port already in use; stop the other process or change PORT (and the /api proxy in ui/vite.config.ts)"
     );
   } else {
-    console.error("Server listen error:", err);
+    logger.error({ err }, "Server listen error");
   }
   process.exit(1);
 });

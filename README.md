@@ -221,20 +221,25 @@ Desired directory structure:
   - TypeScript
   - Anything shared between the server and UI lives here. Commonly shared things include: type definitions, common utils, configuration options, shared tsconfig/eslint/prettier rules.
 - `./server/`
-  - TypeScript
-  - Express v5.
+  - TypeScript, Express v5.
   - **`src/index.ts`** — HTTP entry (the only `index` at `src/` root).
+  - **`src/routes/`** — Thin routers: parse requests, call **`src/services/`**, send responses.
+  - **`src/services/`** — Application/use-case layer (orchestration; **no** `req`/`res` here). See **`server/README.md`** and **`.cursor/rules/server-architecture.mdc`**.
   - **`src/config/`** — `paths.ts` (data dirs, DB path, UI dist).
   - **`src/db/`** — `media.ts` (main SQLite schema/API), `auth.ts` (auth tables).
   - **`src/indexing/`** — `media.ts` (embeddings + faces pipeline); `job.ts` (pure index-job state transitions); `job-store.ts` (singleton that applies those transitions for the running server).
   - **`src/activity/`** — `types.ts`, `snapshot.ts` (build unified index+sync snapshot), `broadcast.ts` (WebSocket + broadcast on change).
   - **`src/s3/`** — `sync.ts` (backup / two-way sync; notifies activity listeners on progress).
   - **`src/auth/`** — `middleware.ts` (session, `requireAuth`, etc.).
-  - **`src/routes/`** — `index.ts` re-exports routers; individual route modules (`media.ts`, …).
 - `./ui/`
-  - TypeScript
-  - Vite
-  - React
+  - TypeScript, Vite, React
+  - **Structure** follows [bulletproof-react](https://github.com/alan2207/bulletproof-react)–style layering (see `ui/README.md` and `.cursor/rules/ui-bulletproof-react.mdc`).
+  - **`src/app/`** — Shell: root `App`, `AppProvider`, authenticated layout (compose features here).
+  - **`src/config/`** — Route IDs, nav config, env-style constants (no feature imports).
+  - **`src/components/`** — Shared UI used by multiple features (e.g. activity provider/overlay).
+  - **`src/features/<name>/`** — Feature modules (`components/`, `hooks/`, `types/`, `utils/` as needed). Avoid cross-feature imports; compose in `app/`.
+  - **`src/hooks/`**, **`src/lib/`**, **`src/types/`**, **`src/utils/`** — Shared helpers (add files when needed).
+  - Imports use the **`@/`** alias → `ui/src/` (see `ui/tsconfig.json` and `ui/vite.config.ts`).
 - `./data/`
   - Runtime data (gitignored).
   - `./data/media/` — uploaded documents and media files.
@@ -246,6 +251,6 @@ Desired directory structure:
 ## Conventions
 
 - **File naming**: kebab-case for files, PascalCase for React components.
-- **New code**: API routes in `server/routes/`, new components in `ui/components/`.
+- **New code**: HTTP handlers in `server/routes/`; business logic in `server/src/services/` (see `server/README.md`); UI features in `ui/src/features/<feature>/` (see `ui/README.md`), composed in `ui/src/app/`.
 - **React**: Functional components only.
 - **Async**: Use async/await over raw promises.

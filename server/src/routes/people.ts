@@ -1,114 +1,98 @@
 import { Router } from "express";
-import * as db from "../db/media.js";
+import { asyncHandler } from "../middleware/async-handler.js";
+import {
+  createPersonBodySchema,
+  mergePersonBodySchema,
+  personIdParamsSchema,
+  personMediaQuerySchema,
+  reviewQueueQuerySchema,
+  updatePersonBodySchema,
+} from "../validation/people-schemas.js";
+import {
+  createPersonNamed,
+  deletePersonById,
+  getPersonMediaPreview,
+  getReviewQueue,
+  listPeopleSummary,
+  mergePeople,
+  renamePerson,
+} from "../services/people-service.js";
+import { getMergeSuggestionsForPerson } from "../services/person-merge-suggestions.js";
+import { runFaceMatchBatch } from "../services/person-face-match.js";
 
 export const peopleRouter = Router();
 
+peopleRouter.post(
+  "/match-faces",
+  asyncHandler(async (_req, res) => {
+    const result = await runFaceMatchBatch();
+    res.json(result);
+  })
+);
+
 peopleRouter.get("/review/queue", (req, res) => {
-  const limit = Math.min(parseInt(req.query.limit as string, 10) || 100, 500);
-  const items = db.getFacesNeedingReview(limit);
-  const names = db.getPersonNames();
-  const enriched = items.map((item) => {
-    const others = db.getImagePeople(item.mediaId).filter((id) => id !== item.personId);
-    return {
-      ...item,
-      otherPeopleInPhoto: others.map((id) => ({ id, name: names.get(id) ?? `Person ${id}` })),
-    };
-  });
-  res.json(enriched);
+  const q = reviewQueueQuerySchema.parse(req.query);
+  const limit = q.limit ?? 100;
+  res.json(getReviewQueue(limit));
 });
 
+peopleRouter.get(
+  "/:id/merge-suggestions",
+  asyncHandler(async (req, res) => {
+    const { id } = personIdParamsSchema.parse(req.params);
+    const suggestions = await getMergeSuggestionsForPerson(id);
+    res.json({ suggestions });
+  })
+);
+
 peopleRouter.get("/:id/media", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id) || id < 1) {
-    res.status(400).json({ error: "Invalid person ID" });
-    return;
-  }
-  const limit = Math.min(Math.max(1, parseInt(req.query.limit as string, 10) || 100), 500);
-  const media = db.getMediaForPerson(id, limit);
-  res.json(
-    media.map((m) => ({
-      id: m.id,
-      mimeType: m.mimeType,
-      x: m.x,
-      y: m.y,
-      width: m.width,
-      height: m.height,
-      backedUp: !!m.backedUpAt,
-    }))
-  );
+  const { id } = personIdParamsSchema.parse(req.params);
+  const q = personMediaQuerySchema.parse(req.query);
+  const limit = q.limit ?? 100;
+  res.json(getPersonMediaPreview(id, limit));
 });
 
 peopleRouter.get("/", (_req, res) => {
-  const ids = db.getAllPersonIds();
-  const names = db.getPersonNames();
-  const people = ids.map((id) => ({
-    id,
-    name: names.get(id) ?? `Person ${id}`,
-    photoCount: db.getMediaCountForPerson(id),
-  }));
-  res.json(people);
+  res.json(listPeopleSummary());
 });
 
 peopleRouter.post("/", (req, res) => {
-  const name = req.body?.name;
-  if (typeof name !== "string" || !name.trim()) {
-    res.status(400).json({ error: "Name required" });
-    return;
-  }
-  const id = db.createPerson(name.trim());
-  res.status(201).json({ id, name: name.trim() });
+  const body = createPersonBodySchema.parse(req.body);
+  const created = createPersonNamed(body.name);
+  res.status(201).json(created);
 });
 
 peopleRouter.delete("/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id) || id < 1) {
-    res.status(400).json({ error: "Invalid person ID" });
-    return;
-  }
-  const allIds = db.getAllPersonIds();
-  if (!allIds.includes(id)) {
+  const { id } = personIdParamsSchema.parse(req.params);
+  const result = deletePersonById(id);
+  if (!result.ok) {
     res.status(404).json({ error: "Person not found" });
     return;
   }
-  db.deletePerson(id);
   res.json({ deleted: id });
 });
 
 peopleRouter.post("/:id/merge", (req, res) => {
-  const mergeFromId = parseInt(req.params.id, 10);
-  if (isNaN(mergeFromId) || mergeFromId < 1) {
-    res.status(400).json({ error: "Invalid person ID" });
+  const { id: mergeFromId } = personIdParamsSchema.parse(req.params);
+  const body = mergePersonBodySchema.parse(req.body);
+  const result = mergePeople(mergeFromId, body.mergeInto);
+  if (result.ok) {
+    res.json({ merged: result.merged, into: result.into });
     return;
   }
-  const keepId = parseInt(String(req.body?.mergeInto ?? ""), 10);
-  if (isNaN(keepId) || keepId < 1) {
+  if (result.reason === "invalid_ids") {
     res.status(400).json({ error: "mergeInto (person ID) required" });
     return;
   }
-  if (mergeFromId === keepId) {
+  if (result.reason === "merge_into_self") {
     res.status(400).json({ error: "Cannot merge a person into themselves" });
     return;
   }
-  const allIds = db.getAllPersonIds();
-  if (!allIds.includes(mergeFromId) || !allIds.includes(keepId)) {
-    res.status(404).json({ error: "Person not found" });
-    return;
-  }
-  db.mergePeople(keepId, mergeFromId);
-  res.json({ merged: mergeFromId, into: keepId });
+  res.status(404).json({ error: "Person not found" });
 });
 
 peopleRouter.put("/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id) || id < 1) {
-    res.status(400).json({ error: "Invalid person ID" });
-    return;
-  }
-  const name = req.body?.name;
-  if (typeof name !== "string" || !name.trim()) {
-    res.status(400).json({ error: "Name required" });
-    return;
-  }
-  db.setPersonName(id, name.trim());
-  res.json({ id, name: name.trim() });
+  const { id } = personIdParamsSchema.parse(req.params);
+  const body = updatePersonBodySchema.parse(req.body);
+  res.json(renamePerson(id, body.name));
 });

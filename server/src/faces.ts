@@ -20,7 +20,7 @@ const Human = require("@vladmandic/human").default as new (config?: object) => {
 
 const humanSingleton = { instance: null as InstanceType<typeof Human> | null };
 
-async function getHuman() {
+export async function getHuman() {
   if (humanSingleton.instance) return humanSingleton.instance;
   const humanEntry = require.resolve("@vladmandic/human");
   const humanPackageDir = path.join(path.dirname(humanEntry), "..");
@@ -40,6 +40,15 @@ async function getHuman() {
 
 const FACE_SIMILARITY_THRESHOLD = 0.5;
 
+/**
+ * Human + tfjs-node are not safe for concurrent `detect()` on the same singleton; parallel
+ * uploads (or overlap with bulk indexing) can yield "squeeze ... got null". Run detection
+ * strictly one-at-a-time.
+ */
+const faceDetectChain = {
+  tail: Promise.resolve() as Promise<unknown>,
+};
+
 export interface FaceInImage {
   imageId: string;
   descriptor: number[];
@@ -50,25 +59,49 @@ export async function extractFacesFromImage(
   imagePath: string,
   imageId: string
 ): Promise<FaceInImage[]> {
-  const human = await getHuman();
-  const tf = human.tf;
-  const buffer = await readFile(imagePath);
+  const work = async (): Promise<FaceInImage[]> => {
+    const human = await getHuman();
+    const tf = human.tf;
+    const buffer = await readFile(imagePath);
+    if (buffer.length < 24) {
+      return [];
+    }
 
-  const tensor = tf.node.decodeImage(buffer, 3);
-  const result = await human.detect(tensor);
-  tf.dispose(tensor);
+    let tensor: unknown;
+    try {
+      tensor = tf.node.decodeImage(buffer, 3);
+      if (tensor == null) {
+        return [];
+      }
+      const result = await human.detect(tensor);
+      const faces: FaceInImage[] = [];
+      for (const f of result.face) {
+        if (!f.embedding) continue;
+        const box = f.box;
+        faces.push({
+          imageId,
+          descriptor: Array.from(f.embedding),
+          box: box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined,
+        });
+      }
+      return faces;
+    } catch (err) {
+      console.error(`Face extraction failed for ${imageId} (${imagePath}):`, err);
+      return [];
+    } finally {
+      if (tensor != null) {
+        try {
+          tf.dispose(tensor);
+        } catch {
+          /* ignore dispose errors */
+        }
+      }
+    }
+  };
 
-  const faces: FaceInImage[] = [];
-  for (const f of result.face) {
-    if (!f.embedding) continue;
-    const box = f.box;
-    faces.push({
-      imageId,
-      descriptor: Array.from(f.embedding),
-      box: box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined,
-    });
-  }
-  return faces;
+  const scheduled = faceDetectChain.tail.then(() => work());
+  faceDetectChain.tail = scheduled.catch(() => {});
+  return scheduled;
 }
 
 export interface ImagePersonEntry {
@@ -124,6 +157,12 @@ function clusterFacesWithConfidence(
   }
 
   return clusters;
+}
+
+/** Cosine-style similarity between two face descriptors (same as clustering). */
+export async function getFaceSimilarityFn(): Promise<(a: number[], b: number[]) => number> {
+  const human = await getHuman();
+  return (a, b) => human.match.similarity(a, b);
 }
 
 export async function clusterAllFaces(

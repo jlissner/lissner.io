@@ -2,26 +2,19 @@ import { Router } from "express";
 import * as authDb from "../db/auth.js";
 import * as db from "../db/media.js";
 import { requireAuth, requireAdmin, getAuthUser } from "../auth/middleware.js";
+import { isDataExplorerEnabled, isSqlExplorerEnabled } from "../services/admin-service.js";
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAuth);
 adminRouter.use(requireAdmin);
 
-function isSqlExplorerAvailable(): boolean {
-  return process.env.SQL_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
-}
-
-function isDataExplorerAvailable(): boolean {
-  return process.env.DATA_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
-}
-
 adminRouter.get("/sql-explorer-available", (_req, res) => {
-  res.json({ available: isSqlExplorerAvailable() });
+  res.json({ available: isSqlExplorerEnabled() });
 });
 
 adminRouter.post("/sql", (req, res) => {
-  if (!isSqlExplorerAvailable()) {
+  if (!isSqlExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "SQL explorer is only available locally with SQL_EXPLORER_ENABLED=true" });
@@ -42,11 +35,11 @@ adminRouter.post("/sql", (req, res) => {
 });
 
 adminRouter.get("/data-explorer-available", (_req, res) => {
-  res.json({ available: isDataExplorerAvailable() });
+  res.json({ available: isDataExplorerEnabled() });
 });
 
 adminRouter.get("/data-explorer/tables", (req, res) => {
-  if (!isDataExplorerAvailable()) {
+  if (!isDataExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
@@ -60,7 +53,7 @@ adminRouter.get("/data-explorer/tables", (req, res) => {
 });
 
 adminRouter.get("/data-explorer/tables/:table", (req, res) => {
-  if (!isDataExplorerAvailable()) {
+  if (!isDataExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
@@ -76,7 +69,7 @@ adminRouter.get("/data-explorer/tables/:table", (req, res) => {
 });
 
 adminRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
-  if (!isDataExplorerAvailable()) {
+  if (!isDataExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
@@ -93,7 +86,7 @@ adminRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
 });
 
 adminRouter.post("/data-explorer/tables/:table", (req, res) => {
-  if (!isDataExplorerAvailable()) {
+  if (!isDataExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
@@ -108,7 +101,7 @@ adminRouter.post("/data-explorer/tables/:table", (req, res) => {
 });
 
 adminRouter.put("/data-explorer/tables/:table", (req, res) => {
-  if (!isDataExplorerAvailable()) {
+  if (!isDataExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });
@@ -128,7 +121,7 @@ adminRouter.put("/data-explorer/tables/:table", (req, res) => {
 });
 
 adminRouter.delete("/data-explorer/tables/:table", (req, res) => {
-  if (!isDataExplorerAvailable()) {
+  if (!isDataExplorerEnabled()) {
     res
       .status(403)
       .json({ error: "Data explorer is only available locally with DATA_EXPLORER_ENABLED=true" });

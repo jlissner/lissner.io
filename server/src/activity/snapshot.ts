@@ -21,6 +21,7 @@ export function buildActivitySnapshot(
     v: 1,
     index: {
       inProgress: index.inProgress,
+      jobId: index.jobId,
       startedAt: index.startedAt,
       elapsedSeconds,
       progressProcessed: index.progressProcessed,

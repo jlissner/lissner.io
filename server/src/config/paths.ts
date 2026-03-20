@@ -1,16 +1,12 @@
 /**
- * Single source of truth for filesystem paths under the repo root.
- * This module lives in `server/src/config/` (three levels below project root).
+ * Filesystem paths — derived from `env.ts` (`DATA_DIR`, `PROJECT_ROOT`).
  */
 import path from "path";
-import { fileURLToPath } from "url";
+import { DATA_DIR, PROJECT_ROOT } from "./env.js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+export { PROJECT_ROOT } from "./env.js";
 
-/** Repository root (parent of `server/`). */
-export const PROJECT_ROOT = path.join(__dirname, "..", "..", "..");
-
-export const dataDir = path.join(PROJECT_ROOT, "data");
+export const dataDir = DATA_DIR;
 export const mediaDir = path.join(dataDir, "media");
 export const thumbnailsDir = path.join(dataDir, "thumbnails");
 export const dbDir = path.join(dataDir, "db");

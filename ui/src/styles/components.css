@@ -327,6 +327,135 @@
   justify-content: flex-end;
 }
 
+/* ========== Match faces wizard ========== */
+.match-faces-modal {
+  max-width: 28rem;
+  width: calc(100vw - 2rem);
+}
+
+.match-faces-modal__section {
+  margin-bottom: var(--space-5);
+}
+
+.match-faces-modal__section:last-child {
+  margin-bottom: 0;
+}
+
+.match-faces-modal__lead {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--color-text);
+}
+
+.match-faces-modal__list {
+  margin: 0;
+  padding-left: var(--space-5);
+  font-size: var(--text-sm);
+}
+
+.match-faces-modal__progress {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+}
+
+.match-faces-modal__card {
+  display: flex;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+  align-items: flex-start;
+}
+
+.match-faces-modal__preview-wrap {
+  flex-shrink: 0;
+  width: 7.5rem;
+}
+
+.match-faces-modal__preview {
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--color-bg-subtle);
+}
+
+.match-faces-modal__preview-caption {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  line-height: var(--line-height-tight);
+}
+
+.match-faces-modal__preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.match-faces-modal__preview-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+}
+
+.match-faces-modal__name {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-md);
+}
+
+.match-faces-modal__warn {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  color: var(--color-danger);
+}
+
+.match-faces-modal__top {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.match-faces-modal__actions-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.match-faces-modal__row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.match-faces-modal__select,
+.match-faces-modal__input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.match-faces-modal__label {
+  display: block;
+  margin-bottom: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
+  font-weight: var(--font-medium);
+}
+
+.match-faces-modal__merge-other .match-faces-modal__row .btn {
+  flex-shrink: 0;
+}
+
 /* ========== Form ========== */
 .form__group {
   margin-bottom: var(--space-4);
@@ -399,8 +528,15 @@
   color: var(--color-text-muted);
 }
 
-.sidebar__add {
+.sidebar__header-actions {
   margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sidebar__header-actions .sidebar__add,
+.sidebar__header-actions .sidebar__match-faces {
   width: 100%;
 }
 
@@ -1323,6 +1459,42 @@
   margin-top: var(--space-1);
 }
 
+.detail__merge-hints {
+  margin-bottom: var(--space-5);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+}
+
+.detail__merge-hints-title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  color: var(--color-text);
+}
+
+.detail__merge-hints-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.detail__merge-hints-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.detail__merge-hints-label {
+  min-width: 0;
+}
+
 .detail__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
@@ -1580,4 +1752,20 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+}
+
+/* ========== Card (shared UI primitive) ========== */
+.card {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.card--padding {
+  padding: var(--space-4);
+}
+
+.card--padding-lg {
+  padding: var(--space-6);
 }

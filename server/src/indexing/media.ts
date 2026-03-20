@@ -14,7 +14,12 @@ import {
   setIndexProgress,
 } from "./job-store.js";
 import { describeImage } from "../vision.js";
-import { extractFacesFromImage, clusterAllFaces, type FaceInImage } from "../faces.js";
+import {
+  extractFacesFromImage,
+  clusterAllFaces,
+  type FaceInImage,
+  type ImagePersonEntry,
+} from "../faces.js";
 import { mediaDir } from "../config/paths.js";
 
 const TEXT_MIMES = new Set([
@@ -95,6 +100,35 @@ async function extractExifData(filePath: string): Promise<ExifData> {
   }
 }
 
+/**
+ * `clusterAllFaces` assigns local cluster ids (1..n). For upload-time indexing we map each
+ * cluster to a new `person_id` via `createNewPerson()` so we never collide with existing people.
+ */
+function remapClusterPersonIdsToNewDbPeople(
+  entriesMap: Map<string, ImagePersonEntry[]>
+): Map<string, ImagePersonEntry[]> {
+  const localIds = new Set<number>();
+  for (const entries of entriesMap.values()) {
+    for (const e of entries) localIds.add(e.personId);
+  }
+  const sorted = [...localIds].sort((a, b) => a - b);
+  const localToGlobal = new Map<number, number>();
+  for (const localId of sorted) {
+    localToGlobal.set(localId, db.createNewPerson());
+  }
+  const out = new Map<string, ImagePersonEntry[]>();
+  for (const [mediaId, entries] of entriesMap) {
+    out.set(
+      mediaId,
+      entries.map((e) => ({
+        ...e,
+        personId: localToGlobal.get(e.personId)!,
+      }))
+    );
+  }
+  return out;
+}
+
 const FFPROBE_NOT_FOUND =
   "ffprobe not found. Install ffmpeg to extract video metadata (e.g. apt install ffmpeg).";
 
@@ -136,21 +170,38 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
   if (trackBackground) beginBackgroundIndex();
   try {
     const filePath = path.join(mediaDir, item.filename);
+    const imagePersonIds = new Map<string, number[]>();
     if (item.mimeType.startsWith("image/")) {
       try {
-        const exif = await extractExifData(filePath);
+        const [exif, faces] = await Promise.all([
+          extractExifData(filePath),
+          extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
+            console.error(`Face extraction failed for ${item.originalName}:`, err);
+            return [] as FaceInImage[];
+          }),
+        ]);
         if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
         if (exif.latitude != null && exif.longitude != null) {
           db.setMediaLocation(item.id, exif.latitude, exif.longitude);
         }
-      } catch {
-        // ignore
+        if (faces.length > 0) {
+          const entriesMap = await clusterAllFaces(faces);
+          const remapped = remapClusterPersonIdsToNewDbPeople(entriesMap);
+          const entriesForItem = remapped.get(item.id) ?? [];
+          db.setImagePeople(item.id, entriesForItem);
+          imagePersonIds.set(
+            item.id,
+            entriesForItem.map((e) => e.personId)
+          );
+        }
+      } catch (err) {
+        console.error(`Image indexing prep failed for ${item.originalName}:`, err);
       }
     } else if (item.mimeType.startsWith("video/")) {
       const meta = await extractVideoMetadata(filePath);
       if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
     }
-    const text = await getTextForItem(item);
+    const text = await getTextForItem(item, imagePersonIds);
     if (!text.trim()) return false;
     const embedding = await getEmbedding(text.slice(0, 8000));
     db.upsertEmbedding(item.id, embedding);
@@ -162,8 +213,9 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
 
 export async function indexMediaItems(
   items: MediaItem[],
-  options: { skipIndexed?: boolean } = {}
-): Promise<{ indexed: number; skipped: number }> {
+  options: { skipIndexed?: boolean; signal?: AbortSignal } = {}
+): Promise<{ indexed: number; skipped: number; cancelled?: boolean }> {
+  const signal = options.signal;
   const skipIndexed = options.skipIndexed ?? true;
   const indexedIds = skipIndexed ? db.getIndexedMediaIds() : new Set<string>();
 
@@ -237,6 +289,10 @@ export async function indexMediaItems(
   const progress = { indexed: 0, processed: 0 };
 
   for (const item of toIndex) {
+    if (signal?.aborted) {
+      const skipped = items.length - progress.indexed;
+      return { indexed: progress.indexed, skipped, cancelled: true };
+    }
     try {
       const text = await getTextForItem(item, imagePersonIds);
       if (!text.trim()) {

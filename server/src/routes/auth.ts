@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { NextFunction, Request, Response } from "express";
 import * as authDb from "../db/auth.js";
 import { sendMagicLink } from "../email.js";
+import { getMagicLinkBaseUrl } from "../services/auth-service.js";
 
 export const authRouter = Router();
 
@@ -12,17 +13,6 @@ authRouter.get("/config", (_req, res) => {
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (req.session?.userId) next();
   else res.status(401).json({ error: "Authentication required" });
-}
-
-function getBaseUrl(req: Request): string {
-  const env = process.env.MAGIC_LINK_BASE_URL;
-  if (env) return env.replace(/\/$/, "");
-
-  const protocol = req.protocol ?? "http";
-  const rawHost = typeof req.get === "function" ? req.get("host") : undefined;
-  // In dev, API is at :3000 but UI is at :5173; redirect to the UI
-  const host = rawHost === "localhost:3000" ? "localhost:5173" : rawHost;
-  return `${protocol}://${host ?? "localhost:5173"}`;
 }
 
 authRouter.post("/magic-link", async (req, res) => {
@@ -39,7 +29,7 @@ authRouter.post("/magic-link", async (req, res) => {
   }
 
   const { token } = authDb.createMagicLinkToken(normalized);
-  const baseUrl = getBaseUrl(req);
+  const baseUrl = getMagicLinkBaseUrl(req);
   const link = `${baseUrl}/api/auth/verify?token=${token}`;
 
   try {
@@ -53,7 +43,7 @@ authRouter.post("/magic-link", async (req, res) => {
 
 authRouter.get("/verify", async (req, res) => {
   const token = req.query.token as string;
-  const baseUrl = getBaseUrl(req);
+  const baseUrl = getMagicLinkBaseUrl(req);
   if (!token) {
     res.redirect(`${baseUrl}/?error=missing_token`);
     return;
