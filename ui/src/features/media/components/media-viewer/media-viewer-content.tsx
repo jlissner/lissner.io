@@ -82,10 +82,10 @@ export function MediaViewerContent({
   }, [onClose, assigningFace, reassigningFace, setAssigningFace, setReassigningFace]);
 
   const btnStyle = {
-    background: "rgba(255,255,255,0.2)",
+    background: "rgba(255, 255, 255, 0.12)",
     border: "none",
     borderRadius: 8,
-    color: "#fff",
+    color: "var(--color-text-inverse)",
     padding: "8px 16px",
     cursor: "pointer",
     fontSize: "0.875rem",
@@ -116,7 +116,10 @@ export function MediaViewerContent({
           (!hasMotionPair || motionPairView === "still") && (
           <button
             onClick={() => setTaggingMode((p) => !p)}
-            style={{ ...btnStyle, background: taggingMode ? "#4f46e5" : "rgba(255,255,255,0.2)" }}
+            style={{
+              ...btnStyle,
+              background: taggingMode ? "var(--color-primary)" : btnStyle.background,
+            }}
           >
             {taggingMode ? "Exit tagging" : "Tagging mode"}
           </button>
@@ -213,7 +216,9 @@ export function MediaViewerContent({
             </div>
           )}
           {taggingMode && facesLoading && (
-            <p style={{ color: "#94a3b8", marginTop: 8, fontSize: "0.875rem" }}>Detecting faces…</p>
+            <p style={{ color: "var(--color-text-muted)", marginTop: 8, fontSize: "0.875rem" }}>
+              Detecting faces…
+            </p>
           )}
           {assigningFace && (
             <MediaViewerAssignModal
@@ -241,8 +246,9 @@ export function MediaViewerContent({
           {isText(item.mimeType) && (
             <pre
               style={{
-                backgroundColor: "#1e293b",
-                color: "#e2e8f0",
+                backgroundColor: "var(--color-bg-elevated)",
+                color: "var(--color-text)",
+                border: "1px solid var(--color-border)",
                 padding: 24,
                 borderRadius: 8,
                 maxWidth: "90vw",
@@ -260,12 +266,12 @@ export function MediaViewerContent({
             !isVideo(item.mimeType) &&
             !pixelMp &&
             !isText(item.mimeType) && (
-            <p style={{ color: "#94a3b8" }}>
+            <p style={{ color: "var(--color-text-muted)" }}>
               Preview not available.{" "}
               <a
                 href={`/api/media/${item.id}`}
                 download={item.originalName}
-                style={{ color: "#60a5fa" }}
+                style={{ color: "var(--color-primary)" }}
               >
                 Download
               </a>

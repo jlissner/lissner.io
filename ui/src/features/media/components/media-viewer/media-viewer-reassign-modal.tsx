@@ -30,16 +30,17 @@ export function MediaViewerReassignModal({
     >
       <div
         style={{
-          background: "#1e293b",
+          background: "var(--color-bg-elevated)",
+          border: "1px solid var(--color-border)",
           padding: 24,
           borderRadius: 12,
           minWidth: 280,
         }}
       >
-        <p style={{ margin: "0 0 4px", color: "#e2e8f0", fontSize: "1.125rem", fontWeight: 600 }}>
+        <p style={{ margin: "0 0 4px", color: "var(--color-text)", fontSize: "1.125rem", fontWeight: 600 }}>
           Change tag
         </p>
-        <p style={{ margin: "0 0 16px", color: "#94a3b8", fontSize: "0.875rem" }}>
+        <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
           Currently: {reassigningFace.name}
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -55,9 +56,9 @@ export function MediaViewerReassignModal({
               padding: "10px 14px",
               fontSize: "1rem",
               borderRadius: 6,
-              border: "1px solid #475569",
-              background: "#0f172a",
-              color: "#e2e8f0",
+              border: "1px solid var(--color-border)",
+              background: "var(--color-bg)",
+              color: "var(--color-text)",
               flex: 1,
               minWidth: 160,
             }}
@@ -79,8 +80,8 @@ export function MediaViewerReassignModal({
               fontSize: "0.875rem",
               cursor: "pointer",
               background: "none",
-              border: "1px solid #475569",
-              color: "#94a3b8",
+              border: "1px solid var(--color-border)",
+              color: "var(--color-text-muted)",
               borderRadius: 6,
             }}
           >

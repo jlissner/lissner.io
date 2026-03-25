@@ -1,35 +1,36 @@
 /**
- * Design tokens – CSS custom properties
+ * Design tokens – CSS custom properties (default: dark theme)
  * Mobile-first, responsive-friendly
  */
 
 :root {
-  /* Colors – semantic palette */
-  --color-text: #1e293b;
-  --color-text-muted: #64748b;
-  --color-text-subtle: #94a3b8;
-  --color-text-inverse: #fff;
+  /* Colors – semantic palette (dark) */
+  --color-text: #f1f5f9;
+  --color-text-muted: #94a3b8;
+  --color-text-subtle: #64748b;
+  --color-text-inverse: #f8fafc;
 
-  --color-bg: #f8fafc;
-  --color-bg-elevated: #fff;
-  --color-bg-subtle: #f1f5f9;
-  --color-bg-hover: #f1f5f9;
-  --color-bg-active: #eef2ff;
+  --color-bg: #0f172a;
+  --color-bg-elevated: #1e293b;
+  --color-bg-subtle: #334155;
+  --color-bg-hover: #3d4f66;
+  --color-bg-active: rgba(99, 102, 241, 0.2);
 
-  --color-border: #e2e8f0;
-  --color-border-subtle: #cbd5e1;
+  --color-border: #334155;
+  --color-border-subtle: #475569;
 
-  --color-primary: #4f46e5;
-  --color-primary-bg: #eef2ff;
-  --color-primary-hover: #4338ca;
+  --color-primary: #818cf8;
+  --color-primary-bg: rgba(99, 102, 241, 0.18);
+  --color-primary-hover: #a5b4fc;
 
-  --color-success: #059669;
-  --color-success-bg: #d1fae5;
+  --color-success: #34d399;
+  --color-success-bg: rgba(16, 185, 129, 0.16);
+  --color-success-hover: #6ee7b7;
 
-  --color-danger: #dc2626;
-  --color-danger-bg: #fee2e2;
+  --color-danger: #f87171;
+  --color-danger-bg: rgba(248, 113, 113, 0.14);
 
-  --color-overlay: rgba(0, 0, 0, 0.5);
+  --color-overlay: rgba(0, 0, 0, 0.65);
 
   /* Spacing – 4px base */
   --space-1: 0.25rem; /* 4px */
@@ -65,10 +66,10 @@
   --radius-lg: 12px;
 
   /* Shadows */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
-  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.45), 0 2px 4px -2px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 25px 50px -12px rgba(0, 0, 0, 0.55);
 
   /* Z-index scale */
   --z-dropdown: 100;

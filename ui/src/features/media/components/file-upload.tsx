@@ -82,14 +82,14 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
             position: "fixed",
             inset: 0,
             zIndex: 100,
-            backgroundColor: "rgba(79, 70, 229, 0.1)",
-            border: "4px dashed #4f46e5",
+            backgroundColor: "var(--color-primary-bg)",
+            border: "4px dashed var(--color-primary)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: "1.25rem",
             fontWeight: 500,
-            color: "#4f46e5",
+            color: "var(--color-primary)",
             pointerEvents: "none",
           }}
         >
@@ -98,11 +98,11 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
       )}
       <div
         style={{
-          border: `2px dashed ${dragging ? "#4f46e5" : "#cbd5e1"}`,
+          border: `2px dashed ${dragging ? "var(--color-primary)" : "var(--color-border-subtle)"}`,
           borderRadius: 8,
           padding: "2rem",
           textAlign: "center",
-          backgroundColor: dragging ? "#eef2ff" : "#f8fafc",
+          backgroundColor: dragging ? "var(--color-primary-bg)" : "var(--color-bg-subtle)",
           cursor: disabled || uploading ? "not-allowed" : "pointer",
           opacity: disabled || uploading ? 0.7 : 1,
         }}
@@ -123,13 +123,15 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
               <span style={{ display: "block", marginBottom: 4 }}>
                 Drop files here or <strong>click to browse</strong>
               </span>
-              <span style={{ fontSize: "0.875rem", color: "#64748b" }}>
+              <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
                 Images, videos, documents
               </span>
             </>
           )}
         </label>
-        {error && <p style={{ color: "#dc2626", marginTop: 8, fontSize: "0.875rem" }}>{error}</p>}
+        {error && (
+          <p style={{ color: "var(--color-danger)", marginTop: 8, fontSize: "0.875rem" }}>{error}</p>
+        )}
       </div>
     </>
   );

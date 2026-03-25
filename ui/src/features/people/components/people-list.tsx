@@ -73,7 +73,7 @@ export function PeopleList({ onUpdate }: PeopleListProps) {
               alignItems: "center",
               gap: 8,
               padding: "6px 12px",
-              backgroundColor: "#f1f5f9",
+              backgroundColor: "var(--color-bg-subtle)",
               borderRadius: 8,
             }}
           >
@@ -91,7 +91,9 @@ export function PeopleList({ onUpdate }: PeopleListProps) {
                   style={{
                     padding: "4px 8px",
                     borderRadius: 4,
-                    border: "1px solid #e2e8f0",
+                    border: "1px solid var(--color-border)",
+                    background: "var(--color-bg-elevated)",
+                    color: "var(--color-text)",
                     fontSize: "0.875rem",
                     width: 120,
                   }}
@@ -123,7 +125,7 @@ export function PeopleList({ onUpdate }: PeopleListProps) {
                     cursor: "pointer",
                     background: "none",
                     border: "none",
-                    color: "#4f46e5",
+                    color: "var(--color-primary)",
                   }}
                 >
                   Rename
