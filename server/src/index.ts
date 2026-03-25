@@ -38,6 +38,7 @@ import { getS3Config, setSyncChangeListener } from "./s3/sync.js";
 import * as authDb from "./db/auth.js";
 import * as db from "./db/media.js";
 import { PORT } from "./config/env.js";
+import { deleteOrphanedLocalThumbnailFiles } from "./lib/orphan-thumbnails.js";
 import { dbDir, mediaDir, thumbnailsDir, uiDistDir } from "./config/paths.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { logger, requestLogger } from "./logger.js";
@@ -83,6 +84,11 @@ try {
 } catch (err) {
   logger.error({ err }, "[db] migrateNullOwnersToDefault failed (continuing startup)");
 }
+try {
+  db.relinkAllMotionPairs();
+} catch (err) {
+  logger.error({ err }, "[db] relinkAllMotionPairs failed (continuing startup)");
+}
 
 const server = createServer(app);
 
@@ -92,6 +98,12 @@ attachActivityWebSocket(server);
 
 server.listen(PORT, () => {
   logger.info({ port: PORT }, "Server listening");
+
+  void deleteOrphanedLocalThumbnailFiles().then((removed) => {
+    if (removed > 0) {
+      logger.info({ removed }, "[thumbnails] Removed orphaned local thumbnail files");
+    }
+  });
 
   const s3 = getS3Config();
   if (!s3.configured) {

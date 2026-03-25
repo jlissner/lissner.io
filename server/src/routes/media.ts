@@ -22,6 +22,7 @@ import {
   removePersonFromMediaTag,
 } from "../services/media-service.js";
 import { mediaDir } from "../config/paths.js";
+import { resolveMimeTypeAfterUpload } from "../lib/effective-image.js";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -48,11 +49,17 @@ mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
     });
     return;
   }
+  const absolutePath = path.join(mediaDir, req.file.filename);
+  const mimeType = await resolveMimeTypeAfterUpload(
+    req.file.originalname,
+    req.file.mimetype,
+    absolutePath
+  );
   persistUploadedMedia({
     id,
     filename: req.file.filename,
     originalName: req.file.originalname,
-    mimeType: req.file.mimetype,
+    mimeType,
     size: req.file.size,
     ownerId,
   });
@@ -60,7 +67,7 @@ mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
     id,
     filename: req.file.filename,
     originalName: req.file.originalname,
-    mimeType: req.file.mimetype,
+    mimeType,
     size: req.file.size,
   });
 });

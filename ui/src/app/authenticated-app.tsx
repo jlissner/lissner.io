@@ -23,10 +23,6 @@ const PeoplePage = lazy(async () => {
   const m = await import("@/features/people/components/people-page");
   return { default: m.PeoplePage };
 });
-const BackupPage = lazy(async () => {
-  const m = await import("@/features/backup/components/backup-page");
-  return { default: m.BackupPage };
-});
 const AdminPage = lazy(async () => {
   const m = await import("@/features/admin/components/admin-page");
   return { default: m.AdminPage };
@@ -92,16 +88,23 @@ export function AuthenticatedApp() {
       {showS3Alert && (
         <Banner onDismiss={() => setS3AlertDismissed(true)}>
           <>
-            S3 sync not configured. Missing: {s3Config.missingVars.join(", ")}.{" "}
-            <a
-              href="/backup"
-              onClick={(e) => {
-                e.preventDefault();
-                navigateTo("backup");
-              }}
-            >
-              Learn more
-            </a>
+            S3 sync not configured. Missing: {s3Config.missingVars.join(", ")}.
+            {user?.isAdmin ? (
+              <>
+                {" "}
+                <a
+                  href="/admin"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigateTo("admin");
+                  }}
+                >
+                  Open Admin
+                </a>
+              </>
+            ) : (
+              <> Set these on the server to enable sync.</>
+            )}
           </>
         </Banner>
       )}
@@ -114,7 +117,6 @@ export function AuthenticatedApp() {
             </p>
           </div>
           <div className="header__top-actions">
-            {page === "home" && <div id="home-header-actions" className="header__actions" />}
             <Button
               variant="primary"
               className="header__upload"
@@ -158,8 +160,9 @@ export function AuthenticatedApp() {
                 onViewAllPhotos={(personId) => navigateTo("home", `person=${personId}`)}
               />
             )}
-            {page === "backup" && <BackupPage onSyncComplete={fetchItems} />}
-            {page === "admin" && user?.isAdmin && <AdminPage />}
+            {page === "admin" && user?.isAdmin && (
+              <AdminPage onSyncComplete={fetchItems} />
+            )}
           </Suspense>
         </main>
       </div>

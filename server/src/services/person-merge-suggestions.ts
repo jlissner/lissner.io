@@ -3,6 +3,7 @@ import * as db from "../db/media.js";
 import { mediaDir } from "../config/paths.js";
 import { extractFacesFromImage, getFaceSimilarityFn, type FaceInImage } from "../faces.js";
 import { ensureLocalMediaFile } from "./media-service.js";
+import { isEffectiveImageItem } from "../lib/effective-image.js";
 
 /** Auto-generated names like `Person 12` — compare to named people for merge hints. */
 export function isPlaceholderPersonName(name: string): boolean {
@@ -61,7 +62,7 @@ export async function collectDescriptorsForPerson(personId: number): Promise<num
   const rows = db.getMediaForPerson(personId, SAMPLE_IMAGE_LIMIT);
   const descriptors: number[][] = [];
   for (const row of rows) {
-    if (!row.mimeType.startsWith("image/")) continue;
+    if (!isEffectiveImageItem(row)) continue;
     if (descriptors.length >= MAX_DESCRIPTORS) break;
     const item = db.getMediaById(row.id);
     if (!item) continue;

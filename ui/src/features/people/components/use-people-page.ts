@@ -3,6 +3,7 @@ import type { MergeSuggestion, Person } from "./people-types";
 
 interface MediaPreview {
   id: string;
+  originalName?: string;
   mimeType: string;
   x?: number;
   y?: number;

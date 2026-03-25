@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { MediaViewer } from "./media-viewer";
 import { MediaItemCell } from "./media-viewer/media-item-cell";
-import { groupItemsByDay, isViewable, type MediaItem } from "./media-viewer/media-utils";
+import { groupItemsByDay, type MediaItem } from "./media-viewer/media-utils";
 
 interface MediaListProps {
   items: MediaItem[];
@@ -80,7 +80,7 @@ export function MediaList({
                         else next.add(item.id);
                         return next;
                       });
-                    } else if (isViewable(item.mimeType)) {
+                    } else {
                       setViewing(item);
                     }
                   }}

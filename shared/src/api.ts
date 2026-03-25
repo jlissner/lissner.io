@@ -25,6 +25,8 @@ export interface MediaListFields {
   latitude?: number | null;
   longitude?: number | null;
   backedUpAt?: string | null;
+  /** Present when this item is the still (`*.mp.jpg`) in a Pixel motion pair; companion is the `*.mp` clip. */
+  motionCompanionId?: string | null;
 }
 
 export interface MediaListItem extends MediaListFields {
@@ -37,6 +39,19 @@ export type SearchMediaResponse = SearchResultItem[];
 
 /** Same enrichment as list media; search omits some optional location fields. */
 export type SearchResultItem = MediaListItem;
+
+/** Other half of a Pixel motion pair (`*.mp.jpg` still ↔ `*.mp` clip). */
+export type MediaMotionCompanionSummary = {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+};
+
+/** GET /api/media/:id/details — extends list fields with optional motion companion. */
+export type MediaDetailsApiResponse = MediaListItem & {
+  motionCompanion?: MediaMotionCompanionSummary | null;
+};
 
 /** GET /api/media */
 export interface MediaListQueryResponse {
@@ -81,6 +96,7 @@ export interface PersonSummary {
 /** GET /api/people/:id/media */
 export interface PersonMediaPreviewItem {
   id: string;
+  originalName: string;
   mimeType: string;
   x: number | null;
   y: number | null;

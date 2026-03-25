@@ -9,6 +9,8 @@ export interface MediaItem {
   indexed?: boolean;
   backedUp?: boolean;
   people?: string[];
+  /** Still row in a Pixel pair; companion id is the `*.mp` motion file. */
+  motionCompanionId?: string | null;
 }
 
 export function getItemDateKey(item: MediaItem): string {
@@ -57,8 +59,18 @@ export function groupItemsByDay(
   }));
 }
 
-export function isImage(mimeType: string): boolean {
-  return mimeType.startsWith("image/");
+/** Pixel motion-photo sidecars often use `.mp`; payload may be JPEG or MP4. */
+export function isPixelMotionPhotoBasename(originalName: string): boolean {
+  const base = originalName.replace(/^.*[/\\]/, "");
+  return /\.mp$/i.test(base);
+}
+
+export function isImage(mimeType: string, originalName?: string): boolean {
+  if (mimeType.startsWith("image/")) return true;
+  if (originalName != null && originalName !== "" && isPixelMotionPhotoBasename(originalName)) {
+    return true;
+  }
+  return false;
 }
 
 export function isVideo(mimeType: string): boolean {
@@ -71,8 +83,4 @@ export function isText(mimeType: string): boolean {
     mimeType === "application/json" ||
     mimeType === "application/xml"
   );
-}
-
-export function isViewable(mimeType: string): boolean {
-  return isImage(mimeType) || isVideo(mimeType) || isText(mimeType);
 }

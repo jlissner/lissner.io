@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isImage, isText, isVideo } from "./media-utils";
+import { isImage, isPixelMotionPhotoBasename, isText, isVideo } from "./media-utils";
+import { PixelMpOrImageVideoPreview } from "./pixel-mp-preview";
 import { MediaViewerFaceOverlay } from "./media-viewer-face-overlay";
 import { MediaViewerAssignModal } from "./media-viewer-assign-modal";
 import { MediaViewerReassignModal } from "./media-viewer-reassign-modal";
@@ -29,7 +30,20 @@ export function MediaViewerContent({
 }: MediaViewerContentProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const previewUrl = `/api/media/${item.id}/preview`;
+  const pixelMp = isPixelMotionPhotoBasename(item.originalName);
+  const hasMotionPair = item.motionCompanionId != null && item.motionCompanionId !== "";
+  const motionVideoUrl = hasMotionPair
+    ? `/api/media/${item.motionCompanionId}/preview`
+    : "";
+  const [pixelIsVideo, setPixelIsVideo] = useState(false);
+  /** Paired `*.mp.jpg` + `*.mp`: default to motion video; user can switch to still only. */
+  const [motionPairView, setMotionPairView] = useState<"video" | "still">("video");
   const [detailsRefreshKey, setDetailsRefreshKey] = useState(0);
+
+  useEffect(() => {
+    setPixelIsVideo(false);
+    setMotionPairView("video");
+  }, [item.id]);
   const handleTagChange = useCallback(() => setDetailsRefreshKey((k) => k + 1), []);
   const {
     faces,
@@ -80,7 +94,26 @@ export function MediaViewerContent({
   return (
     <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       <div className="viewer-content__actions">
-        {isImage(item.mimeType) && (
+        {hasMotionPair && motionPairView === "video" && (
+          <button onClick={() => setMotionPairView("still")} style={btnStyle} type="button">
+            View still image
+          </button>
+        )}
+        {hasMotionPair && motionPairView === "still" && (
+          <button
+            onClick={() => {
+              setMotionPairView("video");
+              setTaggingMode(() => false);
+            }}
+            style={btnStyle}
+            type="button"
+          >
+            View motion
+          </button>
+        )}
+        {isImage(item.mimeType, item.originalName) &&
+          (!pixelMp || !pixelIsVideo) &&
+          (!hasMotionPair || motionPairView === "still") && (
           <button
             onClick={() => setTaggingMode((p) => !p)}
             style={{ ...btnStyle, background: taggingMode ? "#4f46e5" : "rgba(255,255,255,0.2)" }}
@@ -95,7 +128,18 @@ export function MediaViewerContent({
       <div className="viewer-content__body">
         <div className="viewer-content__media">
           <p className="viewer-content__filename">{item.originalName}</p>
-          {isImage(item.mimeType) && (
+          {hasMotionPair && motionPairView === "video" && (
+            <video
+              src={motionVideoUrl}
+              controls
+              autoPlay
+              playsInline
+              style={{ maxWidth: "100%", maxHeight: "85vh" }}
+            />
+          )}
+          {isImage(item.mimeType, item.originalName) &&
+            !pixelMp &&
+            (!hasMotionPair || motionPairView === "still") && (
             <div style={{ position: "relative", display: "inline-block" }}>
               <img
                 ref={imgRef}
@@ -110,6 +154,45 @@ export function MediaViewerContent({
                 }}
               />
               {taggingMode && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <MediaViewerFaceOverlay
+                    imgRef={imgRef}
+                    faces={faces}
+                    assigningFace={assigningFace}
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          {pixelMp && !isVideo(item.mimeType) && (!hasMotionPair || motionPairView === "still") && (
+            <div style={{ position: "relative", display: "inline-block" }}>
+              <PixelMpOrImageVideoPreview
+                src={previewUrl}
+                alt={item.originalName}
+                imgRef={imgRef}
+                onImgClick={handleImageClick}
+                onSwitchToVideo={() => {
+                  setPixelIsVideo(true);
+                  setTaggingMode(() => false);
+                }}
+                imgStyle={{
+                  maxWidth: "100%",
+                  maxHeight: "85vh",
+                  objectFit: "contain",
+                  cursor: taggingMode ? "crosshair" : "default",
+                }}
+                videoStyle={{ maxWidth: "100%", maxHeight: "85vh" }}
+              />
+              {taggingMode && !pixelIsVideo && (
                 <div
                   style={{
                     position: "absolute",
@@ -173,7 +256,10 @@ export function MediaViewerContent({
               {textError ?? textContent ?? "Loading…"}
             </pre>
           )}
-          {!isImage(item.mimeType) && !isVideo(item.mimeType) && !isText(item.mimeType) && (
+          {!isImage(item.mimeType, item.originalName) &&
+            !isVideo(item.mimeType) &&
+            !pixelMp &&
+            !isText(item.mimeType) && (
             <p style={{ color: "#94a3b8" }}>
               Preview not available.{" "}
               <a

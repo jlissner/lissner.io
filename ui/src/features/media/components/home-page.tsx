@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { MediaList } from "./media-list";
 import { HomePageHeaderBar } from "./home-page-header-bar";
 import { useHomePage } from "../hooks/use-home-page";
@@ -42,11 +41,6 @@ export function HomePage({ personFilter, personFilterName, onClearPersonFilter }
     bulkAction,
   } = useHomePage({ personFilter });
 
-  const [headerContainer, setHeaderContainer] = useState<HTMLElement | null>(null);
-  useEffect(() => {
-    setHeaderContainer(document.getElementById("home-header-actions"));
-  }, []);
-
   const title = isSearchMode
     ? "Search results"
     : personFilterName
@@ -56,7 +50,6 @@ export function HomePage({ personFilter, personFilterName, onClearPersonFilter }
   return (
     <>
       <HomePageHeaderBar
-        container={headerContainer}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onSearch={handleSearch}

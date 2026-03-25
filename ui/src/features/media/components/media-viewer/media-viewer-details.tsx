@@ -14,6 +14,12 @@ interface MediaDetails {
   indexed?: boolean;
   backedUp?: boolean;
   backedUpAt?: string | null;
+  motionCompanion?: {
+    id: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+  } | null;
 }
 
 function formatDate(iso: string): string {
@@ -99,6 +105,28 @@ export function MediaViewerDetails({ item, refreshTrigger = 0 }: MediaViewerDeta
         <dd className="viewer-details__value">{formatFileSize(details.size)}</dd>
         <dt className="viewer-details__term">Type</dt>
         <dd className="viewer-details__value">{details.mimeType}</dd>
+        <dt className="viewer-details__term">Download</dt>
+        <dd className="viewer-details__value">
+          <a
+            href={`/api/media/${details.id}`}
+            download={details.originalName}
+            className="viewer-details__link"
+          >
+            {details.originalName}
+          </a>
+          {details.motionCompanion && (
+            <>
+              <br />
+              <a
+                href={`/api/media/${details.motionCompanion.id}`}
+                download={details.motionCompanion.originalName}
+                className="viewer-details__link"
+              >
+                {details.motionCompanion.originalName}
+              </a>
+            </>
+          )}
+        </dd>
         {details.indexed && (
           <>
             <dt className="viewer-details__term">AI search</dt>

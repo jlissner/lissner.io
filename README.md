@@ -136,7 +136,7 @@ The UI proxies `/api` to **port 3000**. That error means the **Express API is no
 
 If S3 variables are missing, the server logs a warning on startup and the UI shows an alert banner. All four S3 variables must be set to enable sync.
 
-**S3 sync behavior:** Only uploads files not already in S3. Downloads files that exist in S3 but are missing locally. Merges media from the latest DB backup in S3 (e.g. from another device) into the local database. After each **upload**, a full sync is **scheduled automatically** (debounced ~3.5s so bursts of files don’t start many syncs); you can still run **Sync** manually from the UI.
+**S3 sync behavior:** Only uploads files not already in S3. Downloads files that exist in S3 but are missing locally. Merges media from the latest DB backup in S3 (e.g. from another device) into the local database. After each **upload**, a full sync is **scheduled automatically** (debounced ~3.5s so bursts of files don’t start many syncs); you can still run **Sync** manually from **Admin → S3 sync** in the UI (admins only).
 
 **Backfill:** Run `npm run backfill` to assign any media with null `owner_id` to the `FIRST_ADMIN_EMAIL` user. Requires `FIRST_ADMIN_EMAIL` in `.env` or `.env.local`.
 

@@ -71,6 +71,7 @@ export interface PersonSummary {
 /** GET /api/people/:id/media */
 export interface PersonMediaPreviewItem {
     id: string;
+    originalName: string;
     mimeType: string;
     x: number | null;
     y: number | null;

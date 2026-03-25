@@ -111,7 +111,9 @@ export async function searchMediaByQuery(q: string): Promise<SearchResultItem[]>
       return [];
     }
 
-    const items = db.getMediaByIds(mediaIds);
+    const items = db.getMediaByIds(mediaIds).filter(
+      (x) => (x.hideFromGallery ?? 0) === 0
+    );
     const order = new Map(mediaIds.map((id, i) => [id, i]));
     items.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
 
@@ -132,12 +134,13 @@ function mapSearchItems(
   personNames: Map<number, string>
 ): SearchResultItem[] {
   return items.map((item) => {
-    const personIds = db.getImagePeople(item.id);
+    const { hideFromGallery: _h, ...rest } = item;
+    const personIds = db.getImagePeople(rest.id);
     const people = personIds.map((pid) => personNames.get(pid) ?? `Person ${pid}`);
     return {
-      ...item,
+      ...rest,
       indexed: true,
-      backedUp: !!item.backedUpAt,
+      backedUp: !!rest.backedUpAt,
       people: people.length ? people : undefined,
     };
   });

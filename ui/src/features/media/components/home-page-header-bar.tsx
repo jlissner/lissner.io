@@ -1,10 +1,8 @@
-import { createPortal } from "react-dom";
 import { HomePageToolbar } from "./home-page-toolbar";
 import { HomePageFilters } from "./home-page-filters";
 import { MediaListBulkActions } from "./media-viewer/media-list-bulk-actions";
 
 interface HomePageHeaderBarProps {
-  container: HTMLElement | null;
   searchQuery: string;
   setSearchQuery: (v: string) => void;
   onSearch: () => void;
@@ -28,7 +26,6 @@ interface HomePageHeaderBarProps {
 }
 
 export function HomePageHeaderBar({
-  container,
   searchQuery,
   setSearchQuery,
   onSearch,
@@ -50,9 +47,7 @@ export function HomePageHeaderBar({
   bulkDeleting,
   bulkIndexing,
 }: HomePageHeaderBarProps) {
-  if (!container) return null;
-
-  const content = (
+  return (
     <div className="header-bar">
       <div className="header-bar__main">
         {selectedCount > 0 ? (
@@ -87,6 +82,4 @@ export function HomePageHeaderBar({
       />
     </div>
   );
-
-  return createPortal(content, container);
 }

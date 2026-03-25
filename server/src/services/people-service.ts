@@ -13,6 +13,7 @@ export function getPersonMediaPreview(
   const media = db.getMediaForPerson(personId, limit);
   return media.map((m) => ({
     id: m.id,
+    originalName: m.originalName,
     mimeType: m.mimeType,
     x: m.x ?? null,
     y: m.y ?? null,

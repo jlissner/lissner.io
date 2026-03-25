@@ -17,6 +17,8 @@ export function DataExplorer() {
   const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<Record<string, unknown> | null>(null);
@@ -33,12 +35,20 @@ export function DataExplorer() {
     setLoading(true);
     setError(null);
     try {
+      const q = debouncedSearch.trim();
+      const rowParams = new URLSearchParams({
+        limit: String(limit),
+        offset: String(offset),
+      });
+      if (q) rowParams.set("q", q);
+      const schemaUrl = q
+        ? `/api/admin/data-explorer/tables/${selectedTable}?q=${encodeURIComponent(q)}`
+        : `/api/admin/data-explorer/tables/${selectedTable}`;
       const [schemaRes, rowsRes] = await Promise.all([
-        fetch(`/api/admin/data-explorer/tables/${selectedTable}`, { credentials: "include" }),
-        fetch(
-          `/api/admin/data-explorer/tables/${selectedTable}/rows?limit=${limit}&offset=${offset}`,
-          { credentials: "include" }
-        ),
+        fetch(schemaUrl, { credentials: "include" }),
+        fetch(`/api/admin/data-explorer/tables/${selectedTable}/rows?${rowParams}`, {
+          credentials: "include",
+        }),
       ]);
       if (schemaRes.ok) {
         const { schema: s, count: c } = await schemaRes.json();
@@ -56,11 +66,26 @@ export function DataExplorer() {
     } finally {
       setLoading(false);
     }
-  }, [selectedTable, limit, offset]);
+  }, [selectedTable, limit, offset, debouncedSearch]);
 
   useEffect(() => {
     fetchTables();
   }, [fetchTables]);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput, selectedTable]);
+
+  useEffect(() => {
+    setOffset(0);
+  }, [debouncedSearch]);
+
+  useEffect(() => {
+    setSearchInput("");
+    setDebouncedSearch("");
+    setOffset(0);
+  }, [selectedTable]);
 
   useEffect(() => {
     if (selectedTable) fetchTableData();
@@ -166,7 +191,8 @@ export function DataExplorer() {
     <div className="data-explorer">
       <h3>Data Explorer</h3>
       <p className="data-explorer__desc">
-        Browse and edit tables. Schema is discovered automatically.
+        Browse and edit tables. Search matches a substring in any column. Schema is discovered
+        automatically.
       </p>
 
       <div className="data-explorer__toolbar">
@@ -174,7 +200,6 @@ export function DataExplorer() {
           value={selectedTable ?? ""}
           onChange={(e) => {
             setSelectedTable(e.target.value || null);
-            setOffset(0);
             setEditingRow(null);
             setAddingRow(false);
           }}
@@ -188,15 +213,34 @@ export function DataExplorer() {
           ))}
         </select>
         {selectedTable && (
-          <Button
-            size="sm"
-            onClick={() => {
-              setAddingRow(true);
-              setNewRow({});
-            }}
-          >
-            Add row
-          </Button>
+          <>
+            <label className="data-explorer__search">
+              <span className="u-sr-only">Search table</span>
+              <input
+                type="search"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search all columns…"
+                className="form__input"
+                autoComplete="off"
+                spellCheck={false}
+              />
+            </label>
+            {searchInput.trim() !== "" && (
+              <Button size="sm" variant="ghost" type="button" onClick={() => setSearchInput("")}>
+                Clear search
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => {
+                setAddingRow(true);
+                setNewRow({});
+              }}
+            >
+              Add row
+            </Button>
+          </>
         )}
       </div>
 
@@ -209,7 +253,9 @@ export function DataExplorer() {
       {selectedTable && schema && (
         <>
           <p className="data-explorer__meta">
-            {count} row{count !== 1 ? "s" : ""}
+            {debouncedSearch.trim()
+              ? `${count} match${count !== 1 ? "es" : ""} for "${debouncedSearch.trim()}"`
+              : `${count} row${count !== 1 ? "s" : ""}`}
             {count > limit && ` (showing ${limit} per page)`}
           </p>
 
@@ -255,7 +301,13 @@ export function DataExplorer() {
                 </thead>
                 <tbody>
                   {rows.map((row, i) => (
-                    <tr key={i}>
+                    <tr
+                      key={
+                        pkCols.length > 0
+                          ? pkCols.map((pk) => String(row[pk] ?? "")).join("|")
+                          : `row-${i}`
+                      }
+                    >
                       {editingRow && pkCols.every((pk) => row[pk] === editingRow[pk]) ? (
                         <>
                           {schema.map((col) => (

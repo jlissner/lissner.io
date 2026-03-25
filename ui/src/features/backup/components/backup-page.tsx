@@ -6,9 +6,11 @@ import { useActivity } from "@/components/activity/activity-provider";
 
 interface BackupPageProps {
   onSyncComplete?: () => void;
+  /** When false, omit the page title (e.g. when embedded under Admin with a section heading). */
+  showTitle?: boolean;
 }
 
-export function BackupPage({ onSyncComplete }: BackupPageProps) {
+export function BackupPage({ onSyncComplete, showTitle = true }: BackupPageProps) {
   const activity = useActivity();
   const wasInProgress = useRef(false);
   const [running, setRunning] = useState(false);
@@ -60,7 +62,7 @@ export function BackupPage({ onSyncComplete }: BackupPageProps) {
 
   return (
     <div className="backup-page">
-      <h2 className="backup-page__title">Sync with S3</h2>
+      {showTitle && <h2 className="backup-page__title">Sync with S3</h2>}
 
       {!config.configured ? (
         <Alert variant="warning">

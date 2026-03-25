@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { isViewable, isImage, isVideo } from "./media-utils";
+import { isImage, isPixelMotionPhotoBasename, isVideo } from "./media-utils";
 import type { MediaItem } from "./media-utils";
 
 function FallbackImage({
@@ -56,6 +56,30 @@ function VideoThumbnail({ item }: { item: { id: string; originalName: string } }
   );
 }
 
+/** Still thumbnail with motion clip: show the still as the image and a play affordance. */
+function MotionPairThumbnail({ item }: { item: { id: string; originalName: string } }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <div className="media-cell__video-wrap">
+      <FallbackImage
+        src={`/api/media/${item.id}/preview`}
+        alt={item.originalName}
+        fallbackIcon="📷"
+        className="media-cell__img"
+        onLoad={() => setLoaded(true)}
+      />
+      {loaded && (
+        <span className="media-cell__play-overlay" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="currentColor" className="media-cell__play-icon">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </span>
+      )}
+      <span className="media-cell__motion-badge">Motion</span>
+    </div>
+  );
+}
+
 interface MediaItemCellProps {
   item: MediaItem;
   selected: boolean;
@@ -95,7 +119,7 @@ export function MediaItemCell({
         onClick={onCellClick}
         className={`media-cell__btn ${selectionMode ? "media-cell__btn--default" : ""}`}
         style={{
-          cursor: selectionMode ? "default" : isViewable(item.mimeType) ? "pointer" : "default",
+          cursor: selectionMode ? "default" : "pointer",
         }}
       >
         <div className="media-cell__inner">
@@ -130,15 +154,17 @@ export function MediaItemCell({
               </span>
             </div>
           )}
-          {isImage(item.mimeType) ? (
+          {item.motionCompanionId ? (
+            <MotionPairThumbnail item={item} />
+          ) : isVideo(item.mimeType) || isPixelMotionPhotoBasename(item.originalName) ? (
+            <VideoThumbnail item={item} />
+          ) : isImage(item.mimeType, item.originalName) ? (
             <FallbackImage
               src={`/api/media/${item.id}/preview`}
               alt={item.originalName}
               fallbackIcon="📷"
               className="media-cell__img"
             />
-          ) : isVideo(item.mimeType) ? (
-            <VideoThumbnail item={item} />
           ) : (
             <span className="media-cell__icon">📄</span>
           )}

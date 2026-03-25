@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import { ModalBody, ModalPanel, ModalRoot, ModalTitle, ModalActions } from "@/components/ui/modal";
 import type { FaceMatchAutoMerged, FaceMatchReviewItem, Person } from "./people-types";
 
@@ -66,11 +67,19 @@ function MatchFaceReviewCard({
         <div className="match-faces-modal__preview-wrap">
           <div className="match-faces-modal__preview">
             {current.previewMediaId ? (
-              <img
-                src={faceMatchPreviewSrc(current) ?? ""}
-                alt=""
-                className="match-faces-modal__preview-img"
-              />
+              current.previewFaceCrop ? (
+                <img
+                  src={faceMatchPreviewSrc(current) ?? ""}
+                  alt=""
+                  className="match-faces-modal__preview-img"
+                />
+              ) : (
+                <PixelMpOrImageVideoPreview
+                  src={faceMatchPreviewSrc(current) ?? ""}
+                  alt=""
+                  className="match-faces-modal__preview-img"
+                />
+              )
             ) : (
               <div className="match-faces-modal__preview-placeholder">No preview</div>
             )}

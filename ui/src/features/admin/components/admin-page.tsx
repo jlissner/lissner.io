@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { BackupPage } from "@/features/backup/components/backup-page";
 import { DataExplorer } from "./data-explorer";
 
 interface WhitelistEntry {
@@ -19,7 +20,7 @@ interface User {
   personId: number | null;
 }
 
-export function AdminPage() {
+export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [people, setPeople] = useState<Array<{ id: number; name: string }>>([]);
@@ -163,6 +164,15 @@ export function AdminPage() {
   return (
     <div className="admin-page">
       <h2 className="admin-page__title">Admin</h2>
+
+      <section className="admin-page__section">
+        <h3>S3 sync</h3>
+        <p className="admin-page__desc">
+          Two-way sync with your bucket: upload new files, download missing ones, and merge media
+          from other devices.
+        </p>
+        <BackupPage onSyncComplete={onSyncComplete} showTitle={false} />
+      </section>
 
       <section className="admin-page__section">
         <h3>Whitelist</h3>

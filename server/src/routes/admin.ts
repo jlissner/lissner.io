@@ -60,8 +60,9 @@ adminRouter.get("/data-explorer/tables/:table", (req, res) => {
     return;
   }
   try {
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
     const schema = db.getDataExplorerTableSchema(req.params.table);
-    const count = db.getDataExplorerRowCount(req.params.table);
+    const count = db.getDataExplorerRowCount(req.params.table, q);
     res.json({ schema, count });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
@@ -78,7 +79,8 @@ adminRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 500);
     const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
-    const rows = db.getDataExplorerRows(req.params.table, limit, offset);
+    const q = typeof req.query.q === "string" ? req.query.q : undefined;
+    const rows = db.getDataExplorerRows(req.params.table, limit, offset, q);
     res.json(rows);
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });

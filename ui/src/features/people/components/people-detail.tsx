@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { isImage, isPixelMotionPhotoBasename } from "@/features/media/components/media-viewer/media-utils";
+import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import type { MergeSuggestion } from "./people-types";
 
 interface MediaPreview {
   id: string;
+  originalName?: string;
   mimeType: string;
   x?: number;
   y?: number;
@@ -44,7 +47,7 @@ export function PeopleDetail({
     );
   }
 
-  const images = previewMedia.filter((m) => m.mimeType.startsWith("image/"));
+  const images = previewMedia.filter((m) => isImage(m.mimeType, m.originalName));
   const showMergeHints =
     selectedName.trim().startsWith("Person") &&
     (mergeSuggestionsLoading || mergeSuggestions.length > 0);
@@ -100,6 +103,8 @@ export function PeopleDetail({
             const thumbSrc = hasBox
               ? `/api/media/${m.id}/face/${selectedId}`
               : `/api/media/${m.id}/preview`;
+            const usePixelHybrid =
+              !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
             return (
               <button
                 key={m.id}
@@ -108,7 +113,11 @@ export function PeopleDetail({
                 onClick={() => onPhotoClick(m)}
                 title={m.backedUp ? "Backed up to cloud" : "Not backed up yet"}
               >
-                <img src={thumbSrc} alt="" />
+                {usePixelHybrid ? (
+                  <PixelMpOrImageVideoPreview src={thumbSrc} alt="" />
+                ) : (
+                  <img src={thumbSrc} alt="" />
+                )}
                 {m.backedUp && (
                   <span className="detail__thumb-backup" aria-hidden>
                     ☁

@@ -1,4 +1,5 @@
 import * as db from "../db/media.js";
+import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { getFaceSimilarityFn } from "../faces.js";
 import { mergePeople } from "./people-service.js";
 import {
@@ -37,7 +38,7 @@ function getFirstImagePreviewForPerson(personId: number): {
   previewFaceCrop: boolean;
 } {
   const rows = db.getMediaForPerson(personId, 10);
-  const first = rows.find((r) => r.mimeType.startsWith("image/"));
+  const first = rows.find((r) => isEffectiveImageItem(r));
   if (!first) return { mediaId: null, previewFaceCrop: false };
   const previewFaceCrop =
     first.x != null &&

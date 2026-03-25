@@ -21,6 +21,7 @@ import {
   type ImagePersonEntry,
 } from "../faces.js";
 import { mediaDir } from "../config/paths.js";
+import { isEffectiveImageItem } from "../lib/effective-image.js";
 
 const TEXT_MIMES = new Set([
   "text/plain",
@@ -55,7 +56,7 @@ async function getTextForItem(
     const filePath = path.join(mediaDir, item.filename);
     return readFile(filePath, "utf-8");
   }
-  if (item.mimeType.startsWith("image/")) {
+  if (isEffectiveImageItem(item)) {
     try {
       const filePath = path.join(mediaDir, item.filename);
       const description = await describeImage(filePath);
@@ -171,7 +172,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
   try {
     const filePath = path.join(mediaDir, item.filename);
     const imagePersonIds = new Map<string, number[]>();
-    if (item.mimeType.startsWith("image/")) {
+    if (isEffectiveImageItem(item)) {
       try {
         const [exif, faces] = await Promise.all([
           extractExifData(filePath),
@@ -222,8 +223,10 @@ export async function indexMediaItems(
   const toIndex = items.filter((i) => !skipIndexed || !indexedIds.has(i.id));
   setIndexProgress(0, toIndex.length);
 
-  const imageItems = toIndex.filter((i) => i.mimeType.startsWith("image/"));
-  const videoItems = toIndex.filter((i) => i.mimeType.startsWith("video/"));
+  const imageItems = toIndex.filter((i) => isEffectiveImageItem(i));
+  const videoItems = toIndex.filter(
+    (i) => i.mimeType.startsWith("video/") && !isEffectiveImageItem(i)
+  );
   const imageIds = [...new Set(imageItems.map((i) => i.id))];
   const imageItemsById = new Map(imageItems.map((i) => [i.id, i]));
 

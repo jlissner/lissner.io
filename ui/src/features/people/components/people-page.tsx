@@ -6,6 +6,7 @@ import { PeopleMergeModal } from "./people-merge-modal";
 import { PeopleAddModal } from "./people-add-modal";
 import { PeopleImageViewer } from "./people-image-viewer";
 import { PeopleMatchFacesWizard } from "./people-match-faces-wizard";
+import { isImage } from "@/features/media/components/media-viewer/media-utils";
 import { usePeoplePage } from "./use-people-page";
 import type { FaceMatchRunResponse } from "./people-types";
 
@@ -82,7 +83,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const hasPlaceholders = people.some((p) => p.name.trim().startsWith("Person"));
   const photoCount =
     selectedPerson?.photoCount ??
-    previewMedia.filter((m) => m.mimeType.startsWith("image/")).length;
+    previewMedia.filter((m) => isImage(m.mimeType, m.originalName)).length;
 
   if (loading) {
     return <div className="u-p-6 u-text-muted u-text-sm">Loading people…</div>;

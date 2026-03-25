@@ -8,11 +8,19 @@ import * as db from "../db/media.js";
 import { indexMediaItem } from "../indexing/media.js";
 import { extractFacesFromImage } from "../faces.js";
 import {
+  deleteMediaFromS3,
   tryRestoreMediaFromBackup,
   tryRestoreVideoThumbnailFromBackup,
   scheduleBackupSyncAfterUpload,
 } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import {
+  effectiveImageResponseMimeType,
+  isEffectiveImageItem,
+  isGenericBinaryMime,
+  isPixelMotionPhotoExtension,
+  sniffMediaMimeFromFile,
+} from "../lib/effective-image.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -115,12 +123,18 @@ export async function deleteMediaItem(
   }
   try {
     const filePath = path.join(mediaDir, item.filename);
-    await unlink(filePath);
+    await unlink(filePath).catch((err: NodeJS.ErrnoException) => {
+      if (err.code !== "ENOENT") throw err;
+    });
     if (item.mimeType.startsWith("video/")) {
       const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
       await unlink(thumbPath).catch(() => {});
     }
+    const s3Target = { id: item.id, filename: item.filename };
+    db.clearMotionPairForPeer(item.id);
     db.deleteMedia(item.id);
+    await deleteMediaFromS3(s3Target);
+    scheduleBackupSyncAfterUpload();
     return { ok: true };
   } catch (err) {
     console.error("Delete error:", err);
@@ -130,7 +144,7 @@ export async function deleteMediaItem(
 
 export async function getFacesPayloadForMedia(mediaId: string) {
   const item = db.getMediaById(mediaId);
-  if (!item || !item.mimeType.startsWith("image/")) {
+  if (!item || !isEffectiveImageItem(item)) {
     return { ok: false as const, reason: "not_found" as const };
   }
   const ok = await ensureLocalMediaFile(item);
@@ -170,7 +184,7 @@ export function addPersonToMediaTag(params: {
   | { ok: true; status: 201; body: { personId: number } }
   | { ok: false; status: 400 | 404; error: string } {
   const item = db.getMediaById(params.mediaId);
-  if (!item || !item.mimeType.startsWith("image/")) {
+  if (!item || !isEffectiveImageItem(item)) {
     return { ok: false, status: 404, error: "Not found" };
   }
   const box = params.box;
@@ -204,7 +218,7 @@ export function addPersonToMediaTag(params: {
 
 export async function getFaceCropOrFullImage(mediaId: string, personId: number) {
   const item = db.getMediaById(mediaId);
-  if (!item || !item.mimeType.startsWith("image/")) {
+  if (!item || !isEffectiveImageItem(item)) {
     return { ok: false as const, reason: "not_found" as const };
   }
   if (isNaN(personId) || personId < 1) {
@@ -227,9 +241,19 @@ export async function getFaceCropOrFullImage(mediaId: string, personId: number) 
       const width = Math.round(Math.max(1, box.width));
       const height = Math.round(Math.max(1, box.height));
       const buffer = await sharp(filePath).extract({ left, top, width, height }).toBuffer();
-      return { ok: true as const, kind: "buffer" as const, mimeType: item.mimeType, buffer };
+      return {
+        ok: true as const,
+        kind: "buffer" as const,
+        mimeType: effectiveImageResponseMimeType(item),
+        buffer,
+      };
     }
-    return { ok: true as const, kind: "file" as const, path: filePath, mimeType: item.mimeType };
+    return {
+      ok: true as const,
+      kind: "file" as const,
+      path: filePath,
+      mimeType: effectiveImageResponseMimeType(item),
+    };
   } catch (err) {
     console.error("Face crop error:", err);
     return { ok: false as const, reason: "crop_failed" as const };
@@ -245,10 +269,23 @@ export async function getMediaPreviewFile(mediaId: string) {
   if (!ok) {
     return { ok: false as const, reason: "file_missing" as const };
   }
+  const filePath = path.join(mediaDir, item.filename);
+  const shouldSniff =
+    isPixelMotionPhotoExtension(item.originalName) || isGenericBinaryMime(item.mimeType);
+  let mimeType = effectiveImageResponseMimeType(item);
+  if (shouldSniff) {
+    const sniffed = await sniffMediaMimeFromFile(filePath);
+    if (sniffed) {
+      mimeType = sniffed;
+      if (sniffed !== item.mimeType) {
+        db.updateMediaMimeType(item.id, sniffed);
+      }
+    }
+  }
   return {
     ok: true as const,
-    path: path.join(mediaDir, item.filename),
-    mimeType: item.mimeType,
+    path: filePath,
+    mimeType,
   };
 }
 
@@ -261,13 +298,28 @@ export function getMediaDetailsEnriched(mediaId: string) {
   const personNames = db.getPersonNames();
   const people = personIds.map((pid) => personNames.get(pid) ?? `Person ${pid}`);
   const indexedIds = db.getIndexedMediaIds();
+  const companion =
+    item.motionCompanionId != null && item.motionCompanionId !== ""
+      ? db.getMediaById(item.motionCompanionId)
+      : undefined;
+  const motionCompanion =
+    companion != null
+      ? {
+          id: companion.id,
+          originalName: companion.originalName,
+          mimeType: companion.mimeType,
+          size: companion.size,
+        }
+      : undefined;
+  const { hideFromGallery: _hid, ...rest } = item;
   return {
     ok: true as const,
     body: {
-      ...item,
+      ...rest,
       people: people.length ? people : undefined,
       indexed: indexedIds.has(item.id),
       backedUp: !!item.backedUpAt,
+      motionCompanion,
     },
   };
 }
@@ -312,20 +364,35 @@ export async function getThumbnailResponse(mediaId: string): Promise<
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
-  if (item.mimeType.startsWith("image/")) {
-    const ok = await ensureLocalMediaFile(item);
-    if (!ok) {
-      return { ok: false, reason: "file_missing" };
-    }
-    const filePath = path.join(mediaDir, item.filename);
-    return { ok: true, kind: "file", path: filePath, contentType: item.mimeType };
-  }
-  if (!item.mimeType.startsWith("video/")) {
-    return { ok: false, reason: "bad_type" };
-  }
   const mediaOk = await ensureLocalMediaFile(item);
   if (!mediaOk) {
     return { ok: false, reason: "file_missing" };
+  }
+  const filePath = path.join(mediaDir, item.filename);
+  const shouldSniff =
+    isPixelMotionPhotoExtension(item.originalName) || isGenericBinaryMime(item.mimeType);
+  const sniffed = shouldSniff ? await sniffMediaMimeFromFile(filePath) : null;
+  if (sniffed && sniffed !== item.mimeType) {
+    db.updateMediaMimeType(item.id, sniffed);
+  }
+  const mimeForKind = sniffed ?? item.mimeType;
+  const isVideoKind = mimeForKind.startsWith("video/");
+  const isImageKind =
+    mimeForKind.startsWith("image/") || isPixelMotionPhotoExtension(item.originalName);
+
+  if (!isVideoKind && isImageKind) {
+    const contentType = mimeForKind.startsWith("image/")
+      ? mimeForKind
+      : effectiveImageResponseMimeType(item);
+    return {
+      ok: true,
+      kind: "file",
+      path: filePath,
+      contentType,
+    };
+  }
+  if (!isVideoKind) {
+    return { ok: false, reason: "bad_type" };
   }
   const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
   const srcPath = path.join(mediaDir, item.filename);

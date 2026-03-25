@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
+import { isPixelMotionPhotoBasename } from "@/features/media/components/media-viewer/media-utils";
+import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 
 interface MediaPreview {
   id: string;
   mimeType: string;
+  originalName?: string;
 }
 
 interface PeopleImageViewerProps {
@@ -25,12 +28,22 @@ export function PeopleImageViewer({
   return (
     <div className="viewer-overlay" onClick={onClose}>
       <div className="viewer-overlay__content">
-        <img
-          src={`/api/media/${media.id}/preview`}
-          alt=""
-          className="viewer-overlay__img"
-          onClick={(e) => e.stopPropagation()}
-        />
+        {isPixelMotionPhotoBasename(media.originalName ?? "") ? (
+          <PixelMpOrImageVideoPreview
+            src={`/api/media/${media.id}/preview`}
+            alt=""
+            className="viewer-overlay__img"
+            videoStyle={{ maxWidth: "100%", maxHeight: "85vh" }}
+            onImgClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <img
+            src={`/api/media/${media.id}/preview`}
+            alt=""
+            className="viewer-overlay__img"
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
       </div>
       <div className="viewer-overlay__actions" onClick={(e) => e.stopPropagation()}>
         <Button variant="secondary" onClick={onClose}>

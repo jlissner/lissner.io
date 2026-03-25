@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
+  DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { readdir, readFile, writeFile, access, unlink } from "fs/promises";
 import path from "path";
@@ -10,6 +11,7 @@ import type { Readable } from "stream";
 import Database from "better-sqlite3";
 import * as db from "../db/media.js";
 import * as authDb from "../db/auth.js";
+import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../config/paths.js";
 
 const S3_VARS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET"] as const;
@@ -142,6 +144,31 @@ async function listAllS3Keys(
   return keys;
 }
 
+/** Remove `backup/thumbnails/{id}.jpg` from S3 when no media row exists for `id`. */
+async function deleteOrphanS3Thumbnails(
+  client: S3Client,
+  bucket: string,
+  thumbKeys: Set<string>,
+  validMediaIds: Set<string>
+): Promise<number> {
+  const prefix = `${S3_PREFIX}/thumbnails/`;
+  let removed = 0;
+  for (const key of thumbKeys) {
+    if (!key.startsWith(prefix)) continue;
+    const name = key.slice(prefix.length);
+    if (!name.endsWith(".jpg")) continue;
+    const id = name.slice(0, -".jpg".length);
+    if (validMediaIds.has(id)) continue;
+    try {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+      removed++;
+    } catch (err) {
+      console.error("[s3-sync] DeleteObject orphan thumbnail:", key, err);
+    }
+  }
+  return removed;
+}
+
 function fileExists(filePath: string): Promise<boolean> {
   return access(filePath)
     .then(() => true)
@@ -196,6 +223,8 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     downloadedMedia: 0,
     downloadedThumbs: 0,
     mergedMedia: 0,
+    deletedOrphanThumbsS3: 0,
+    deletedOrphanThumbsLocal: 0,
   };
 
   try {
@@ -207,10 +236,9 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       message: "Listing S3 contents…",
     });
 
-    const [s3MediaKeys, s3ThumbKeys, s3DbKeys] = await Promise.all([
+    const [s3MediaKeys, s3ThumbKeys] = await Promise.all([
       listAllS3Keys(client, bucket, `${S3_PREFIX}/media/`),
       listAllS3Keys(client, bucket, `${S3_PREFIX}/thumbnails/`),
-      listAllS3Keys(client, bucket, `${S3_PREFIX}/db/`),
     ]);
 
     const s3MediaFilenames = new Set(
@@ -308,26 +336,6 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     );
 
     // 5. Download missing media from S3
-    const sortedDbKeys = [...s3DbKeys]
-      .filter((k) => k.endsWith(".db"))
-      .sort()
-      .reverse();
-
-    const backupDbPath: string | null =
-      sortedDbKeys.length > 0
-        ? await (async (): Promise<string | null> => {
-            const latestDbKey = sortedDbKeys[0];
-            const getRes = await client.send(
-              new GetObjectCommand({ Bucket: bucket, Key: latestDbKey })
-            );
-            const dbStream = getRes.Body;
-            if (!dbStream) return null;
-            const dbBuffer2 = await streamToBuffer(dbStream as Readable);
-            await writeFile(syncTempDbPath, dbBuffer2);
-            return syncTempDbPath;
-          })()
-        : null;
-
     // Download: media in our DB but file missing, and exists in S3
     const toDownloadMedia: typeof localMedia = [];
     for (const m of localMedia) {
@@ -406,11 +414,36 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       });
     }
 
-    // 7. Merge: media in backup DB but not in our DB - insert and download
+    // 7. Merge: media in remote backup DB but not in our DB - insert and download.
+    // Must use a DB snapshot from *after* step 4 (we upload current local state there). Listing at
+    // sync start would point at an older backup that still contained rows we deleted locally, which
+    // incorrectly re-inserted them here.
     const defaultOwnerId = authDb.getDefaultOwnerId();
+    const s3DbKeysAfterUpload = await listAllS3Keys(client, bucket, `${S3_PREFIX}/db/`);
+    const sortedMergeDbKeys = [...s3DbKeysAfterUpload]
+      .filter((k) => k.endsWith(".db"))
+      .sort()
+      .reverse();
+    const mergeDbKey =
+      sortedMergeDbKeys.find((k) => k === dbBackupKey) ?? sortedMergeDbKeys[0] ?? null;
+
+    const backupDbPath: string | null =
+      mergeDbKey != null
+        ? await (async (): Promise<string | null> => {
+            const getRes = await client.send(
+              new GetObjectCommand({ Bucket: bucket, Key: mergeDbKey })
+            );
+            const dbStream = getRes.Body;
+            if (!dbStream) return null;
+            const dbBuffer2 = await streamToBuffer(dbStream as Readable);
+            await writeFile(syncTempDbPath, dbBuffer2);
+            return syncTempDbPath;
+          })()
+        : null;
+
     if (backupDbPath && defaultOwnerId) {
       const backupDb = new Database(backupDbPath, { readonly: true });
-      const localIds = new Set(localMedia.map((m) => m.id));
+      const localIds = new Set(db.listMedia().map((m) => m.id));
       const backupRows = backupDb
         .prepare(
           `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude FROM media`
@@ -483,6 +516,10 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       await unlink(backupDbPath).catch(() => {});
     }
 
+    const mediaIds = new Set(db.listMedia().map((m) => m.id));
+    tally.deletedOrphanThumbsS3 = await deleteOrphanS3Thumbnails(client, bucket, s3ThumbKeys, mediaIds);
+    tally.deletedOrphanThumbsLocal = await deleteOrphanedLocalThumbnailFiles();
+
     const result: SyncProgress = {
       phase: "done",
       current: 1,
@@ -494,6 +531,8 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
         tally.downloadedMedia > 0 && `Downloaded ${tally.downloadedMedia} media`,
         tally.downloadedThumbs > 0 && `Downloaded ${tally.downloadedThumbs} thumbnails`,
         tally.mergedMedia > 0 && `Added ${tally.mergedMedia} from backup`,
+        tally.deletedOrphanThumbsS3 > 0 && `Removed ${tally.deletedOrphanThumbsS3} orphaned S3 thumbnails`,
+        tally.deletedOrphanThumbsLocal > 0 && `Removed ${tally.deletedOrphanThumbsLocal} orphaned local thumbnails`,
       ]
         .filter(Boolean)
         .join(". "),
@@ -527,6 +566,34 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
   }
 }
 
+function isS3NoSuchKey(err: unknown): boolean {
+  if (typeof err !== "object" || err === null) return false;
+  const e = err as { name?: string; Code?: string };
+  return e.name === "NoSuchKey" || e.Code === "NoSuchKey";
+}
+
+/** Remove a media blob and its video thumbnail (if any) from S3 after local delete. Best-effort; logs errors. */
+export async function deleteMediaFromS3(item: {
+  id: string;
+  filename: string;
+}): Promise<void> {
+  if (!getS3Config().configured) return;
+  const client = createS3Client();
+  if (!client) return;
+  const bucket = process.env.S3_BUCKET!;
+  const keys = [
+    `${S3_PREFIX}/media/${item.filename}`,
+    `${S3_PREFIX}/thumbnails/${item.id}.jpg`,
+  ];
+  for (const Key of keys) {
+    try {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
+    } catch (err) {
+      console.error("[s3-sync] DeleteObject failed:", Key, err);
+    }
+  }
+}
+
 /** Download a single media file from S3 when the DB says it was backed up but the local file is missing. */
 export async function tryRestoreMediaFromBackup(item: {
   id: string;
@@ -555,6 +622,10 @@ export async function tryRestoreMediaFromBackup(item: {
     await writeFile(localPath, buf);
     return true;
   } catch (err) {
+    if (isS3NoSuchKey(err)) {
+      db.clearMediaBackedUpAt(item.id);
+      return false;
+    }
     console.error("restore: failed to download media from S3:", item.id, err);
     return false;
   }
@@ -580,6 +651,9 @@ export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promi
     await writeFile(thumbPath, buf);
     return true;
   } catch (err) {
+    if (isS3NoSuchKey(err)) {
+      return false;
+    }
     console.error("restore: failed to download thumbnail from S3:", mediaId, err);
     return false;
   }

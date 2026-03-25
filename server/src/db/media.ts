@@ -65,6 +65,15 @@ if (!mediaCols.includes("owner_id")) {
 if (!mediaCols.includes("backed_up_at")) {
   db.exec("ALTER TABLE media ADD COLUMN backed_up_at TEXT");
 }
+if (!mediaCols.includes("motion_companion_id")) {
+  db.exec("ALTER TABLE media ADD COLUMN motion_companion_id TEXT");
+}
+if (!mediaCols.includes("hide_from_gallery")) {
+  db.exec("ALTER TABLE media ADD COLUMN hide_from_gallery INTEGER DEFAULT 0");
+}
+
+/** Pixel-style pairs: `*.mp.jpg` (still) + `*.mp` (motion); only still rows appear in gallery lists. */
+const GALLERY_VISIBLE_SQL = "COALESCE(hide_from_gallery, 0) = 0";
 
 const VALID_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -100,22 +109,60 @@ export function getDataExplorerTableSchema(tableName: string): DataExplorerColum
   return rows;
 }
 
+const DATA_EXPLORER_SEARCH_MAX_LEN = 500;
+
+function normalizeDataExplorerSearch(search: string | null | undefined): string | null {
+  if (search == null || typeof search !== "string") return null;
+  const t = search.trim();
+  if (t.length === 0) return null;
+  return t.length > DATA_EXPLORER_SEARCH_MAX_LEN ? t.slice(0, DATA_EXPLORER_SEARCH_MAX_LEN) : t;
+}
+
+function buildDataExplorerSearchClause(
+  schema: DataExplorerColumn[],
+  pattern: string
+): { whereSql: string; params: unknown[] } {
+  if (schema.length === 0) {
+    return { whereSql: "0", params: [] };
+  }
+  const parts = schema.map((c) => `CAST(${c.name} AS TEXT) LIKE ?`);
+  const params = schema.map(() => pattern);
+  return { whereSql: `(${parts.join(" OR ")})`, params };
+}
+
 export function getDataExplorerRows(
   tableName: string,
   limit: number,
-  offset: number
+  offset: number,
+  search?: string | null
 ): Record<string, unknown>[] {
   validateTableName(tableName);
-  const stmt = db.prepare(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`);
-  return stmt.all(Math.min(Math.max(1, limit), 500), Math.max(0, offset)) as Record<
-    string,
-    unknown
-  >[];
+  const lim = Math.min(Math.max(1, limit), 500);
+  const off = Math.max(0, offset);
+  const q = normalizeDataExplorerSearch(search);
+  if (!q) {
+    const stmt = db.prepare(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`);
+    return stmt.all(lim, off) as Record<string, unknown>[];
+  }
+  const schema = getDataExplorerTableSchema(tableName);
+  const { whereSql, params } = buildDataExplorerSearchClause(schema, `%${q}%`);
+  const sql = `SELECT * FROM ${tableName} WHERE ${whereSql} LIMIT ? OFFSET ?`;
+  const stmt = db.prepare(sql);
+  return stmt.all(...params, lim, off) as Record<string, unknown>[];
 }
 
-export function getDataExplorerRowCount(tableName: string): number {
+export function getDataExplorerRowCount(tableName: string, search?: string | null): number {
   validateTableName(tableName);
-  const row = db.prepare(`SELECT COUNT(*) as c FROM ${tableName}`).get() as { c: number };
+  const q = normalizeDataExplorerSearch(search);
+  if (!q) {
+    const row = db.prepare(`SELECT COUNT(*) as c FROM ${tableName}`).get() as { c: number };
+    return row.c;
+  }
+  const schema = getDataExplorerTableSchema(tableName);
+  const { whereSql, params } = buildDataExplorerSearchClause(schema, `%${q}%`);
+  const row = db
+    .prepare(`SELECT COUNT(*) as c FROM ${tableName} WHERE ${whereSql}`)
+    .get(...params) as { c: number };
   return row.c;
 }
 
@@ -207,6 +254,94 @@ export function migrateNullOwnersToDefault(getDefaultOwnerId: () => number | nul
   }
 }
 
+function isPixelMotionVideoBasename(originalName: string): boolean {
+  const lower = originalName.toLowerCase();
+  return lower.endsWith(".mp") && !lower.endsWith(".mp.jpg");
+}
+
+function findMediaByOriginalNameCaseInsensitive(originalName: string):
+  | { id: string; originalName: string }
+  | undefined {
+  return db
+    .prepare(
+      `SELECT id, original_name as originalName FROM media WHERE original_name = ? COLLATE NOCASE`
+    )
+    .get(originalName) as { id: string; originalName: string } | undefined;
+}
+
+function breakMotionPairForMedia(mediaId: string): void {
+  const row = db
+    .prepare(`SELECT motion_companion_id FROM media WHERE id = ?`)
+    .get(mediaId) as { motion_companion_id: string | null } | undefined;
+  const cid = row?.motion_companion_id;
+  if (!cid) return;
+  db.prepare(
+    `UPDATE media SET motion_companion_id = NULL, hide_from_gallery = 0 WHERE id = ?`
+  ).run(mediaId);
+  db.prepare(
+    `UPDATE media SET motion_companion_id = NULL, hide_from_gallery = 0 WHERE id = ?`
+  ).run(cid);
+}
+
+/** Link `image.mp.jpg` ↔ `image.mp` so only the still appears in gallery grids. */
+export function linkMotionPairForMedia(mediaId: string): void {
+  const row = getMediaById(mediaId);
+  if (!row) return;
+  const name = row.originalName;
+  const lower = name.toLowerCase();
+  if (lower.endsWith(".mp.jpg")) {
+    const videoName = name.slice(0, -4);
+    const video = findMediaByOriginalNameCaseInsensitive(videoName);
+    if (video && video.id !== mediaId && isPixelMotionVideoBasename(video.originalName)) {
+      setMotionPair(mediaId, video.id);
+    } else {
+      breakMotionPairForMedia(mediaId);
+    }
+  } else if (isPixelMotionVideoBasename(name)) {
+    const stillName = `${name}.jpg`;
+    const still = findMediaByOriginalNameCaseInsensitive(stillName);
+    if (still && still.id !== mediaId) {
+      setMotionPair(still.id, mediaId);
+    } else {
+      breakMotionPairForMedia(mediaId);
+    }
+  } else {
+    breakMotionPairForMedia(mediaId);
+  }
+}
+
+export function setMotionPair(stillId: string, videoId: string): void {
+  if (stillId === videoId) return;
+  breakMotionPairForMedia(stillId);
+  breakMotionPairForMedia(videoId);
+  db.prepare(
+    `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 0 WHERE id = ?`
+  ).run(videoId, stillId);
+  db.prepare(
+    `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 1 WHERE id = ?`
+  ).run(stillId, videoId);
+}
+
+/** Clear the other half of a motion pair before deleting a row (caller deletes `mediaId` after). */
+export function clearMotionPairForPeer(mediaId: string): void {
+  const row = db
+    .prepare(`SELECT motion_companion_id FROM media WHERE id = ?`)
+    .get(mediaId) as { motion_companion_id: string | null } | undefined;
+  const cid = row?.motion_companion_id;
+  if (!cid) return;
+  db.prepare(
+    `UPDATE media SET motion_companion_id = NULL, hide_from_gallery = 0 WHERE id = ?`
+  ).run(cid);
+}
+
+/** Re-run pairing for every row (e.g. after restore). Idempotent. */
+export function relinkAllMotionPairs(): void {
+  const rows = db.prepare("SELECT id FROM media").all() as Array<{ id: string }>;
+  for (const { id } of rows) {
+    linkMotionPairForMedia(id);
+  }
+}
+
 export function insertMedia(
   id: string,
   filename: string,
@@ -219,6 +354,11 @@ export function insertMedia(
     `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at, owner_id)
      VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`
   ).run(id, filename, originalName, mimeType, size, ownerId);
+  linkMotionPairForMedia(id);
+}
+
+export function updateMediaMimeType(mediaId: string, mimeType: string): void {
+  db.prepare("UPDATE media SET mime_type = ? WHERE id = ?").run(mimeType, mediaId);
 }
 
 /** Insert media row from backup (for S3 sync merge). Uses INSERT OR IGNORE. ownerId required. */
@@ -253,7 +393,11 @@ export function insertMediaFromBackup(
       row.longitude ?? null,
       ownerId
     );
-  return result.changes > 0;
+  if (result.changes > 0) {
+    linkMotionPairForMedia(row.id);
+    return true;
+  }
+  return false;
 }
 
 export function setMediaDateTaken(mediaId: string, dateTaken: string | null): void {
@@ -262,6 +406,11 @@ export function setMediaDateTaken(mediaId: string, dateTaken: string | null): vo
 
 export function markMediaBackedUp(mediaId: string): void {
   db.prepare("UPDATE media SET backed_up_at = datetime('now') WHERE id = ?").run(mediaId);
+}
+
+/** When S3 no longer has the object, stop treating the row as restorable from backup. */
+export function clearMediaBackedUpAt(mediaId: string): void {
+  db.prepare("UPDATE media SET backed_up_at = NULL WHERE id = ?").run(mediaId);
 }
 
 export function markMediaBackedUpByFilenames(filenames: string[]): void {
@@ -284,6 +433,11 @@ export function setMediaLocation(
   );
 }
 
+export function getAllMediaIds(): Set<string> {
+  const rows = db.prepare("SELECT id FROM media").all() as Array<{ id: string }>;
+  return new Set(rows.map((r) => r.id));
+}
+
 export function listMedia() {
   return db
     .prepare(
@@ -302,9 +456,11 @@ export function listMedia() {
 }
 
 export function getMediaCount(): number {
-  const row = db.prepare("SELECT COUNT(*) as count FROM media").get() as {
-    count: number;
-  };
+  const row = db
+    .prepare(`SELECT COUNT(*) as count FROM media WHERE ${GALLERY_VISIBLE_SQL}`)
+    .get() as {
+      count: number;
+    };
   return row.count;
 }
 
@@ -327,9 +483,11 @@ export function listMediaPaginated(
     const orderBy = getMediaOrderBy(sortBy, "m");
     return db
       .prepare(
-        `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude, m.backed_up_at as backedUpAt
+        `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude, m.backed_up_at as backedUpAt,
+                m.motion_companion_id as motionCompanionId
          FROM media m
          JOIN image_people ip ON ip.media_id = m.id AND ip.person_id = ?
+         WHERE ${GALLERY_VISIBLE_SQL.replace(/hide_from_gallery/g, "m.hide_from_gallery")}
          ORDER BY ${orderBy}
          LIMIT ? OFFSET ?`
       )
@@ -344,13 +502,15 @@ export function listMediaPaginated(
       latitude?: number | null;
       longitude?: number | null;
       backedUpAt?: string | null;
+      motionCompanionId?: string | null;
     }>;
   }
   const orderBy = getMediaOrderBy(sortBy);
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude, backed_up_at as backedUpAt
-       FROM media ORDER BY ${orderBy} LIMIT ? OFFSET ?`
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude, backed_up_at as backedUpAt,
+              motion_companion_id as motionCompanionId
+       FROM media WHERE ${GALLERY_VISIBLE_SQL} ORDER BY ${orderBy} LIMIT ? OFFSET ?`
     )
     .all(limit, offset) as Array<{
     id: string;
@@ -363,12 +523,17 @@ export function listMediaPaginated(
     latitude?: number | null;
     longitude?: number | null;
     backedUpAt?: string | null;
+    motionCompanionId?: string | null;
   }>;
 }
 
 export function getMediaCountForPerson(personId: number): number {
   const row = db
-    .prepare("SELECT COUNT(*) as count FROM image_people WHERE person_id = ?")
+    .prepare(
+      `SELECT COUNT(DISTINCT ip.media_id) as count FROM image_people ip
+       JOIN media m ON m.id = ip.media_id
+       WHERE ip.person_id = ? AND COALESCE(m.hide_from_gallery, 0) = 0`
+    )
     .get(personId) as { count: number };
   return row.count;
 }
@@ -377,7 +542,8 @@ export function getMediaById(id: string) {
   return db
     .prepare(
       `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt,
-        date_taken as dateTaken, latitude, longitude, owner_id as ownerId, backed_up_at as backedUpAt
+        date_taken as dateTaken, latitude, longitude, owner_id as ownerId, backed_up_at as backedUpAt,
+        motion_companion_id as motionCompanionId, hide_from_gallery as hideFromGallery
        FROM media WHERE id = ?`
     )
     .get(id) as
@@ -393,6 +559,8 @@ export function getMediaById(id: string) {
         longitude?: number | null;
         ownerId?: number | null;
         backedUpAt?: string | null;
+        motionCompanionId?: string | null;
+        hideFromGallery?: number | null;
       }
     | undefined;
 }
@@ -668,6 +836,7 @@ export function getMediaForPerson(
   limit: number
 ): Array<{
   id: string;
+  originalName: string;
   mimeType: string;
   x?: number;
   y?: number;
@@ -677,15 +846,16 @@ export function getMediaForPerson(
 }> {
   return db
     .prepare(
-      `SELECT m.id, m.mime_type as mimeType, ip.x, ip.y, ip.width, ip.height, m.backed_up_at as backedUpAt
+      `SELECT m.id, m.original_name as originalName, m.mime_type as mimeType, ip.x, ip.y, ip.width, ip.height, m.backed_up_at as backedUpAt
        FROM image_people ip
        JOIN media m ON m.id = ip.media_id
-       WHERE ip.person_id = ?
+       WHERE ip.person_id = ? AND COALESCE(m.hide_from_gallery, 0) = 0
        ORDER BY m.uploaded_at DESC, m.filename ASC
        LIMIT ?`
     )
     .all(personId, limit) as Array<{
     id: string;
+    originalName: string;
     mimeType: string;
     x?: number;
     y?: number;
@@ -706,7 +876,8 @@ export function getMediaByIds(ids: string[]) {
   const placeholders = ids.map(() => "?").join(",");
   return db
     .prepare(
-      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, backed_up_at as backedUpAt
+      `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, backed_up_at as backedUpAt,
+              motion_companion_id as motionCompanionId, hide_from_gallery as hideFromGallery
        FROM media WHERE id IN (${placeholders})`
     )
     .all(...ids) as Array<{
@@ -718,5 +889,7 @@ export function getMediaByIds(ids: string[]) {
     uploadedAt: string;
     dateTaken?: string | null;
     backedUpAt?: string | null;
+    motionCompanionId?: string | null;
+    hideFromGallery?: number | null;
   }>;
 }
