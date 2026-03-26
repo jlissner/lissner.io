@@ -2,6 +2,7 @@ import * as db from "../db/media.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { getFaceSimilarityFn } from "../faces.js";
 import { mergePeople } from "./people-service.js";
+import type { FaceMatchAutoMerged, FaceMatchReviewItem, FaceMatchRunResponse } from "../../../shared/src/api.js";
 import {
   collectDescriptorsForPerson,
   isPlaceholderPersonName,
@@ -15,23 +16,7 @@ import {
  */
 export const AUTO_MERGE_MATCH_SCORE = 0.995;
 
-export type FaceMatchAutoMerged = { merged: number; into: number; intoName: string };
-
-export type FaceMatchReviewItem = {
-  placeholderPersonId: number;
-  placeholderName: string;
-  hasFaceDescriptors: boolean;
-  topMatch: { personId: number; name: string; score: number } | null;
-  otherMatches: Array<{ personId: number; name: string; score: number }>;
-  previewMediaId: string | null;
-  /** True when stored face box exists — UI should use `/api/media/:id/face/:personId` for crop. */
-  previewFaceCrop: boolean;
-};
-
-export type FaceMatchRunResult = {
-  autoMerged: FaceMatchAutoMerged[];
-  reviewQueue: FaceMatchReviewItem[];
-};
+export type FaceMatchRunResult = FaceMatchRunResponse;
 
 function getFirstImagePreviewForPerson(personId: number): {
   mediaId: string | null;

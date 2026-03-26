@@ -1,20 +1,8 @@
 import { localCalendarDateKeyFromIso } from "@/lib/local-datetime.js";
 import { isImageMime, isTextMime, isVideoMime } from "../../lib/media-mime.js";
+import type { MediaListItem } from "../../../../../../shared/src/api.js";
 
-export interface MediaItem {
-  id: string;
-  filename: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-  uploadedAt: string;
-  dateTaken?: string | null;
-  indexed?: boolean;
-  backedUp?: boolean;
-  people?: string[];
-  /** Still row in a Pixel pair; companion id is the `*.mp` motion file. */
-  motionCompanionId?: string | null;
-}
+export type MediaItem = MediaListItem;
 
 export function getItemDateKey(item: MediaItem): string {
   const dateStr = item.dateTaken ?? item.uploadedAt;

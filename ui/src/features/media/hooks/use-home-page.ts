@@ -3,14 +3,10 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch, apiJson } from "@/api/client";
 import { useActivity } from "@/components/activity/activity-provider";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
+import type { MediaListQueryResponse, SearchMediaResponse } from "../../../../../shared/src/api.js";
 
 interface UseHomePageOptions {
   personFilter: number | null;
-}
-
-interface MediaListResponse {
-  items: MediaItem[];
-  total: number;
 }
 
 export function useHomePage({ personFilter }: UseHomePageOptions) {
@@ -39,7 +35,7 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
         sortBy,
       });
       if (personFilter != null) params.set("personId", String(personFilter));
-      return apiJson<MediaListResponse>(`media?${params}`);
+      return apiJson<MediaListQueryResponse>(`media?${params}`);
     },
     getNextPageParam: (lastPage, allPages) => {
       const loaded = allPages.reduce((acc, p) => acc + p.items.length, 0);
@@ -121,7 +117,7 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
 
   const searchMutation = useMutation({
     mutationFn: async (q: string) =>
-      apiJson<MediaItem[]>(`search?q=${encodeURIComponent(q)}`),
+      apiJson<SearchMediaResponse>(`search?q=${encodeURIComponent(q)}`),
     onMutate: () => {
       setSearching(true);
     },

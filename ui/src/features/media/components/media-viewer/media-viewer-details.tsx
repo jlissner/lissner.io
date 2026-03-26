@@ -1,30 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import type { MediaItem } from "./media-utils";
-
-/** PATCH /api/media/:id — aligned with shared/src/api.ts `MediaPatchResponse`. */
-type MediaPatchResponse = { dateTaken: string | null };
-
-interface MediaDetails {
-  id: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-  uploadedAt: string;
-  dateTaken?: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-  people?: string[];
-  indexed?: boolean;
-  backedUp?: boolean;
-  backedUpAt?: string | null;
-  motionCompanion?: {
-    id: string;
-    originalName: string;
-    mimeType: string;
-    size: number;
-  } | null;
-}
+import type { MediaDetailsApiResponse, MediaPatchResponse } from "../../../../../../shared/src/api.js";
+type MediaDetails = MediaDetailsApiResponse;
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
