@@ -33,7 +33,7 @@ export function HomePage({ personFilter, personFilterName, onClearPersonFilter }
     setSelected,
     selectionMode,
     clearSelection,
-    handleCheckboxClick,
+    handleCheckboxToggle,
     toggleSelectAllForDay,
     handleBulkDownload,
     handleBulkDeleteWrapped,
@@ -80,7 +80,7 @@ export function HomePage({ personFilter, personFilterName, onClearPersonFilter }
           selected={selected}
           setSelected={setSelected}
           selectionMode={selectionMode}
-          onCheckboxClick={handleCheckboxClick}
+          onCheckboxToggle={handleCheckboxToggle}
           onToggleSelectAllForDay={toggleSelectAllForDay}
           onUpdate={undefined}
         />

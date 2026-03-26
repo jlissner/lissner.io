@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, apiFetch, apiJson } from "@/api/client";
 import { useActivity } from "@/components/activity/activity-provider";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
@@ -207,8 +207,7 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     setSelected(new Set());
   }, []);
 
-  const toggleSelect = useCallback((id: string, e: MouseEvent) => {
-    e.stopPropagation();
+  const toggleSelect = useCallback((id: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -217,13 +216,9 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     });
   }, []);
 
-  const handleCheckboxClick = useCallback(
-    (id: string, e: MouseEvent) => {
-      e.stopPropagation();
-      toggleSelect(id, e);
-    },
-    [toggleSelect]
-  );
+  const handleCheckboxToggle = useCallback((id: string) => {
+    toggleSelect(id);
+  }, [toggleSelect]);
 
   const toggleSelectAllForDay = useCallback((groupItems: MediaItem[]) => {
     const ids = new Set(groupItems.map((i) => i.id));
@@ -302,7 +297,7 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     selectionMode,
     clearSelection,
     toggleSelect,
-    handleCheckboxClick,
+    handleCheckboxToggle,
     toggleSelectAllForDay,
     handleBulkDownload,
     handleBulkDeleteWrapped,

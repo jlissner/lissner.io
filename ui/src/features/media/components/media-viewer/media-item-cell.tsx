@@ -84,7 +84,7 @@ interface MediaItemCellProps {
   item: MediaItem;
   selected: boolean;
   selectionMode: boolean;
-  onCheckboxClick: (id: string, e: React.MouseEvent) => void;
+  onCheckboxToggle: (id: string) => void;
   onCellClick: () => void;
 }
 
@@ -100,7 +100,7 @@ export function MediaItemCell({
   item,
   selected,
   selectionMode,
-  onCheckboxClick,
+  onCheckboxToggle,
   onCellClick,
 }: MediaItemCellProps) {
   const [hovered, setHovered] = useState(false);
@@ -136,8 +136,8 @@ export function MediaItemCell({
               <input
                 type="checkbox"
                 checked={selected}
-                onChange={() => {}}
-                onClick={(e) => onCheckboxClick(item.id, e)}
+                onChange={() => onCheckboxToggle(item.id)}
+                onClick={(e) => e.stopPropagation()}
                 className="media-cell__checkbox"
               />
             </div>

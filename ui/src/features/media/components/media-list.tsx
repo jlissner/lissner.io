@@ -11,7 +11,7 @@ interface MediaListProps {
   selected: Set<string>;
   setSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
   selectionMode: boolean;
-  onCheckboxClick: (id: string, e: React.MouseEvent) => void;
+  onCheckboxToggle: (id: string) => void;
   onToggleSelectAllForDay: (groupItems: MediaItem[]) => void;
   onUpdate?: () => void;
 }
@@ -24,7 +24,7 @@ export function MediaList({
   selected,
   setSelected,
   selectionMode,
-  onCheckboxClick,
+  onCheckboxToggle,
   onToggleSelectAllForDay,
   onUpdate,
 }: MediaListProps) {
@@ -77,7 +77,7 @@ export function MediaList({
                   item={item}
                   selected={selected.has(item.id)}
                   selectionMode={selectionMode}
-                  onCheckboxClick={onCheckboxClick}
+                  onCheckboxToggle={onCheckboxToggle}
                   onCellClick={() => {
                     if (selectionMode) {
                       setSelected((prev) => {
