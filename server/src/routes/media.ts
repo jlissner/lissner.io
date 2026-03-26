@@ -24,6 +24,15 @@ import {
 } from "../services/media-service.js";
 import { mediaDir } from "../config/paths.js";
 import { resolveMimeTypeAfterUpload } from "../lib/effective-image.js";
+import { parseWithSchema } from "../validation/parse.js";
+import {
+  addPersonToMediaBodySchema,
+  mediaIdParamSchema,
+  mediaIdPersonIdParamSchema,
+  mediaListQuerySchema,
+  reassignFaceBodySchema,
+  uploadCheckNamesBodySchema,
+} from "../validation/media-schemas.js";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -73,19 +82,8 @@ mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
   });
 });
 
-const UPLOAD_CHECK_NAMES_MAX = 200;
-
 mediaRouter.post("/upload/check-names", (req, res) => {
-  const raw = req.body as { names?: unknown };
-  if (!raw || !Array.isArray(raw.names)) {
-    res.status(400).json({ error: "Expected JSON body: { names: string[] }" });
-    return;
-  }
-  const names = raw.names.filter((n): n is string => typeof n === "string");
-  if (names.length > UPLOAD_CHECK_NAMES_MAX) {
-    res.status(400).json({ error: `At most ${UPLOAD_CHECK_NAMES_MAX} names per request` });
-    return;
-  }
+  const { names } = parseWithSchema(uploadCheckNamesBodySchema, req.body);
   const conflicts: Array<{
     requestedName: string;
     existing: { id: string; originalName: string; uploadedAt: string };
@@ -100,22 +98,19 @@ mediaRouter.post("/upload/check-names", (req, res) => {
 });
 
 mediaRouter.get("/", (req, res) => {
-  const limit = Math.min(Math.max(1, parseInt(req.query.limit as string, 10) || 50), 100);
-  const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
-  const personIdParam = req.query.personId as string | undefined;
-  const personId = personIdParam ? parseInt(personIdParam, 10) : undefined;
-  const sortBy = (req.query.sortBy as string) === "taken" ? "taken" : "uploaded";
+  const { limit, offset, personId, sortBy } = parseWithSchema(mediaListQuerySchema, req.query);
   const { items, total } = listMediaEnriched({
     limit,
     offset,
-    personId: personId != null && !isNaN(personId) ? personId : undefined,
+    personId,
     sortBy,
   });
   res.json({ items, total });
 });
 
 mediaRouter.get("/:id", async (req, res) => {
-  const item = db.getMediaById(req.params.id);
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const item = db.getMediaById(id);
   if (!item) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -132,8 +127,8 @@ mediaRouter.get("/:id", async (req, res) => {
 });
 
 mediaRouter.delete("/:id/people/:personId", (req, res) => {
-  const personId = parseInt(req.params.personId, 10);
-  const result = removePersonFromMediaTag(req.params.id, personId);
+  const { id, personId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const result = removePersonFromMediaTag(id, personId);
   if (result.ok) {
     res.status(204).send();
     return;
@@ -154,9 +149,9 @@ mediaRouter.delete("/:id/people/:personId", (req, res) => {
 });
 
 mediaRouter.put("/:id/people/:personId", (req, res) => {
-  const fromPersonId = parseInt(req.params.personId, 10);
-  const toPersonId = parseInt(String(req.body?.assignTo ?? ""), 10);
-  const result = reassignPersonInMediaTag(req.params.id, fromPersonId, toPersonId);
+  const { id, personId: fromPersonId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const { assignTo: toPersonId } = parseWithSchema(reassignFaceBodySchema, req.body);
+  const result = reassignPersonInMediaTag(id, fromPersonId, toPersonId);
   if (result.ok) {
     res.json(result.body);
     return;
@@ -181,8 +176,8 @@ mediaRouter.put("/:id/people/:personId", (req, res) => {
 });
 
 mediaRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
-  const fromPersonId = parseInt(req.params.personId, 10);
-  const result = reassignToNewPerson(req.params.id, fromPersonId);
+  const { id, personId: fromPersonId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const result = reassignToNewPerson(id, fromPersonId);
   if (result.ok) {
     res.json(result.body);
     return;
@@ -199,8 +194,8 @@ mediaRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
 });
 
 mediaRouter.post("/:id/people/:personId/confirm", (req, res) => {
-  const personId = parseInt(req.params.personId, 10);
-  const result = confirmFaceTag(req.params.id, personId);
+  const { id, personId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const result = confirmFaceTag(id, personId);
   if (result.ok) {
     res.json({ confirmed: true });
     return;
@@ -217,7 +212,8 @@ mediaRouter.post("/:id/people/:personId/confirm", (req, res) => {
 });
 
 mediaRouter.delete("/:id", async (req, res) => {
-  const result = await deleteMediaItem(req.params.id, {
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const result = await deleteMediaItem(id, {
     userId: req.session?.userId,
     isAdmin: req.session?.isAdmin,
   });
@@ -237,7 +233,8 @@ mediaRouter.delete("/:id", async (req, res) => {
 });
 
 mediaRouter.patch("/:id", (req, res) => {
-  const result = updateMediaDateTaken(req.params.id, req.body, {
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const result = updateMediaDateTaken(id, req.body, {
     userId: req.session?.userId,
     isAdmin: req.session?.isAdmin,
   });
@@ -263,7 +260,8 @@ mediaRouter.patch("/:id", (req, res) => {
 });
 
 mediaRouter.get("/:id/faces", async (req, res) => {
-  const out = await getFacesPayloadForMedia(req.params.id);
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const out = await getFacesPayloadForMedia(id);
   if (!out.ok) {
     if (out.reason === "not_found") {
       res.status(404).json({ error: "Not found" });
@@ -280,11 +278,13 @@ mediaRouter.get("/:id/faces", async (req, res) => {
 });
 
 mediaRouter.post("/:id/people", (req, res) => {
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const body = parseWithSchema(addPersonToMediaBodySchema, req.body);
   const result = addPersonToMediaTag({
-    mediaId: req.params.id,
-    personId: req.body?.personId,
-    box: req.body?.box,
-    createNew: req.body?.createNew === true,
+    mediaId: id,
+    personId: body.personId,
+    box: body.box,
+    createNew: body.createNew === true,
   });
   if (result.ok) {
     res.status(result.status).json(result.body);
@@ -298,8 +298,8 @@ mediaRouter.post("/:id/people", (req, res) => {
 });
 
 mediaRouter.get("/:id/face/:personId", async (req, res) => {
-  const personId = parseInt(req.params.personId, 10);
-  const out = await getFaceCropOrFullImage(req.params.id, personId);
+  const { id, personId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const out = await getFaceCropOrFullImage(id, personId);
   if (!out.ok) {
     if (out.reason === "not_found") {
       res.status(404).json({ error: "Not found" });
@@ -329,7 +329,8 @@ mediaRouter.get("/:id/face/:personId", async (req, res) => {
 });
 
 mediaRouter.get("/:id/preview", async (req, res) => {
-  const out = await getMediaPreviewFile(req.params.id);
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const out = await getMediaPreviewFile(id);
   if (!out.ok) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -338,7 +339,8 @@ mediaRouter.get("/:id/preview", async (req, res) => {
 });
 
 mediaRouter.get("/:id/details", (req, res) => {
-  const out = getMediaDetailsEnriched(req.params.id);
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const out = getMediaDetailsEnriched(id);
   if (!out.ok) {
     res.status(404).json({ error: "Not found" });
     return;
@@ -347,7 +349,8 @@ mediaRouter.get("/:id/details", (req, res) => {
 });
 
 mediaRouter.get("/:id/thumbnail", async (req, res) => {
-  const out = await getThumbnailResponse(req.params.id);
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const out = await getThumbnailResponse(id);
   if (!out.ok) {
     if (out.reason === "not_found") {
       res.status(404).json({ error: "Not found" });
@@ -376,7 +379,8 @@ mediaRouter.get("/:id/thumbnail", async (req, res) => {
 });
 
 mediaRouter.get("/:id/content", async (req, res) => {
-  const out = await readTextMediaContent(req.params.id);
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const out = await readTextMediaContent(id);
   if (!out.ok) {
     if (out.reason === "not_found") {
       res.status(404).json({ error: "Not found" });
