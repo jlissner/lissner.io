@@ -15,6 +15,18 @@ interface PeoplePageProps {
   onViewAllPhotos?: (personId: number) => void;
 }
 
+function getEditDraftName(name: string): string {
+  if (name.startsWith("Person ")) return "";
+  return name;
+}
+
+function getMatchFacesErrorMessage(err: unknown): string {
+  if (err && typeof err === "object" && "error" in err && typeof err.error === "string") {
+    return err.error;
+  }
+  return "Match faces failed";
+}
+
 export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [matchFacesOpen, setMatchFacesOpen] = useState(false);
@@ -63,7 +75,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
       const res = await fetch("/api/people/match-faces", { method: "POST" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        alert((err as { error?: string }).error ?? "Match faces failed");
+        alert(getMatchFacesErrorMessage(err));
         return;
       }
       const data = (await res.json()) as FaceMatchRunResponse;
@@ -99,7 +111,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
         onMenuToggle={setMenuOpen}
         onEdit={(p) => {
           setEditModal(p);
-          setEditDraft(p.name.startsWith("Person ") ? "" : p.name);
+          setEditDraft(getEditDraftName(p.name));
         }}
         onMerge={setMergeModal}
         onDelete={handleDeletePerson}
