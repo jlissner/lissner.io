@@ -1,0 +1,33 @@
+---
+description: Default UI simplicity and clarity standards
+globs: ui/src/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# UI Simplicity First
+
+Prefer straightforward, readable code over dense or clever code.
+
+- No nested ternaries.
+- Prefer early returns/guard clauses to deep branching.
+- Avoid mutation when reasonable (`push`, in-place edits, reassignment-heavy flows).
+- Use small named helpers for non-trivial conditions, label text, and parsing.
+- Keep functions focused: one responsibility per function.
+- Prefer pure functions for derivations and formatting logic.
+- Keep render trees easy to scan; move logic out of JSX when it grows.
+
+## Example
+
+```ts
+// ❌ Dense
+const label = saving ? "Saving..." : loading ? "Loading..." : done ? "Done" : "Continue";
+
+// ✅ Clear
+function getLabel(params: { saving: boolean; loading: boolean; done: boolean }): string {
+  if (params.saving) return "Saving...";
+  if (params.loading) return "Loading...";
+  if (params.done) return "Done";
+  return "Continue";
+}
+```
+
