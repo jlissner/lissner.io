@@ -1,0 +1,21 @@
+/* Backup and auth feature styles */
+.backup-page {
+  max-width: 560px;
+}
+
+.backup-page__desc {
+  margin-bottom: var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.login-page {
+  max-width: 400px;
+  margin: 0 auto;
+  padding: var(--space-8);
+}
+
+.login-page__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}

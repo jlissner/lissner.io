@@ -3,6 +3,13 @@
  * Block__Element--Modifier
  */
 
+@import "./components/shared-ui.css";
+@import "./components/media.css";
+@import "./components/people.css";
+@import "./components/admin.css";
+@import "./components/activity.css";
+@import "./components/backup-auth.css";
+
 /* ========== App layout ========== */
 .app {
   display: flex;
