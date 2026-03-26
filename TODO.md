@@ -38,3 +38,24 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 - [x] **feature-api-clients**: Replace remaining raw `fetch` calls in UI feature hooks/components with typed feature API modules (e.g. `features/people/api.ts`, `features/media/api.ts`, `features/backup/api.ts`) that centralize request/response/error handling.
 - [x] **split-ui-components-css**: Break `ui/src/styles/components.css` into feature-scoped style files (media, people, admin, shared-ui) and keep selectors colocated with owning feature for easier agent navigation.
 
+## Server Simplification + Agentability Audit (New)
+
+- [x] **server-admin-route-validation**: Refactor `server/src/routes/admin.ts` to use shared Zod schemas + `parseWithSchema` for all params/query/body parsing (`limit`, `offset`, ids, whitelist payloads, data-explorer pk/data); remove ad-hoc `parseInt` and inline shape checks.
+- [ ] **server-admin-route-split**: Split `server/src/routes/admin.ts` into focused routers (`admin-whitelist-routes.ts`, `admin-users-routes.ts`, `admin-sql-routes.ts`, `admin-data-explorer-routes.ts`) and keep `routes/index.ts` composition-only.
+- [ ] **server-admin-service-layer**: Move admin/data-explorer orchestration from routes into `server/src/services/admin-service.ts` so routes are thin transport adapters and easier for agents to modify safely.
+- [ ] **server-admin-response-unions**: Standardize admin service return types to discriminated unions (`ok` + `reason`) and centralize HTTP status mapping in one helper to reduce duplicated 400/403/404/500 branching.
+- [ ] **server-people-route-consistency**: Make `server/src/routes/people.ts` consistent with other routes by using `parseWithSchema` (not mixed direct `.parse`) and shared response mappers for merge/delete outcomes.
+- [ ] **server-search-route-consistency**: Normalize `server/src/routes/search.ts` to shared query/body parsing patterns (`force` via schema coercion, consistent error payloads) and remove implicit string checks.
+- [ ] **server-index-bootstrap-cleanup**: Extract startup/bootstrap concerns from `server/src/index.ts` into dedicated modules (`bootstrap/runtime-compat.ts`, `bootstrap/startup-tasks.ts`, `bootstrap/server.ts`) to reduce top-level side effects and improve agent navigation.
+- [ ] **server-faces-mutable-removal**: Remove remaining `let`/mutation-heavy logic in `server/src/faces.ts` (`tensor` lifecycle and descriptor averaging) via scoped helpers + immutable transformations where feasible.
+- [ ] **server-sync-service-split**: Break `server/src/s3/sync.ts` into smaller modules (`sync-state.ts`, `sync-runner.ts`, `sync-transfer.ts`, `sync-restore.ts`, `sync-gc.ts`) to isolate state management, transfer primitives, and orchestration.
+- [ ] **server-sync-progress-model**: Introduce a typed sync progress/event model shared by `runSync`, backup route, and activity broadcaster; remove duplicated progress assembly and message formatting logic.
+- [ ] **server-db-media-split**: Decompose `server/src/db/media.ts` into domain-focused files (`db/media-read.ts`, `db/media-write.ts`, `db/media-people.ts`, `db/media-motion.ts`, `db/data-explorer.ts`) to reduce file size and accidental cross-concern edits.
+- [ ] **server-db-statement-reuse**: Introduce prepared statement factories for hot-path queries in `server/src/db/media.ts`-derived modules and avoid repeated SQL string duplication for similar operations.
+- [ ] **server-person-id-allocation-dedupe**: Deduplicate repeated "next person id" SQL in `server/src/db/media.ts` (`createPerson`, `createNewPerson`, `createNewPersonForMedia`) behind one helper with transactional guarantees.
+- [ ] **server-effective-image-centralization**: Consolidate mime/effective-image sniff + update flows currently repeated in `server/src/services/media-read-service.ts` (preview + thumbnail) into one reusable helper returning `{ mimeType, persistedUpdate }`.
+- [ ] **server-result-shape-convergence**: Align service result contracts across `media-read-service.ts`, `media-write-service.ts`, `media-faces-service.ts`, `search-service.ts`, `people-service.ts` so all expected failures are explicit unions and thrown errors are truly exceptional.
+- [ ] **server-typed-error-codes**: Add typed error codes (`code` field) for major server route families and ensure `middleware/error-handler.ts` maps known failures predictably for UI/API-client consumption.
+- [ ] **server-no-let-compliance**: Eliminate remaining `let` bindings in server runtime files (`faces.ts`, `media-read-service.ts`, `s3/sync.ts`, `lib/orphan-thumbnails.ts`, `lib/effective-image.ts`, `services/person-merge-suggestions.ts`, `indexing/job-store.ts`) per workspace immutable-style rule.
+- [ ] **server-test-coverage-refactors**: Add/update tests for refactored route/service/db boundaries, focusing on admin routes, person merge edge cases, sync merge behaviors, and media date/mime update paths to keep future agent refactors safe.
+

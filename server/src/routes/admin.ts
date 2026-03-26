@@ -3,6 +3,19 @@ import * as authDb from "../db/auth.js";
 import * as db from "../db/media.js";
 import { requireAuth, requireAdmin, getAuthUser } from "../auth/middleware.js";
 import { isDataExplorerEnabled, isSqlExplorerEnabled } from "../services/admin-service.js";
+import { parseWithSchema } from "../validation/parse.js";
+import {
+  dataExplorerDeleteBodySchema,
+  dataExplorerInsertBodySchema,
+  dataExplorerRowsQuerySchema,
+  dataExplorerSchemaQuerySchema,
+  dataExplorerUpdateBodySchema,
+  idParamSchema,
+  sqlBodySchema,
+  tableParamSchema,
+  userPeopleBodySchema,
+  whitelistCreateBodySchema,
+} from "../validation/admin-schemas.js";
 
 export const adminRouter = Router();
 
@@ -20,11 +33,7 @@ adminRouter.post("/sql", (req, res) => {
       .json({ error: "SQL explorer is only available locally with SQL_EXPLORER_ENABLED=true" });
     return;
   }
-  const query = req.body?.query?.trim();
-  if (!query || typeof query !== "string") {
-    res.status(400).json({ error: "query (string) required" });
-    return;
-  }
+  const { query } = parseWithSchema(sqlBodySchema, req.body);
   try {
     const result = db.runSql(query);
     res.json(result);
@@ -60,9 +69,10 @@ adminRouter.get("/data-explorer/tables/:table", (req, res) => {
     return;
   }
   try {
-    const q = typeof req.query.q === "string" ? req.query.q : undefined;
-    const schema = db.getDataExplorerTableSchema(req.params.table);
-    const count = db.getDataExplorerRowCount(req.params.table, q);
+    const { table } = parseWithSchema(tableParamSchema, req.params);
+    const { q } = parseWithSchema(dataExplorerSchemaQuerySchema, req.query);
+    const schema = db.getDataExplorerTableSchema(table);
+    const count = db.getDataExplorerRowCount(table, q);
     res.json({ schema, count });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
@@ -77,10 +87,9 @@ adminRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
     return;
   }
   try {
-    const limit = Math.min(parseInt(req.query.limit as string, 10) || 50, 500);
-    const offset = Math.max(0, parseInt(req.query.offset as string, 10) || 0);
-    const q = typeof req.query.q === "string" ? req.query.q : undefined;
-    const rows = db.getDataExplorerRows(req.params.table, limit, offset, q);
+    const { table } = parseWithSchema(tableParamSchema, req.params);
+    const { limit, offset, q } = parseWithSchema(dataExplorerRowsQuerySchema, req.query);
+    const rows = db.getDataExplorerRows(table, limit, offset, q);
     res.json(rows);
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
@@ -95,7 +104,9 @@ adminRouter.post("/data-explorer/tables/:table", (req, res) => {
     return;
   }
   try {
-    const id = db.insertDataExplorerRow(req.params.table, req.body || {});
+    const { table } = parseWithSchema(tableParamSchema, req.params);
+    const body = parseWithSchema(dataExplorerInsertBodySchema, req.body);
+    const id = db.insertDataExplorerRow(table, body);
     res.status(201).json({ id });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
@@ -110,12 +121,9 @@ adminRouter.put("/data-explorer/tables/:table", (req, res) => {
     return;
   }
   try {
-    const { pk, ...data } = req.body || {};
-    if (!pk || typeof pk !== "object") {
-      res.status(400).json({ error: "pk (primary key values) required" });
-      return;
-    }
-    const changes = db.updateDataExplorerRow(req.params.table, pk, data);
+    const { table } = parseWithSchema(tableParamSchema, req.params);
+    const { pk, ...data } = parseWithSchema(dataExplorerUpdateBodySchema, req.body);
+    const changes = db.updateDataExplorerRow(table, pk, data);
     res.json({ changes });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
@@ -130,12 +138,9 @@ adminRouter.delete("/data-explorer/tables/:table", (req, res) => {
     return;
   }
   try {
-    const pk = req.body?.pk;
-    if (!pk || typeof pk !== "object") {
-      res.status(400).json({ error: "pk (primary key values) required" });
-      return;
-    }
-    const changes = db.deleteDataExplorerRow(req.params.table, pk);
+    const { table } = parseWithSchema(tableParamSchema, req.params);
+    const { pk } = parseWithSchema(dataExplorerDeleteBodySchema, req.body);
+    const changes = db.deleteDataExplorerRow(table, pk);
     res.json({ changes });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
@@ -147,39 +152,21 @@ adminRouter.get("/whitelist", (_req, res) => {
 });
 
 adminRouter.post("/whitelist", (req, res) => {
-  const email = req.body?.email?.trim();
-  const isAdmin = !!req.body?.isAdmin;
-  const personIdRaw = req.body?.personId;
-  const personId =
-    personIdRaw != null && personIdRaw !== ""
-      ? typeof personIdRaw === "number"
-        ? personIdRaw
-        : parseInt(String(personIdRaw), 10)
-      : undefined;
-  const validPersonId = personId != null && !isNaN(personId) ? personId : undefined;
-
-  if (!email) {
-    res.status(400).json({ error: "Email required" });
-    return;
-  }
+  const { email, isAdmin, personId } = parseWithSchema(whitelistCreateBodySchema, req.body);
 
   try {
     const user = getAuthUser(req);
-    const id = authDb.addToWhitelist(email, isAdmin, user?.id, validPersonId);
+    const id = authDb.addToWhitelist(email, isAdmin, user?.id, personId);
     res
       .status(201)
-      .json({ id, email: email.toLowerCase(), isAdmin, personId: validPersonId ?? null });
+      .json({ id, email: email.toLowerCase(), isAdmin, personId: personId ?? null });
   } catch (_err) {
     res.status(400).json({ error: "Email may already be on whitelist" });
   }
 });
 
 adminRouter.delete("/whitelist/:id", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid ID" });
-    return;
-  }
+  const { id } = parseWithSchema(idParamSchema, req.params);
 
   const ok = authDb.removeFromWhitelist(id);
   if (!ok) {
@@ -194,26 +181,15 @@ adminRouter.get("/users", (_req, res) => {
 });
 
 adminRouter.get("/users/:id/people", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid user ID" });
-    return;
-  }
+  const { id } = parseWithSchema(idParamSchema, req.params);
 
   const personIds = authDb.getUserPeople(id);
   res.json({ personIds });
 });
 
 adminRouter.put("/users/:id/people", (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  const personIds = Array.isArray(req.body?.personIds)
-    ? (req.body.personIds as number[]).filter((p: unknown) => typeof p === "number")
-    : [];
-
-  if (isNaN(id)) {
-    res.status(400).json({ error: "Invalid user ID" });
-    return;
-  }
+  const { id } = parseWithSchema(idParamSchema, req.params);
+  const { personIds } = parseWithSchema(userPeopleBodySchema, req.body);
 
   authDb.setUserPeople(id, personIds);
   res.json({ personIds });
