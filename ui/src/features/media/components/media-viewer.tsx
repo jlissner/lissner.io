@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isText } from "./media-viewer/media-utils";
 import { MediaViewerContent } from "./media-viewer/media-viewer-content";
 import type { MediaItem } from "./media-viewer/media-utils";
+import { apiFetch } from "@/api/client";
 
 interface MediaViewerProps {
   item: MediaItem | null;
@@ -34,7 +35,7 @@ export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: Me
   useEffect(() => {
     if (!item) return;
     if (isText(item.mimeType)) {
-      fetch(`/api/media/${item.id}/content`)
+      apiFetch(`/media/${item.id}/content`)
         .then((res) => (res.ok ? res.text() : Promise.reject(new Error("Failed to load"))))
         .then(setTextContent)
         .catch(() => setTextError("Could not load content"));

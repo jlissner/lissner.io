@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { UploadNameConflict } from "../upload-types.js";
+import { apiJson } from "@/api/client";
 import { ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
@@ -41,14 +42,13 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     const names = pendingFiles.map((f) => f.name);
     const ac = new AbortController();
     setCheckLoading(true);
-    void fetch("/api/media/upload/check-names", {
+    void apiJson<{ conflicts?: UploadNameConflict[] }>("/media/upload/check-names", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ names }),
       signal: ac.signal,
     })
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Check failed"))))
-      .then((data: { conflicts?: UploadNameConflict[] }) => {
+      .then((data) => {
         setNameConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
       })
       .catch(() => {
