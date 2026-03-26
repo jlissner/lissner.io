@@ -34,7 +34,7 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 ## Agent Readability Refactors
 
 - [x] **split-use-people-page-hook**: Split `ui/src/features/people/components/use-people-page.ts` into focused hooks/modules (`use-people-list`, `use-people-preview`, `use-people-mutations`, `use-people-ui-state`) so each file has one concern and lower side-effect coupling.
-- [ ] **split-use-home-page-hook**: Split `ui/src/features/media/hooks/use-home-page.ts` into focused hooks/modules (`use-media-list-query`, `use-media-selection`, `use-media-search`, `use-media-bulk-actions`) to reduce cross-concern state and simplify edits.
+- [x] **split-use-home-page-hook**: Split `ui/src/features/media/hooks/use-home-page.ts` into focused hooks/modules (`use-media-list-query`, `use-media-selection`, `use-media-search`, `use-media-bulk-actions`) to reduce cross-concern state and simplify edits.
 - [ ] **feature-api-clients**: Replace remaining raw `fetch` calls in UI feature hooks/components with typed feature API modules (e.g. `features/people/api.ts`, `features/media/api.ts`, `features/backup/api.ts`) that centralize request/response/error handling.
 - [ ] **split-ui-components-css**: Break `ui/src/styles/components.css` into feature-scoped style files (media, people, admin, shared-ui) and keep selectors colocated with owning feature for easier agent navigation.
 
