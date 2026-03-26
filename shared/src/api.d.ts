@@ -23,6 +23,8 @@ export interface MediaListFields {
     latitude?: number | null;
     longitude?: number | null;
     backedUpAt?: string | null;
+    /** Present when this item is the still (`*.mp.jpg`) in a Pixel motion pair; companion is the `*.mp` clip. */
+    motionCompanionId?: string | null;
 }
 export interface MediaListItem extends MediaListFields {
     indexed: boolean;
@@ -32,6 +34,24 @@ export interface MediaListItem extends MediaListFields {
 export type SearchMediaResponse = SearchResultItem[];
 /** Same enrichment as list media; search omits some optional location fields. */
 export type SearchResultItem = MediaListItem;
+/** Other half of a Pixel motion pair (`*.mp.jpg` still ↔ `*.mp` clip). */
+export type MediaMotionCompanionSummary = {
+    id: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+};
+/** GET /api/media/:id/details — extends list fields with optional motion companion. */
+export type MediaDetailsApiResponse = MediaListItem & {
+    motionCompanion?: MediaMotionCompanionSummary | null;
+};
+/** PATCH /api/media/:id */
+export type MediaPatchRequest = {
+    dateTaken: string | null;
+};
+export type MediaPatchResponse = {
+    dateTaken: string | null;
+};
 /** GET /api/media */
 export interface MediaListQueryResponse {
     items: MediaListItem[];
@@ -45,6 +65,21 @@ export interface MediaUploadResponse {
     mimeType: string;
     size: number;
 }
+/** POST /api/media/upload/check-names */
+export type UploadCheckNamesRequest = {
+    names: string[];
+};
+export type UploadNameConflict = {
+    requestedName: string;
+    existing: {
+        id: string;
+        originalName: string;
+        uploadedAt: string;
+    };
+};
+export type UploadCheckNamesResponse = {
+    conflicts: UploadNameConflict[];
+};
 /** GET /api/backup/config */
 export interface BackupConfigResponse {
     configured: boolean;

@@ -1,18 +1,35 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { isText } from "./media-viewer/media-utils";
 import { MediaViewerContent } from "./media-viewer/media-viewer-content";
 import type { MediaItem } from "./media-viewer/media-utils";
 
 interface MediaViewerProps {
   item: MediaItem | null;
+  items: MediaItem[];
+  onSelectItem: (item: MediaItem) => void;
   onClose: () => void;
   onUpdate?: () => void;
 }
 
-export function MediaViewer({ item, onClose, onUpdate }: MediaViewerProps) {
+export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: MediaViewerProps) {
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState<string | null>(null);
   const [taggingMode, setTaggingMode] = useState(false);
+
+  const itemId = item?.id ?? "";
+  const index = useMemo(() => (itemId ? items.findIndex((x) => x.id === itemId) : -1), [items, itemId]);
+  const prevItem = index > 0 ? items[index - 1] : null;
+  const nextItem = index >= 0 && index < items.length - 1 ? items[index + 1] : null;
+
+  const goPrev = useCallback(() => {
+    if (!prevItem) return;
+    onSelectItem(prevItem);
+  }, [onSelectItem, prevItem]);
+
+  const goNext = useCallback(() => {
+    if (!nextItem) return;
+    onSelectItem(nextItem);
+  }, [onSelectItem, nextItem]);
 
   useEffect(() => {
     if (!item) return;
@@ -45,6 +62,10 @@ export function MediaViewer({ item, onClose, onUpdate }: MediaViewerProps) {
     >
       <MediaViewerContent
         item={item}
+        prevItem={prevItem}
+        nextItem={nextItem}
+        goPrev={goPrev}
+        goNext={goNext}
         textContent={textContent}
         textError={textError}
         taggingMode={taggingMode}

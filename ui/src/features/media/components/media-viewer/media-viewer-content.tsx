@@ -11,6 +11,10 @@ import type { MediaItem } from "./media-utils";
 
 interface MediaViewerContentProps {
   item: MediaItem;
+  prevItem: MediaItem | null;
+  nextItem: MediaItem | null;
+  goPrev: () => void;
+  goNext: () => void;
   textContent: string | null;
   textError: string | null;
   taggingMode: boolean;
@@ -21,6 +25,10 @@ interface MediaViewerContentProps {
 
 export function MediaViewerContent({
   item,
+  prevItem,
+  nextItem,
+  goPrev,
+  goNext,
   textContent,
   textError,
   taggingMode,
@@ -39,10 +47,13 @@ export function MediaViewerContent({
   /** Paired `*.mp.jpg` + `*.mp`: default to motion video; user can switch to still only. */
   const [motionPairView, setMotionPairView] = useState<"video" | "still">("video");
   const [detailsRefreshKey, setDetailsRefreshKey] = useState(0);
+  /** When false, detection boxes are hidden and clicks don’t snap to model-detected faces. */
+  const [showDetectedFaces, setShowDetectedFaces] = useState(true);
 
   useEffect(() => {
     setPixelIsVideo(false);
     setMotionPairView("video");
+    setShowDetectedFaces(true);
   }, [item.id]);
   const handleTagChange = useCallback(() => setDetailsRefreshKey((k) => k + 1), []);
   const {
@@ -65,21 +76,43 @@ export function MediaViewerContent({
     imgRef,
     faces,
     taggingMode,
+    showDetectedFaces,
     setAssigningFace,
     setReassigningFace
   );
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
+      const active = document.activeElement as HTMLElement | null;
+      const activeTag = active?.tagName?.toLowerCase();
+      const typing =
+        activeTag === "input" || activeTag === "textarea" || active?.getAttribute("contenteditable") === "true";
       if (e.key === "Escape") {
         if (assigningFace) setAssigningFace(null);
         else if (reassigningFace) setReassigningFace(null);
         else onClose();
       }
+      if (typing) return;
+      if (e.key === "ArrowLeft" && !assigningFace && !reassigningFace) {
+        if (prevItem) goPrev();
+      }
+      if (e.key === "ArrowRight" && !assigningFace && !reassigningFace) {
+        if (nextItem) goNext();
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose, assigningFace, reassigningFace, setAssigningFace, setReassigningFace]);
+  }, [
+    onClose,
+    assigningFace,
+    reassigningFace,
+    setAssigningFace,
+    setReassigningFace,
+    prevItem,
+    nextItem,
+    goPrev,
+    goNext,
+  ]);
 
   const btnStyle = {
     background: "rgba(255, 255, 255, 0.12)",
@@ -94,6 +127,12 @@ export function MediaViewerContent({
   return (
     <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       <div className="viewer-content__actions">
+        <button onClick={goPrev} style={btnStyle} type="button" disabled={!prevItem}>
+          Prev
+        </button>
+        <button onClick={goNext} style={btnStyle} type="button" disabled={!nextItem}>
+          Next
+        </button>
         {hasMotionPair && motionPairView === "video" && (
           <button onClick={() => setMotionPairView("still")} style={btnStyle} type="button">
             View still image
@@ -124,6 +163,29 @@ export function MediaViewerContent({
             {taggingMode ? "Exit tagging" : "Tagging mode"}
           </button>
         )}
+        {taggingMode &&
+          isImage(item.mimeType, item.originalName) &&
+          (!pixelMp || !pixelIsVideo) &&
+          (!hasMotionPair || motionPairView === "still") && (
+            <label
+              style={{
+                ...btnStyle,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                cursor: "pointer",
+                userSelect: "none",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={showDetectedFaces}
+                onChange={(e) => setShowDetectedFaces(e.target.checked)}
+                style={{ accentColor: "var(--color-primary)", cursor: "pointer" }}
+              />
+              <span>Face detections</span>
+            </label>
+          )}
         <button onClick={onClose} style={btnStyle}>
           Close
         </button>
@@ -171,6 +233,7 @@ export function MediaViewerContent({
                     imgRef={imgRef}
                     faces={faces}
                     assigningFace={assigningFace}
+                    showDetected={showDetectedFaces}
                   />
                 </div>
               )}
@@ -210,6 +273,7 @@ export function MediaViewerContent({
                     imgRef={imgRef}
                     faces={faces}
                     assigningFace={assigningFace}
+                    showDetected={showDetectedFaces}
                   />
                 </div>
               )}
@@ -279,7 +343,11 @@ export function MediaViewerContent({
           )}
         </div>
         <aside className="viewer-content__details">
-          <MediaViewerDetails item={item} refreshTrigger={detailsRefreshKey} />
+          <MediaViewerDetails
+            item={item}
+            refreshTrigger={detailsRefreshKey}
+            onMetadataUpdated={onUpdate}
+          />
         </aside>
       </div>
     </div>

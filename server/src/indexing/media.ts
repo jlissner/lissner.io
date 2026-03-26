@@ -170,43 +170,52 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
   const trackBackground = !isBulkIndexJobRunning();
   if (trackBackground) beginBackgroundIndex();
   try {
-    const filePath = path.join(mediaDir, item.filename);
-    const imagePersonIds = new Map<string, number[]>();
-    if (isEffectiveImageItem(item)) {
-      try {
-        const [exif, faces] = await Promise.all([
-          extractExifData(filePath),
-          extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
-            console.error(`Face extraction failed for ${item.originalName}:`, err);
-            return [] as FaceInImage[];
-          }),
-        ]);
-        if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
-        if (exif.latitude != null && exif.longitude != null) {
-          db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+    try {
+      const filePath = path.join(mediaDir, item.filename);
+      const imagePersonIds = new Map<string, number[]>();
+      if (isEffectiveImageItem(item)) {
+        try {
+          const [exif, faces] = await Promise.all([
+            extractExifData(filePath),
+            extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
+              console.error(`Face extraction failed for ${item.originalName}:`, err);
+              return [] as FaceInImage[];
+            }),
+          ]);
+          if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
+          if (exif.latitude != null && exif.longitude != null) {
+            db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+          }
+          if (faces.length > 0) {
+            const entriesMap = await clusterAllFaces(faces);
+            const remapped = remapClusterPersonIdsToNewDbPeople(entriesMap);
+            const entriesForItem = remapped.get(item.id) ?? [];
+            db.setImagePeople(item.id, entriesForItem);
+            imagePersonIds.set(
+              item.id,
+              entriesForItem.map((e) => e.personId)
+            );
+          }
+        } catch (err) {
+          console.error(`Image indexing prep failed for ${item.originalName}:`, err);
         }
-        if (faces.length > 0) {
-          const entriesMap = await clusterAllFaces(faces);
-          const remapped = remapClusterPersonIdsToNewDbPeople(entriesMap);
-          const entriesForItem = remapped.get(item.id) ?? [];
-          db.setImagePeople(item.id, entriesForItem);
-          imagePersonIds.set(
-            item.id,
-            entriesForItem.map((e) => e.personId)
-          );
+      } else if (item.mimeType.startsWith("video/")) {
+        try {
+          const meta = await extractVideoMetadata(filePath);
+          if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
+        } catch (err) {
+          console.error(`Video metadata failed for ${item.originalName}:`, err);
         }
-      } catch (err) {
-        console.error(`Image indexing prep failed for ${item.originalName}:`, err);
       }
-    } else if (item.mimeType.startsWith("video/")) {
-      const meta = await extractVideoMetadata(filePath);
-      if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
+      const text = await getTextForItem(item, imagePersonIds);
+      if (!text.trim()) return false;
+      const embedding = await getEmbedding(text.slice(0, 8000));
+      db.upsertEmbedding(item.id, embedding);
+      return true;
+    } catch (err) {
+      console.error(`Auto-index failed for ${item.originalName}:`, err);
+      return false;
     }
-    const text = await getTextForItem(item, imagePersonIds);
-    if (!text.trim()) return false;
-    const embedding = await getEmbedding(text.slice(0, 8000));
-    db.upsertEmbedding(item.id, embedding);
-    return true;
   } finally {
     if (trackBackground) endBackgroundIndex();
   }

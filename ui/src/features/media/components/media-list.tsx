@@ -43,7 +43,13 @@ export function MediaList({
 
   return (
     <>
-      <MediaViewer item={viewing} onClose={() => setViewing(null)} onUpdate={onUpdate} />
+      <MediaViewer
+        item={viewing}
+        items={items}
+        onSelectItem={setViewing}
+        onClose={() => setViewing(null)}
+        onUpdate={onUpdate}
+      />
       {groups.map(({ dateKey, dateLabel, items: groupItems }) => {
         const ids = groupItems.map((i) => i.id);
         const selectedCount = ids.filter((id) => selected.has(id)).length;

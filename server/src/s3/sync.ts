@@ -1,11 +1,12 @@
 import {
   S3Client,
-  PutObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
-import { readdir, readFile, writeFile, access, unlink } from "fs/promises";
+import { Upload } from "@aws-sdk/lib-storage";
+import { createReadStream } from "fs";
+import { readdir, writeFile, access, unlink } from "fs/promises";
 import path from "path";
 import type { Readable } from "stream";
 import Database from "better-sqlite3";
@@ -183,6 +184,27 @@ async function streamToBuffer(stream: Readable): Promise<Buffer> {
   return Buffer.concat(chunks);
 }
 
+/** S3 multipart upload from disk — avoids loading the whole file into a Buffer (Node ~2GiB cap) and supports objects >5GiB. */
+async function uploadLocalFileToS3(
+  client: S3Client,
+  bucket: string,
+  key: string,
+  filePath: string
+): Promise<void> {
+  const body = createReadStream(filePath);
+  const upload = new Upload({
+    client,
+    params: {
+      Bucket: bucket,
+      Key: key,
+      Body: body,
+    },
+    queueSize: 4,
+    partSize: 8 * 1024 * 1024,
+  });
+  await upload.done();
+}
+
 export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<SyncProgress> {
   const client = createS3Client();
   if (!client) {
@@ -266,14 +288,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
 
     for (const [i, m] of toUploadMedia.entries()) {
       const filePath = path.join(mediaDir, m.filename);
-      const body = await readFile(filePath);
-      await client.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: `${S3_PREFIX}/media/${m.filename}`,
-          Body: body,
-        })
-      );
+      await uploadLocalFileToS3(client, bucket, `${S3_PREFIX}/media/${m.filename}`, filePath);
       db.markMediaBackedUp(m.id);
       tally.uploadedMedia++;
       report({
@@ -300,14 +315,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
 
     for (const [i, filename] of toUploadThumbs.entries()) {
       const filePath = path.join(thumbnailsDir, filename);
-      const body = await readFile(filePath);
-      await client.send(
-        new PutObjectCommand({
-          Bucket: bucket,
-          Key: `${S3_PREFIX}/thumbnails/${filename}`,
-          Body: body,
-        })
-      );
+      await uploadLocalFileToS3(client, bucket, `${S3_PREFIX}/thumbnails/${filename}`, filePath);
       tally.uploadedThumbs++;
       report({
         phase: "upload-thumbnails",
@@ -325,15 +333,8 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       message: "Uploading database…",
     });
 
-    const dbBuffer = await readFile(dbPath);
     const dbBackupKey = `${S3_PREFIX}/db/media_${new Date().toISOString().replace(/[:.]/g, "-")}.db`;
-    await client.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: dbBackupKey,
-        Body: dbBuffer,
-      })
-    );
+    await uploadLocalFileToS3(client, bucket, dbBackupKey, dbPath);
 
     // 5. Download missing media from S3
     // Download: media in our DB but file missing, and exists in S3

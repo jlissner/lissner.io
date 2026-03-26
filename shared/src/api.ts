@@ -53,6 +53,11 @@ export type MediaDetailsApiResponse = MediaListItem & {
   motionCompanion?: MediaMotionCompanionSummary | null;
 };
 
+/** PATCH /api/media/:id */
+export type MediaPatchRequest = { dateTaken: string | null };
+
+export type MediaPatchResponse = { dateTaken: string | null };
+
 /** GET /api/media */
 export interface MediaListQueryResponse {
   items: MediaListItem[];
@@ -67,6 +72,16 @@ export interface MediaUploadResponse {
   mimeType: string;
   size: number;
 }
+
+/** POST /api/media/upload/check-names */
+export type UploadCheckNamesRequest = { names: string[] };
+
+export type UploadNameConflict = {
+  requestedName: string;
+  existing: { id: string; originalName: string; uploadedAt: string };
+};
+
+export type UploadCheckNamesResponse = { conflicts: UploadNameConflict[] };
 
 /** GET /api/backup/config */
 export interface BackupConfigResponse {

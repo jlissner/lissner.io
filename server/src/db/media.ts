@@ -269,6 +269,19 @@ function findMediaByOriginalNameCaseInsensitive(originalName: string):
     .get(originalName) as { id: string; originalName: string } | undefined;
 }
 
+/** For duplicate-name checks before upload; matches stored `original_name` case-insensitively. */
+export function findExistingMediaByOriginalName(originalName: string):
+  | { id: string; originalName: string; uploadedAt: string }
+  | undefined {
+  return db
+    .prepare(
+      `SELECT id, original_name as originalName, uploaded_at as uploadedAt FROM media WHERE original_name = ? COLLATE NOCASE`
+    )
+    .get(originalName) as
+    | { id: string; originalName: string; uploadedAt: string }
+    | undefined;
+}
+
 function breakMotionPairForMedia(mediaId: string): void {
   const row = db
     .prepare(`SELECT motion_companion_id FROM media WHERE id = ?`)

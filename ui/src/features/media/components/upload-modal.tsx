@@ -1,6 +1,16 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { UploadNameConflict } from "../upload-types.js";
 import { ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
-import { UploadModalConfirm } from "./upload-modal-confirm";
+import { cn } from "@/lib/utils";
+import {
+  postMediaUploadWithProgress,
+  type MediaUploadProgress,
+} from "../lib/post-media-upload-with-progress.js";
+import {
+  getFilesToUploadAfterDecisions,
+  type DuplicateConflictDecision,
+  UploadModalConfirm,
+} from "./upload-modal-confirm.js";
 
 interface UploadModalProps {
   onClose: () => void;
@@ -11,12 +21,50 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nameConflicts, setNameConflicts] = useState<UploadNameConflict[]>([]);
+  const [checkLoading, setCheckLoading] = useState(false);
+  const [conflictDecisions, setConflictDecisions] = useState<DuplicateConflictDecision[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<MediaUploadProgress | null>(null);
 
   const handleFilesSelected = useCallback((files: FileList | null) => {
     if (!files?.length) return;
     setPendingFiles(Array.from(files));
     setError(null);
+    setConflictDecisions([]);
+    setNameConflicts([]);
   }, []);
+
+  useEffect(() => {
+    if (!pendingFiles.length) {
+      setNameConflicts([]);
+      setCheckLoading(false);
+      return;
+    }
+    const names = pendingFiles.map((f) => f.name);
+    const ac = new AbortController();
+    setCheckLoading(true);
+    void fetch("/api/media/upload/check-names", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ names }),
+      signal: ac.signal,
+    })
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Check failed"))))
+      .then((data: { conflicts?: UploadNameConflict[] }) => {
+        setNameConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
+      })
+      .catch(() => {
+        if (!ac.signal.aborted) setNameConflicts([]);
+      })
+      .finally(() => {
+        if (!ac.signal.aborted) setCheckLoading(false);
+      });
+    return () => ac.abort();
+  }, [pendingFiles]);
+
+  useEffect(() => {
+    setConflictDecisions(nameConflicts.map(() => null));
+  }, [nameConflicts]);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -42,27 +90,75 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   );
 
   const handleConfirm = useCallback(async () => {
-    if (!pendingFiles.length || uploading) return;
+    if (!pendingFiles.length || uploading || checkLoading) return;
+    if (
+      nameConflicts.length > 0 &&
+      (conflictDecisions.length !== nameConflicts.length ||
+        conflictDecisions.some((d) => d == null))
+    ) {
+      setError("Choose for each conflicting file whether to skip it or upload it as new.");
+      return;
+    }
+    const filesToUpload =
+      nameConflicts.length === 0
+        ? pendingFiles
+        : getFilesToUploadAfterDecisions(
+            pendingFiles,
+            nameConflicts,
+            conflictDecisions as ("skip" | "upload")[]
+          );
+    if (filesToUpload.length === 0) {
+      setError(null);
+      onClose();
+      return;
+    }
     setError(null);
     setUploading(true);
+    const overallTotal = filesToUpload.reduce((sum, f) => sum + f.size, 0);
+    let completedBytes = 0;
     try {
-      for (const file of pendingFiles) {
+      for (const [i, file] of filesToUpload.entries()) {
+        const fileTotalFallback = file.size > 0 ? file.size : 1;
+        const bumpProgress = (loaded: number, xhrTotal: number) => {
+          const fileTotal =
+            xhrTotal > 0 ? xhrTotal : file.size > 0 ? file.size : fileTotalFallback;
+          setUploadProgress({
+            currentFile: i + 1,
+            totalFiles: filesToUpload.length,
+            fileName: file.name,
+            fileLoaded: loaded,
+            fileTotal,
+            overallLoaded: completedBytes + loaded,
+            overallTotal: overallTotal > 0 ? overallTotal : fileTotal,
+          });
+        };
+        bumpProgress(0, 0);
         const formData = new FormData();
         formData.append("file", file);
-        const res = await fetch("/api/media/upload", { method: "POST", body: formData });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error || `Upload failed: ${file.name}`);
-        }
+        await postMediaUploadWithProgress(formData, bumpProgress);
+        completedBytes += file.size;
       }
-      onUploadComplete();
+      try {
+        onUploadComplete();
+      } catch {
+        /* Upload already succeeded; refresh callback must not look like a failed upload */
+      }
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
-  }, [pendingFiles, uploading, onUploadComplete, onClose]);
+  }, [
+    pendingFiles,
+    uploading,
+    checkLoading,
+    nameConflicts,
+    conflictDecisions,
+    onUploadComplete,
+    onClose,
+  ]);
 
   const handleCancel = useCallback(() => {
     setPendingFiles([]);
@@ -76,7 +172,12 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   return (
     <ModalRoot onBackdropClick={handleCancel}>
       <ModalPanel
-        style={{ minWidth: 360, maxHeight: "90vh", overflow: "auto" }}
+        className={cn(hasFiles && "upload-modal-panel")}
+        style={
+          hasFiles
+            ? undefined
+            : { minWidth: 360, maxHeight: "90vh", overflow: "auto" }
+        }
         aria-labelledby="upload-title"
         onEscape={handleCancel}
       >
@@ -101,11 +202,32 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
           <UploadModalConfirm
             fileCount={pendingFiles.length}
             totalBytes={totalBytes}
+            pendingFiles={pendingFiles}
             uploading={uploading}
+            uploadProgress={uploadProgress}
             error={error}
             onChooseDifferent={() => setPendingFiles([])}
             onCancel={handleCancel}
             onConfirm={handleConfirm}
+            nameConflicts={nameConflicts}
+            checkLoading={checkLoading}
+            conflictDecisions={conflictDecisions}
+            onConflictDecisionChange={(index, choice) => {
+              setConflictDecisions((prev) => {
+                const next = [...prev];
+                next[index] = choice;
+                return next;
+              });
+              setError(null);
+            }}
+            onApplyAllDuplicateDecisions={(choice) => {
+              setConflictDecisions(nameConflicts.map(() => choice));
+              setError(null);
+            }}
+            onResetDuplicateDecisions={() => {
+              setConflictDecisions(nameConflicts.map(() => null));
+              setError(null);
+            }}
           />
         )}
       </ModalPanel>

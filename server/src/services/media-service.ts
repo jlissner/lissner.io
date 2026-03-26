@@ -70,9 +70,7 @@ export function persistUploadedMedia(params: {
     size: params.size,
     uploadedAt: new Date().toISOString(),
   };
-  void indexMediaItem(item).catch((err) =>
-    console.error(`Auto-index failed for ${item.originalName}:`, err)
-  );
+  void indexMediaItem(item);
 }
 
 export function listMediaEnriched(params: {
@@ -140,6 +138,51 @@ export async function deleteMediaItem(
     console.error("Delete error:", err);
     return { ok: false, reason: "delete_failed" };
   }
+}
+
+function parseBodyDateTaken(raw: unknown): string | null | "invalid" | "bad_type" {
+  if (raw === null) return null;
+  if (typeof raw !== "string") return "bad_type";
+  const trimmed = raw.trim();
+  if (trimmed === "") return null;
+  const d = new Date(trimmed);
+  if (Number.isNaN(d.getTime())) return "invalid";
+  return d.toISOString();
+}
+
+export type UpdateMediaDateTakenResult =
+  | { ok: true; dateTaken: string | null }
+  | { ok: false; reason: "not_found" | "forbidden" | "bad_request" | "invalid_date" };
+
+/** Owner or admin may set `dateTaken` to an ISO timestamp string or `null` to clear. */
+export function updateMediaDateTaken(
+  mediaId: string,
+  body: unknown,
+  ctx: { userId: number | undefined; isAdmin: boolean | undefined }
+): UpdateMediaDateTakenResult {
+  const item = db.getMediaById(mediaId);
+  if (!item) {
+    return { ok: false, reason: "not_found" };
+  }
+  const ownerId = db.getMediaOwnerId(item.id);
+  const canEdit = ctx.isAdmin || (ownerId != null && ctx.userId === ownerId);
+  if (!canEdit) {
+    return { ok: false, reason: "forbidden" };
+  }
+  if (body === null || typeof body !== "object" || !("dateTaken" in body)) {
+    return { ok: false, reason: "bad_request" };
+  }
+  const raw = (body as { dateTaken: unknown }).dateTaken;
+  const parsed = parseBodyDateTaken(raw);
+  if (parsed === "bad_type") {
+    return { ok: false, reason: "bad_request" };
+  }
+  if (parsed === "invalid") {
+    return { ok: false, reason: "invalid_date" };
+  }
+  db.setMediaDateTaken(mediaId, parsed);
+  scheduleBackupSyncAfterUpload();
+  return { ok: true, dateTaken: parsed };
 }
 
 export async function getFacesPayloadForMedia(mediaId: string) {

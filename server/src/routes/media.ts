@@ -8,6 +8,7 @@ import {
   addPersonToMediaTag,
   confirmFaceTag,
   deleteMediaItem,
+  updateMediaDateTaken,
   ensureLocalMediaFile,
   getFaceCropOrFullImage,
   getFacesPayloadForMedia,
@@ -70,6 +71,32 @@ mediaRouter.post("/upload", upload.single("file"), async (req, res) => {
     mimeType,
     size: req.file.size,
   });
+});
+
+const UPLOAD_CHECK_NAMES_MAX = 200;
+
+mediaRouter.post("/upload/check-names", (req, res) => {
+  const raw = req.body as { names?: unknown };
+  if (!raw || !Array.isArray(raw.names)) {
+    res.status(400).json({ error: "Expected JSON body: { names: string[] }" });
+    return;
+  }
+  const names = raw.names.filter((n): n is string => typeof n === "string");
+  if (names.length > UPLOAD_CHECK_NAMES_MAX) {
+    res.status(400).json({ error: `At most ${UPLOAD_CHECK_NAMES_MAX} names per request` });
+    return;
+  }
+  const conflicts: Array<{
+    requestedName: string;
+    existing: { id: string; originalName: string; uploadedAt: string };
+  }> = [];
+  for (const requestedName of names) {
+    const existing = db.findExistingMediaByOriginalName(requestedName);
+    if (existing) {
+      conflicts.push({ requestedName, existing });
+    }
+  }
+  res.json({ conflicts });
 });
 
 mediaRouter.get("/", (req, res) => {
@@ -207,6 +234,32 @@ mediaRouter.delete("/:id", async (req, res) => {
     return;
   }
   res.status(500).json({ error: "Failed to delete file" });
+});
+
+mediaRouter.patch("/:id", (req, res) => {
+  const result = updateMediaDateTaken(req.params.id, req.body, {
+    userId: req.session?.userId,
+    isAdmin: req.session?.isAdmin,
+  });
+  if (result.ok) {
+    res.json({ dateTaken: result.dateTaken });
+    return;
+  }
+  if (result.reason === "not_found") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  if (result.reason === "forbidden") {
+    res.status(403).json({ error: "Only the owner or an admin can edit this file" });
+    return;
+  }
+  if (result.reason === "bad_request") {
+    res.status(400).json({ error: "JSON body must include dateTaken (ISO string or null to clear)" });
+    return;
+  }
+  res.status(400).json({
+    error: "That dateTaken value is not a valid date or time. Use an ISO 8601 timestamp or null to clear.",
+  });
 });
 
 mediaRouter.get("/:id/faces", async (req, res) => {

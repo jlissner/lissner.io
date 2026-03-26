@@ -1,3 +1,5 @@
+import { localCalendarDateKeyFromIso } from "@/lib/local-datetime.js";
+
 export interface MediaItem {
   id: string;
   filename: string;
@@ -15,19 +17,18 @@ export interface MediaItem {
 
 export function getItemDateKey(item: MediaItem): string {
   const dateStr = item.dateTaken ?? item.uploadedAt;
-  const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? "unknown" : d.toISOString().slice(0, 10);
+  return localCalendarDateKeyFromIso(dateStr);
 }
 
 export function getItemDateKeyForSort(item: MediaItem, sortBy: "uploaded" | "taken"): string {
   const dateStr = sortBy === "uploaded" ? item.uploadedAt : (item.dateTaken ?? item.uploadedAt);
-  const d = new Date(dateStr);
-  return isNaN(d.getTime()) ? "unknown" : d.toISOString().slice(0, 10);
+  return localCalendarDateKeyFromIso(dateStr);
 }
 
 export function formatDateLabel(dateKey: string): string {
   if (dateKey === "unknown") return "Unknown date";
-  const d = new Date(dateKey + "T12:00:00");
+  // Interpret YYYY-MM-DD as a local calendar day (noon avoids DST midnight quirks).
+  const d = new Date(`${dateKey}T12:00:00`);
   return d.toLocaleDateString(undefined, {
     weekday: "long",
     year: "numeric",

@@ -142,7 +142,7 @@ export function MediaItemCell({
               />
             </div>
           )}
-          {!selectionMode && needsIndexingBackupAttention && warningTitle && (
+          {needsIndexingBackupAttention && warningTitle && (
             <div
               className="media-cell__badges media-cell__badges--warning"
               title={warningTitle}

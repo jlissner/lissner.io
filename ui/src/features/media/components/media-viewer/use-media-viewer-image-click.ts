@@ -16,6 +16,7 @@ export function useMediaViewerImageClick(
   imgRef: React.RefObject<HTMLImageElement | null>,
   faces: { detected: FaceBox[]; tagged: TaggedFace[] } | null,
   taggingMode: boolean,
+  useDetectedFaces: boolean,
   setAssigningFace: (f: FaceBox | null) => void,
   setReassigningFace: (f: TaggedFace | null) => void
 ) {
@@ -51,19 +52,21 @@ export function useMediaViewerImageClick(
           setReassigningFace(tagged);
           return;
         }
-        const face = faces.detected.find((box) => {
-          const alreadyTagged = faces.tagged.some((t) => overlaps(box, t));
-          return (
-            !alreadyTagged &&
-            coords.x >= box.x &&
-            coords.x <= box.x + box.width &&
-            coords.y >= box.y &&
-            coords.y <= box.y + box.height
-          );
-        });
-        if (face) {
-          setAssigningFace(face);
-          return;
+        if (useDetectedFaces) {
+          const face = faces.detected.find((box) => {
+            const alreadyTagged = faces.tagged.some((t) => overlaps(box, t));
+            return (
+              !alreadyTagged &&
+              coords.x >= box.x &&
+              coords.x <= box.x + box.width &&
+              coords.y >= box.y &&
+              coords.y <= box.y + box.height
+            );
+          });
+          if (face) {
+            setAssigningFace(face);
+            return;
+          }
         }
       }
 
@@ -77,6 +80,6 @@ export function useMediaViewerImageClick(
       };
       setAssigningFace(manualBox);
     },
-    [taggingMode, faces, getImageCoords, setAssigningFace, setReassigningFace]
+    [taggingMode, faces, useDetectedFaces, getImageCoords, setAssigningFace, setReassigningFace]
   );
 }

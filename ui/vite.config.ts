@@ -16,7 +16,13 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      "/api": "http://localhost:3000",
+      // Match server: avoid proxy socket/request timeouts on very large uploads during dev.
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        timeout: 0,
+        proxyTimeout: 0,
+      },
       "/ws": {
         target: "http://localhost:3000",
         ws: true,

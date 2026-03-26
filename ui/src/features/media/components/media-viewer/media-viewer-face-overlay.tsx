@@ -4,12 +4,15 @@ interface MediaViewerFaceOverlayProps {
   imgRef: React.RefObject<HTMLImageElement | null>;
   faces: { detected: FaceBox[]; tagged: TaggedFace[] } | null;
   assigningFace?: FaceBox | null;
+  /** When false, dashed detection boxes are hidden (manual tagging only). */
+  showDetected?: boolean;
 }
 
 export function MediaViewerFaceOverlay({
   imgRef,
   faces,
   assigningFace,
+  showDetected = true,
 }: MediaViewerFaceOverlayProps) {
   const img = imgRef.current;
   if (!img) return null;
@@ -61,20 +64,21 @@ export function MediaViewerFaceOverlay({
           {t.name}
         </div>
       ))}
-      {(faces?.detected ?? []).map((d, i) => (
-        <div
-          key={`d-${i}`}
-          style={{
-            position: "absolute",
-            left: d.x * scaleX,
-            top: d.y * scaleY,
-            width: d.width * scaleX,
-            height: d.height * scaleY,
-            border: "2px dashed rgba(255,255,255,0.6)",
-            borderRadius: 4,
-          }}
-        />
-      ))}
+      {showDetected &&
+        (faces?.detected ?? []).map((d, i) => (
+          <div
+            key={`d-${i}`}
+            style={{
+              position: "absolute",
+              left: d.x * scaleX,
+              top: d.y * scaleY,
+              width: d.width * scaleX,
+              height: d.height * scaleY,
+              border: "2px dashed rgba(255,255,255,0.6)",
+              borderRadius: 4,
+            }}
+          />
+        ))}
     </>
   );
 }

@@ -91,6 +91,9 @@ try {
 }
 
 const server = createServer(app);
+// Node’s default request timeout (~5 minutes) aborts long multipart uploads mid-body; disable for large media.
+server.requestTimeout = 0;
+server.headersTimeout = 0;
 
 setIndexJobChangeListener(() => broadcastActivity());
 setSyncChangeListener(() => broadcastActivity());

@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
+import { postMediaUploadWithProgress } from "../lib/post-media-upload-with-progress.js";
+import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
+import { UploadProgressPanel } from "./upload-progress-panel.js";
 
 interface FileUploadProps {
   onUpload: () => void;
@@ -9,30 +12,48 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<MediaUploadProgress | null>(null);
 
   const uploadFiles = useCallback(
     async (files: FileList | null) => {
       if (!files?.length || disabled || uploading) return;
       setError(null);
       setUploading(true);
+      const list = Array.from(files);
+      const overallTotal = list.reduce((sum, f) => sum + f.size, 0);
+      let completedBytes = 0;
       try {
-        for (const file of Array.from(files)) {
+        for (const [i, file] of list.entries()) {
+          const fileTotalFallback = file.size > 0 ? file.size : 1;
+          const bumpProgress = (loaded: number, xhrTotal: number) => {
+            const fileTotal =
+              xhrTotal > 0 ? xhrTotal : file.size > 0 ? file.size : fileTotalFallback;
+            setUploadProgress({
+              currentFile: i + 1,
+              totalFiles: list.length,
+              fileName: file.name,
+              fileLoaded: loaded,
+              fileTotal,
+              overallLoaded: completedBytes + loaded,
+              overallTotal: overallTotal > 0 ? overallTotal : fileTotal,
+            });
+          };
+          bumpProgress(0, 0);
           const formData = new FormData();
           formData.append("file", file);
-          const res = await fetch("/api/media/upload", {
-            method: "POST",
-            body: formData,
-          });
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data.error || `Upload failed: ${file.name}`);
-          }
+          await postMediaUploadWithProgress(formData, bumpProgress);
+          completedBytes += file.size;
         }
-        onUpload();
+        try {
+          onUpload();
+        } catch {
+          /* Upload already succeeded */
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : "Upload failed");
       } finally {
         setUploading(false);
+        setUploadProgress(null);
       }
     },
     [onUpload, disabled, uploading]
@@ -117,7 +138,11 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
         />
         <label htmlFor="file-upload" style={{ cursor: "inherit" }}>
           {uploading ? (
-            <span>Uploading…</span>
+            uploadProgress ? (
+              <UploadProgressPanel progress={uploadProgress} rootClassName="upload-modal-progress" />
+            ) : (
+              <span>Preparing upload…</span>
+            )
           ) : (
             <>
               <span style={{ display: "block", marginBottom: 4 }}>
