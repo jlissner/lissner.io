@@ -2,6 +2,18 @@
 import * as authDb from "../db/auth.js";
 import * as mediaDb from "../db/media.js";
 
+export type AdminServiceResult<T> =
+  | { ok: true; value: T }
+  | { ok: false; status: number; error: string };
+
+function ok<T>(value: T): AdminServiceResult<T> {
+  return { ok: true, value };
+}
+
+function fail<T>(status: number, error: string): AdminServiceResult<T> {
+  return { ok: false, status, error };
+}
+
 export function isSqlExplorerEnabled(): boolean {
   return process.env.SQL_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
 }
@@ -11,26 +23,46 @@ export function isDataExplorerEnabled(): boolean {
 }
 
 export function runSqlQuery(query: string) {
-  return mediaDb.runSql(query);
+  try {
+    return ok(mediaDb.runSql(query));
+  } catch (err) {
+    return fail(400, err instanceof Error ? err.message : String(err));
+  }
 }
 
 export function listDataExplorerTables() {
-  return mediaDb.getDataExplorerTables();
+  try {
+    return ok(mediaDb.getDataExplorerTables());
+  } catch (err) {
+    return fail(500, err instanceof Error ? err.message : "Failed");
+  }
 }
 
 export function getDataExplorerSchemaAndCount(table: string, q?: string) {
-  return {
-    schema: mediaDb.getDataExplorerTableSchema(table),
-    count: mediaDb.getDataExplorerRowCount(table, q),
-  };
+  try {
+    return ok({
+      schema: mediaDb.getDataExplorerTableSchema(table),
+      count: mediaDb.getDataExplorerRowCount(table, q),
+    });
+  } catch (err) {
+    return fail(400, err instanceof Error ? err.message : "Failed");
+  }
 }
 
 export function listDataExplorerRows(table: string, limit: number, offset: number, q?: string) {
-  return mediaDb.getDataExplorerRows(table, limit, offset, q);
+  try {
+    return ok(mediaDb.getDataExplorerRows(table, limit, offset, q));
+  } catch (err) {
+    return fail(400, err instanceof Error ? err.message : "Failed");
+  }
 }
 
 export function insertDataExplorerRow(table: string, body: Record<string, unknown>) {
-  return mediaDb.insertDataExplorerRow(table, body);
+  try {
+    return ok(mediaDb.insertDataExplorerRow(table, body));
+  } catch (err) {
+    return fail(400, err instanceof Error ? err.message : "Failed");
+  }
 }
 
 export function updateDataExplorerRow(
@@ -38,15 +70,23 @@ export function updateDataExplorerRow(
   pk: Record<string, unknown>,
   data: Record<string, unknown>
 ) {
-  return mediaDb.updateDataExplorerRow(table, pk, data);
+  try {
+    return ok(mediaDb.updateDataExplorerRow(table, pk, data));
+  } catch (err) {
+    return fail(400, err instanceof Error ? err.message : "Failed");
+  }
 }
 
 export function deleteDataExplorerRow(table: string, pk: Record<string, unknown>) {
-  return mediaDb.deleteDataExplorerRow(table, pk);
+  try {
+    return ok(mediaDb.deleteDataExplorerRow(table, pk));
+  } catch (err) {
+    return fail(400, err instanceof Error ? err.message : "Failed");
+  }
 }
 
 export function listWhitelistEntries() {
-  return authDb.getWhitelist();
+  return ok(authDb.getWhitelist());
 }
 
 export function addWhitelistEntry(input: {
@@ -55,7 +95,11 @@ export function addWhitelistEntry(input: {
   personId?: number;
   actorUserId?: number;
 }) {
-  return authDb.addToWhitelist(input.email, input.isAdmin, input.actorUserId, input.personId);
+  try {
+    return ok(authDb.addToWhitelist(input.email, input.isAdmin, input.actorUserId, input.personId));
+  } catch {
+    return fail(400, "Email may already be on whitelist");
+  }
 }
 
 export function removeWhitelistEntry(id: number): boolean {
@@ -63,14 +107,14 @@ export function removeWhitelistEntry(id: number): boolean {
 }
 
 export function listUsers() {
-  return authDb.getUsers();
+  return ok(authDb.getUsers());
 }
 
 export function getUserPeople(userId: number) {
-  return authDb.getUserPeople(userId);
+  return ok(authDb.getUserPeople(userId));
 }
 
 export function setUserPeople(userId: number, personIds: number[]) {
   authDb.setUserPeople(userId, personIds);
-  return personIds;
+  return ok(personIds);
 }

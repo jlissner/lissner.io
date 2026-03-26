@@ -7,27 +7,30 @@ import {
   listWhitelistEntries,
   removeWhitelistEntry,
 } from "../../services/admin-service.js";
+import { sendAdminResult } from "./response.js";
 
 export const adminWhitelistRouter = Router();
 
 adminWhitelistRouter.get("/whitelist", (_req, res) => {
-  res.json(listWhitelistEntries());
+  const result = sendAdminResult(res, listWhitelistEntries());
+  if (result == null) return;
+  res.json(result);
 });
 
 adminWhitelistRouter.post("/whitelist", (req, res) => {
   const { email, isAdmin, personId } = parseWithSchema(whitelistCreateBodySchema, req.body);
-  try {
-    const user = getAuthUser(req);
-    const id = addWhitelistEntry({
+  const user = getAuthUser(req);
+  const result = sendAdminResult(
+    res,
+    addWhitelistEntry({
       email,
       isAdmin,
       personId,
       actorUserId: user?.id,
-    });
-    res.status(201).json({ id, email: email.toLowerCase(), isAdmin, personId: personId ?? null });
-  } catch {
-    res.status(400).json({ error: "Email may already be on whitelist" });
-  }
+    })
+  );
+  if (result == null) return;
+  res.status(201).json({ id: result, email: email.toLowerCase(), isAdmin, personId: personId ?? null });
 });
 
 adminWhitelistRouter.delete("/whitelist/:id", (req, res) => {
