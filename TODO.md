@@ -12,8 +12,8 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 - [x] **server-logging-consistency**: Eliminate `console.*` in server runtime paths; route all logs through `pino` (`req.log`/`logger`) with consistent event names/metadata (indexing, faces, S3 sync, deletes).
 - [x] **standardize-service-result-shapes**: Standardize service return types across server services: prefer discriminated unions with `ok` + `reason` and keep throwing for truly unexpected errors; simplify route status mapping.
 - [x] **faces-tfjs-io-optimization**: (PR) Improve `server/src/faces.ts` robustness with minimal behavioral change: replace `console.error` with `logger`, add simple size/format guardrails for obviously-bad inputs, and keep the existing single-flight detect queue intact.
-- [ ] **backup-route-logging**: (PR) Replace background `console.error` in `server/src/routes/backup.ts` (post `/run` async execute catch) with structured `logger` and relevant metadata; no other refactors.
-- [ ] **auth-route-validation-logging**: (PR) Refactor `server/src/routes/auth.ts` minimally: replace `console.error` with `logger` and use a shared validation helper for `/magic-link` input + `/me/people` body parsing; keep endpoints and responses stable.
+- [x] **backup-route-logging**: (PR) Replace background `console.error` in `server/src/routes/backup.ts` (post `/run` async execute catch) with structured `logger` and relevant metadata; no other refactors.
+- [x] **auth-route-validation-logging**: (PR) Refactor `server/src/routes/auth.ts` minimally: replace `console.error` with `logger` and use a shared validation helper for `/magic-link` input + `/me/people` body parsing; keep endpoints and responses stable.
 
 ## Shared
 

@@ -4,6 +4,8 @@ import * as authDb from "../db/auth.js";
 import { sendMagicLink } from "../email.js";
 import { getMagicLinkBaseUrl } from "../services/auth-service.js";
 import { logger } from "../logger.js";
+import { parseWithSchema } from "../validation/parse.js";
+import { magicLinkBodySchema, updateMyPeopleBodySchema } from "../validation/auth-schemas.js";
 
 export const authRouter = Router();
 
@@ -17,11 +19,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 }
 
 authRouter.post("/magic-link", async (req, res) => {
-  const email = req.body?.email?.trim();
-  if (!email) {
-    res.status(400).json({ error: "Email required" });
-    return;
-  }
+  const { email } = parseWithSchema(magicLinkBodySchema, req.body);
 
   const normalized = email.toLowerCase();
   if (!authDb.isEmailWhitelisted(normalized)) {
@@ -96,11 +94,10 @@ authRouter.get("/me/people", requireAuth, (req, res) => {
 
 authRouter.put("/me/people", requireAuth, (req, res) => {
   const userId = req.session!.userId!;
-  const personIds = Array.isArray(req.body?.personIds)
-    ? (req.body.personIds as number[]).filter((p: unknown) => typeof p === "number")
-    : [];
+  const { personIds } = parseWithSchema(updateMyPeopleBodySchema, req.body);
+  const ids = personIds ?? [];
 
-  authDb.setUserPeople(userId, personIds);
+  authDb.setUserPeople(userId, ids);
   const stored = authDb.getUserPeople(userId);
   res.json({ personIds: stored });
 });
