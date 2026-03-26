@@ -3,6 +3,7 @@ import { isText } from "./media-viewer/media-utils";
 import { MediaViewerContent } from "./media-viewer/media-viewer-content";
 import type { MediaItem } from "./media-viewer/media-utils";
 import { apiFetch } from "@/api/client";
+import { ModalPanel, ModalRoot } from "@/components/ui/modal";
 
 interface MediaViewerProps {
   item: MediaItem | null;
@@ -48,32 +49,26 @@ export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: Me
   if (!item) return null;
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.9)",
-        zIndex: 1000,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24,
-      }}
-    >
-      <MediaViewerContent
-        item={item}
-        prevItem={prevItem}
-        nextItem={nextItem}
-        goPrev={goPrev}
-        goNext={goNext}
-        textContent={textContent}
-        textError={textError}
-        taggingMode={taggingMode}
-        setTaggingMode={setTaggingMode}
-        onClose={onClose}
-        onUpdate={onUpdate}
-      />
-    </div>
+    <ModalRoot onBackdropClick={onClose} className="viewer-overlay">
+      <ModalPanel
+        onEscape={onClose}
+        aria-label={`Media viewer: ${item.originalName}`}
+        className="viewer-overlay__panel"
+      >
+        <MediaViewerContent
+          item={item}
+          prevItem={prevItem}
+          nextItem={nextItem}
+          goPrev={goPrev}
+          goNext={goNext}
+          textContent={textContent}
+          textError={textError}
+          taggingMode={taggingMode}
+          setTaggingMode={setTaggingMode}
+          onClose={onClose}
+          onUpdate={onUpdate}
+        />
+      </ModalPanel>
+    </ModalRoot>
   );
 }
