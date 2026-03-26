@@ -6,9 +6,11 @@ import {
 } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { createReadStream } from "fs";
-import { readdir, writeFile, access, unlink } from "fs/promises";
+import { createWriteStream } from "fs";
+import { readdir, access, unlink, rename } from "fs/promises";
 import path from "path";
 import type { Readable } from "stream";
+import { pipeline } from "stream/promises";
 import Database from "better-sqlite3";
 import * as db from "../db/media.js";
 import * as authDb from "../db/auth.js";
@@ -176,12 +178,19 @@ function fileExists(filePath: string): Promise<boolean> {
     .catch(() => false);
 }
 
-async function streamToBuffer(stream: Readable): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of stream) {
-    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+function isNodeReadableStream(body: unknown): body is Readable {
+  return typeof (body as Readable | null)?.pipe === "function";
+}
+
+async function downloadS3ObjectToFile(body: unknown, targetPath: string): Promise<void> {
+  if (!isNodeReadableStream(body)) {
+    throw new Error("S3 GetObject Body was not a Node.js readable stream");
   }
-  return Buffer.concat(chunks);
+  const tmpPath = `${targetPath}.tmp-${Date.now()}`;
+  await pipeline(body, createWriteStream(tmpPath));
+  // Atomic replace on same filesystem.
+  await unlink(targetPath).catch(() => {});
+  await rename(tmpPath, targetPath);
 }
 
 /** S3 multipart upload from disk — avoids loading the whole file into a Buffer (Node ~2GiB cap) and supports objects >5GiB. */
@@ -362,10 +371,9 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
           Key: `${S3_PREFIX}/media/${m.filename}`,
         })
       );
-      const stream = getRes.Body;
-      if (stream) {
-        const buf = await streamToBuffer(stream as Readable);
-        await writeFile(path.join(mediaDir, m.filename), buf);
+      const body = getRes.Body;
+      if (body) {
+        await downloadS3ObjectToFile(body, path.join(mediaDir, m.filename));
         db.markMediaBackedUp(m.id);
         tally.downloadedMedia++;
       }
@@ -401,10 +409,9 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     for (const [i, id] of toDownloadThumbs.entries()) {
       const key = `${S3_PREFIX}/thumbnails/${id}.jpg`;
       const getRes = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
-      const stream = getRes.Body;
-      if (stream) {
-        const buf = await streamToBuffer(stream as Readable);
-        await writeFile(path.join(thumbnailsDir, `${id}.jpg`), buf);
+      const body = getRes.Body;
+      if (body) {
+        await downloadS3ObjectToFile(body, path.join(thumbnailsDir, `${id}.jpg`));
         tally.downloadedThumbs++;
       }
       report({
@@ -434,10 +441,9 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
             const getRes = await client.send(
               new GetObjectCommand({ Bucket: bucket, Key: mergeDbKey })
             );
-            const dbStream = getRes.Body;
-            if (!dbStream) return null;
-            const dbBuffer2 = await streamToBuffer(dbStream as Readable);
-            await writeFile(syncTempDbPath, dbBuffer2);
+            const body = getRes.Body;
+            if (!body) return null;
+            await downloadS3ObjectToFile(body, syncTempDbPath);
             return syncTempDbPath;
           })()
         : null;
@@ -496,10 +502,9 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
                 Key: `${S3_PREFIX}/media/${r.filename}`,
               })
             );
-            const stream = getRes.Body;
-            if (stream) {
-              const buf = await streamToBuffer(stream as Readable);
-              await writeFile(localPath, buf);
+            const body = getRes.Body;
+            if (body) {
+              await downloadS3ObjectToFile(body, localPath);
               tally.downloadedMedia++;
             }
           }
@@ -617,10 +622,9 @@ export async function tryRestoreMediaFromBackup(item: {
         Key: `${S3_PREFIX}/media/${item.filename}`,
       })
     );
-    const stream = getRes.Body;
-    if (!stream) return false;
-    const buf = await streamToBuffer(stream as Readable);
-    await writeFile(localPath, buf);
+    const body = getRes.Body;
+    if (!body) return false;
+    await downloadS3ObjectToFile(body, localPath);
     return true;
   } catch (err) {
     if (isS3NoSuchKey(err)) {
@@ -646,10 +650,9 @@ export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promi
         Key: `${S3_PREFIX}/thumbnails/${mediaId}.jpg`,
       })
     );
-    const stream = getRes.Body;
-    if (!stream) return false;
-    const buf = await streamToBuffer(stream as Readable);
-    await writeFile(thumbPath, buf);
+    const body = getRes.Body;
+    if (!body) return false;
+    await downloadS3ObjectToFile(body, thumbPath);
     return true;
   } catch (err) {
     if (isS3NoSuchKey(err)) {

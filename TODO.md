@@ -4,7 +4,7 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 
 ## Server
 
-- [ ] **s3-streaming-downloads**: Refactor S3 restore/sync downloads to stream-to-disk (replace `streamToBuffer` + `writeFile`) in `server/src/s3/sync.ts` for `runSync()` downloads and `tryRestore*FromBackup()` paths; add basic integrity/error handling and keep progress reporting.
+- [x] **s3-streaming-downloads**: Refactor S3 restore/sync downloads to stream-to-disk (replace `streamToBuffer` + `writeFile`) in `server/src/s3/sync.ts` for `runSync()` downloads and `tryRestore*FromBackup()` paths; add basic integrity/error handling and keep progress reporting.
 - [ ] **server-request-validation**: Standardize request validation + error responses: add Zod schemas for params/query/body, create a small validate helper (or middleware) that throws `ZodError`/`HttpError`, and refactor `server/src/routes/media.ts` (and other routes) to use it consistently.
 - [ ] **split-media-service-and-routes**: Split `server/src/services/media-service.ts` into focused modules (read/preview/thumbnail, write/delete/patch, faces/tagging) and split `server/src/routes/media.ts` into sub-routers; keep dependency direction routes→services→db/infra.
 - [ ] **explicit-db-migrations**: Replace import-time schema creation/ALTERs in `server/src/db/media.ts` with explicit migrations (schema version table + sequential migration functions), called from startup.
