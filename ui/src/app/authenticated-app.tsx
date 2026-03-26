@@ -44,6 +44,23 @@ function s3AlertMessage(missingVars: string[]): string {
   return `S3 sync not configured. Missing: ${missingVars.join(", ")}.`;
 }
 
+function navigateToPage(
+  pageId: PageId,
+  search: string | undefined,
+  setPage: (page: PageId) => void,
+  setPersonFilter: (value: number | null) => void
+): void {
+  setPage(pageId);
+  const path = pageToPath(pageId);
+  const fullPath = buildPathWithSearch(path, search);
+  if (window.location.pathname + window.location.search !== fullPath) {
+    window.history.pushState({}, "", fullPath);
+  }
+  if (pageId === "home") {
+    setPersonFilter(getHomePersonFilter(search));
+  }
+}
+
 export function AuthenticatedApp() {
   const { authEnabled, user, logout } = useAuth();
   const activity = useActivity();
@@ -66,15 +83,7 @@ export function AuthenticatedApp() {
   }, []);
 
   const navigateTo = useCallback((pageId: PageId, search?: string) => {
-    setPage(pageId);
-    const path = pageToPath(pageId);
-    const fullPath = buildPathWithSearch(path, search);
-    if (window.location.pathname + window.location.search !== fullPath) {
-      window.history.pushState({}, "", fullPath);
-    }
-    if (pageId === "home") {
-      setPersonFilter(getHomePersonFilter(search));
-    }
+    navigateToPage(pageId, search, setPage, setPersonFilter);
   }, []);
 
   useEffect(() => {
@@ -97,13 +106,6 @@ export function AuthenticatedApp() {
   const handleOpenUploadModal = useCallback(() => setUploadModalOpen(true), []);
   const handleCloseUploadModal = useCallback(() => setUploadModalOpen(false), []);
   const handleDismissS3Alert = useCallback(() => setS3AlertDismissed(true), []);
-  const handleNavigateAdmin = useCallback(
-    (e: MouseEvent<HTMLAnchorElement>) => {
-      e.preventDefault();
-      navigateTo("admin");
-    },
-    [navigateTo]
-  );
 
   const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
@@ -140,7 +142,13 @@ export function AuthenticatedApp() {
           {user?.isAdmin ? (
             <>
               {" "}
-              <a href="/admin" onClick={handleNavigateAdmin}>
+              <a
+                href="/admin"
+                onClick={(e: MouseEvent<HTMLAnchorElement>) => {
+                  e.preventDefault();
+                  navigateTo("admin");
+                }}
+              >
                 Open Admin
               </a>
             </>
