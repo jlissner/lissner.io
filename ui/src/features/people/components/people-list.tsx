@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { listPeople, updatePerson } from "../api";
 
 interface Person {
   id: number;
@@ -15,11 +16,7 @@ export function PeopleList({ onUpdate }: PeopleListProps) {
   const [draft, setDraft] = useState("");
 
   const fetchPeople = useCallback(async () => {
-    const res = await fetch("/api/people");
-    if (res.ok) {
-      const data = await res.json();
-      setPeople(data);
-    }
+    setPeople((await listPeople()) as Person[]);
   }, []);
 
   useEffect(() => {
@@ -33,15 +30,13 @@ export function PeopleList({ onUpdate }: PeopleListProps) {
         setEditing(null);
         return;
       }
-      const res = await fetch(`/api/people/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (res.ok) {
+      try {
+        await updatePerson(id, name);
         setEditing(null);
-        fetchPeople();
+        await fetchPeople();
         onUpdate?.();
+      } catch {
+        // Keep existing quiet failure behavior in this legacy panel.
       }
     },
     [draft, fetchPeople, onUpdate]

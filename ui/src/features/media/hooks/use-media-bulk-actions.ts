@@ -1,11 +1,7 @@
 import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
-import { ApiError, apiFetch, apiJson } from "@/api/client";
+import { ApiError } from "@/api/client";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
-
-function searchIndexPath(force: boolean): string {
-  if (force) return "search/index?force=true";
-  return "search/index";
-}
+import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
 
 interface UseMediaBulkActionsOptions {
   fetchItems: () => void;
@@ -30,8 +26,7 @@ export function useMediaBulkActions({
 
   const handleDelete = useCallback(
     async (id: string) => {
-      const res = await apiFetch(`media/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      await deleteMediaById(id);
       fetchItems();
       if (searchResults) setSearchResults((prev) => prev?.filter((item) => item.id !== id) ?? null);
     },
@@ -41,8 +36,7 @@ export function useMediaBulkActions({
   const handleBulkDelete = useCallback(
     async (ids: string[]) => {
       for (const id of ids) {
-        const res = await apiFetch(`media/${id}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Delete failed");
+        await deleteMediaById(id);
       }
       fetchItems();
       if (searchResults) {
@@ -56,11 +50,7 @@ export function useMediaBulkActions({
     async (ids: string[]) => {
       setToolbarError(null);
       try {
-        await apiJson("search/index?force=true", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mediaIds: ids }),
-        });
+        await runBulkIndex(ids);
       } catch (err) {
         const msg = err instanceof ApiError ? err.message : "Index failed";
         setToolbarError(msg);
@@ -73,10 +63,7 @@ export function useMediaBulkActions({
     async (force = false) => {
       setToolbarError(null);
       try {
-        const data = await apiJson<{ started?: boolean; error?: string }>(
-          searchIndexPath(force),
-          { method: "POST" }
-        );
+        const data = await triggerIndex(force);
         if (data.started !== true) setToolbarError(data.error ?? "Indexing failed");
       } catch (err) {
         const msg = err instanceof ApiError ? err.message : "Indexing failed";

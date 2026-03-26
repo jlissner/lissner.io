@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Person } from "./people-types";
+import { listPeople } from "../api";
 
 interface UsePeopleListOptions {
   initialSelectedId?: number | null;
@@ -14,8 +15,7 @@ export function usePeopleList({ initialSelectedId = null }: UsePeopleListOptions
     const silent = options?.silent === true;
     if (!silent) setLoading(true);
     try {
-      const res = await fetch("/api/people");
-      if (res.ok) setPeople(await res.json());
+      setPeople((await listPeople()) as Person[]);
     } finally {
       if (!silent) setLoading(false);
     }

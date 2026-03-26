@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { MergeSuggestion } from "./people-types";
+import { listMergeSuggestions, listPersonMediaPreviews } from "../api";
 
 export interface MediaPreview {
   id: string;
@@ -31,11 +32,10 @@ export function usePeoplePreview({ selectedId, selectedName }: UsePeoplePreviewO
     }
     const cancelled = { value: false };
     setMergeSuggestionsLoading(true);
-    fetch(`/api/people/${selectedId}/merge-suggestions`)
-      .then((res) => res.json())
-      .then((data: { suggestions?: MergeSuggestion[] }) => {
+    listMergeSuggestions(selectedId)
+      .then((suggestions) => {
         if (cancelled.value) return;
-        setMergeSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
+        setMergeSuggestions(suggestions);
       })
       .catch(() => {
         if (!cancelled.value) setMergeSuggestions([]);
@@ -55,9 +55,8 @@ export function usePeoplePreview({ selectedId, selectedName }: UsePeoplePreviewO
       return;
     }
     setPreviewLoading(true);
-    fetch(`/api/people/${selectedId}/media?limit=100`)
-      .then((res) => res.json())
-      .then((data) => setPreviewMedia(Array.isArray(data) ? data : []))
+    listPersonMediaPreviews(selectedId)
+      .then((data) => setPreviewMedia(data as MediaPreview[]))
       .catch(() => setPreviewMedia([]))
       .finally(() => setPreviewLoading(false));
   }, [selectedId]);

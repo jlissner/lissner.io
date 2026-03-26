@@ -1,4 +1,14 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { ApiError } from "@/api/client";
+import {
+  createPerson,
+  deletePerson,
+  mergePeople,
+  reassignTagToNewPerson,
+  reassignTagToPerson,
+  removeTagFromMedia,
+  updatePerson,
+} from "../api";
 import type { MergeSuggestion, Person } from "./people-types";
 import type { MediaPreview } from "./use-people-preview";
 
@@ -50,27 +60,19 @@ export function usePeopleMutations({
     async (mediaId: string, assignTo: number | "new") => {
       if (!selectedId) return;
       const isNewPerson = assignTo === "new";
-      const url = isNewPerson
-        ? `/api/media/${mediaId}/people/${selectedId}/reassign-new`
-        : `/api/media/${mediaId}/people/${selectedId}`;
-      const opts = isNewPerson
-        ? { method: "POST" as const }
-        : {
-            method: "PUT" as const,
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ assignTo }),
-          };
-      const res = await fetch(url, opts);
-      if (res.ok) {
-        const data = isNewPerson ? await res.json() : null;
+      try {
+        const nextSelectedId = isNewPerson
+          ? (await reassignTagToNewPerson(mediaId, selectedId)).newPersonId
+          : assignTo;
+        if (!isNewPerson) await reassignTagToPerson(mediaId, selectedId, assignTo);
         setPreviewMedia((prev) => prev.filter((m) => m.id !== mediaId));
         setViewingMedia(null);
         await fetchPeople();
         onUpdate?.();
-        setSelectedId(isNewPerson ? data.newPersonId : assignTo);
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Reassign failed");
+        setSelectedId(nextSelectedId);
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Reassign failed";
+        alert(message);
       }
     },
     [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia, setSelectedId]
@@ -79,8 +81,8 @@ export function usePeopleMutations({
   const handleRemoveFromPhoto = useCallback(
     async (mediaId: string) => {
       if (!selectedId) return;
-      const res = await fetch(`/api/media/${mediaId}/people/${selectedId}`, { method: "DELETE" });
-      if (res.ok) {
+      try {
+        await removeTagFromMedia(mediaId, selectedId);
         setPreviewMedia((prev) => prev.filter((m) => m.id !== mediaId));
         setViewingMedia((prev) => {
           if (prev?.id === mediaId) return null;
@@ -88,6 +90,9 @@ export function usePeopleMutations({
         });
         await fetchPeople();
         onUpdate?.();
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Failed to remove tag";
+        alert(message);
       }
     },
     [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia]
@@ -95,20 +100,16 @@ export function usePeopleMutations({
 
   const handleMerge = useCallback(
     async (mergeFrom: number, mergeInto: number) => {
-      const res = await fetch(`/api/people/${mergeFrom}/merge`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mergeInto }),
-      });
-      if (res.ok) {
+      try {
+        await mergePeople(mergeFrom, mergeInto);
         setMergeModal(null);
         setMergeTargetId("");
         setSelectedId(mergeInto);
         await fetchPeople();
         onUpdate?.();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Merge failed");
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Merge failed";
+        alert(message);
       }
     },
     [fetchPeople, onUpdate, setMergeModal, setMergeTargetId, setSelectedId]
@@ -116,18 +117,14 @@ export function usePeopleMutations({
 
   const handleAddPerson = useCallback(
     async (name: string) => {
-      const res = await fetch("/api/people", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (res.ok) {
+      try {
+        await createPerson(name);
         setAddModalOpen(false);
         await fetchPeople();
         onUpdate?.();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to add person");
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Failed to add person";
+        alert(message);
       }
     },
     [fetchPeople, onUpdate, setAddModalOpen]
@@ -137,16 +134,16 @@ export function usePeopleMutations({
     async (person: Person) => {
       const msg = deletePersonMessage(person);
       if (!confirm(msg)) return;
-      const res = await fetch(`/api/people/${person.id}`, { method: "DELETE" });
-      if (res.ok) {
+      try {
+        await deletePerson(person.id);
         if (selectedId === person.id) setSelectedId(null);
         setEditModal((m) => (m?.id === person.id ? null : m));
         setMergeModal((m) => (m?.id === person.id ? null : m));
         await fetchPeople();
         onUpdate?.();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to delete");
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Failed to delete";
+        alert(message);
       }
     },
     [selectedId, fetchPeople, onUpdate, setSelectedId, setEditModal, setMergeModal]
@@ -156,16 +153,15 @@ export function usePeopleMutations({
     if (!editModal) return;
     const name = editDraft.trim();
     if (!name) return;
-    const res = await fetch(`/api/people/${editModal.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name }),
-    });
-    if (res.ok) {
+    try {
+      await updatePerson(editModal.id, name);
       setEditModal(null);
       setEditDraft("");
       await fetchPeople();
       onUpdate?.();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to rename";
+      alert(message);
     }
   }, [editModal, editDraft, fetchPeople, onUpdate, setEditModal, setEditDraft]);
 

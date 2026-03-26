@@ -1,28 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
+import { ApiError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { BackupPage } from "@/features/backup/components/backup-page";
+import {
+  addWhitelistEntry,
+  getDataExplorerAvailable,
+  getSqlExplorerAvailable,
+  getUserPeople,
+  listPeopleForAdmin,
+  listUsers,
+  listWhitelist,
+  removeWhitelistEntry,
+  runSql,
+  setUserPeople as setUserPeopleApi,
+  type AdminUser,
+  type AdminWhitelistEntry,
+} from "../api";
 import { DataExplorer } from "./data-explorer";
 
-interface WhitelistEntry {
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  invitedAt: string;
-  personId: number | null;
-}
-
-interface User {
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  createdAt: string;
-  personId: number | null;
-}
-
 export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
-  const [whitelist, setWhitelist] = useState<WhitelistEntry[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [whitelist, setWhitelist] = useState<AdminWhitelistEntry[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
   const [people, setPeople] = useState<Array<{ id: number; name: string }>>([]);
   const [newEmail, setNewEmail] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
@@ -41,40 +40,22 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [sqlRunning, setSqlRunning] = useState(false);
 
   const fetchData = useCallback(async () => {
-    const [wlRes, uRes, pRes, sqlAvailRes, dataAvailRes] = await Promise.all([
-      fetch("/api/admin/whitelist", { credentials: "include" }),
-      fetch("/api/admin/users", { credentials: "include" }),
-      fetch("/api/people", { credentials: "include" }),
-      fetch("/api/admin/sql-explorer-available", { credentials: "include" }),
-      fetch("/api/admin/data-explorer-available", { credentials: "include" }),
+    const [wl, usersData, peopleData, sqlAvailable, dataAvailable] = await Promise.all([
+      listWhitelist(),
+      listUsers(),
+      listPeopleForAdmin(),
+      getSqlExplorerAvailable(),
+      getDataExplorerAvailable(),
     ]);
-
-    if (wlRes.ok) setWhitelist(await wlRes.json());
-    if (uRes.ok) {
-      const u = await uRes.json();
-      setUsers(u);
-      const personMap: Record<number, number[]> = {};
-      for (const user of u) {
-        const upRes = await fetch(`/api/admin/users/${user.id}/people`, { credentials: "include" });
-        if (upRes.ok) {
-          const { personIds } = await upRes.json();
-          personMap[user.id] = personIds;
-        }
-      }
-      setUserPeople(personMap);
-    }
-    if (pRes.ok) {
-      const pData = await pRes.json();
-      setPeople(Array.isArray(pData) ? pData : (pData.people ?? []));
-    }
-    if (sqlAvailRes.ok) {
-      const { available } = await sqlAvailRes.json();
-      setSqlExplorerAvailable(available);
-    }
-    if (dataAvailRes.ok) {
-      const { available } = await dataAvailRes.json();
-      setDataExplorerAvailable(available);
-    }
+    setWhitelist(wl);
+    setUsers(usersData);
+    setPeople(peopleData);
+    setSqlExplorerAvailable(sqlAvailable.available);
+    setDataExplorerAvailable(dataAvailable.available);
+    const peopleByUserEntries = await Promise.all(
+      usersData.map(async (user) => [user.id, (await getUserPeople(user.id)).personIds] as const)
+    );
+    setUserPeople(Object.fromEntries(peopleByUserEntries));
   }, []);
 
   const handleRunSql = useCallback(async () => {
@@ -82,20 +63,10 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     setSqlError(null);
     setSqlResult(null);
     try {
-      const res = await fetch("/api/admin/sql", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: sqlQuery }),
-        credentials: "include",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setSqlResult(data);
-      } else {
-        setSqlError(data.error || "Query failed");
-      }
+      setSqlResult(await runSql(sqlQuery));
     } catch (err) {
-      setSqlError(err instanceof Error ? err.message : "Request failed");
+      const message = err instanceof ApiError ? err.message : "Request failed";
+      setSqlError(message);
     } finally {
       setSqlRunning(false);
     }
@@ -109,47 +80,41 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     e.preventDefault();
     if (!newEmail.trim()) return;
 
-    const res = await fetch("/api/admin/whitelist", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    try {
+      await addWhitelistEntry({
         email: newEmail.trim(),
         isAdmin: newIsAdmin,
         personId: newPersonId !== "" ? newPersonId : undefined,
-      }),
-      credentials: "include",
-    });
-
-    if (res.ok) {
+      });
       setNewEmail("");
       setNewIsAdmin(false);
       setNewPersonId("");
-      fetchData();
-    } else {
-      const data = await res.json().catch(() => ({}));
-      alert(data.error || "Failed to add");
+      await fetchData();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to add";
+      alert(message);
     }
   };
 
   const handleRemoveWhitelist = async (id: number) => {
     if (!confirm("Remove from whitelist?")) return;
-    const res = await fetch(`/api/admin/whitelist/${id}`, {
-      method: "DELETE",
-      credentials: "include",
-    });
-    if (res.ok) fetchData();
+    try {
+      await removeWhitelistEntry(id);
+      await fetchData();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to remove";
+      alert(message);
+    }
   };
 
   const handleSetUserPeople = async (userId: number, personIds: number[]) => {
-    const res = await fetch(`/api/admin/users/${userId}/people`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ personIds }),
-      credentials: "include",
-    });
-    if (res.ok) {
+    try {
+      await setUserPeopleApi(userId, personIds);
       setUserPeople((prev) => ({ ...prev, [userId]: personIds }));
       setLinkingUser(null);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to update user people";
+      alert(message);
     }
   };
 

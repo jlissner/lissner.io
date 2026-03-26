@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ApiError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useActivity } from "@/components/activity/activity-provider";
+import { runBackupSync } from "../api";
 
 interface BackupPageProps {
   onSyncComplete?: () => void;
@@ -49,12 +51,10 @@ export function BackupPage({ onSyncComplete, showTitle = true }: BackupPageProps
   const handleRun = useCallback(async () => {
     setRunning(true);
     try {
-      const res = await fetch("/api/backup/run", { method: "POST" });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        alert(data.error || "Backup failed");
-        return;
-      }
+      await runBackupSync();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Backup failed";
+      alert(message);
     } finally {
       setRunning(false);
     }

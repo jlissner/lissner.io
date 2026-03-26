@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { ApiError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { sendMagicLink } from "../api";
 
 interface LoginPageProps {
   onSent?: () => void;
@@ -20,25 +22,12 @@ export function LoginPage({ onSent }: LoginPageProps) {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/magic-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-        credentials: "include",
-      });
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok) {
-        setStatus("sent");
-        onSent?.();
-      } else {
-        setStatus("error");
-        setError(data.error || "Failed to send magic link");
-      }
-    } catch {
+      await sendMagicLink(email);
+      setStatus("sent");
+      onSent?.();
+    } catch (err) {
       setStatus("error");
-      setError("Network error");
+      setError(err instanceof ApiError ? err.message : "Network error");
     }
   };
 

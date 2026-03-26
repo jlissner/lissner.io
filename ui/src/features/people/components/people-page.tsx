@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { ApiError } from "@/api/client";
 import { PeopleSidebar } from "./people-sidebar";
 import { PeopleDetail } from "./people-detail";
 import { PeopleEditModal } from "./people-edit-modal";
@@ -8,6 +9,7 @@ import { PeopleImageViewer } from "./people-image-viewer";
 import { PeopleMatchFacesWizard } from "./people-match-faces-wizard";
 import { isImage } from "@/features/media/components/media-viewer/media-utils";
 import { usePeoplePage } from "./use-people-page";
+import { runMatchFaces as runMatchFacesApi } from "../api";
 import type { FaceMatchRunResponse } from "./people-types";
 
 interface PeoplePageProps {
@@ -60,24 +62,15 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const runMatchFaces = useCallback(async () => {
     setMatchFacesBusy(true);
     try {
-      const res = await fetch("/api/people/match-faces", { method: "POST" });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        const message =
-          err && typeof err === "object" && "error" in err && typeof err.error === "string"
-            ? err.error
-            : "Match faces failed";
-        alert(message);
-        return;
-      }
-      const data = (await res.json()) as FaceMatchRunResponse;
+      const data = (await runMatchFacesApi()) as FaceMatchRunResponse;
       setMatchFacesAutoMerged(data.autoMerged ?? []);
       setMatchFacesQueue(data.reviewQueue ?? []);
       setMatchFacesOpen(true);
       await fetchPeople({ silent: true });
       onUpdate?.();
-    } catch {
-      alert("Match faces failed");
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Match faces failed";
+      alert(message);
     } finally {
       setMatchFacesBusy(false);
     }

@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from "react";
+import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import { ModalBody, ModalPanel, ModalRoot, ModalTitle, ModalActions } from "@/components/ui/modal";
+import { deletePerson, mergePeople, removeTagFromMedia, updatePerson } from "../api";
 import type { FaceMatchAutoMerged, FaceMatchReviewItem, Person } from "./people-types";
 
 function pluralize(base: string, count: number): string {
@@ -251,16 +253,11 @@ export function PeopleMatchFacesWizard({
     if (!current?.topMatch) return;
     setBusy(true);
     try {
-      const res = await fetch(`/api/people/${current.placeholderPersonId}/merge`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mergeInto: current.topMatch.personId }),
-      });
-      if (res.ok) popQueue();
-      else {
-        const err = await res.json().catch(() => ({}));
-        alert((err as { error?: string }).error ?? "Merge failed");
-      }
+      await mergePeople(current.placeholderPersonId, current.topMatch.personId);
+      popQueue();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Merge failed";
+      alert(message);
     } finally {
       setBusy(false);
     }
@@ -271,16 +268,11 @@ export function PeopleMatchFacesWizard({
       if (!current) return;
       setBusy(true);
       try {
-        const res = await fetch(`/api/people/${current.placeholderPersonId}/merge`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ mergeInto: target }),
-        });
-        if (res.ok) popQueue();
-        else {
-          const err = await res.json().catch(() => ({}));
-          alert((err as { error?: string }).error ?? "Merge failed");
-        }
+        await mergePeople(current.placeholderPersonId, target);
+        popQueue();
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Merge failed";
+        alert(message);
       } finally {
         setBusy(false);
       }
@@ -297,16 +289,11 @@ export function PeopleMatchFacesWizard({
       }
       setBusy(true);
       try {
-        const res = await fetch(`/api/people/${current.placeholderPersonId}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name }),
-        });
-        if (res.ok) popQueue();
-        else {
-          const err = await res.json().catch(() => ({}));
-          alert((err as { error?: string }).error ?? "Rename failed");
-        }
+        await updatePerson(current.placeholderPersonId, name);
+        popQueue();
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Rename failed";
+        alert(message);
       } finally {
         setBusy(false);
       }
@@ -322,15 +309,11 @@ export function PeopleMatchFacesWizard({
     if (!current?.previewMediaId) return;
     setBusy(true);
     try {
-      const res = await fetch(
-        `/api/media/${current.previewMediaId}/people/${current.placeholderPersonId}`,
-        { method: "DELETE" }
-      );
-      if (res.ok) popQueue();
-      else {
-        const err = await res.json().catch(() => ({}));
-        alert((err as { error?: string }).error ?? "Could not remove tag");
-      }
+      await removeTagFromMedia(current.previewMediaId, current.placeholderPersonId);
+      popQueue();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Could not remove tag";
+      alert(message);
     } finally {
       setBusy(false);
     }
@@ -349,12 +332,11 @@ export function PeopleMatchFacesWizard({
     }
     setBusy(true);
     try {
-      const res = await fetch(`/api/people/${current.placeholderPersonId}`, { method: "DELETE" });
-      if (res.ok) popQueue();
-      else {
-        const err = await res.json().catch(() => ({}));
-        alert((err as { error?: string }).error ?? "Could not delete person");
-      }
+      await deletePerson(current.placeholderPersonId);
+      popQueue();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Could not delete person";
+      alert(message);
     } finally {
       setBusy(false);
     }

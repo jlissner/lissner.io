@@ -1,4 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
+import { ApiError } from "@/api/client";
+import {
+  addPersonToMedia,
+  listMediaFaces,
+  listPeopleForTagging,
+  reassignPersonInMedia,
+  reassignPersonToNewInMedia,
+  removePersonFromMedia,
+} from "../../api";
 import type { FaceBox, TaggedFace } from "./media-viewer-types";
 
 interface UseMediaViewerFacesOptions {
@@ -35,20 +44,12 @@ export function useMediaViewerFaces({
     if (!mediaId) return;
     setFacesLoading(true);
     try {
-      const [facesRes, peopleRes] = await Promise.all([
-        fetch(`/api/media/${mediaId}/faces`),
-        fetch("/api/people"),
+      const [facesData, peopleData] = await Promise.all([
+        listMediaFaces(mediaId),
+        listPeopleForTagging(),
       ]);
-      if (facesRes.ok) {
-        const data = await facesRes.json();
-        setFaces({ detected: data.detected ?? [], tagged: data.tagged ?? [] });
-      } else {
-        setFaces({ detected: [], tagged: [] });
-      }
-      if (peopleRes.ok) {
-        const p = await peopleRes.json();
-        setPeople(p);
-      }
+      setFaces({ detected: facesData.detected ?? [], tagged: facesData.tagged ?? [] });
+      setPeople(peopleData);
     } catch {
       setFaces({ detected: [], tagged: [] });
     } finally {
@@ -64,19 +65,15 @@ export function useMediaViewerFaces({
   const handleAssignFace = useCallback(
     async (personId: number | "new") => {
       if (!mediaId || !assigningFace) return;
-      const res = await fetch(`/api/media/${mediaId}/people`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(getAssignFaceBody(personId, assigningFace)),
-      });
-      if (res.ok) {
+      try {
+        await addPersonToMedia(mediaId, getAssignFaceBody(personId, assigningFace));
         setAssigningFace(null);
         loadFaces();
         onUpdate?.();
         onTagChange?.();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to add tag");
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Failed to add tag";
+        alert(message);
       }
     },
     [mediaId, assigningFace, loadFaces, onUpdate, onTagChange]
@@ -86,49 +83,40 @@ export function useMediaViewerFaces({
     async (action: number | "new" | "remove") => {
       if (!mediaId || !reassigningFace) return;
       if (action === "remove") {
-        const res = await fetch(`/api/media/${mediaId}/people/${reassigningFace.personId}`, {
-          method: "DELETE",
-        });
-        if (res.ok) {
+        try {
+          await removePersonFromMedia(mediaId, reassigningFace.personId);
           setReassigningFace(null);
           loadFaces();
           onUpdate?.();
           onTagChange?.();
-        } else {
-          const err = await res.json().catch(() => ({}));
-          alert(err.error || "Failed to remove tag");
+        } catch (err) {
+          const message = err instanceof ApiError ? err.message : "Failed to remove tag";
+          alert(message);
         }
         return;
       }
       if (action === "new") {
-        const res = await fetch(
-          `/api/media/${mediaId}/people/${reassigningFace.personId}/reassign-new`,
-          { method: "POST" }
-        );
-        if (res.ok) {
+        try {
+          await reassignPersonToNewInMedia(mediaId, reassigningFace.personId);
           setReassigningFace(null);
           loadFaces();
           onUpdate?.();
           onTagChange?.();
-        } else {
-          const err = await res.json().catch(() => ({}));
-          alert(err.error || "Failed to reassign");
+        } catch (err) {
+          const message = err instanceof ApiError ? err.message : "Failed to reassign";
+          alert(message);
         }
         return;
       }
-      const res = await fetch(`/api/media/${mediaId}/people/${reassigningFace.personId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignTo: action }),
-      });
-      if (res.ok) {
+      try {
+        await reassignPersonInMedia(mediaId, reassigningFace.personId, action);
         setReassigningFace(null);
         loadFaces();
         onUpdate?.();
         onTagChange?.();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        alert(err.error || "Failed to reassign");
+      } catch (err) {
+        const message = err instanceof ApiError ? err.message : "Failed to reassign";
+        alert(message);
       }
     },
     [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange]

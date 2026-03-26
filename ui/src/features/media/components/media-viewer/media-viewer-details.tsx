@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
+import { getMediaDetails, patchMediaDateTaken } from "../../api";
 import type { MediaItem } from "./media-utils";
 import type { MediaDetailsApiResponse, MediaPatchResponse } from "../../../../../../shared/src/api.js";
 type MediaDetails = MediaDetailsApiResponse;
@@ -126,8 +127,7 @@ export function MediaViewerDetails({
   const loadDetails = useCallback(() => {
     setLoading(true);
     setError(null);
-    fetch(`/api/media/${item.id}/details`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error("Failed to load"))))
+    getMediaDetails(item.id)
       .then(setDetails)
       .catch(() => setError("Could not load details"))
       .finally(() => setLoading(false));
@@ -164,11 +164,7 @@ export function MediaViewerDetails({
         : ({ dateTaken: parsed.at.toISOString() } as const);
     setDateTakenSaving(true);
     setDateTakenEditError(null);
-    const res = await fetch(`/api/media/${item.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    const res = await patchMediaDateTaken(item.id, body);
     const rawBody = await res.text();
     setDateTakenSaving(false);
     if (!res.ok) {

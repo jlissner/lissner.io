@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
+import { ApiError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-
-interface Column {
-  name: string;
-  type: string;
-  notnull: number;
-  pk: number;
-}
+import {
+  deleteDataExplorerRow,
+  getDataExplorerRows,
+  getDataExplorerSchema,
+  insertDataExplorerRow,
+  listDataExplorerTables,
+  type DataExplorerColumn as Column,
+  updateDataExplorerRow,
+} from "../api";
 
 function parseColumnValueForWrite(col: Column, raw: string | undefined): unknown {
   if (raw === undefined || raw === "") return undefined;
@@ -44,8 +47,7 @@ export function DataExplorer() {
   const [newRow, setNewRow] = useState<Record<string, string>>({});
 
   const fetchTables = useCallback(async () => {
-    const res = await fetch("/api/admin/data-explorer/tables", { credentials: "include" });
-    if (res.ok) setTables(await res.json());
+    setTables(await listDataExplorerTables());
   }, []);
 
   const fetchTableData = useCallback(async () => {
@@ -53,34 +55,17 @@ export function DataExplorer() {
     setLoading(true);
     setError(null);
     try {
-      const q = debouncedSearch.trim();
-      const rowParams = new URLSearchParams({
-        limit: String(limit),
-        offset: String(offset),
-      });
-      if (q) rowParams.set("q", q);
-      const schemaUrl = q
-        ? `/api/admin/data-explorer/tables/${selectedTable}?q=${encodeURIComponent(q)}`
-        : `/api/admin/data-explorer/tables/${selectedTable}`;
-      const [schemaRes, rowsRes] = await Promise.all([
-        fetch(schemaUrl, { credentials: "include" }),
-        fetch(`/api/admin/data-explorer/tables/${selectedTable}/rows?${rowParams}`, {
-          credentials: "include",
-        }),
+      const query = debouncedSearch.trim();
+      const [schemaData, rowData] = await Promise.all([
+        getDataExplorerSchema(selectedTable, query),
+        getDataExplorerRows(selectedTable, { limit, offset, q: query }),
       ]);
-      if (schemaRes.ok) {
-        const { schema: s, count: c } = await schemaRes.json();
-        setSchema(s);
-        setCount(c);
-      }
-      if (rowsRes.ok) {
-        setRows(await rowsRes.json());
-      } else {
-        const d = await rowsRes.json().catch(() => ({}));
-        setError(d.error || "Failed to load");
-      }
+      setSchema(schemaData.schema);
+      setCount(schemaData.count);
+      setRows(rowData);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed");
+      const message = err instanceof ApiError ? err.message : "Failed";
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -123,22 +108,13 @@ export function DataExplorer() {
       data[col.name] = value;
     }
     try {
-      const res = await fetch(`/api/admin/data-explorer/tables/${selectedTable}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-        credentials: "include",
-      });
-      const d = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setAddingRow(false);
-        setNewRow({});
-        fetchTableData();
-      } else {
-        setError(d.error || "Insert failed");
-      }
+      await insertDataExplorerRow(selectedTable, data);
+      setAddingRow(false);
+      setNewRow({});
+      fetchTableData();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Insert failed");
+      const message = err instanceof ApiError ? err.message : "Insert failed";
+      setError(message);
     }
   }, [selectedTable, schema, newRow, fetchTableData]);
 
@@ -156,21 +132,12 @@ export function DataExplorer() {
         }
       }
       try {
-        const res = await fetch(`/api/admin/data-explorer/tables/${selectedTable}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pk, ...data }),
-          credentials: "include",
-        });
-        const d = await res.json().catch(() => ({}));
-        if (res.ok) {
-          setEditingRow(null);
-          fetchTableData();
-        } else {
-          setError(d.error || "Update failed");
-        }
+        await updateDataExplorerRow(selectedTable, { pk, ...data });
+        setEditingRow(null);
+        fetchTableData();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Update failed");
+        const message = err instanceof ApiError ? err.message : "Update failed";
+        setError(message);
       }
     },
     [selectedTable, schema, editingRow, fetchTableData]
@@ -183,20 +150,11 @@ export function DataExplorer() {
       const pk: Record<string, unknown> = {};
       for (const c of pkCols) pk[c] = row[c];
       try {
-        const res = await fetch(`/api/admin/data-explorer/tables/${selectedTable}`, {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pk }),
-          credentials: "include",
-        });
-        const d = await res.json().catch(() => ({}));
-        if (res.ok) {
-          fetchTableData();
-        } else {
-          setError(d.error || "Delete failed");
-        }
+        await deleteDataExplorerRow(selectedTable, { pk });
+        fetchTableData();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Delete failed");
+        const message = err instanceof ApiError ? err.message : "Delete failed";
+        setError(message);
       }
     },
     [selectedTable, schema, fetchTableData]
