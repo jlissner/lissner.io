@@ -12,6 +12,17 @@ interface MediaPreview {
   backedUp?: boolean;
 }
 
+function faceTagLabel(count: number): string {
+  return count === 1 ? "face tag" : "face tags";
+}
+
+function deletePersonMessage(person: Person): string {
+  if (person.photoCount == null) {
+    return `Delete "${person.name}"? All their face tags will be removed.`;
+  }
+  return `Delete "${person.name}"? This will remove ${person.photoCount} ${faceTagLabel(person.photoCount)}.`;
+}
+
 export function usePeoplePage(onUpdate?: () => void) {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
@@ -89,26 +100,25 @@ export function usePeoplePage(onUpdate?: () => void) {
   const handleReassign = useCallback(
     async (mediaId: string, assignTo: number | "new") => {
       if (!selectedId) return;
-      const url =
-        assignTo === "new"
-          ? `/api/media/${mediaId}/people/${selectedId}/reassign-new`
-          : `/api/media/${mediaId}/people/${selectedId}`;
-      const opts =
-        assignTo === "new"
-          ? { method: "POST" }
-          : {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ assignTo }),
-            };
+      const isNewPerson = assignTo === "new";
+      const url = isNewPerson
+        ? `/api/media/${mediaId}/people/${selectedId}/reassign-new`
+        : `/api/media/${mediaId}/people/${selectedId}`;
+      const opts = isNewPerson
+        ? { method: "POST" as const }
+        : {
+            method: "PUT" as const,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ assignTo }),
+          };
       const res = await fetch(url, opts);
       if (res.ok) {
-        const data = assignTo === "new" ? await res.json() : null;
+        const data = isNewPerson ? await res.json() : null;
         setPreviewMedia((prev) => prev.filter((m) => m.id !== mediaId));
         setViewingMedia(null);
         fetchPeople();
         onUpdate?.();
-        setSelectedId(assignTo === "new" ? data.newPersonId : assignTo);
+        setSelectedId(isNewPerson ? data.newPersonId : assignTo);
       } else {
         const err = await res.json().catch(() => ({}));
         alert(err.error || "Reassign failed");
@@ -173,10 +183,7 @@ export function usePeoplePage(onUpdate?: () => void) {
 
   const handleDeletePerson = useCallback(
     async (p: Person) => {
-      const msg =
-        p.photoCount != null
-          ? `Delete "${p.name}"? This will remove ${p.photoCount} face tag${p.photoCount === 1 ? "" : "s"}.`
-          : `Delete "${p.name}"? All their face tags will be removed.`;
+      const msg = deletePersonMessage(p);
       if (!confirm(msg)) return;
       const res = await fetch(`/api/people/${p.id}`, { method: "DELETE" });
       if (res.ok) {

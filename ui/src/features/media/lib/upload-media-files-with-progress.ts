@@ -3,6 +3,12 @@ import {
   type MediaUploadProgress,
 } from "./post-media-upload-with-progress.js";
 
+function resolveFileTotal(file: File, xhrTotal: number, fallback: number): number {
+  if (xhrTotal > 0) return xhrTotal;
+  if (file.size > 0) return file.size;
+  return fallback;
+}
+
 export async function uploadMediaFilesWithProgress(
   files: File[],
   onProgress: (progress: MediaUploadProgress | null) => void
@@ -12,8 +18,7 @@ export async function uploadMediaFilesWithProgress(
   for (const [i, file] of files.entries()) {
     const fileTotalFallback = file.size > 0 ? file.size : 1;
     const bumpProgress = (loaded: number, xhrTotal: number) => {
-      const fileTotal =
-        xhrTotal > 0 ? xhrTotal : file.size > 0 ? file.size : fileTotalFallback;
+      const fileTotal = resolveFileTotal(file, xhrTotal, fileTotalFallback);
       onProgress({
         currentFile: i + 1,
         totalFiles: files.length,

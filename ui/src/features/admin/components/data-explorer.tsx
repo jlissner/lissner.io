@@ -9,6 +9,24 @@ interface Column {
   pk: number;
 }
 
+function parseColumnValueForWrite(col: Column, raw: string | undefined): unknown {
+  if (raw === undefined || raw === "") return undefined;
+  const isIntColumn = col.type.includes("INT");
+  if (!isIntColumn) return raw;
+  const parsed = parseInt(raw, 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function formatSearchMeta(count: number, query: string): string {
+  const trimmed = query.trim();
+  if (trimmed !== "") {
+    const suffix = count === 1 ? "" : "es";
+    return `${count} match${suffix} for "${trimmed}"`;
+  }
+  const rowSuffix = count === 1 ? "" : "s";
+  return `${count} row${rowSuffix}`;
+}
+
 export function DataExplorer() {
   const [tables, setTables] = useState<string[]>([]);
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
@@ -100,10 +118,9 @@ export function DataExplorer() {
     if (!selectedTable || !schema) return;
     const data: Record<string, unknown> = {};
     for (const col of schema) {
-      const v = newRow[col.name];
-      if (v !== undefined && v !== "") {
-        data[col.name] = col.type.includes("INT") ? (v ? parseInt(v, 10) : null) : v;
-      }
+      const value = parseColumnValueForWrite(col, newRow[col.name]);
+      if (value === undefined) continue;
+      data[col.name] = value;
     }
     try {
       const res = await fetch(`/api/admin/data-explorer/tables/${selectedTable}`, {
@@ -253,9 +270,7 @@ export function DataExplorer() {
       {selectedTable && schema && (
         <>
           <p className="data-explorer__meta">
-            {debouncedSearch.trim()
-              ? `${count} match${count !== 1 ? "es" : ""} for "${debouncedSearch.trim()}"`
-              : `${count} row${count !== 1 ? "s" : ""}`}
+            {formatSearchMeta(count, debouncedSearch)}
             {count > limit && ` (showing ${limit} per page)`}
           </p>
 

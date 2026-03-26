@@ -4,6 +4,27 @@ import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-vi
 import { ModalBody, ModalPanel, ModalRoot, ModalTitle, ModalActions } from "@/components/ui/modal";
 import type { FaceMatchAutoMerged, FaceMatchReviewItem, Person } from "./people-types";
 
+function pluralize(base: string, count: number): string {
+  return count === 1 ? base : `${base}s`;
+}
+
+function deletePersonButtonLabel(faceTagCount: number | undefined): string {
+  if (faceTagCount == null) {
+    return "Delete person (all face tags)";
+  }
+  return `Delete person (${faceTagCount} face ${pluralize("tag", faceTagCount)})`;
+}
+
+function deletePersonConfirmMessage(
+  placeholderName: string,
+  count: number | undefined
+): string {
+  if (count == null) {
+    return `Delete "${placeholderName}"? All face tags for this person will be removed.`;
+  }
+  return `Delete "${placeholderName}"? This will remove ${count} face ${pluralize("tag", count)}.`;
+}
+
 function faceMatchPreviewSrc(current: FaceMatchReviewItem): string | null {
   if (!current.previewMediaId) return null;
   if (current.previewFaceCrop) {
@@ -193,9 +214,7 @@ function MatchFaceReviewCard({
             </p>
           )}
           <Button type="button" variant="danger" disabled={busy} onClick={onDeletePerson}>
-            {faceTagCount != null
-              ? `Delete person (${faceTagCount} face ${faceTagCount === 1 ? "tag" : "tags"})`
-              : "Delete person (all face tags)"}
+            {deletePersonButtonLabel(faceTagCount)}
           </Button>
         </div>
       </div>
@@ -325,10 +344,7 @@ export function PeopleMatchFacesWizard({
       current.topMatch != null &&
       current.topMatch.score < 0.5;
     if (!skipConfirm) {
-      const confirmMsg =
-        count != null
-          ? `Delete "${current.placeholderName}"? This will remove ${count} face tag${count === 1 ? "" : "s"}.`
-          : `Delete "${current.placeholderName}"? All face tags for this person will be removed.`;
+      const confirmMsg = deletePersonConfirmMessage(current.placeholderName, count);
       if (!confirm(confirmMsg)) return;
     }
     setBusy(true);

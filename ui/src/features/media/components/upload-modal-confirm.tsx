@@ -149,6 +149,23 @@ function DuplicateChoiceButtons({
   );
 }
 
+function getContinueButtonLabel(params: {
+  uploading: boolean;
+  checkLoading: boolean;
+  hasDuplicateNames: boolean;
+  allConflictChoicesMade: boolean;
+  uploadCountAfterChoices: number | null;
+}): string {
+  if (params.uploading) return "Uploading…";
+  if (params.checkLoading) return "Loading…";
+  const noUploadsAfterChoices =
+    params.hasDuplicateNames &&
+    params.allConflictChoicesMade &&
+    params.uploadCountAfterChoices === 0;
+  if (noUploadsAfterChoices) return "Done";
+  return "Continue";
+}
+
 function DuplicateCompareBlock({
   localFile,
   conflict,
@@ -282,7 +299,10 @@ export function UploadModalConfirm({
   const safeStep = Math.min(wizardStep, Math.max(0, nameConflicts.length - 1));
   const stepConflict = hasDuplicateNames ? nameConflicts[safeStep] : null;
   const stepFile = hasDuplicateNames ? conflictFiles[safeStep] : undefined;
-  const stepDecision = hasDuplicateNames ? (conflictDecisions[safeStep] ?? null) : null;
+  const stepDecision = (() => {
+    if (!hasDuplicateNames) return null;
+    return conflictDecisions[safeStep] ?? null;
+  })();
 
   const handleStepChoice = (choice: Exclude<DuplicateConflictDecision, null>) => {
     onConflictDecisionChange(safeStep, choice);
@@ -458,13 +478,13 @@ export function UploadModalConfirm({
             Cancel
           </Button>
           <Button onClick={onConfirm} disabled={continueDisabled}>
-            {uploading
-              ? "Uploading…"
-              : checkLoading
-                ? "Loading…"
-                : hasDuplicateNames && allConflictChoicesMade && uploadCountAfterChoices === 0
-                  ? "Done"
-                  : "Continue"}
+            {getContinueButtonLabel({
+              uploading,
+              checkLoading,
+              hasDuplicateNames,
+              allConflictChoicesMade,
+              uploadCountAfterChoices,
+            })}
           </Button>
         </ModalActions>
       </div>
