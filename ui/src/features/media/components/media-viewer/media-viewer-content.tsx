@@ -8,6 +8,7 @@ import { MediaViewerDetails } from "./media-viewer-details";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
 import type { MediaItem } from "./media-utils";
+import { Button } from "@/components/ui/button";
 
 interface MediaViewerContentProps {
   item: MediaItem;
@@ -127,41 +128,42 @@ export function MediaViewerContent({
   return (
     <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       <div className="viewer-content__actions">
-        <button onClick={goPrev} style={btnStyle} type="button" disabled={!prevItem}>
+        <Button onClick={goPrev} style={btnStyle} variant="ghost" disabled={!prevItem}>
           Prev
-        </button>
-        <button onClick={goNext} style={btnStyle} type="button" disabled={!nextItem}>
+        </Button>
+        <Button onClick={goNext} style={btnStyle} variant="ghost" disabled={!nextItem}>
           Next
-        </button>
+        </Button>
         {hasMotionPair && motionPairView === "video" && (
-          <button onClick={() => setMotionPairView("still")} style={btnStyle} type="button">
+          <Button onClick={() => setMotionPairView("still")} style={btnStyle} variant="ghost">
             View still image
-          </button>
+          </Button>
         )}
         {hasMotionPair && motionPairView === "still" && (
-          <button
+          <Button
             onClick={() => {
               setMotionPairView("video");
               setTaggingMode(() => false);
             }}
             style={btnStyle}
-            type="button"
+            variant="ghost"
           >
             View motion
-          </button>
+          </Button>
         )}
         {isImage(item.mimeType, item.originalName) &&
           (!pixelMp || !pixelIsVideo) &&
           (!hasMotionPair || motionPairView === "still") && (
-          <button
+          <Button
             onClick={() => setTaggingMode((p) => !p)}
             style={{
               ...btnStyle,
               background: taggingMode ? "var(--color-primary)" : btnStyle.background,
             }}
+            variant="ghost"
           >
             {taggingMode ? "Exit tagging" : "Tagging mode"}
-          </button>
+          </Button>
         )}
         {taggingMode &&
           isImage(item.mimeType, item.originalName) &&
@@ -186,9 +188,9 @@ export function MediaViewerContent({
               <span>Face detections</span>
             </label>
           )}
-        <button onClick={onClose} style={btnStyle}>
+        <Button onClick={onClose} style={btnStyle} variant="ghost">
           Close
-        </button>
+        </Button>
       </div>
       <div className="viewer-content__body">
         <div className="viewer-content__media">
