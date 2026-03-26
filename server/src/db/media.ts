@@ -1,76 +1,9 @@
 import Database from "better-sqlite3";
 import { dbPath } from "../config/paths.js";
+import { runMediaMigrations } from "./media-migrations.js";
 
 const db = new Database(dbPath);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS media (
-    id TEXT PRIMARY KEY,
-    filename TEXT NOT NULL,
-    original_name TEXT NOT NULL,
-    mime_type TEXT NOT NULL,
-    size INTEGER NOT NULL,
-    uploaded_at TEXT NOT NULL
-  )
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS embeddings (
-    media_id TEXT PRIMARY KEY REFERENCES media(id),
-    embedding TEXT NOT NULL,
-    indexed_at TEXT NOT NULL
-  )
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS person_names (
-    person_id INTEGER PRIMARY KEY,
-    name TEXT NOT NULL
-  )
-`);
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS image_people (
-    media_id TEXT NOT NULL,
-    person_id INTEGER NOT NULL,
-    PRIMARY KEY (media_id, person_id),
-    FOREIGN KEY (media_id) REFERENCES media(id)
-  )
-`);
-
-const imagePeopleCols = (
-  db.prepare("PRAGMA table_info(image_people)").all() as Array<{ name: string }>
-).map((c) => c.name);
-for (const col of ["x", "y", "width", "height", "confidence"]) {
-  if (!imagePeopleCols.includes(col)) {
-    db.exec(`ALTER TABLE image_people ADD COLUMN ${col} REAL`);
-  }
-}
-
-const mediaCols = (db.prepare("PRAGMA table_info(media)").all() as Array<{ name: string }>).map(
-  (c) => c.name
-);
-if (!mediaCols.includes("date_taken")) {
-  db.exec("ALTER TABLE media ADD COLUMN date_taken TEXT");
-}
-if (!mediaCols.includes("latitude")) {
-  db.exec("ALTER TABLE media ADD COLUMN latitude REAL");
-}
-if (!mediaCols.includes("longitude")) {
-  db.exec("ALTER TABLE media ADD COLUMN longitude REAL");
-}
-if (!mediaCols.includes("owner_id")) {
-  db.exec("ALTER TABLE media ADD COLUMN owner_id INTEGER");
-}
-if (!mediaCols.includes("backed_up_at")) {
-  db.exec("ALTER TABLE media ADD COLUMN backed_up_at TEXT");
-}
-if (!mediaCols.includes("motion_companion_id")) {
-  db.exec("ALTER TABLE media ADD COLUMN motion_companion_id TEXT");
-}
-if (!mediaCols.includes("hide_from_gallery")) {
-  db.exec("ALTER TABLE media ADD COLUMN hide_from_gallery INTEGER DEFAULT 0");
-}
+runMediaMigrations(db);
 
 /** Pixel-style pairs: `*.mp.jpg` (still) + `*.mp` (motion); only still rows appear in gallery lists. */
 const GALLERY_VISIBLE_SQL = "COALESCE(hide_from_gallery, 0) = 0";
