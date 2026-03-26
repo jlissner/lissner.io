@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/async-handler.js";
+import { parseWithSchema } from "../validation/parse.js";
 import {
   createPersonBodySchema,
   mergePersonBodySchema,
@@ -31,15 +32,15 @@ peopleRouter.post(
 peopleRouter.get(
   "/:id/merge-suggestions",
   asyncHandler(async (req, res) => {
-    const { id } = personIdParamsSchema.parse(req.params);
+    const { id } = parseWithSchema(personIdParamsSchema, req.params);
     const suggestions = await getMergeSuggestionsForPerson(id);
     res.json({ suggestions });
   })
 );
 
 peopleRouter.get("/:id/media", (req, res) => {
-  const { id } = personIdParamsSchema.parse(req.params);
-  const q = personMediaQuerySchema.parse(req.query);
+  const { id } = parseWithSchema(personIdParamsSchema, req.params);
+  const q = parseWithSchema(personMediaQuerySchema, req.query);
   const limit = q.limit ?? 100;
   res.json(getPersonMediaPreview(id, limit));
 });
@@ -49,13 +50,13 @@ peopleRouter.get("/", (_req, res) => {
 });
 
 peopleRouter.post("/", (req, res) => {
-  const body = createPersonBodySchema.parse(req.body);
+  const body = parseWithSchema(createPersonBodySchema, req.body);
   const created = createPersonNamed(body.name);
   res.status(201).json(created);
 });
 
 peopleRouter.delete("/:id", (req, res) => {
-  const { id } = personIdParamsSchema.parse(req.params);
+  const { id } = parseWithSchema(personIdParamsSchema, req.params);
   const result = deletePersonById(id);
   if (!result.ok) {
     res.status(404).json({ error: "Person not found" });
@@ -65,8 +66,8 @@ peopleRouter.delete("/:id", (req, res) => {
 });
 
 peopleRouter.post("/:id/merge", (req, res) => {
-  const { id: mergeFromId } = personIdParamsSchema.parse(req.params);
-  const body = mergePersonBodySchema.parse(req.body);
+  const { id: mergeFromId } = parseWithSchema(personIdParamsSchema, req.params);
+  const body = parseWithSchema(mergePersonBodySchema, req.body);
   const result = mergePeople(mergeFromId, body.mergeInto);
   if (result.ok) {
     res.json({ merged: result.merged, into: result.into });
@@ -84,7 +85,7 @@ peopleRouter.post("/:id/merge", (req, res) => {
 });
 
 peopleRouter.put("/:id", (req, res) => {
-  const { id } = personIdParamsSchema.parse(req.params);
-  const body = updatePersonBodySchema.parse(req.body);
+  const { id } = parseWithSchema(personIdParamsSchema, req.params);
+  const body = parseWithSchema(updatePersonBodySchema, req.body);
   res.json(renamePerson(id, body.name));
 });
