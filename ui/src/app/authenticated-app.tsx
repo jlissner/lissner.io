@@ -28,6 +28,18 @@ const AdminPage = lazy(async () => {
   return { default: m.AdminPage };
 });
 
+function buildPathWithSearch(path: string, search?: string): string {
+  if (!search) return path;
+  return `${path}?${search}`;
+}
+
+function getHomePersonFilter(search?: string): number | null {
+  if (!search) return null;
+  const personMatch = /person=(\d+)/.exec(search);
+  if (!personMatch) return null;
+  return parseInt(personMatch[1], 10);
+}
+
 export function AuthenticatedApp() {
   const { authEnabled, user, logout } = useAuth();
   const activity = useActivity();
@@ -39,18 +51,6 @@ export function AuthenticatedApp() {
   const [personFilterName, setPersonFilterName] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [s3AlertDismissed, setS3AlertDismissed] = useState(false);
-
-  function buildPathWithSearch(path: string, search?: string): string {
-    if (!search) return path;
-    return `${path}?${search}`;
-  }
-
-  function getHomePersonFilter(search?: string): number | null {
-    if (!search) return null;
-    const personMatch = /person=(\d+)/.exec(search);
-    if (!personMatch) return null;
-    return parseInt(personMatch[1], 10);
-  }
 
   useEffect(() => {
     const onPopState = () => {
@@ -93,30 +93,53 @@ export function AuthenticatedApp() {
   const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
+  const showUserInfo = authEnabled && user != null;
+
+  const renderMainPage = () => {
+    if (page === "home") {
+      return (
+        <HomePage
+          personFilter={personFilter}
+          personFilterName={personFilterName}
+          onClearPersonFilter={() => navigateTo("home")}
+        />
+      );
+    }
+    if (page === "people") {
+      return (
+        <PeoplePage
+          onUpdate={fetchItems}
+          onViewAllPhotos={(personId) => navigateTo("home", `person=${personId}`)}
+        />
+      );
+    }
+    if (page === "admin" && user?.isAdmin) {
+      return <AdminPage onSyncComplete={fetchItems} />;
+    }
+    return null;
+  };
 
   return (
     <div className="app">
       {showS3Alert && (
         <Banner onDismiss={() => setS3AlertDismissed(true)}>
-          <>
-            S3 sync not configured. Missing: {s3Config.missingVars.join(", ")}.
-            {user?.isAdmin ? (
-              <>
-                {" "}
-                <a
-                  href="/admin"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigateTo("admin");
-                  }}
-                >
-                  Open Admin
-                </a>
-              </>
-            ) : (
-              <> Set these on the server to enable sync.</>
-            )}
-          </>
+          S3 sync not configured. Missing: {s3Config.missingVars.join(", ")}.
+          {user?.isAdmin ? (
+            <>
+              {" "}
+              <a
+                href="/admin"
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigateTo("admin");
+                }}
+              >
+                Open Admin
+              </a>
+            </>
+          ) : (
+            " Set these on the server to enable sync."
+          )}
         </Banner>
       )}
       <header className="header">
@@ -135,7 +158,7 @@ export function AuthenticatedApp() {
             >
               Upload
             </Button>
-            {authEnabled && user && (
+            {showUserInfo && (
               <div className="header__user">
                 <span className="header__user-email">{user.email}</span>
                 <Button variant="ghost" size="sm" onClick={() => logout()}>
@@ -157,24 +180,7 @@ export function AuthenticatedApp() {
           </NavMenu>
         </nav>
         <main className="main">
-          <Suspense fallback={<div className="u-pad">Loading…</div>}>
-            {page === "home" && (
-              <HomePage
-                personFilter={personFilter}
-                personFilterName={personFilterName}
-                onClearPersonFilter={() => navigateTo("home")}
-              />
-            )}
-            {page === "people" && (
-              <PeoplePage
-                onUpdate={fetchItems}
-                onViewAllPhotos={(personId) => navigateTo("home", `person=${personId}`)}
-              />
-            )}
-            {page === "admin" && user?.isAdmin && (
-              <AdminPage onSyncComplete={fetchItems} />
-            )}
-          </Suspense>
+          <Suspense fallback={<div className="u-pad">Loading…</div>}>{renderMainPage()}</Suspense>
         </main>
       </div>
       {uploadModalOpen && (
