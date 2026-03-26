@@ -1,6 +1,7 @@
 import path from "path";
 import { createRequire } from "module";
 import { readFile } from "fs/promises";
+import { logger } from "./logger.js";
 
 const require = createRequire(import.meta.url);
 
@@ -86,7 +87,7 @@ export async function extractFacesFromImage(
       }
       return faces;
     } catch (err) {
-      console.error(`Face extraction failed for ${imageId} (${imagePath}):`, err);
+      logger.error({ err, imageId, imagePath }, "Face extraction failed");
       return [];
     } finally {
       if (tensor != null) {

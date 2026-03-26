@@ -23,6 +23,7 @@ import {
 import { mediaDir } from "../config/paths.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { isTextMime, isVideoMime } from "../lib/media-mime.js";
+import { logger } from "../logger.js";
 
 interface MediaItem {
   id: string;
@@ -58,7 +59,7 @@ async function getTextForItem(
           : "";
       return `${base}${suffix}`.trim();
     } catch (err) {
-      console.error(`Image description failed for ${item.originalName}:`, err);
+      logger.error({ err, originalName: item.originalName }, "Image description failed");
       return `Image: ${item.originalName}`;
     }
   }
@@ -168,7 +169,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           const [exif, faces] = await Promise.all([
             extractExifData(filePath),
             extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
-              console.error(`Face extraction failed for ${item.originalName}:`, err);
+              logger.error({ err, originalName: item.originalName }, "Face extraction failed");
               return [] as FaceInImage[];
             }),
           ]);
@@ -187,14 +188,14 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
             );
           }
         } catch (err) {
-          console.error(`Image indexing prep failed for ${item.originalName}:`, err);
+          logger.error({ err, originalName: item.originalName }, "Image indexing prep failed");
         }
       } else if (isVideoMime(item.mimeType)) {
         try {
           const meta = await extractVideoMetadata(filePath);
           if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
         } catch (err) {
-          console.error(`Video metadata failed for ${item.originalName}:`, err);
+          logger.error({ err, originalName: item.originalName }, "Video metadata failed");
         }
       }
       const text = await getTextForItem(item, imagePersonIds);
@@ -203,7 +204,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
       db.upsertEmbedding(item.id, embedding);
       return true;
     } catch (err) {
-      console.error(`Auto-index failed for ${item.originalName}:`, err);
+      logger.error({ err, originalName: item.originalName }, "Auto-index failed");
       return false;
     }
   } finally {
@@ -263,7 +264,7 @@ export async function indexMediaItems(
         }
         allFaces.push(...faces);
       } catch (err) {
-        console.error(`Face extraction failed for ${item.originalName}:`, err);
+        logger.error({ err, originalName: item.originalName }, "Face extraction failed");
       }
     }
     if (allFaces.length > 0) {
@@ -306,7 +307,7 @@ export async function indexMediaItems(
       db.upsertEmbedding(item.id, embedding);
       progress.indexed++;
     } catch (err) {
-      console.error(`Failed to index ${item.originalName}:`, err);
+      logger.error({ err, originalName: item.originalName }, "Failed to index item");
     }
     progress.processed++;
     setIndexProgress(progress.processed, toIndex.length);

@@ -16,6 +16,7 @@ import * as db from "../db/media.js";
 import * as authDb from "../db/auth.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../config/paths.js";
+import { logger } from "../logger.js";
 
 const S3_VARS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET"] as const;
 
@@ -119,7 +120,7 @@ export function scheduleBackupSyncAfterUpload(): void {
       return;
     }
     void runSync().catch((err) => {
-      console.error("[s3-sync] Auto backup after upload failed:", err);
+      logger.error({ err }, "[s3-sync] Auto backup after upload failed");
     });
   }, AUTO_BACKUP_DEBOUNCE_MS);
 }
@@ -166,7 +167,7 @@ async function deleteOrphanS3Thumbnails(
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
       removed++;
     } catch (err) {
-      console.error("[s3-sync] DeleteObject orphan thumbnail:", key, err);
+      logger.error({ err, key }, "[s3-sync] DeleteObject orphan thumbnail failed");
     }
   }
   return removed;
@@ -565,7 +566,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       syncDefer.pendingAfterCurrent = false;
       setImmediate(() => {
         void runSync().catch((err) => {
-          console.error("[s3-sync] Queued backup sync failed:", err);
+          logger.error({ err }, "[s3-sync] Queued backup sync failed");
         });
       });
     }
@@ -595,7 +596,7 @@ export async function deleteMediaFromS3(item: {
     try {
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
     } catch (err) {
-      console.error("[s3-sync] DeleteObject failed:", Key, err);
+      logger.error({ err, key: Key }, "[s3-sync] DeleteObject failed");
     }
   }
 }
@@ -611,7 +612,7 @@ export async function tryRestoreMediaFromBackup(item: {
   if (await fileExists(localPath)) return true;
   const client = createS3Client();
   if (!client) {
-    console.warn("restore: S3 not configured; cannot restore media", item.id);
+    logger.warn({ mediaId: item.id }, "restore: S3 not configured; cannot restore media");
     return false;
   }
   const bucket = process.env.S3_BUCKET!;
@@ -631,7 +632,7 @@ export async function tryRestoreMediaFromBackup(item: {
       db.clearMediaBackedUpAt(item.id);
       return false;
     }
-    console.error("restore: failed to download media from S3:", item.id, err);
+    logger.error({ err, mediaId: item.id }, "restore: failed to download media from S3");
     return false;
   }
 }
@@ -658,7 +659,7 @@ export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promi
     if (isS3NoSuchKey(err)) {
       return false;
     }
-    console.error("restore: failed to download thumbnail from S3:", mediaId, err);
+    logger.error({ err, mediaId }, "restore: failed to download thumbnail from S3");
     return false;
   }
 }

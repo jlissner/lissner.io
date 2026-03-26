@@ -3,6 +3,7 @@ import type { NextFunction, Request, Response } from "express";
 import * as authDb from "../db/auth.js";
 import { sendMagicLink } from "../email.js";
 import { getMagicLinkBaseUrl } from "../services/auth-service.js";
+import { logger } from "../logger.js";
 
 export const authRouter = Router();
 
@@ -36,7 +37,7 @@ authRouter.post("/magic-link", async (req, res) => {
     await sendMagicLink(normalized, link);
     res.json({ sent: true });
   } catch (err) {
-    console.error("Magic link send error:", err);
+    logger.error({ err, email: normalized }, "Magic link send error");
     res.status(500).json({ error: "Failed to send magic link" });
   }
 });

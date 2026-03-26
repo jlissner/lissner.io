@@ -9,6 +9,7 @@ import { extractFacesFromImage } from "../faces.js";
 import { tryRestoreMediaFromBackup, tryRestoreVideoThumbnailFromBackup } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { isTextMime } from "../lib/media-mime.js";
+import { logger } from "../logger.js";
 import {
   effectiveImageResponseMimeType,
   isEffectiveImageItem,
@@ -97,7 +98,7 @@ export async function getFacesPayloadForMedia(mediaId: string) {
       },
     };
   } catch (err) {
-    console.error("Face detection error:", err);
+    logger.error({ err, mediaId }, "Face detection error");
     return { ok: false as const, reason: "detection_failed" as const };
   }
 }
@@ -141,7 +142,7 @@ export async function getFaceCropOrFullImage(mediaId: string, personId: number) 
       mimeType: effectiveImageResponseMimeType(item),
     };
   } catch (err) {
-    console.error("Face crop error:", err);
+    logger.error({ err, mediaId, personId }, "Face crop error");
     return { ok: false as const, reason: "crop_failed" as const };
   }
 }
@@ -302,7 +303,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     if (code === "ENOENT") {
       return { ok: false, reason: "ffmpeg_missing" };
     }
-    console.error("Video thumbnail error:", err);
+    logger.error({ err, mediaId }, "Video thumbnail error");
     return { ok: false, reason: "thumb_failed" };
   }
 }

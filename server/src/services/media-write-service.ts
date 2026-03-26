@@ -4,6 +4,7 @@ import * as db from "../db/media.js";
 import { indexMediaItem } from "../indexing/media.js";
 import { deleteMediaFromS3, scheduleBackupSyncAfterUpload } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import { logger } from "../logger.js";
 
 export function persistUploadedMedia(params: {
   id: string;
@@ -66,7 +67,7 @@ export async function deleteMediaItem(
     scheduleBackupSyncAfterUpload();
     return { ok: true };
   } catch (err) {
-    console.error("Delete error:", err);
+    logger.error({ err, mediaId }, "Delete media failed");
     return { ok: false, reason: "delete_failed" };
   }
 }

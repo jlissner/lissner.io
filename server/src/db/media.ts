@@ -1,6 +1,7 @@
 import Database from "better-sqlite3";
 import { dbPath } from "../config/paths.js";
 import { runMediaMigrations } from "./media-migrations.js";
+import { logger } from "../logger.js";
 
 const db = new Database(dbPath);
 runMediaMigrations(db);
@@ -182,7 +183,10 @@ export function migrateNullOwnersToDefault(getDefaultOwnerId: () => number | nul
       .prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL")
       .run(defaultOwnerId);
     if (result.changes > 0) {
-      console.warn(`[db] Assigned ${result.changes} media with null owner to default owner`);
+      logger.warn(
+        { changes: result.changes, defaultOwnerId },
+        "[db] Assigned null media owners to default owner"
+      );
     }
   }
 }
