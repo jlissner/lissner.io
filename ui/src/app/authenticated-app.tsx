@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { NavMenu, NavMenuItem } from "@/components/ui/nav-menu";
@@ -38,6 +38,10 @@ function getHomePersonFilter(search?: string): number | null {
   const personMatch = /person=(\d+)/.exec(search);
   if (!personMatch) return null;
   return parseInt(personMatch[1], 10);
+}
+
+function s3AlertMessage(missingVars: string[]): string {
+  return `S3 sync not configured. Missing: ${missingVars.join(", ")}.`;
 }
 
 export function AuthenticatedApp() {
@@ -90,50 +94,53 @@ export function AuthenticatedApp() {
     window.dispatchEvent(new CustomEvent("home-refresh"));
   }, []);
 
+  const handleOpenUploadModal = useCallback(() => setUploadModalOpen(true), []);
+  const handleCloseUploadModal = useCallback(() => setUploadModalOpen(false), []);
+  const handleDismissS3Alert = useCallback(() => setS3AlertDismissed(true), []);
+  const handleNavigateAdmin = useCallback(
+    (e: MouseEvent<HTMLAnchorElement>) => {
+      e.preventDefault();
+      navigateTo("admin");
+    },
+    [navigateTo]
+  );
+
   const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
   const showUserInfo = authEnabled && user != null;
 
-  const renderMainPage = () => {
-    if (page === "home") {
-      return (
-        <HomePage
-          personFilter={personFilter}
-          personFilterName={personFilterName}
-          onClearPersonFilter={() => navigateTo("home")}
-        />
-      );
-    }
-    if (page === "people") {
-      return (
-        <PeoplePage
-          onUpdate={fetchItems}
-          onViewAllPhotos={(personId) => navigateTo("home", `person=${personId}`)}
-        />
-      );
-    }
-    if (page === "admin" && user?.isAdmin) {
-      return <AdminPage onSyncComplete={fetchItems} />;
-    }
-    return null;
-  };
+  let mainPage: ReactNode = null;
+  if (page === "home") {
+    mainPage = (
+      <HomePage
+        personFilter={personFilter}
+        personFilterName={personFilterName}
+        onClearPersonFilter={() => navigateTo("home")}
+      />
+    );
+  }
+  if (page === "people") {
+    mainPage = (
+      <PeoplePage
+        onUpdate={fetchItems}
+        onViewAllPhotos={(personId) => navigateTo("home", `person=${personId}`)}
+      />
+    );
+  }
+  if (page === "admin" && user?.isAdmin) {
+    mainPage = <AdminPage onSyncComplete={fetchItems} />;
+  }
 
   return (
     <div className="app">
       {showS3Alert && (
-        <Banner onDismiss={() => setS3AlertDismissed(true)}>
-          S3 sync not configured. Missing: {s3Config.missingVars.join(", ")}.
+        <Banner onDismiss={handleDismissS3Alert}>
+          {s3AlertMessage(s3Config.missingVars)}
           {user?.isAdmin ? (
             <>
               {" "}
-              <a
-                href="/admin"
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigateTo("admin");
-                }}
-              >
+              <a href="/admin" onClick={handleNavigateAdmin}>
                 Open Admin
               </a>
             </>
@@ -154,7 +161,7 @@ export function AuthenticatedApp() {
             <Button
               variant="primary"
               className="header__upload"
-              onClick={() => setUploadModalOpen(true)}
+              onClick={handleOpenUploadModal}
             >
               Upload
             </Button>
@@ -180,11 +187,11 @@ export function AuthenticatedApp() {
           </NavMenu>
         </nav>
         <main className="main">
-          <Suspense fallback={<div className="u-pad">Loading…</div>}>{renderMainPage()}</Suspense>
+          <Suspense fallback={<div className="u-pad">Loading…</div>}>{mainPage}</Suspense>
         </main>
       </div>
       {uploadModalOpen && (
-        <UploadModal onClose={() => setUploadModalOpen(false)} onUploadComplete={fetchItems} />
+        <UploadModal onClose={handleCloseUploadModal} onUploadComplete={fetchItems} />
       )}
       <GlobalActivityOverlay />
     </div>
