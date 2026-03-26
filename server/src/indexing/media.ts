@@ -236,7 +236,7 @@ export async function indexMediaItems(
     if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
   }
 
-  // Clear existing person tags for images we're re-indexing (manual tags get replaced)
+  // Clear existing auto tags for images we're re-indexing (manual tags are preserved).
   for (const id of imageIds) {
     db.setImagePeople(id, []);
   }

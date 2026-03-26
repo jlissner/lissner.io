@@ -122,6 +122,10 @@ const migrations: MigrationStep[] = [
     version: 9,
     apply: (db) => addColumnIfMissing(db, "media", "hide_from_gallery", "INTEGER DEFAULT 0"),
   },
+  {
+    version: 10,
+    apply: (db) => addColumnIfMissing(db, "image_people", "source", "TEXT DEFAULT 'auto'"),
+  },
 ];
 
 export function runMediaMigrations(db: Database.Database): void {

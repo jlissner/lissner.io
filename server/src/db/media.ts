@@ -557,10 +557,13 @@ export function setImagePeople(
     confidence?: number;
   }>
 ) {
-  db.prepare("DELETE FROM image_people WHERE media_id = ?").run(mediaId);
+  // Re-indexing should only replace auto-detected tags; preserve manual edits.
+  db.prepare("DELETE FROM image_people WHERE media_id = ? AND COALESCE(source, 'auto') = 'auto'").run(
+    mediaId
+  );
   const seen = new Set<number>();
   const insert = db.prepare(
-    "INSERT INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT OR IGNORE INTO image_people (media_id, person_id, x, y, width, height, confidence, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
   );
   for (const { personId, box, confidence } of entries) {
     if (seen.has(personId)) continue;
@@ -572,7 +575,8 @@ export function setImagePeople(
       box?.y ?? null,
       box?.width ?? null,
       box?.height ?? null,
-      confidence ?? null
+      confidence ?? null,
+      "auto"
     );
   }
 }
@@ -624,10 +628,10 @@ export function mergePeople(keepId: number, mergeFromId: number): void {
     height: number | null;
   }>;
   const insert = db.prepare(
-    "INSERT OR IGNORE INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT OR IGNORE INTO image_people (media_id, person_id, x, y, width, height, confidence, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
   );
   for (const row of rows) {
-    insert.run(row.media_id, keepId, row.x, row.y, row.width, row.height, 1);
+    insert.run(row.media_id, keepId, row.x, row.y, row.width, row.height, 1, "manual");
   }
   db.prepare("DELETE FROM image_people WHERE person_id = ?").run(mergeFromId);
   db.prepare("DELETE FROM person_names WHERE person_id = ?").run(mergeFromId);
@@ -669,8 +673,8 @@ export function reassignPersonInMedia(
     fromPersonId
   );
   db.prepare(
-    "INSERT OR REPLACE INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(mediaId, toPersonId, row.x, row.y, row.width, row.height, 1);
+    "INSERT OR REPLACE INTO image_people (media_id, person_id, x, y, width, height, confidence, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(mediaId, toPersonId, row.x, row.y, row.width, row.height, 1, "manual");
   return true;
 }
 
@@ -692,8 +696,8 @@ export function createNewPersonForMedia(mediaId: string, fromPersonId: number): 
     fromPersonId
   );
   db.prepare(
-    "INSERT INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(mediaId, newId, row.x, row.y, row.width, row.height, 1);
+    "INSERT INTO image_people (media_id, person_id, x, y, width, height, confidence, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(mediaId, newId, row.x, row.y, row.width, row.height, 1, "manual");
   db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(
     newId,
     `Person ${newId}`
@@ -702,10 +706,9 @@ export function createNewPersonForMedia(mediaId: string, fromPersonId: number): 
 }
 
 export function confirmFace(mediaId: string, personId: number): void {
-  db.prepare("UPDATE image_people SET confidence = 1 WHERE media_id = ? AND person_id = ?").run(
-    mediaId,
-    personId
-  );
+  db.prepare(
+    "UPDATE image_people SET confidence = 1, source = 'manual' WHERE media_id = ? AND person_id = ?"
+  ).run(mediaId, personId);
 }
 
 export function getTaggedFacesInMedia(mediaId: string): Array<{
@@ -738,8 +741,8 @@ export function addPersonToMedia(
   confidence?: number
 ): void {
   db.prepare(
-    "INSERT INTO image_people (media_id, person_id, x, y, width, height, confidence) VALUES (?, ?, ?, ?, ?, ?, ?)"
-  ).run(mediaId, personId, box.x, box.y, box.width, box.height, confidence ?? 1);
+    "INSERT INTO image_people (media_id, person_id, x, y, width, height, confidence, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+  ).run(mediaId, personId, box.x, box.y, box.width, box.height, confidence ?? 1, "manual");
 }
 
 export function createNewPerson(): number {
