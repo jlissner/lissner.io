@@ -41,7 +41,7 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 ## Server Simplification + Agentability Audit (New)
 
 - [x] **server-admin-route-validation**: Refactor `server/src/routes/admin.ts` to use shared Zod schemas + `parseWithSchema` for all params/query/body parsing (`limit`, `offset`, ids, whitelist payloads, data-explorer pk/data); remove ad-hoc `parseInt` and inline shape checks.
-- [ ] **server-admin-route-split**: Split `server/src/routes/admin.ts` into focused routers (`admin-whitelist-routes.ts`, `admin-users-routes.ts`, `admin-sql-routes.ts`, `admin-data-explorer-routes.ts`) and keep `routes/index.ts` composition-only.
+- [x] **server-admin-route-split**: Split `server/src/routes/admin.ts` into focused routers (`admin-whitelist-routes.ts`, `admin-users-routes.ts`, `admin-sql-routes.ts`, `admin-data-explorer-routes.ts`) and keep `routes/index.ts` composition-only.
 - [ ] **server-admin-service-layer**: Move admin/data-explorer orchestration from routes into `server/src/services/admin-service.ts` so routes are thin transport adapters and easier for agents to modify safely.
 - [ ] **server-admin-response-unions**: Standardize admin service return types to discriminated unions (`ok` + `reason`) and centralize HTTP status mapping in one helper to reduce duplicated 400/403/404/500 branching.
 - [ ] **server-people-route-consistency**: Make `server/src/routes/people.ts` consistent with other routes by using `parseWithSchema` (not mixed direct `.parse`) and shared response mappers for merge/delete outcomes.
