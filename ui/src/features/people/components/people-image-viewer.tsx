@@ -37,7 +37,7 @@ export function PeopleImageViewer({
           {isPixelMotionPhotoBasename(media.originalName ?? "") ? (
             <PixelMpOrImageVideoPreview
               src={`/api/media/${media.id}/preview`}
-              alt=""
+              alt={media.originalName ?? "Selected photo"}
               className="viewer-overlay__img"
               videoStyle={{ maxWidth: "100%", maxHeight: "85vh" }}
               onImgClick={(e) => e.stopPropagation()}
@@ -45,7 +45,7 @@ export function PeopleImageViewer({
           ) : (
             <img
               src={`/api/media/${media.id}/preview`}
-              alt=""
+              alt={media.originalName ?? "Selected photo"}
               className="viewer-overlay__img"
               onClick={(e) => e.stopPropagation()}
             />

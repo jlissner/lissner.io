@@ -70,13 +70,13 @@ function MatchFaceReviewCard({
               current.previewFaceCrop ? (
                 <img
                   src={faceMatchPreviewSrc(current) ?? ""}
-                  alt=""
+                  alt={`${current.placeholderName} face preview`}
                   className="match-faces-modal__preview-img"
                 />
               ) : (
                 <PixelMpOrImageVideoPreview
                   src={faceMatchPreviewSrc(current) ?? ""}
-                  alt=""
+                  alt={`${current.placeholderName} source media preview`}
                   className="match-faces-modal__preview-img"
                 />
               )

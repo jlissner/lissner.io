@@ -69,7 +69,7 @@ function LocalUploadPreview({ file, maxHeight }: { file: File; maxHeight: number
   useEffect(() => () => URL.revokeObjectURL(objectUrl), [objectUrl]);
   const st = mediaFitStyle(maxHeight);
   if (isImage(file.type, file.name)) {
-    return <img src={objectUrl} alt="" style={st} />;
+    return <img src={objectUrl} alt={file.name} style={st} />;
   }
   if (isVideo(file.type)) {
     return (

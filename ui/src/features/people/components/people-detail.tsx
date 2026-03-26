@@ -114,9 +114,12 @@ export function PeopleDetail({
                 title={m.backedUp ? "Backed up to cloud" : "Not backed up yet"}
               >
                 {usePixelHybrid ? (
-                  <PixelMpOrImageVideoPreview src={thumbSrc} alt="" />
+                  <PixelMpOrImageVideoPreview
+                    src={thumbSrc}
+                    alt={m.originalName ?? `Photo of ${selectedName}`}
+                  />
                 ) : (
-                  <img src={thumbSrc} alt="" />
+                  <img src={thumbSrc} alt={m.originalName ?? `Photo of ${selectedName}`} />
                 )}
                 {m.backedUp && (
                   <span className="detail__thumb-backup" aria-hidden>
