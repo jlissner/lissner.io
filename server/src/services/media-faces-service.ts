@@ -1,17 +1,22 @@
 import * as db from "../db/media.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 
+export type AddPersonToMediaTagResult =
+  | { ok: true; personId: number; created: "new" | "existing" }
+  | {
+      ok: false;
+      reason: "not_found" | "box_required" | "person_required" | "person_not_found";
+    };
+
 export function addPersonToMediaTag(params: {
   mediaId: string;
   personId: unknown;
   box: unknown;
   createNew: boolean;
-}):
-  | { ok: true; status: 201; body: { personId: number } }
-  | { ok: false; status: 400 | 404; error: string } {
+}): AddPersonToMediaTagResult {
   const item = db.getMediaById(params.mediaId);
   if (!item || !isEffectiveImageItem(item)) {
-    return { ok: false, status: 404, error: "Not found" };
+    return { ok: false, reason: "not_found" };
   }
   const box = params.box;
   if (
@@ -22,24 +27,24 @@ export function addPersonToMediaTag(params: {
     typeof (box as { width?: unknown }).width !== "number" ||
     typeof (box as { height?: unknown }).height !== "number"
   ) {
-    return { ok: false, status: 400, error: "box { x, y, width, height } required" };
+    return { ok: false, reason: "box_required" };
   }
   const b = box as { x: number; y: number; width: number; height: number };
   if (params.createNew) {
     const targetPersonId = db.createNewPerson();
     db.addPersonToMedia(item.id, targetPersonId, b);
-    return { ok: true, status: 201, body: { personId: targetPersonId } };
+    return { ok: true, personId: targetPersonId, created: "new" };
   }
   const id = parseInt(String(params.personId ?? ""), 10);
   if (isNaN(id) || id < 1) {
-    return { ok: false, status: 400, error: "personId required when not createNew" };
+    return { ok: false, reason: "person_required" };
   }
   const allIds = db.getAllPersonIds();
   if (!allIds.includes(id)) {
-    return { ok: false, status: 400, error: "Person not found" };
+    return { ok: false, reason: "person_not_found" };
   }
   db.addPersonToMedia(item.id, id, b);
-  return { ok: true, status: 201, body: { personId: id } };
+  return { ok: true, personId: id, created: "existing" };
 }
 
 export function removePersonFromMediaTag(mediaId: string, personId: number) {

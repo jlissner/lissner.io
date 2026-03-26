@@ -179,7 +179,7 @@ export async function getMediaPreviewFile(mediaId: string) {
 export function getMediaDetailsEnriched(mediaId: string) {
   const item = db.getMediaById(mediaId);
   if (!item) {
-    return { ok: false as const };
+    return { ok: false as const, reason: "not_found" as const };
   }
   const personIds = db.getImagePeople(item.id);
   const personNames = db.getPersonNames();

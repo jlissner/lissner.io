@@ -111,13 +111,21 @@ mediaFacesRouter.post("/:id/people", (req, res) => {
     createNew: body.createNew === true,
   });
   if (result.ok) {
-    res.status(result.status).json(result.body);
+    res.status(201).json({ personId: result.personId });
     return;
   }
-  if (result.status === 404) {
-    res.status(404).json({ error: result.error });
+  if (result.reason === "not_found") {
+    res.status(404).json({ error: "Not found" });
     return;
   }
-  res.status(400).json({ error: result.error });
+  if (result.reason === "box_required") {
+    res.status(400).json({ error: "box { x, y, width, height } required" });
+    return;
+  }
+  if (result.reason === "person_required") {
+    res.status(400).json({ error: "personId required when not createNew" });
+    return;
+  }
+  res.status(400).json({ error: "Person not found" });
 });
 
