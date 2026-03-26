@@ -1,5 +1,4 @@
 import { Router } from "express";
-import * as db from "../../db/media.js";
 import { parseWithSchema } from "../../validation/parse.js";
 import {
   dataExplorerDeleteBodySchema,
@@ -10,7 +9,15 @@ import {
   tableParamSchema,
 } from "../../validation/admin-schemas.js";
 import { ensureDataExplorerEnabled } from "./feature-gates.js";
-import { isDataExplorerEnabled } from "../../services/admin-service.js";
+import {
+  deleteDataExplorerRow,
+  getDataExplorerSchemaAndCount,
+  insertDataExplorerRow,
+  isDataExplorerEnabled,
+  listDataExplorerRows,
+  listDataExplorerTables,
+  updateDataExplorerRow,
+} from "../../services/admin-service.js";
 
 export const adminDataExplorerRouter = Router();
 
@@ -21,7 +28,7 @@ adminDataExplorerRouter.get("/data-explorer-available", (_req, res) => {
 adminDataExplorerRouter.get("/data-explorer/tables", (_req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
   try {
-    res.json(db.getDataExplorerTables());
+    res.json(listDataExplorerTables());
   } catch (err) {
     res.status(500).json({ error: err instanceof Error ? err.message : "Failed" });
   }
@@ -32,10 +39,7 @@ adminDataExplorerRouter.get("/data-explorer/tables/:table", (req, res) => {
   try {
     const { table } = parseWithSchema(tableParamSchema, req.params);
     const { q } = parseWithSchema(dataExplorerSchemaQuerySchema, req.query);
-    res.json({
-      schema: db.getDataExplorerTableSchema(table),
-      count: db.getDataExplorerRowCount(table, q),
-    });
+    res.json(getDataExplorerSchemaAndCount(table, q));
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
   }
@@ -46,7 +50,7 @@ adminDataExplorerRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
   try {
     const { table } = parseWithSchema(tableParamSchema, req.params);
     const { limit, offset, q } = parseWithSchema(dataExplorerRowsQuerySchema, req.query);
-    res.json(db.getDataExplorerRows(table, limit, offset, q));
+    res.json(listDataExplorerRows(table, limit, offset, q));
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
   }
@@ -57,7 +61,7 @@ adminDataExplorerRouter.post("/data-explorer/tables/:table", (req, res) => {
   try {
     const { table } = parseWithSchema(tableParamSchema, req.params);
     const body = parseWithSchema(dataExplorerInsertBodySchema, req.body);
-    res.status(201).json({ id: db.insertDataExplorerRow(table, body) });
+    res.status(201).json({ id: insertDataExplorerRow(table, body) });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
   }
@@ -68,7 +72,7 @@ adminDataExplorerRouter.put("/data-explorer/tables/:table", (req, res) => {
   try {
     const { table } = parseWithSchema(tableParamSchema, req.params);
     const { pk, ...data } = parseWithSchema(dataExplorerUpdateBodySchema, req.body);
-    res.json({ changes: db.updateDataExplorerRow(table, pk, data) });
+    res.json({ changes: updateDataExplorerRow(table, pk, data) });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
   }
@@ -79,7 +83,7 @@ adminDataExplorerRouter.delete("/data-explorer/tables/:table", (req, res) => {
   try {
     const { table } = parseWithSchema(tableParamSchema, req.params);
     const { pk } = parseWithSchema(dataExplorerDeleteBodySchema, req.body);
-    res.json({ changes: db.deleteDataExplorerRow(table, pk) });
+    res.json({ changes: deleteDataExplorerRow(table, pk) });
   } catch (err) {
     res.status(400).json({ error: err instanceof Error ? err.message : "Failed" });
   }
