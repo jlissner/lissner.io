@@ -4,6 +4,10 @@ export const searchListQuerySchema = z.object({
   q: z.string().optional(),
 });
 
+export const searchIndexQuerySchema = z.object({
+  force: z.coerce.boolean().optional().default(false),
+});
+
 export const searchIndexBodySchema = z
   .object({
     mediaIds: z.array(z.string()).optional(),

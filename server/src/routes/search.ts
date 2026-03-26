@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { asyncHandler } from "../middleware/async-handler.js";
+import { parseWithSchema } from "../validation/parse.js";
 import {
   clearAllSearchIndexData,
   getIndexStatusBody,
@@ -10,14 +11,15 @@ import { cancelBulkIndexJob } from "../indexing/job-store.js";
 import {
   cancelIndexBodySchema,
   searchIndexBodySchema,
+  searchIndexQuerySchema,
   searchListQuerySchema,
 } from "../validation/search-schemas.js";
 
 export const searchRouter = Router();
 
 searchRouter.post("/index", (req, res) => {
-  const force = req.query.force === "true";
-  const body = searchIndexBodySchema.parse(req.body);
+  const { force } = parseWithSchema(searchIndexQuerySchema, req.query);
+  const body = parseWithSchema(searchIndexBodySchema, req.body);
   const mediaIds = body?.mediaIds;
   const result = startBulkIndexingJob({ force, mediaIds });
   if (!result.ok) {
@@ -28,7 +30,7 @@ searchRouter.post("/index", (req, res) => {
 });
 
 searchRouter.post("/index/cancel", (req, res) => {
-  const body = cancelIndexBodySchema.parse(req.body);
+  const body = parseWithSchema(cancelIndexBodySchema, req.body);
   const ok = cancelBulkIndexJob(body.jobId);
   if (!ok) {
     res.status(400).json({ error: "Job not found or not cancelable" });
@@ -49,7 +51,7 @@ searchRouter.get("/index/status", (_req, res) => {
 searchRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const query = searchListQuerySchema.parse(req.query);
+    const query = parseWithSchema(searchListQuerySchema, req.query);
     const items = await searchMediaByQuery(query.q ?? "");
     res.json(items);
   })
