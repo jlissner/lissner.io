@@ -31,10 +31,9 @@ const AdminPage = lazy(async () => {
 export function AuthenticatedApp() {
   const { authEnabled, user, logout } = useAuth();
   const activity = useActivity();
-  const s3Config = (() => {
-    if (!activity) return null;
-    return { configured: activity.sync.configured, missingVars: activity.sync.missingVars };
-  })();
+  const s3Config = activity
+    ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
+    : null;
   const [page, setPage] = useState<PageId>(() => pathToPage(window.location.pathname));
   const [personFilter, setPersonFilter] = useState<number | null>(() => getPersonIdFromSearch());
   const [personFilterName, setPersonFilterName] = useState<string | null>(null);

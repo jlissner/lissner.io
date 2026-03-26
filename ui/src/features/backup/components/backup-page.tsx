@@ -16,32 +16,26 @@ function getSyncAlertVariant(phase: string): "danger" | "success" | "info" {
   return "info";
 }
 
-function getActivityConfig(activity: ReturnType<typeof useActivity>) {
-  if (activity == null) return null;
-  return {
-    configured: activity.sync.configured,
-    missingVars: activity.sync.missingVars,
-  };
-}
-
-function getActivityStatus(activity: ReturnType<typeof useActivity>) {
-  if (activity == null) return null;
-  return {
-    configured: activity.sync.configured,
-    inProgress: activity.sync.inProgress,
-    startedAt: activity.sync.startedAt,
-    lastResult: activity.sync.lastResult,
-    lastError: activity.sync.lastError,
-  };
-}
-
 export function BackupPage({ onSyncComplete, showTitle = true }: BackupPageProps) {
   const activity = useActivity();
   const wasInProgress = useRef(false);
   const [running, setRunning] = useState(false);
 
-  const config = getActivityConfig(activity);
-  const status = getActivityStatus(activity);
+  const config =
+    activity != null
+      ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
+      : null;
+
+  const status =
+    activity != null
+      ? {
+          configured: activity.sync.configured,
+          inProgress: activity.sync.inProgress,
+          startedAt: activity.sync.startedAt,
+          lastResult: activity.sync.lastResult,
+          lastError: activity.sync.lastError,
+        }
+      : null;
 
   useEffect(() => {
     if (status?.inProgress) {

@@ -23,19 +23,6 @@ function deletePersonMessage(person: Person): string {
   return `Delete "${person.name}"? This will remove ${person.photoCount} ${faceTagLabel(person.photoCount)}.`;
 }
 
-function clearModalIfMatchesId<T extends { id: number }>(current: T | null, id: number): T | null {
-  if (current?.id === id) return null;
-  return current;
-}
-
-function clearViewerIfMatchesMediaId(
-  current: MediaPreview | null,
-  mediaId: string
-): MediaPreview | null {
-  if (current?.id === mediaId) return null;
-  return current;
-}
-
 export function usePeoplePage(onUpdate?: () => void) {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
@@ -146,7 +133,10 @@ export function usePeoplePage(onUpdate?: () => void) {
       const res = await fetch(`/api/media/${mediaId}/people/${selectedId}`, { method: "DELETE" });
       if (res.ok) {
         setPreviewMedia((prev) => prev.filter((m) => m.id !== mediaId));
-        setViewingMedia((prev) => clearViewerIfMatchesMediaId(prev, mediaId));
+        setViewingMedia((prev) => {
+          if (prev?.id === mediaId) return null;
+          return prev;
+        });
         fetchPeople();
         onUpdate?.();
       }
@@ -201,8 +191,14 @@ export function usePeoplePage(onUpdate?: () => void) {
       const res = await fetch(`/api/people/${p.id}`, { method: "DELETE" });
       if (res.ok) {
         if (selectedId === p.id) setSelectedId(null);
-        setEditModal((m) => clearModalIfMatchesId(m, p.id));
-        setMergeModal((m) => clearModalIfMatchesId(m, p.id));
+        setEditModal((m) => {
+          if (m?.id === p.id) return null;
+          return m;
+        });
+        setMergeModal((m) => {
+          if (m?.id === p.id) return null;
+          return m;
+        });
         fetchPeople();
         onUpdate?.();
       } else {
