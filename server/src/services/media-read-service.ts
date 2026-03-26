@@ -8,6 +8,7 @@ import * as db from "../db/media.js";
 import { extractFacesFromImage } from "../faces.js";
 import { tryRestoreMediaFromBackup, tryRestoreVideoThumbnailFromBackup } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import { isTextMime } from "../lib/media-mime.js";
 import {
   effectiveImageResponseMimeType,
   isEffectiveImageItem,
@@ -209,23 +210,12 @@ export function getMediaDetailsEnriched(mediaId: string) {
   };
 }
 
-const TEXT_MIMES = new Set([
-  "text/plain",
-  "text/html",
-  "text/css",
-  "text/javascript",
-  "application/json",
-  "application/xml",
-  "text/markdown",
-  "text/csv",
-]);
-
 export async function readTextMediaContent(mediaId: string) {
   const item = db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
-  if (!TEXT_MIMES.has(item.mimeType)) {
+  if (!isTextMime(item.mimeType)) {
     return { ok: false as const, reason: "not_text" as const };
   }
   const ok = await ensureLocalMediaFile(item);

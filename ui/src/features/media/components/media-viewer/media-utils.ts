@@ -1,4 +1,5 @@
 import { localCalendarDateKeyFromIso } from "@/lib/local-datetime.js";
+import { isImageMime, isTextMime, isVideoMime } from "../../lib/media-mime.js";
 
 export interface MediaItem {
   id: string;
@@ -67,7 +68,7 @@ export function isPixelMotionPhotoBasename(originalName: string): boolean {
 }
 
 export function isImage(mimeType: string, originalName?: string): boolean {
-  if (mimeType.startsWith("image/")) return true;
+  if (isImageMime(mimeType)) return true;
   if (originalName != null && originalName !== "" && isPixelMotionPhotoBasename(originalName)) {
     return true;
   }
@@ -75,13 +76,9 @@ export function isImage(mimeType: string, originalName?: string): boolean {
 }
 
 export function isVideo(mimeType: string): boolean {
-  return mimeType.startsWith("video/");
+  return isVideoMime(mimeType);
 }
 
 export function isText(mimeType: string): boolean {
-  return (
-    mimeType.startsWith("text/") ||
-    mimeType === "application/json" ||
-    mimeType === "application/xml"
-  );
+  return isTextMime(mimeType);
 }

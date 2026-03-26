@@ -22,17 +22,7 @@ import {
 } from "../faces.js";
 import { mediaDir } from "../config/paths.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
-
-const TEXT_MIMES = new Set([
-  "text/plain",
-  "text/html",
-  "text/css",
-  "text/javascript",
-  "application/json",
-  "application/xml",
-  "text/markdown",
-  "text/csv",
-]);
+import { isTextMime, isVideoMime } from "../lib/media-mime.js";
 
 interface MediaItem {
   id: string;
@@ -52,7 +42,7 @@ async function getTextForItem(
   item: MediaItem,
   imagePersonIds?: Map<string, number[]>
 ): Promise<string> {
-  if (TEXT_MIMES.has(item.mimeType)) {
+  if (isTextMime(item.mimeType)) {
     const filePath = path.join(mediaDir, item.filename);
     return readFile(filePath, "utf-8");
   }
@@ -199,7 +189,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
         } catch (err) {
           console.error(`Image indexing prep failed for ${item.originalName}:`, err);
         }
-      } else if (item.mimeType.startsWith("video/")) {
+      } else if (isVideoMime(item.mimeType)) {
         try {
           const meta = await extractVideoMetadata(filePath);
           if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
@@ -234,7 +224,7 @@ export async function indexMediaItems(
 
   const imageItems = toIndex.filter((i) => isEffectiveImageItem(i));
   const videoItems = toIndex.filter(
-    (i) => i.mimeType.startsWith("video/") && !isEffectiveImageItem(i)
+    (i) => isVideoMime(i.mimeType) && !isEffectiveImageItem(i)
   );
   const imageIds = [...new Set(imageItems.map((i) => i.id))];
   const imageItemsById = new Map(imageItems.map((i) => [i.id, i]));
