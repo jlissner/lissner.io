@@ -62,7 +62,11 @@ export function LoginPage({ onSent }: LoginPageProps) {
         </Alert>
       ) : (
         <form onSubmit={handleSubmit} className="login-page__form">
+          <label htmlFor="login-email" className="u-sr-only">
+            Email address
+          </label>
           <input
+            id="login-email"
             type="email"
             placeholder="you@example.com"
             value={email}
@@ -70,11 +74,16 @@ export function LoginPage({ onSent }: LoginPageProps) {
             required
             className="form__input"
             autoComplete="email"
+            aria-describedby={status === "error" ? "login-error" : undefined}
           />
           <Button type="submit" disabled={status === "sending"}>
             {status === "sending" ? "Sending…" : "Send magic link"}
           </Button>
-          {status === "error" && <p className="login-page__error">{error}</p>}
+          {status === "error" && (
+            <p id="login-error" className="login-page__error">
+              {error}
+            </p>
+          )}
         </form>
       )}
     </div>
