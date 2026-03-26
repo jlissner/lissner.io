@@ -17,7 +17,7 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 
 ## Shared
 
-- [ ] **shared-api-types-source-of-truth**: Resolve `shared/src/api.ts` vs `shared/src/api.d.ts` duplication: make one the source of truth (generate the other if required) and add a check to prevent drift.
+- [x] **shared-api-types-source-of-truth**: Resolve `shared/src/api.ts` vs `shared/src/api.d.ts` duplication: make one the source of truth (generate the other if required) and add a check to prevent drift.
 
 ## UI
 
