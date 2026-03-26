@@ -90,9 +90,10 @@ interface MediaItemCellProps {
 
 /** Shown when not indexed and/or not backed up; hover lists what’s missing. */
 function indexingBackupWarningTitle(item: MediaItem): string | null {
-  const issues: string[] = [];
-  if (!item.indexed) issues.push("Not indexed for AI search");
-  if (!item.backedUp) issues.push("Not backed up to cloud");
+  const issues = [
+    !item.indexed ? "Not indexed for AI search" : null,
+    !item.backedUp ? "Not backed up to cloud" : null,
+  ].filter((issue): issue is string => issue !== null);
   return issues.length ? issues.join(" · ") : null;
 }
 

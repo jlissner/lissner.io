@@ -40,6 +40,18 @@ export function AuthenticatedApp() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [s3AlertDismissed, setS3AlertDismissed] = useState(false);
 
+  function buildPathWithSearch(path: string, search?: string): string {
+    if (!search) return path;
+    return `${path}?${search}`;
+  }
+
+  function getHomePersonFilter(search?: string): number | null {
+    if (!search) return null;
+    const personMatch = /person=(\d+)/.exec(search);
+    if (!personMatch) return null;
+    return parseInt(personMatch[1], 10);
+  }
+
   useEffect(() => {
     const onPopState = () => {
       setPage(pathToPage(window.location.pathname));
@@ -52,13 +64,12 @@ export function AuthenticatedApp() {
   const navigateTo = useCallback((pageId: PageId, search?: string) => {
     setPage(pageId);
     const path = pageToPath(pageId);
-    const fullPath = search ? `${path}?${search}` : path;
+    const fullPath = buildPathWithSearch(path, search);
     if (window.location.pathname + window.location.search !== fullPath) {
       window.history.pushState({}, "", fullPath);
     }
     if (pageId === "home") {
-      const personMatch = search ? /person=(\d+)/.exec(search) : null;
-      setPersonFilter(personMatch ? parseInt(personMatch[1], 10) : null);
+      setPersonFilter(getHomePersonFilter(search));
     }
   }, []);
 

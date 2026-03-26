@@ -30,13 +30,12 @@ export function groupItemsByDay(
   items: MediaItem[],
   sortBy: "uploaded" | "taken" = "taken"
 ): Array<{ dateKey: string; dateLabel: string; items: MediaItem[] }> {
-  const map = new Map<string, MediaItem[]>();
-  for (const item of items) {
+  const map = items.reduce((acc, item) => {
     const key = getItemDateKeyForSort(item, sortBy);
-    const list = map.get(key) ?? [];
-    list.push(item);
-    map.set(key, list);
-  }
+    const current = acc.get(key) ?? [];
+    acc.set(key, [...current, item]);
+    return acc;
+  }, new Map<string, MediaItem[]>());
   const keys = [...map.keys()].sort((a, b) => {
     if (a === "unknown") return 1;
     if (b === "unknown") return -1;

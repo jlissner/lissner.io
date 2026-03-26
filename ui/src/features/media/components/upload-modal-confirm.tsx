@@ -19,16 +19,16 @@ export function pairConflictsWithFiles(
   pendingFiles: File[],
   conflicts: UploadNameConflict[]
 ): (File | undefined)[] {
-  const queues = new Map<string, File[]>();
-  for (const f of pendingFiles) {
-    const q = queues.get(f.name) ?? [];
-    q.push(f);
-    queues.set(f.name, q);
-  }
+  const queues = pendingFiles.reduce((acc, file) => {
+    const current = acc.get(file.name) ?? [];
+    acc.set(file.name, [...current, file]);
+    return acc;
+  }, new Map<string, File[]>());
   return conflicts.map((c) => {
-    const q = queues.get(c.requestedName);
-    const file = q?.shift();
-    return file;
+    const queue = queues.get(c.requestedName) ?? [];
+    const [head, ...rest] = queue;
+    queues.set(c.requestedName, rest);
+    return head;
   });
 }
 

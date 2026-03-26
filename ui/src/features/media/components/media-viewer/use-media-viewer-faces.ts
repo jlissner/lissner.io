@@ -8,6 +8,17 @@ interface UseMediaViewerFacesOptions {
   onTagChange?: () => void;
 }
 
+function getAssignFaceBody(personId: number | "new", assigningFace: FaceBox): {
+  createNew?: true;
+  personId?: number;
+  box: FaceBox;
+} {
+  if (personId === "new") {
+    return { createNew: true, box: assigningFace };
+  }
+  return { personId, box: assigningFace };
+}
+
 export function useMediaViewerFaces({
   mediaId,
   taggingMode,
@@ -56,11 +67,7 @@ export function useMediaViewerFaces({
       const res = await fetch(`/api/media/${mediaId}/people`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          personId === "new"
-            ? { createNew: true, box: assigningFace }
-            : { personId, box: assigningFace }
-        ),
+        body: JSON.stringify(getAssignFaceBody(personId, assigningFace)),
       });
       if (res.ok) {
         setAssigningFace(null);

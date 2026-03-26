@@ -9,6 +9,11 @@ interface UseHomePageOptions {
   personFilter: number | null;
 }
 
+function searchIndexPath(force: boolean): string {
+  if (force) return "search/index?force=true";
+  return "search/index";
+}
+
 export function useHomePage({ personFilter }: UseHomePageOptions) {
   const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
@@ -185,7 +190,7 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     setToolbarError(null);
     try {
       const data = await apiJson<{ started?: boolean; error?: string }>(
-        `search/index${force ? "?force=true" : ""}`,
+        searchIndexPath(force),
         { method: "POST" }
       );
       if (data.started !== true) setToolbarError(data.error ?? "Indexing failed");

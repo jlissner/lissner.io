@@ -20,6 +20,17 @@ interface PeopleSidebarProps {
   menuRef: React.RefObject<HTMLDivElement | null>;
 }
 
+function photoCountLabel(count: number | undefined): string {
+  const safeCount = count ?? 0;
+  const noun = safeCount === 1 ? "photo" : "photos";
+  return `${safeCount} ${noun}`;
+}
+
+function nextSelectedId(currentSelectedId: number | null, personId: number): number | null {
+  if (currentSelectedId === personId) return null;
+  return personId;
+}
+
 export function PeopleSidebar({
   people,
   selectedId,
@@ -83,13 +94,13 @@ export function PeopleSidebar({
                 tabIndex={0}
                 className={`person-row ${selectedId === p.id ? "person-row--selected" : ""}`}
                 onClick={() => {
-                  onSelect(selectedId === p.id ? null : p.id);
+                  onSelect(nextSelectedId(selectedId, p.id));
                   onMenuToggle(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelect(selectedId === p.id ? null : p.id);
+                    onSelect(nextSelectedId(selectedId, p.id));
                     onMenuToggle(null);
                   }
                 }}
@@ -106,7 +117,7 @@ export function PeopleSidebar({
                 <div className="person-row__info">
                   <div className="person-row__name">{p.name}</div>
                   <div className="person-row__count">
-                    {p.photoCount ?? 0} {(p.photoCount ?? 0) === 1 ? "photo" : "photos"}
+                    {photoCountLabel(p.photoCount)}
                   </div>
                 </div>
                 <button
