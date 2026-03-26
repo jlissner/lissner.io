@@ -2,10 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { UploadNameConflict } from "../upload-types.js";
 import { ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
-import {
-  postMediaUploadWithProgress,
-  type MediaUploadProgress,
-} from "../lib/post-media-upload-with-progress.js";
+import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
+import { uploadMediaFilesWithProgress } from "../lib/upload-media-files-with-progress.js";
 import {
   getFilesToUploadAfterDecisions,
   type DuplicateConflictDecision,
@@ -114,30 +112,8 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     }
     setError(null);
     setUploading(true);
-    const overallTotal = filesToUpload.reduce((sum, f) => sum + f.size, 0);
-    let completedBytes = 0;
     try {
-      for (const [i, file] of filesToUpload.entries()) {
-        const fileTotalFallback = file.size > 0 ? file.size : 1;
-        const bumpProgress = (loaded: number, xhrTotal: number) => {
-          const fileTotal =
-            xhrTotal > 0 ? xhrTotal : file.size > 0 ? file.size : fileTotalFallback;
-          setUploadProgress({
-            currentFile: i + 1,
-            totalFiles: filesToUpload.length,
-            fileName: file.name,
-            fileLoaded: loaded,
-            fileTotal,
-            overallLoaded: completedBytes + loaded,
-            overallTotal: overallTotal > 0 ? overallTotal : fileTotal,
-          });
-        };
-        bumpProgress(0, 0);
-        const formData = new FormData();
-        formData.append("file", file);
-        await postMediaUploadWithProgress(formData, bumpProgress);
-        completedBytes += file.size;
-      }
+      await uploadMediaFilesWithProgress(filesToUpload, setUploadProgress);
       try {
         onUploadComplete();
       } catch {

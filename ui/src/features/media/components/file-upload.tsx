@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { postMediaUploadWithProgress } from "../lib/post-media-upload-with-progress.js";
 import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
+import { uploadMediaFilesWithProgress } from "../lib/upload-media-files-with-progress.js";
 import { UploadProgressPanel } from "./upload-progress-panel.js";
 
 interface FileUploadProps {
@@ -20,30 +20,8 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
       setError(null);
       setUploading(true);
       const list = Array.from(files);
-      const overallTotal = list.reduce((sum, f) => sum + f.size, 0);
-      let completedBytes = 0;
       try {
-        for (const [i, file] of list.entries()) {
-          const fileTotalFallback = file.size > 0 ? file.size : 1;
-          const bumpProgress = (loaded: number, xhrTotal: number) => {
-            const fileTotal =
-              xhrTotal > 0 ? xhrTotal : file.size > 0 ? file.size : fileTotalFallback;
-            setUploadProgress({
-              currentFile: i + 1,
-              totalFiles: list.length,
-              fileName: file.name,
-              fileLoaded: loaded,
-              fileTotal,
-              overallLoaded: completedBytes + loaded,
-              overallTotal: overallTotal > 0 ? overallTotal : fileTotal,
-            });
-          };
-          bumpProgress(0, 0);
-          const formData = new FormData();
-          formData.append("file", file);
-          await postMediaUploadWithProgress(formData, bumpProgress);
-          completedBytes += file.size;
-        }
+        await uploadMediaFilesWithProgress(list, setUploadProgress);
         try {
           onUpload();
         } catch {
