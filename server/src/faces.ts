@@ -1,6 +1,6 @@
 import path from "path";
 import { createRequire } from "module";
-import { readFile } from "fs/promises";
+import { readFile, stat } from "fs/promises";
 import { logger } from "./logger.js";
 
 const require = createRequire(import.meta.url);
@@ -50,6 +50,9 @@ const faceDetectChain = {
   tail: Promise.resolve() as Promise<unknown>,
 };
 
+const MIN_IMAGE_BYTES = 24;
+const MAX_FACE_DETECT_IMAGE_BYTES = 40 * 1024 * 1024;
+
 export interface FaceInImage {
   imageId: string;
   descriptor: number[];
@@ -63,8 +66,23 @@ export async function extractFacesFromImage(
   const work = async (): Promise<FaceInImage[]> => {
     const human = await getHuman();
     const tf = human.tf;
+    const fileStats = await stat(imagePath).catch(() => null);
+    if (fileStats == null || !fileStats.isFile()) {
+      logger.warn({ imageId, imagePath }, "Face extraction skipped: missing file");
+      return [];
+    }
+    if (fileStats.size < MIN_IMAGE_BYTES) {
+      return [];
+    }
+    if (fileStats.size > MAX_FACE_DETECT_IMAGE_BYTES) {
+      logger.warn(
+        { imageId, imagePath, size: fileStats.size, maxBytes: MAX_FACE_DETECT_IMAGE_BYTES },
+        "Face extraction skipped: file too large"
+      );
+      return [];
+    }
     const buffer = await readFile(imagePath);
-    if (buffer.length < 24) {
+    if (buffer.length < MIN_IMAGE_BYTES) {
       return [];
     }
 
