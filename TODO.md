@@ -57,5 +57,5 @@ This file tracks the refactor/a11y work identified in review. Each item should b
 - [x] **server-result-shape-convergence**: Align service result contracts across `media-read-service.ts`, `media-write-service.ts`, `media-faces-service.ts`, `search-service.ts`, `people-service.ts` so all expected failures are explicit unions and thrown errors are truly exceptional.
 - [x] **server-typed-error-codes**: Add typed error codes (`code` field) for major server route families and ensure `middleware/error-handler.ts` maps known failures predictably for UI/API-client consumption.
 - [x] **server-no-let-compliance**: Eliminate remaining `let` bindings in server runtime files (`faces.ts`, `media-read-service.ts`, `s3/sync.ts`, `lib/orphan-thumbnails.ts`, `lib/effective-image.ts`, `services/person-merge-suggestions.ts`, `indexing/job-store.ts`) per workspace immutable-style rule.
-- [ ] **server-test-coverage-refactors**: Add/update tests for refactored route/service/db boundaries, focusing on admin routes, person merge edge cases, sync merge behaviors, and media date/mime update paths to keep future agent refactors safe.
+- [x] **server-test-coverage-refactors**: Add/update tests for refactored route/service/db boundaries, focusing on admin routes, person merge edge cases, sync merge behaviors, and media date/mime update paths to keep future agent refactors safe.
 
