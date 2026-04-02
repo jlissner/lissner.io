@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { sendApiError } from "../lib/api-error.js";
 import { asyncHandler } from "../middleware/async-handler.js";
 import { parseWithSchema } from "../validation/parse.js";
 import {
@@ -23,9 +24,7 @@ searchRouter.post("/index", (req, res) => {
   const mediaIds = body?.mediaIds;
   const result = startBulkIndexingJob({ force, mediaIds });
   if (!result.ok) {
-    res
-      .status(409)
-      .json({ error: "Indexing already in progress", code: result.reason });
+    sendApiError(res, 409, "Indexing already in progress", result.reason);
     return;
   }
   res.json({ started: true, jobId: result.jobId });
@@ -35,7 +34,7 @@ searchRouter.post("/index/cancel", (req, res) => {
   const body = parseWithSchema(cancelIndexBodySchema, req.body);
   const ok = cancelBulkIndexJob(body.jobId);
   if (!ok) {
-    res.status(400).json({ error: "Job not found or not cancelable" });
+    sendApiError(res, 400, "Job not found or not cancelable", "index_job_not_cancelable");
     return;
   }
   res.json({ ok: true });
@@ -57,10 +56,10 @@ searchRouter.get(
     const searchResult = await searchMediaByQuery(query.q ?? "");
     if (!searchResult.ok) {
       if (searchResult.reason === "missing_query") {
-        res.status(400).json({ error: "Missing query parameter: q", code: "missing_query" });
+        sendApiError(res, 400, "Missing query parameter: q", "missing_query");
         return;
       }
-      res.status(500).json({ error: searchResult.message, code: "search_failed" });
+      sendApiError(res, 500, searchResult.message, "search_failed");
       return;
     }
     res.json(searchResult.items);

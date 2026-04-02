@@ -8,7 +8,8 @@ import type { IndexActivitySlice, SyncPhase, SyncProgressMessage } from "./activ
 export type { IndexActivitySlice, SyncPhase, SyncProgressMessage };
 
 /** Standard error JSON from `errorHandler` and ad-hoc route errors. */
-export type ApiErrorBody = { error: string; code?: string };
+/** Standard error JSON from `errorHandler` and routes. `code` is a stable machine-readable string (see server `ApiErrorCode`). */
+export type ApiErrorBody = { error: string; code: string };
 
 /** GET /api/search/index/status */
 export type SearchIndexStatusResponse = IndexActivitySlice;

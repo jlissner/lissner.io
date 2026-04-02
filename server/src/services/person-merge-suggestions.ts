@@ -40,17 +40,15 @@ function pickMatchingFace(
     return faces.length === 1 ? faces[0]! : null;
   }
   const sb = storedBox;
-  let best: FaceInImage | null = null;
-  let bestIou = 0;
-  for (const f of faces) {
-    if (!f.box) continue;
-    const iou = boxIoU(sb, f.box);
-    if (iou > bestIou) {
-      bestIou = iou;
-      best = f;
-    }
-  }
-  return bestIou >= 0.1 && best ? best : null;
+  const picked = faces.reduce(
+    (acc, f) => {
+      if (!f.box) return acc;
+      const iou = boxIoU(sb, f.box);
+      return iou > acc.bestIou ? { best: f, bestIou: iou } : acc;
+    },
+    { best: null as FaceInImage | null, bestIou: 0 }
+  );
+  return picked.bestIou >= 0.1 && picked.best ? picked.best : null;
 }
 
 const SAMPLE_IMAGE_LIMIT = 14;
@@ -85,14 +83,10 @@ export function maxPairwiseSimilarity(
   b: number[][],
   sim: (x: number[], y: number[]) => number
 ): number {
-  let max = 0;
-  for (const da of a) {
-    for (const db of b) {
-      const s = sim(da, db);
-      if (s > max) max = s;
-    }
-  }
-  return max;
+  return a.reduce(
+    (mx, da) => Math.max(mx, b.reduce((m2, db) => Math.max(m2, sim(da, db)), 0)),
+    0
+  );
 }
 
 export type MergeSuggestion = { personId: number; name: string; score: number };

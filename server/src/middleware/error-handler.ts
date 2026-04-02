@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { logger } from "../logger.js";
+import { apiErrorCodeForHttpStatus } from "../lib/api-error.js";
 import { isHttpError } from "../lib/http-error.js";
 
 /** Multer/busboy when the client disconnects or the socket closes before the body finishes. */
@@ -20,7 +21,7 @@ export function errorHandler(
   if (isHttpError(err)) {
     res.status(err.statusCode).json({
       error: err.message,
-      ...(err.code ? { code: err.code } : {}),
+      code: err.code ?? apiErrorCodeForHttpStatus(err.statusCode),
     });
     return;
   }
@@ -43,5 +44,5 @@ export function errorHandler(
   }
   const log = req.log ?? logger;
   log.error({ err }, "Unhandled error");
-  res.status(500).json({ error: "Internal server error" });
+  res.status(500).json({ error: "Internal server error", code: "internal_error" });
 }

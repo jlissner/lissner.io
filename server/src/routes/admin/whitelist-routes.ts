@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { sendApiError } from "../../lib/api-error.js";
 import { getAuthUser } from "../../auth/middleware.js";
 import { parseWithSchema } from "../../validation/parse.js";
 import { idParamSchema, whitelistCreateBodySchema } from "../../validation/admin-schemas.js";
@@ -37,7 +38,7 @@ adminWhitelistRouter.delete("/whitelist/:id", (req, res) => {
   const { id } = parseWithSchema(idParamSchema, req.params);
   const ok = removeWhitelistEntry(id);
   if (!ok) {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "admin_not_found");
     return;
   }
   res.status(204).send();

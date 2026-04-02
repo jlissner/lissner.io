@@ -66,7 +66,8 @@ export function sniffMediaMimeFromBuffer(head: Buffer): string | null {
     return "video/webm";
   }
   const scanLen = Math.min(head.length, 65536);
-  for (let i = 4; i <= scanLen - 4; i++) {
+  const ftypAnchors = Array.from({ length: Math.max(0, scanLen - 7) }, (_, k) => k + 4);
+  for (const i of ftypAnchors) {
     if (
       head[i] === 0x66 &&
       head[i + 1] === 0x74 &&

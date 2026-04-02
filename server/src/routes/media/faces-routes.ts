@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { sendApiError } from "../../lib/api-error.js";
 import {
   addPersonToMediaTag,
   confirmFaceTag,
@@ -24,18 +25,18 @@ mediaFacesRouter.delete("/:id/people/:personId", (req, res) => {
     return;
   }
   if (result.reason === "not_found") {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   if (result.reason === "bad_person") {
-    res.status(400).json({ error: "Invalid person ID" });
+    sendApiError(res, 400, "Invalid person ID", "face_invalid_person");
     return;
   }
   if (result.reason === "not_tagged") {
-    res.status(404).json({ error: "Person not tagged in this image" });
+    sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
     return;
   }
-  res.status(404).json({ error: "Not found" });
+  sendApiError(res, 404, "Not found", "not_found");
 });
 
 mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
@@ -47,22 +48,22 @@ mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
     return;
   }
   if (result.reason === "not_found") {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   if (result.reason === "bad_ids") {
-    res.status(400).json({ error: "assignTo (person ID) required" });
+    sendApiError(res, 400, "assignTo (person ID) required", "face_bad_assign_to");
     return;
   }
   if (result.reason === "same_person") {
-    res.status(400).json({ error: "Cannot reassign to the same person" });
+    sendApiError(res, 400, "Cannot reassign to the same person", "face_same_person");
     return;
   }
   if (result.reason === "target_missing") {
-    res.status(400).json({ error: "Target person not found" });
+    sendApiError(res, 400, "Target person not found", "face_target_missing");
     return;
   }
-  res.status(404).json({ error: "Person not tagged in this image" });
+  sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
 });
 
 mediaFacesRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
@@ -73,14 +74,14 @@ mediaFacesRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
     return;
   }
   if (result.reason === "not_found") {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   if (result.reason === "bad_person") {
-    res.status(400).json({ error: "Invalid person ID" });
+    sendApiError(res, 400, "Invalid person ID", "face_invalid_person");
     return;
   }
-  res.status(404).json({ error: "Person not tagged in this image" });
+  sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
 });
 
 mediaFacesRouter.post("/:id/people/:personId/confirm", (req, res) => {
@@ -91,14 +92,14 @@ mediaFacesRouter.post("/:id/people/:personId/confirm", (req, res) => {
     return;
   }
   if (result.reason === "not_found") {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   if (result.reason === "bad_person") {
-    res.status(400).json({ error: "Invalid person ID" });
+    sendApiError(res, 400, "Invalid person ID", "face_invalid_person");
     return;
   }
-  res.status(404).json({ error: "Person not tagged in this image" });
+  sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
 });
 
 mediaFacesRouter.post("/:id/people", (req, res) => {
@@ -115,17 +116,17 @@ mediaFacesRouter.post("/:id/people", (req, res) => {
     return;
   }
   if (result.reason === "not_found") {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   if (result.reason === "box_required") {
-    res.status(400).json({ error: "box { x, y, width, height } required" });
+    sendApiError(res, 400, "box { x, y, width, height } required", "face_box_required");
     return;
   }
   if (result.reason === "person_required") {
-    res.status(400).json({ error: "personId required when not createNew" });
+    sendApiError(res, 400, "personId required when not createNew", "face_person_required");
     return;
   }
-  res.status(400).json({ error: "Person not found" });
+  sendApiError(res, 400, "Person not found", "face_person_unknown");
 });
 

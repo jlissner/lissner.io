@@ -38,14 +38,14 @@ export function clearAllSearchIndexData(): void {
  */
 export type StartBulkIndexingJobResult =
   | { ok: true; jobId: string }
-  | ServiceFailure<"already_running">;
+  | ServiceFailure<"index_in_progress">;
 
 export function startBulkIndexingJob(params: {
   force: boolean;
   mediaIds?: string[];
 }): StartBulkIndexingJobResult {
   const started = startIndexJob();
-  if (!started.ok) return { ok: false, reason: "already_running" };
+  if (!started.ok) return { ok: false, reason: "index_in_progress" };
 
   const allItems = db.listMedia();
   const items =

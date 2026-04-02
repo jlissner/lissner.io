@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { sendApiError } from "../lib/api-error.js";
 import { getBackupConfig, getSyncStatusBody, prepareSync } from "../services/backup-service.js";
 import { logger } from "../logger.js";
 
@@ -16,13 +17,12 @@ backupRouter.post("/run", (_req, res) => {
   const prepared = prepareSync();
   if (!prepared.ok) {
     if (prepared.reason === "not_configured") {
-      res.status(400).json({
-        error: "S3 backup not configured",
+      sendApiError(res, 400, "S3 backup not configured", "backup_not_configured", {
         missingVars: prepared.missingVars,
       });
       return;
     }
-    res.status(409).json({ error: "Sync already in progress" });
+    sendApiError(res, 409, "Sync already in progress", "sync_in_progress");
     return;
   }
 

@@ -1,5 +1,6 @@
 import { Router } from "express";
 import path from "path";
+import { sendApiError } from "../../lib/api-error.js";
 import * as db from "../../db/media.js";
 import {
   ensureLocalMediaFile,
@@ -36,17 +37,17 @@ mediaReadRouter.get("/:id", async (req, res) => {
   const { id } = parseWithSchema(mediaIdParamSchema, req.params);
   const item = db.getMediaById(id);
   if (!item) {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   const ok = await ensureLocalMediaFile(item);
   if (!ok) {
-    res.status(404).json({ error: "File not found" });
+    sendApiError(res, 404, "File not found", "file_missing");
     return;
   }
   const filePath = path.join(mediaDir, item.filename);
   res.download(filePath, item.originalName, (err) => {
-    if (err && !res.headersSent) res.status(500).json({ error: "Download failed" });
+    if (err && !res.headersSent) sendApiError(res, 500, "Download failed", "download_failed");
   });
 });
 
@@ -55,14 +56,14 @@ mediaReadRouter.get("/:id/faces", async (req, res) => {
   const out = await getFacesPayloadForMedia(id);
   if (!out.ok) {
     if (out.reason === "not_found") {
-      res.status(404).json({ error: "Not found" });
+      sendApiError(res, 404, "Not found", "not_found");
       return;
     }
     if (out.reason === "file_missing") {
-      res.status(404).json({ error: "File not found" });
+      sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
-    res.status(500).json({ error: "Face detection failed" });
+    sendApiError(res, 500, "Face detection failed", "face_detection_failed");
     return;
   }
   res.json(out.body);
@@ -73,22 +74,22 @@ mediaReadRouter.get("/:id/face/:personId", async (req, res) => {
   const out = await getFaceCropOrFullImage(id, personId);
   if (!out.ok) {
     if (out.reason === "not_found") {
-      res.status(404).json({ error: "Not found" });
+      sendApiError(res, 404, "Not found", "not_found");
       return;
     }
     if (out.reason === "bad_request") {
-      res.status(400).json({ error: "Invalid person ID" });
+      sendApiError(res, 400, "Invalid person ID", "face_invalid_person");
       return;
     }
     if (out.reason === "person_not_in_image") {
-      res.status(404).json({ error: "Person not in this image" });
+      sendApiError(res, 404, "Person not in this image", "person_not_in_image");
       return;
     }
     if (out.reason === "file_missing") {
-      res.status(404).json({ error: "File not found" });
+      sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
-    res.status(500).json({ error: "Failed to crop image" });
+    sendApiError(res, 500, "Failed to crop image", "crop_failed");
     return;
   }
   if (out.kind === "buffer") {
@@ -103,7 +104,7 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
   const { id } = parseWithSchema(mediaIdParamSchema, req.params);
   const out = await getMediaPreviewFile(id);
   if (!out.ok) {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   res.sendFile(out.path, { headers: { "Content-Type": out.mimeType } });
@@ -113,7 +114,7 @@ mediaReadRouter.get("/:id/details", (req, res) => {
   const { id } = parseWithSchema(mediaIdParamSchema, req.params);
   const out = getMediaDetailsEnriched(id);
   if (!out.ok) {
-    res.status(404).json({ error: "Not found" });
+    sendApiError(res, 404, "Not found", "not_found");
     return;
   }
   res.json(out.body);
@@ -124,25 +125,32 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
   const out = await getThumbnailResponse(id);
   if (!out.ok) {
     if (out.reason === "not_found") {
-      res.status(404).json({ error: "Not found" });
+      sendApiError(res, 404, "Not found", "not_found");
       return;
     }
     if (out.reason === "bad_type") {
-      res.status(400).json({ error: "Thumbnail only supported for images and videos" });
+      sendApiError(
+        res,
+        400,
+        "Thumbnail only supported for images and videos",
+        "thumbnail_bad_type"
+      );
       return;
     }
     if (out.reason === "file_missing") {
-      res.status(404).json({ error: "File not found" });
+      sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
     if (out.reason === "ffmpeg_missing") {
-      res.status(503).json({
-        error:
-          "ffmpeg not found. Install ffmpeg to generate video thumbnails (e.g. apt install ffmpeg).",
-      });
+      sendApiError(
+        res,
+        503,
+        "ffmpeg not found. Install ffmpeg to generate video thumbnails (e.g. apt install ffmpeg).",
+        "thumbnail_ffmpeg_missing"
+      );
       return;
     }
-    res.status(500).json({ error: "Failed to generate video thumbnail" });
+    sendApiError(res, 500, "Failed to generate video thumbnail", "thumbnail_failed");
     return;
   }
   res.setHeader("Content-Type", out.contentType);
@@ -154,18 +162,18 @@ mediaReadRouter.get("/:id/content", async (req, res) => {
   const out = await readTextMediaContent(id);
   if (!out.ok) {
     if (out.reason === "not_found") {
-      res.status(404).json({ error: "Not found" });
+      sendApiError(res, 404, "Not found", "not_found");
       return;
     }
     if (out.reason === "not_text") {
-      res.status(400).json({ error: "Content endpoint only supports text files" });
+      sendApiError(res, 400, "Content endpoint only supports text files", "content_not_text");
       return;
     }
     if (out.reason === "file_missing") {
-      res.status(404).json({ error: "File not found" });
+      sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
-    res.status(500).json({ error: "Failed to read file" });
+    sendApiError(res, 500, "Failed to read file", "read_failed");
     return;
   }
   res.type("text/plain").send(out.content);

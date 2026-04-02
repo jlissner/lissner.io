@@ -8,7 +8,7 @@ import { thumbnailsDir } from "../config/paths.js";
  */
 export async function deleteOrphanedLocalThumbnailFiles(): Promise<number> {
   const ids = db.getAllMediaIds();
-  let removed = 0;
+  const acc = { removed: 0 };
   const entries = await readdir(thumbnailsDir).catch(() => [] as string[]);
   for (const name of entries) {
     if (!name.endsWith(".jpg")) continue;
@@ -16,10 +16,10 @@ export async function deleteOrphanedLocalThumbnailFiles(): Promise<number> {
     if (ids.has(id)) continue;
     try {
       await unlink(path.join(thumbnailsDir, name));
-      removed++;
+      acc.removed += 1;
     } catch {
       // ignore
     }
   }
-  return removed;
+  return acc.removed;
 }

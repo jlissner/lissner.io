@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { sendApiError } from "../lib/api-error.js";
 import { asyncHandler } from "../middleware/async-handler.js";
 import { parseWithSchema } from "../validation/parse.js";
 import {
@@ -59,7 +60,7 @@ peopleRouter.delete("/:id", (req, res) => {
   const { id } = parseWithSchema(personIdParamsSchema, req.params);
   const result = deletePersonById(id);
   if (!result.ok) {
-    res.status(404).json({ error: "Person not found" });
+    sendApiError(res, 404, "Person not found", "person_not_found");
     return;
   }
   res.json({ deleted: id });
@@ -74,14 +75,14 @@ peopleRouter.post("/:id/merge", (req, res) => {
     return;
   }
   if (result.reason === "invalid_ids") {
-    res.status(400).json({ error: "mergeInto (person ID) required" });
+    sendApiError(res, 400, "mergeInto (person ID) required", "merge_invalid_ids");
     return;
   }
   if (result.reason === "merge_into_self") {
-    res.status(400).json({ error: "Cannot merge a person into themselves" });
+    sendApiError(res, 400, "Cannot merge a person into themselves", "merge_into_self");
     return;
   }
-  res.status(404).json({ error: "Person not found" });
+  sendApiError(res, 404, "Person not found", "person_not_found");
 });
 
 peopleRouter.put("/:id", (req, res) => {

@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import session from "express-session";
+import { sendApiError } from "../lib/api-error.js";
 import * as authDb from "../db/auth.js";
 
 declare module "express-session" {
@@ -58,7 +59,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   if (req.session?.userId) {
     next();
   } else {
-    res.status(401).json({ error: "Authentication required" });
+    sendApiError(res, 401, "Authentication required", "auth_required");
   }
 }
 
@@ -70,7 +71,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   if (req.session?.isAdmin) {
     next();
   } else {
-    res.status(403).json({ error: "Admin access required" });
+    sendApiError(res, 403, "Admin access required", "admin_required");
   }
 }
 

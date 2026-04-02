@@ -12,10 +12,9 @@ import {
   type IndexJobState,
 } from "./job.js";
 
-let bulkAbortController: AbortController | null = null;
-
 const store = {
   state: initialIndexJobState() as IndexJobState,
+  bulkAbortController: null as AbortController | null,
   indexJobChangeListener: null as (() => void) | null,
   /** Upload-time `indexMediaItem` calls (no bulk job); drives activity when users add files. */
   backgroundIndexInFlight: 0,
@@ -91,15 +90,15 @@ export function startIndexJob():
   const result = tryStartJob(store.state, new Date().toISOString(), jobId);
   if (!result.ok) return { ok: false };
   store.state = result.state;
-  bulkAbortController = new AbortController();
+  store.bulkAbortController = new AbortController();
   emitIndexJobChanged();
-  return { ok: true, jobId, signal: bulkAbortController.signal };
+  return { ok: true, jobId, signal: store.bulkAbortController.signal };
 }
 
 /** Request cooperative cancellation of the bulk index job with this id (no-op if mismatch). */
 export function cancelBulkIndexJob(jobId: string): boolean {
   if (!store.state.inProgress || store.state.jobId !== jobId) return false;
-  bulkAbortController?.abort();
+  store.bulkAbortController?.abort();
   return true;
 }
 
@@ -114,13 +113,13 @@ export function finishIndexJob(result: {
   total: number;
   cancelled?: boolean;
 }): void {
-  bulkAbortController = null;
+  store.bulkAbortController = null;
   store.state = withFinish(store.state, result);
   emitIndexJobChanged();
 }
 
 export function failIndexJob(error: string): void {
-  bulkAbortController = null;
+  store.bulkAbortController = null;
   store.state = withFail(store.state, error);
   emitIndexJobChanged();
 }

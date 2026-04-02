@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { NextFunction, Request, Response } from "express";
+import { sendApiError } from "../lib/api-error.js";
 import * as authDb from "../db/auth.js";
 import { sendMagicLink } from "../email.js";
 import { getMagicLinkBaseUrl } from "../services/auth-service.js";
@@ -15,7 +16,7 @@ authRouter.get("/config", (_req, res) => {
 
 function requireAuth(req: Request, res: Response, next: NextFunction): void {
   if (req.session?.userId) next();
-  else res.status(401).json({ error: "Authentication required" });
+  else sendApiError(res, 401, "Authentication required", "auth_required");
 }
 
 authRouter.post("/magic-link", async (req, res) => {
@@ -23,7 +24,12 @@ authRouter.post("/magic-link", async (req, res) => {
 
   const normalized = email.toLowerCase();
   if (!authDb.isEmailWhitelisted(normalized)) {
-    res.status(403).json({ error: "Email not on whitelist. Contact an admin to get access." });
+    sendApiError(
+      res,
+      403,
+      "Email not on whitelist. Contact an admin to get access.",
+      "not_whitelisted"
+    );
     return;
   }
 
@@ -36,7 +42,7 @@ authRouter.post("/magic-link", async (req, res) => {
     res.json({ sent: true });
   } catch (err) {
     logger.error({ err, email: normalized }, "Magic link send error");
-    res.status(500).json({ error: "Failed to send magic link" });
+    sendApiError(res, 500, "Failed to send magic link", "magic_link_send_failed");
   }
 });
 
@@ -79,7 +85,7 @@ authRouter.get("/me", (req, res) => {
     : null;
 
   if (!user) {
-    res.status(401).json({ error: "Not authenticated" });
+    sendApiError(res, 401, "Not authenticated", "not_authenticated");
     return;
   }
 
