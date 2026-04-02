@@ -13,9 +13,8 @@ import { logger } from "../logger.js";
 import {
   effectiveImageResponseMimeType,
   isEffectiveImageItem,
-  isGenericBinaryMime,
   isPixelMotionPhotoExtension,
-  sniffMediaMimeFromFile,
+  sniffAndPersistMediaMime,
 } from "../lib/effective-image.js";
 
 const execFileAsync = promisify(execFile);
@@ -157,22 +156,11 @@ export async function getMediaPreviewFile(mediaId: string) {
     return { ok: false as const, reason: "file_missing" as const };
   }
   const filePath = path.join(mediaDir, item.filename);
-  const shouldSniff =
-    isPixelMotionPhotoExtension(item.originalName) || isGenericBinaryMime(item.mimeType);
-  let mimeType = effectiveImageResponseMimeType(item);
-  if (shouldSniff) {
-    const sniffed = await sniffMediaMimeFromFile(filePath);
-    if (sniffed) {
-      mimeType = sniffed;
-      if (sniffed !== item.mimeType) {
-        db.updateMediaMimeType(item.id, sniffed);
-      }
-    }
-  }
+  const { mimeTypePreview } = await sniffAndPersistMediaMime(item, filePath, db.updateMediaMimeType);
   return {
     ok: true as const,
     path: filePath,
-    mimeType,
+    mimeType: mimeTypePreview,
   };
 }
 
@@ -245,20 +233,18 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     return { ok: false, reason: "file_missing" };
   }
   const filePath = path.join(mediaDir, item.filename);
-  const shouldSniff =
-    isPixelMotionPhotoExtension(item.originalName) || isGenericBinaryMime(item.mimeType);
-  const sniffed = shouldSniff ? await sniffMediaMimeFromFile(filePath) : null;
-  if (sniffed && sniffed !== item.mimeType) {
-    db.updateMediaMimeType(item.id, sniffed);
-  }
-  const mimeForKind = sniffed ?? item.mimeType;
-  const isVideoKind = mimeForKind.startsWith("video/");
+  const { mimeTypeForKind } = await sniffAndPersistMediaMime(
+    item,
+    filePath,
+    db.updateMediaMimeType
+  );
+  const isVideoKind = mimeTypeForKind.startsWith("video/");
   const isImageKind =
-    mimeForKind.startsWith("image/") || isPixelMotionPhotoExtension(item.originalName);
+    mimeTypeForKind.startsWith("image/") || isPixelMotionPhotoExtension(item.originalName);
 
   if (!isVideoKind && isImageKind) {
-    const contentType = mimeForKind.startsWith("image/")
-      ? mimeForKind
+    const contentType = mimeTypeForKind.startsWith("image/")
+      ? mimeTypeForKind
       : effectiveImageResponseMimeType(item);
     return {
       ok: true,

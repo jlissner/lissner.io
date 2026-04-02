@@ -95,6 +95,64 @@ export async function sniffMediaMimeFromFile(absolutePath: string): Promise<stri
   return sniffMediaMimeFromBuffer(head);
 }
 
+/** Result of sniffing a local media file that might need DB `mime_type` correction. */
+export type SniffMediaMimePersistResult = {
+  /** Raw sniff result, or `null` if sniffing was skipped or inconclusive. */
+  sniffed: string | null;
+  /** `true` when `persist` ran because sniff differed from the row. */
+  persistedUpdate: boolean;
+  /** MIME for preview download (`sniffed` wins, else effective image MIME for generic `.mp` rows). */
+  mimeTypePreview: string;
+  /** MIME for video vs image detection (`sniffed` wins, else stored row `mime_type`). */
+  mimeTypeForKind: string;
+};
+
+/**
+ * If the row looks like a Pixel `.mp` sidecar or generic binary MIME, sniff the file and optionally
+ * persist a corrected `mime_type`. Shared by preview and thumbnail paths.
+ */
+export async function sniffAndPersistMediaMime(
+  item: { id: string; mimeType: string; originalName: string },
+  absoluteFilePath: string,
+  persist: (mediaId: string, mime: string) => void
+): Promise<SniffMediaMimePersistResult> {
+  const shouldSniff =
+    isPixelMotionPhotoExtension(item.originalName) || isGenericBinaryMime(item.mimeType);
+  if (!shouldSniff) {
+    const mimeTypePreview = effectiveImageResponseMimeType(item);
+    return {
+      sniffed: null,
+      persistedUpdate: false,
+      mimeTypePreview,
+      mimeTypeForKind: item.mimeType,
+    };
+  }
+  const sniffed = await sniffMediaMimeFromFile(absoluteFilePath);
+  if (sniffed == null) {
+    return {
+      sniffed: null,
+      persistedUpdate: false,
+      mimeTypePreview: effectiveImageResponseMimeType(item),
+      mimeTypeForKind: item.mimeType,
+    };
+  }
+  if (sniffed !== item.mimeType) {
+    persist(item.id, sniffed);
+    return {
+      sniffed,
+      persistedUpdate: true,
+      mimeTypePreview: sniffed,
+      mimeTypeForKind: sniffed,
+    };
+  }
+  return {
+    sniffed,
+    persistedUpdate: false,
+    mimeTypePreview: sniffed,
+    mimeTypeForKind: sniffed,
+  };
+}
+
 /**
  * Correct MIME for upload when multer reports octet-stream or for `.mp` Pixel motion-photo files.
  */
