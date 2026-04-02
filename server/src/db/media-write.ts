@@ -2,12 +2,37 @@ import { logger } from "../logger.js";
 import { db } from "./media-db.js";
 import { linkMotionPairForMedia } from "./media-motion.js";
 
+const writeStmts = {
+  migrateNullOwners: db.prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL"),
+  insertMedia: db.prepare(
+    `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at, owner_id)
+     VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`
+  ),
+  updateMimeType: db.prepare("UPDATE media SET mime_type = ? WHERE id = ?"),
+  insertFromBackup: db.prepare(
+    `INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, size, uploaded_at, date_taken, latitude, longitude, owner_id, backed_up_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+  ),
+  setDateTaken: db.prepare("UPDATE media SET date_taken = ? WHERE id = ?"),
+  markBackedUp: db.prepare("UPDATE media SET backed_up_at = datetime('now') WHERE id = ?"),
+  clearBackedUpAt: db.prepare("UPDATE media SET backed_up_at = NULL WHERE id = ?"),
+  setLocation: db.prepare("UPDATE media SET latitude = ?, longitude = ? WHERE id = ?"),
+  upsertEmbedding: db.prepare(
+    `INSERT INTO embeddings (media_id, embedding, indexed_at) VALUES (?, ?, datetime('now'))
+     ON CONFLICT(media_id) DO UPDATE SET embedding = excluded.embedding, indexed_at = excluded.indexed_at`
+  ),
+  deleteEmbeddingsAll: db.prepare("DELETE FROM embeddings"),
+  deleteImagePeopleAll: db.prepare("DELETE FROM image_people"),
+  deletePersonNamesAll: db.prepare("DELETE FROM person_names"),
+  deleteImagePeopleForMedia: db.prepare("DELETE FROM image_people WHERE media_id = ?"),
+  deleteEmbeddingsForMedia: db.prepare("DELETE FROM embeddings WHERE media_id = ?"),
+  deleteMediaRow: db.prepare("DELETE FROM media WHERE id = ?"),
+};
+
 export function migrateNullOwnersToDefault(getDefaultOwnerId: () => number | null): void {
   const defaultOwnerId = getDefaultOwnerId();
   if (defaultOwnerId) {
-    const result = db
-      .prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL")
-      .run(defaultOwnerId);
+    const result = writeStmts.migrateNullOwners.run(defaultOwnerId);
     if (result.changes > 0) {
       logger.warn(
         { changes: result.changes, defaultOwnerId },
@@ -25,15 +50,12 @@ export function insertMedia(
   size: number,
   ownerId: number
 ) {
-  db.prepare(
-    `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at, owner_id)
-     VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`
-  ).run(id, filename, originalName, mimeType, size, ownerId);
+  writeStmts.insertMedia.run(id, filename, originalName, mimeType, size, ownerId);
   linkMotionPairForMedia(id);
 }
 
 export function updateMediaMimeType(mediaId: string, mimeType: string): void {
-  db.prepare("UPDATE media SET mime_type = ? WHERE id = ?").run(mimeType, mediaId);
+  writeStmts.updateMimeType.run(mimeType, mediaId);
 }
 
 /** Insert media row from backup (for S3 sync merge). Uses INSERT OR IGNORE. ownerId required. */
@@ -51,23 +73,18 @@ export function insertMediaFromBackup(
   },
   ownerId: number
 ): boolean {
-  const result = db
-    .prepare(
-      `INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, size, uploaded_at, date_taken, latitude, longitude, owner_id, backed_up_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    )
-    .run(
-      row.id,
-      row.filename,
-      row.originalName,
-      row.mimeType,
-      row.size,
-      row.uploadedAt,
-      row.dateTaken ?? null,
-      row.latitude ?? null,
-      row.longitude ?? null,
-      ownerId
-    );
+  const result = writeStmts.insertFromBackup.run(
+    row.id,
+    row.filename,
+    row.originalName,
+    row.mimeType,
+    row.size,
+    row.uploadedAt,
+    row.dateTaken ?? null,
+    row.latitude ?? null,
+    row.longitude ?? null,
+    ownerId
+  );
   if (result.changes > 0) {
     linkMotionPairForMedia(row.id);
     return true;
@@ -76,16 +93,16 @@ export function insertMediaFromBackup(
 }
 
 export function setMediaDateTaken(mediaId: string, dateTaken: string | null): void {
-  db.prepare("UPDATE media SET date_taken = ? WHERE id = ?").run(dateTaken, mediaId);
+  writeStmts.setDateTaken.run(dateTaken, mediaId);
 }
 
 export function markMediaBackedUp(mediaId: string): void {
-  db.prepare("UPDATE media SET backed_up_at = datetime('now') WHERE id = ?").run(mediaId);
+  writeStmts.markBackedUp.run(mediaId);
 }
 
 /** When S3 no longer has the object, stop treating the row as restorable from backup. */
 export function clearMediaBackedUpAt(mediaId: string): void {
-  db.prepare("UPDATE media SET backed_up_at = NULL WHERE id = ?").run(mediaId);
+  writeStmts.clearBackedUpAt.run(mediaId);
 }
 
 export function markMediaBackedUpByFilenames(filenames: string[]): void {
@@ -101,29 +118,22 @@ export function setMediaLocation(
   latitude: number | null,
   longitude: number | null
 ): void {
-  db.prepare("UPDATE media SET latitude = ?, longitude = ? WHERE id = ?").run(
-    latitude,
-    longitude,
-    mediaId
-  );
+  writeStmts.setLocation.run(latitude, longitude, mediaId);
 }
 
 export function upsertEmbedding(mediaId: string, embedding: number[]) {
-  db.prepare(
-    `INSERT INTO embeddings (media_id, embedding, indexed_at) VALUES (?, ?, datetime('now'))
-     ON CONFLICT(media_id) DO UPDATE SET embedding = excluded.embedding, indexed_at = excluded.indexed_at`
-  ).run(mediaId, JSON.stringify(embedding));
+  writeStmts.upsertEmbedding.run(mediaId, JSON.stringify(embedding));
 }
 
 /** Clear all indexing data: embeddings, face tags, and people. Media files are kept. */
 export function clearAllIndexingData(): void {
-  db.prepare("DELETE FROM embeddings").run();
-  db.prepare("DELETE FROM image_people").run();
-  db.prepare("DELETE FROM person_names").run();
+  writeStmts.deleteEmbeddingsAll.run();
+  writeStmts.deleteImagePeopleAll.run();
+  writeStmts.deletePersonNamesAll.run();
 }
 
 export function deleteMedia(id: string) {
-  db.prepare("DELETE FROM image_people WHERE media_id = ?").run(id);
-  db.prepare("DELETE FROM embeddings WHERE media_id = ?").run(id);
-  db.prepare("DELETE FROM media WHERE id = ?").run(id);
+  writeStmts.deleteImagePeopleForMedia.run(id);
+  writeStmts.deleteEmbeddingsForMedia.run(id);
+  writeStmts.deleteMediaRow.run(id);
 }
