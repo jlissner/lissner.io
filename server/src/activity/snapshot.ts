@@ -1,13 +1,12 @@
-import type { ActivitySnapshot } from "./types.js";
+import type { ActivitySnapshot, SyncProgressMessage } from "./types.js";
 import type { IndexJobState } from "../indexing/job.js";
-import type { SyncProgress } from "../s3/sync.js";
 
 export function buildActivitySnapshot(
   index: IndexJobState,
   sync: {
     inProgress: boolean;
     startedAt: string | null;
-    lastResult: SyncProgress | null;
+    lastResult: SyncProgressMessage | null;
     lastError: string | null;
   },
   s3: { configured: boolean; missingVars: string[] }

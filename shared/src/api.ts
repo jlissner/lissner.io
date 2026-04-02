@@ -3,9 +3,9 @@
  * Prefer importing these instead of duplicating inline object types.
  */
 
-import type { IndexActivitySlice, SyncProgressMessage } from "./activity.js";
+import type { IndexActivitySlice, SyncPhase, SyncProgressMessage } from "./activity.js";
 
-export type { IndexActivitySlice, SyncProgressMessage };
+export type { IndexActivitySlice, SyncPhase, SyncProgressMessage };
 
 /** Standard error JSON from `errorHandler` and ad-hoc route errors. */
 export type ApiErrorBody = { error: string; code?: string };

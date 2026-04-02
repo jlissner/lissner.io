@@ -2,7 +2,7 @@
  * S3 backup sync — public API and types. Implementation is split under `./sync-*.ts`.
  */
 
-export type { SyncProgress } from "./sync-types.js";
+export type { SyncPhase, SyncProgress, SyncProgressMessage } from "./sync-types.js";
 export { getS3Config, createS3Client } from "./sync-client.js";
 export {
   setSyncChangeListener,

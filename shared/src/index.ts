@@ -3,6 +3,7 @@ export type {
   ActivitySnapshot,
   IndexActivitySlice,
   SyncActivitySlice,
+  SyncPhase,
   SyncProgressMessage,
 } from "./activity.js";
 export type {

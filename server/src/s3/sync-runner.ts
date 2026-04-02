@@ -11,6 +11,12 @@ import { createS3Client, getS3Config } from "./sync-client.js";
 import { S3_PREFIX } from "./sync-constants.js";
 import { syncDefer } from "./sync-defer.js";
 import { deleteOrphanS3Thumbnails } from "./sync-gc.js";
+import {
+  buildSyncDoneProgress,
+  buildSyncFailedProgress,
+  buildSyncNotConfiguredProgress,
+  type SyncCompletionTally,
+} from "./sync-progress.js";
 import { emitSyncChanged, syncState } from "./sync-state.js";
 import type { SyncProgress } from "./sync-types.js";
 import {
@@ -24,13 +30,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
   const client = createS3Client();
   if (!client) {
     const { missingVars } = getS3Config();
-    const err: SyncProgress = {
-      phase: "error",
-      current: 0,
-      total: 0,
-      message: "S3 not configured",
-      error: `Missing: ${missingVars.join(", ")}`,
-    };
+    const err = buildSyncNotConfiguredProgress(missingVars);
     syncState.lastResult = err;
     syncState.lastError = err.error ?? null;
     emitSyncChanged();
@@ -54,7 +54,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     emitSyncChanged();
   };
 
-  const tally = {
+  const tally: SyncCompletionTally = {
     uploadedMedia: 0,
     uploadedThumbs: 0,
     downloadedMedia: 0,
@@ -337,37 +337,13 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     );
     tally.deletedOrphanThumbsLocal = await deleteOrphanedLocalThumbnailFiles();
 
-    const result: SyncProgress = {
-      phase: "done",
-      current: 1,
-      total: 1,
-      message: [
-        `Sync complete.`,
-        tally.uploadedMedia > 0 && `Uploaded ${tally.uploadedMedia} media`,
-        tally.uploadedThumbs > 0 && `Uploaded ${tally.uploadedThumbs} thumbnails`,
-        tally.downloadedMedia > 0 && `Downloaded ${tally.downloadedMedia} media`,
-        tally.downloadedThumbs > 0 && `Downloaded ${tally.downloadedThumbs} thumbnails`,
-        tally.mergedMedia > 0 && `Added ${tally.mergedMedia} from backup`,
-        tally.deletedOrphanThumbsS3 > 0 &&
-          `Removed ${tally.deletedOrphanThumbsS3} orphaned S3 thumbnails`,
-        tally.deletedOrphanThumbsLocal > 0 &&
-          `Removed ${tally.deletedOrphanThumbsLocal} orphaned local thumbnails`,
-      ]
-        .filter(Boolean)
-        .join(". "),
-    };
+    const result = buildSyncDoneProgress(tally);
     report(result);
     syncState.lastError = null;
     return result;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    const result: SyncProgress = {
-      phase: "error",
-      current: 0,
-      total: 0,
-      message: "Sync failed",
-      error: msg,
-    };
+    const result = buildSyncFailedProgress(msg);
     report(result);
     syncState.lastError = msg;
     throw err;

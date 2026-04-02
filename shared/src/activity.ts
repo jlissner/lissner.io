@@ -1,7 +1,19 @@
 /** Shared payload for indexing + S3 sync activity (HTTP + WebSocket). */
 
+/** Phases emitted by `runSync` and surfaced on `/api/backup/status` + WebSocket activity. */
+export type SyncPhase =
+  | "listing"
+  | "upload-media"
+  | "upload-thumbnails"
+  | "upload-db"
+  | "download-media"
+  | "download-thumbnails"
+  | "merge-db"
+  | "done"
+  | "error";
+
 export interface SyncProgressMessage {
-  phase: string;
+  phase: SyncPhase;
   current: number;
   total: number;
   message: string;
