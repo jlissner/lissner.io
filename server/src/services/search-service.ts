@@ -1,6 +1,5 @@
 import type { SearchIndexStatusResponse, SearchResultItem } from "../../../shared/src/api.js";
 import * as db from "../db/media.js";
-import { HttpError } from "../lib/http-error.js";
 import { getEmbedding, cosineSimilarity } from "../embeddings.js";
 import { indexMediaItems } from "../indexing/media.js";
 import { buildActivitySnapshot } from "../activity/snapshot.js";
@@ -12,6 +11,7 @@ import {
 } from "../indexing/job-store.js";
 import { logger } from "../logger.js";
 import { getSyncState, getS3Config } from "../s3/sync.js";
+import type { ServiceFailure } from "./service-result.js";
 
 export function getIndexStatusBody(): SearchIndexStatusResponse {
   const snap = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
@@ -33,15 +33,19 @@ export function clearAllSearchIndexData(): void {
 }
 
 /**
- * Starts a bulk index job (async). Returns `{ ok: false }` if a job is already running.
+ * Starts a bulk index job (async). Returns `already_running` if a job is in progress.
  * On success, schedules indexing and updates job-store on completion.
  */
+export type StartBulkIndexingJobResult =
+  | { ok: true; jobId: string }
+  | ServiceFailure<"already_running">;
+
 export function startBulkIndexingJob(params: {
   force: boolean;
   mediaIds?: string[];
-}): { ok: false } | { ok: true; jobId: string } {
+}): StartBulkIndexingJobResult {
   const started = startIndexJob();
-  if (!started.ok) return { ok: false };
+  if (!started.ok) return { ok: false, reason: "already_running" };
 
   const allItems = db.listMedia();
   const items =
@@ -66,10 +70,15 @@ export function startBulkIndexingJob(params: {
   return { ok: true, jobId: started.jobId };
 }
 
-export async function searchMediaByQuery(q: string): Promise<SearchResultItem[]> {
+export type SearchMediaByQueryResult =
+  | { ok: true; items: SearchResultItem[] }
+  | ServiceFailure<"missing_query">
+  | { ok: false; reason: "search_failed"; message: string };
+
+export async function searchMediaByQuery(q: string): Promise<SearchMediaByQueryResult> {
   const query = q.trim();
   if (!query) {
-    throw new HttpError(400, "Missing query parameter: q", "missing_query");
+    return { ok: false, reason: "missing_query" };
   }
 
   try {
@@ -108,7 +117,7 @@ export async function searchMediaByQuery(q: string): Promise<SearchResultItem[]>
     }
 
     if (mediaIds.length === 0) {
-      return [];
+      return { ok: true, items: [] };
     }
 
     const items = db.getMediaByIds(mediaIds).filter(
@@ -117,15 +126,11 @@ export async function searchMediaByQuery(q: string): Promise<SearchResultItem[]>
     const order = new Map(mediaIds.map((id, i) => [id, i]));
     items.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
 
-    return mapSearchItems(items, personNames);
+    return { ok: true, items: mapSearchItems(items, personNames) };
   } catch (err) {
-    if (err instanceof HttpError) throw err;
     logger.error({ err }, "Search error");
-    throw new HttpError(
-      500,
-      err instanceof Error ? err.message : "Search failed",
-      "search_failed"
-    );
+    const message = err instanceof Error ? err.message : "Search failed";
+    return { ok: false, reason: "search_failed", message };
   }
 }
 

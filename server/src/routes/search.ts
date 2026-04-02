@@ -23,7 +23,9 @@ searchRouter.post("/index", (req, res) => {
   const mediaIds = body?.mediaIds;
   const result = startBulkIndexingJob({ force, mediaIds });
   if (!result.ok) {
-    res.status(409).json({ error: "Indexing already in progress" });
+    res
+      .status(409)
+      .json({ error: "Indexing already in progress", code: result.reason });
     return;
   }
   res.json({ started: true, jobId: result.jobId });
@@ -52,7 +54,15 @@ searchRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const query = parseWithSchema(searchListQuerySchema, req.query);
-    const items = await searchMediaByQuery(query.q ?? "");
-    res.json(items);
+    const searchResult = await searchMediaByQuery(query.q ?? "");
+    if (!searchResult.ok) {
+      if (searchResult.reason === "missing_query") {
+        res.status(400).json({ error: "Missing query parameter: q", code: "missing_query" });
+        return;
+      }
+      res.status(500).json({ error: searchResult.message, code: "search_failed" });
+      return;
+    }
+    res.json(searchResult.items);
   })
 );

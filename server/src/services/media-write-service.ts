@@ -5,6 +5,7 @@ import { indexMediaItem } from "../indexing/media.js";
 import { deleteMediaFromS3, scheduleBackupSyncAfterUpload } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { logger } from "../logger.js";
+import type { ServiceFailure } from "./service-result.js";
 
 export function persistUploadedMedia(params: {
   id: string;
@@ -36,7 +37,7 @@ export function persistUploadedMedia(params: {
 
 export type DeleteMediaResult =
   | { ok: true }
-  | { ok: false; reason: "not_found" | "forbidden" | "delete_failed" };
+  | ServiceFailure<"not_found" | "forbidden" | "delete_failed">;
 
 export async function deleteMediaItem(
   mediaId: string,
@@ -84,7 +85,7 @@ function parseBodyDateTaken(raw: unknown): string | null | "invalid" | "bad_type
 
 export type UpdateMediaDateTakenResult =
   | { ok: true; dateTaken: string | null }
-  | { ok: false; reason: "not_found" | "forbidden" | "bad_request" | "invalid_date" };
+  | ServiceFailure<"not_found" | "forbidden" | "bad_request" | "invalid_date">;
 
 /** Owner or admin may set `dateTaken` to an ISO timestamp string or `null` to clear. */
 export function updateMediaDateTaken(

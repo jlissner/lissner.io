@@ -294,3 +294,9 @@ export async function getThumbnailResponse(mediaId: string): Promise<
   }
 }
 
+export type GetFacesPayloadForMediaResult = Awaited<ReturnType<typeof getFacesPayloadForMedia>>;
+export type GetFaceCropOrFullImageResult = Awaited<ReturnType<typeof getFaceCropOrFullImage>>;
+export type GetMediaPreviewFileResult = Awaited<ReturnType<typeof getMediaPreviewFile>>;
+export type GetMediaDetailsEnrichedResult = ReturnType<typeof getMediaDetailsEnriched>;
+export type ReadTextMediaContentResult = Awaited<ReturnType<typeof readTextMediaContent>>;
+export type GetThumbnailResponseResult = Awaited<ReturnType<typeof getThumbnailResponse>>;

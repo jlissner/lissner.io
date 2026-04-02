@@ -5,6 +5,7 @@ import type {
   UpdatePersonResponse,
 } from "../../../shared/src/api.js";
 import * as db from "../db/media.js";
+import type { ServiceFailure } from "./service-result.js";
 
 export function getPersonMediaPreview(
   personId: number,
@@ -38,7 +39,7 @@ export function createPersonNamed(name: string): CreatePersonResponse {
   return { id, name: name.trim() };
 }
 
-export type DeletePersonResult = { ok: true } | { ok: false; reason: "not_found" };
+export type DeletePersonResult = { ok: true } | ServiceFailure<"not_found">;
 
 export function deletePersonById(personId: number): DeletePersonResult {
   const allIds = db.getAllPersonIds();
@@ -51,7 +52,7 @@ export function deletePersonById(personId: number): DeletePersonResult {
 
 export type MergePeopleResult =
   | { ok: true; merged: number; into: number }
-  | { ok: false; reason: "invalid_ids" | "merge_into_self" | "not_found" };
+  | ServiceFailure<"invalid_ids" | "merge_into_self" | "not_found">;
 
 export function mergePeople(
   mergeFromId: number,
