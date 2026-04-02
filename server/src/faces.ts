@@ -59,13 +59,64 @@ export interface FaceInImage {
   box?: { x: number; y: number; width: number; height: number };
 }
 
+type HumanInstance = InstanceType<typeof Human>;
+
+function facesFromDetectResult(
+  result: Awaited<ReturnType<HumanInstance["detect"]>>,
+  imageId: string
+): FaceInImage[] {
+  const faces: FaceInImage[] = [];
+  for (const f of result.face) {
+    if (!f.embedding) continue;
+    const box = f.box;
+    faces.push({
+      imageId,
+      descriptor: Array.from(f.embedding),
+      box: box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined,
+    });
+  }
+  return faces;
+}
+
+async function detectFacesFromBuffer(
+  human: HumanInstance,
+  buffer: Buffer,
+  imageId: string,
+  imagePath: string
+): Promise<FaceInImage[]> {
+  const tf = human.tf;
+  const tensor = (() => {
+    try {
+      return tf.node.decodeImage(buffer, 3);
+    } catch (err) {
+      logger.error({ err, imageId, imagePath }, "Face extraction failed");
+      return null;
+    }
+  })();
+  if (tensor == null) {
+    return [];
+  }
+  try {
+    const result = await human.detect(tensor);
+    return facesFromDetectResult(result, imageId);
+  } catch (err) {
+    logger.error({ err, imageId, imagePath }, "Face extraction failed");
+    return [];
+  } finally {
+    try {
+      tf.dispose(tensor);
+    } catch {
+      /* ignore dispose errors */
+    }
+  }
+}
+
 export async function extractFacesFromImage(
   imagePath: string,
   imageId: string
 ): Promise<FaceInImage[]> {
   const work = async (): Promise<FaceInImage[]> => {
     const human = await getHuman();
-    const tf = human.tf;
     const fileStats = await stat(imagePath).catch(() => null);
     if (fileStats == null || !fileStats.isFile()) {
       logger.warn({ imageId, imagePath }, "Face extraction skipped: missing file");
@@ -85,37 +136,7 @@ export async function extractFacesFromImage(
     if (buffer.length < MIN_IMAGE_BYTES) {
       return [];
     }
-
-    let tensor: unknown;
-    try {
-      tensor = tf.node.decodeImage(buffer, 3);
-      if (tensor == null) {
-        return [];
-      }
-      const result = await human.detect(tensor);
-      const faces: FaceInImage[] = [];
-      for (const f of result.face) {
-        if (!f.embedding) continue;
-        const box = f.box;
-        faces.push({
-          imageId,
-          descriptor: Array.from(f.embedding),
-          box: box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined,
-        });
-      }
-      return faces;
-    } catch (err) {
-      logger.error({ err, imageId, imagePath }, "Face extraction failed");
-      return [];
-    } finally {
-      if (tensor != null) {
-        try {
-          tf.dispose(tensor);
-        } catch {
-          /* ignore dispose errors */
-        }
-      }
-    }
+    return detectFacesFromBuffer(human, buffer, imageId, imagePath);
   };
 
   const scheduled = faceDetectChain.tail.then(() => work());
@@ -135,47 +156,47 @@ interface ClusterFace {
   confidence: number;
 }
 
+type FaceCluster = { id: number; descriptor: number[]; faces: ClusterFace[] };
+
 function clusterFacesWithConfidence(
   faces: FaceInImage[],
   similarityFn: (a: number[], b: number[]) => number
-): Array<{ id: number; descriptor: number[]; faces: ClusterFace[] }> {
-  const clusters: Array<{ id: number; descriptor: number[]; faces: ClusterFace[] }> = [];
-
-  for (const face of faces) {
-    const match = {
-      bestCluster: null as (typeof clusters)[0] | null,
-      bestSim: FACE_SIMILARITY_THRESHOLD,
-    };
-
-    for (const cluster of clusters) {
+): FaceCluster[] {
+  return faces.reduce<FaceCluster[]>((clusters, face) => {
+    const best = clusters.reduce<{ idx: number; sim: number } | null>((pick, cluster, idx) => {
       const sim = similarityFn(face.descriptor, cluster.descriptor);
-      if (sim > match.bestSim) {
-        match.bestSim = sim;
-        match.bestCluster = cluster;
-      }
+      if (sim <= FACE_SIMILARITY_THRESHOLD) return pick;
+      if (pick == null || sim > pick.sim) return { idx, sim };
+      return pick;
+    }, null);
+
+    if (best == null) {
+      return [
+        ...clusters,
+        {
+          id: clusters.length + 1,
+          descriptor: [...face.descriptor],
+          faces: [{ imageId: face.imageId, box: face.box, confidence: 1 }],
+        },
+      ];
     }
 
-    if (match.bestCluster) {
-      const bestCluster = match.bestCluster;
-      bestCluster.faces.push({
-        imageId: face.imageId,
-        box: face.box,
-        confidence: match.bestSim,
-      });
-      const n = bestCluster.faces.length;
-      bestCluster.descriptor.forEach((_, i) => {
-        bestCluster.descriptor[i] = (bestCluster.descriptor[i] * (n - 1) + face.descriptor[i]!) / n;
-      });
-    } else {
-      clusters.push({
-        id: clusters.length + 1,
-        descriptor: [...face.descriptor],
-        faces: [{ imageId: face.imageId, box: face.box, confidence: 1 }],
-      });
-    }
-  }
-
-  return clusters;
+    const matched = clusters[best.idx]!;
+    const prevCount = matched.faces.length;
+    const n = prevCount + 1;
+    const descriptor = matched.descriptor.map(
+      (value, i) => (value * prevCount + face.descriptor[i]!) / n
+    );
+    const next: FaceCluster = {
+      id: matched.id,
+      descriptor,
+      faces: [
+        ...matched.faces,
+        { imageId: face.imageId, box: face.box, confidence: best.sim },
+      ],
+    };
+    return clusters.map((cluster, i) => (i === best.idx ? next : cluster));
+  }, []);
 }
 
 /** Cosine-style similarity between two face descriptors (same as clustering). */
