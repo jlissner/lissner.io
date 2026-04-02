@@ -55,6 +55,47 @@ const peopleStmts = {
   ),
 };
 
+/** Next ID = max(person_id across tags and names) + 1; call only inside an IMMEDIATE transaction. */
+function allocNextPersonId(): number {
+  const maxRow = peopleStmts.nextPersonId.get() as { m: number | null };
+  return (maxRow?.m ?? 0) + 1;
+}
+
+const txnCreateNewPerson = db.transaction(() => {
+  const newId = allocNextPersonId();
+  peopleStmts.insertPersonNameIgnore.run(newId, `Person ${newId}`);
+  return newId;
+});
+
+const txnCreateNamedPerson = db.transaction((name: string) => {
+  const newId = allocNextPersonId();
+  peopleStmts.insertPersonName.run(newId, name.trim());
+  return newId;
+});
+
+const txnCreateNewPersonForMedia = db.transaction(
+  (mediaId: string, fromPersonId: number): number | null => {
+    const row = peopleStmts.selectFaceDims.get(mediaId, fromPersonId) as
+      | { x: number | null; y: number | null; width: number | null; height: number | null }
+      | undefined;
+    if (!row) return null;
+    const newId = allocNextPersonId();
+    peopleStmts.deleteTagPair.run(mediaId, fromPersonId);
+    peopleStmts.insertFaceManual.run(
+      mediaId,
+      newId,
+      row.x,
+      row.y,
+      row.width,
+      row.height,
+      1,
+      "manual"
+    );
+    peopleStmts.insertPersonNameIgnore.run(newId, `Person ${newId}`);
+    return newId;
+  }
+);
+
 export function setImagePeople(
   mediaId: string,
   entries: Array<{
@@ -169,25 +210,7 @@ export function reassignPersonInMedia(
 }
 
 export function createNewPersonForMedia(mediaId: string, fromPersonId: number): number | null {
-  const row = peopleStmts.selectFaceDims.get(mediaId, fromPersonId) as
-    | { x: number | null; y: number | null; width: number | null; height: number | null }
-    | undefined;
-  if (!row) return null;
-  const maxRow = peopleStmts.nextPersonId.get() as { m: number | null };
-  const newId = (maxRow?.m ?? 0) + 1;
-  peopleStmts.deleteTagPair.run(mediaId, fromPersonId);
-  peopleStmts.insertFaceManual.run(
-    mediaId,
-    newId,
-    row.x,
-    row.y,
-    row.width,
-    row.height,
-    1,
-    "manual"
-  );
-  peopleStmts.insertPersonNameIgnore.run(newId, `Person ${newId}`);
-  return newId;
+  return txnCreateNewPersonForMedia.immediate(mediaId, fromPersonId);
 }
 
 export function confirmFace(mediaId: string, personId: number): void {
@@ -231,18 +254,12 @@ export function addPersonToMedia(
 }
 
 export function createNewPerson(): number {
-  const maxRow = peopleStmts.nextPersonId.get() as { m: number | null };
-  const newId = (maxRow?.m ?? 0) + 1;
-  peopleStmts.insertPersonNameIgnore.run(newId, `Person ${newId}`);
-  return newId;
+  return txnCreateNewPerson.immediate();
 }
 
 /** Create a person with a name (no photo required). */
 export function createPerson(name: string): number {
-  const maxRow = peopleStmts.nextPersonId.get() as { m: number | null };
-  const newId = (maxRow?.m ?? 0) + 1;
-  peopleStmts.insertPersonName.run(newId, name.trim());
-  return newId;
+  return txnCreateNamedPerson.immediate(name);
 }
 
 export function getFaceBox(
