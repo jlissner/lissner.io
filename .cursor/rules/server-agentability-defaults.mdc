@@ -1,0 +1,37 @@
+---
+description: Server defaults for agent-friendly, low-duplication code
+globs: server/src/**/*.ts
+alwaysApply: false
+---
+
+# Server Agentability Defaults
+
+## Keep files focused and composable
+
+- Prefer small, single-purpose modules over large mixed-concern files.
+- Keep route files transport-focused (parse/validate/map response), and place orchestration in services.
+- Split long workflows into named helpers with explicit input/output types.
+
+## Validation and error handling
+
+- Validate all params/query/body through shared Zod schemas plus `parseWithSchema`.
+- Avoid ad-hoc `parseInt`, `typeof`, and manual null checks in routes when a schema can express the contract.
+- Use discriminated unions (`{ ok: true, ... } | { ok: false, reason: ... }`) for expected failures.
+- Reserve thrown errors for truly unexpected failures.
+
+## Duplication and mutation
+
+- Do not duplicate endpoint wiring logic, SQL snippets, or response mapping blocks; extract shared helpers.
+- Avoid `let` bindings; use `const`, pure helpers, and immutable transformations.
+- Minimize in-place mutation of shared state; when state is required, isolate it in a dedicated module with a narrow API.
+
+## Types and contracts
+
+- Prefer shared types (`shared/src/api.ts`) for payload contracts between server and UI.
+- Avoid `any`; narrow `unknown` quickly at boundaries.
+- Keep service/public return types explicit and stable.
+
+## Logging and observability
+
+- Use structured logging via `logger`/`req.log`; include stable metadata keys (`mediaId`, `personId`, `phase`, `jobId`).
+- Keep log messages action-oriented and searchable.
