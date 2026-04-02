@@ -9,6 +9,8 @@ import { pinoHttp } from "pino-http";
  * - `HTTP_LOG_VERBOSE=1` — log full req/res (headers, etc.) for each HTTP line.
  * - `HTTP_ACCESS_LOG=1` — in non-production, log successful requests (2xx/3xx); default off so
  *   `logger.info` / `req.log.info` scratch logs are easy to spot.
+ * - `HTTP_LOG_CLIENT_ERRORS=1` — in non-production, log 4xx completions at `warn` (default is `debug`
+ *   so routine 404s don’t flood the console at `LOG_LEVEL=info`).
  */
 const level = process.env.LOG_LEVEL ?? "info";
 
@@ -17,6 +19,9 @@ const httpLogVerbose =
 
 const logHttpSuccessInDev =
   process.env.HTTP_ACCESS_LOG === "1" || process.env.HTTP_ACCESS_LOG === "true";
+
+const logHttpClientErrorsInDev =
+  process.env.HTTP_LOG_CLIENT_ERRORS === "1" || process.env.HTTP_LOG_CLIENT_ERRORS === "true";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -62,7 +67,7 @@ export const requestLogger = pinoHttp({
     if (err) return "error";
     const code = res.statusCode;
     if (code >= 500) return "error";
-    if (code >= 400) return "warn";
+    if (code >= 400) return isProduction || logHttpClientErrorsInDev ? "warn" : "debug";
     if (!isProduction && !logHttpSuccessInDev) return "silent";
     return "info";
   },
