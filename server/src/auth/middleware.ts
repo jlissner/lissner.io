@@ -17,8 +17,10 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
+let _sessionStore: session.Store | null = null;
+
 export function sessionMiddleware() {
-  return session({
+  const middleware = session({
     secret: process.env.SESSION_SECRET ?? "family-media-manager-dev-secret",
     resave: false,
     saveUninitialized: false,
@@ -28,6 +30,51 @@ export function sessionMiddleware() {
       sameSite: "lax",
       maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
     },
+  });
+  return (req: Request, res: Response, next: NextFunction) => {
+    middleware(req, res, () => {
+      _sessionStore = req.sessionStore;
+      next();
+    });
+  };
+}
+
+export async function validateSessionFromCookie(
+  cookieHeader: string | undefined
+): Promise<AuthUser | null> {
+  if (process.env.AUTH_ENABLED !== "true") {
+    return null;
+  }
+  if (!cookieHeader || !_sessionStore) {
+    return null;
+  }
+
+  const cookies = Object.fromEntries(
+    cookieHeader.split(";").map((c) => {
+      const [key, ...val] = c.trim().split("=");
+      return [key, val.join("=")];
+    })
+  );
+
+  const sid = cookies["connect.sid"];
+  if (!sid) {
+    return null;
+  }
+
+  const sessionId = decodeURIComponent(sid);
+
+  return new Promise((resolve) => {
+    _sessionStore!.get(sessionId, (err, session) => {
+      if (err || !session?.userId || !session?.email) {
+        resolve(null);
+        return;
+      }
+      resolve({
+        id: session.userId,
+        email: session.email,
+        isAdmin: !!session.isAdmin,
+      });
+    });
   });
 }
 

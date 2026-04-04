@@ -4,6 +4,7 @@ import { WebSocketServer } from "ws";
 import { buildActivitySnapshot } from "./snapshot.js";
 import { getIndexJobState } from "../indexing/job-store.js";
 import { getSyncState, getS3Config } from "../s3/sync.js";
+import { validateSessionFromCookie } from "../auth/middleware.js";
 
 const clients = new Set<WsClient>();
 
@@ -41,7 +42,7 @@ export function broadcastActivity(): void {
 export function attachActivityWebSocket(server: Server): void {
   const wss = new WebSocketServer({ noServer: true });
 
-  server.on("upgrade", (request, socket, head) => {
+  server.on("upgrade", async (request, socket, head) => {
     const host = request.headers.host ?? "localhost";
     const pathname = (() => {
       try {
@@ -56,6 +57,13 @@ export function attachActivityWebSocket(server: Server): void {
     }
 
     if (pathname !== "/ws/activity") {
+      socket.destroy();
+      return;
+    }
+
+    const cookieHeader = request.headers.cookie;
+    const user = await validateSessionFromCookie(cookieHeader);
+    if (!user) {
       socket.destroy();
       return;
     }

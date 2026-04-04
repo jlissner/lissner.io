@@ -11,36 +11,7 @@
 @import "./components/backup-auth.css";
 
 /* ========== App layout ========== */
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  font-family: var(--font-sans);
-}
-
-.app__body {
-  flex: 1;
-  display: flex;
-  min-height: 0;
-}
-
-.app--loading {
-  align-items: center;
-  justify-content: center;
-  font-size: var(--text-lg);
-  color: var(--color-text-muted);
-}
-
-.header__user {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.header__user-email {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
+/* .app, .app__body, .app--loading, .header__user, .header__user-email defined in shared-ui.css */
 
 .app__alert {
   flex-shrink: 0;
@@ -77,45 +48,7 @@
 }
 
 /* ========== Header ========== */
-.header {
-  flex-shrink: 0;
-  padding: var(--space-4) var(--space-6);
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-bg-elevated);
-}
-
-.header__top {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-}
-
-.header__top-actions {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-4);
-  flex: 1;
-  min-width: 0;
-  justify-content: flex-end;
-}
-
-.header__upload {
-  flex-shrink: 0;
-}
-
-.header__title {
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-xl);
-  font-weight: var(--font-medium);
-}
-
-.header__subtitle {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
+/* .header, .header__top, .header__top-actions, .header__upload, .header__title, .header__subtitle defined in shared-ui.css */
 
 .header-bar {
   display: flex;
@@ -150,21 +83,7 @@
 }
 
 /* ========== Nav ========== */
-.nav {
-  flex-shrink: 0;
-  width: 100%;
-  padding: var(--space-4) 0;
-  border-right: 1px solid var(--color-border);
-  background-color: var(--color-bg-elevated);
-  display: flex;
-  flex-direction: column;
-}
-
-@media (min-width: 640px) {
-  .nav {
-    width: 180px;
-  }
-}
+/* .nav defined in shared-ui.css */
 
 .nav__items {
   flex: 1;
@@ -198,135 +117,13 @@
 }
 
 /* ========== Main content ========== */
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  min-width: 0;
-  padding: var(--space-4);
-}
-
-@media (min-width: 768px) {
-  .main {
-    padding: var(--space-6);
-  }
-}
+/* .main defined in shared-ui.css */
 
 /* ========== Buttons ========== */
-.btn {
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-sm);
-  font-weight: var(--font-medium);
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition:
-    background-color 0.15s,
-    border-color 0.15s,
-    color 0.15s;
-}
-
-.btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.7;
-}
-
-.btn--primary {
-  border-color: transparent;
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-}
-
-.btn--primary:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.btn--secondary {
-  border-color: var(--color-border);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-}
-
-.btn--secondary:hover:not(:disabled) {
-  border-color: var(--color-border-subtle);
-  background: var(--color-bg-hover);
-}
-
-.btn--danger {
-  border-color: transparent;
-  background: #ef4444;
-  color: #fff;
-}
-
-.btn--danger:hover:not(:disabled) {
-  background: #dc2626;
-}
-
-.btn--success {
-  border-color: transparent;
-  background: var(--color-success);
-  color: #0f172a;
-}
-
-.btn--success:hover:not(:disabled) {
-  background: var(--color-success-hover);
-}
-
-.btn--ghost {
-  border: 1px dashed var(--color-border-subtle);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-}
-
-.btn--ghost:hover:not(:disabled) {
-  border-color: var(--color-border);
-  background: var(--color-bg-hover);
-}
-
-.btn--sm {
-  padding: var(--space-1) var(--space-3);
-  font-size: var(--text-xs);
-}
+/* .btn variants defined in shared-ui.css */
 
 /* ========== Modal ========== */
-.modal {
-  position: fixed;
-  inset: 0;
-  background-color: var(--color-overlay);
-  z-index: var(--z-modal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-4);
-}
-
-.modal__content {
-  background: var(--color-bg-elevated);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  min-width: 280px;
-  max-width: 100%;
-  box-shadow: var(--shadow-xl);
-}
-
-.modal__title {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-lg);
-  font-weight: var(--font-semibold);
-  color: var(--color-text);
-}
-
-.modal__body {
-  margin-bottom: var(--space-5);
-}
-
-.modal__actions {
-  display: flex;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
-  justify-content: flex-end;
-}
+/* .modal variants defined in shared-ui.css */
 
 /* ========== Match faces wizard ========== */
 .match-faces-modal {
@@ -480,38 +277,7 @@
 }
 
 /* ========== Form ========== */
-.form__group {
-  margin-bottom: var(--space-4);
-}
-
-.form__label {
-  display: block;
-  margin-bottom: var(--space-1);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-}
-
-.form__input,
-.form__select {
-  width: 100%;
-  padding: 10px var(--space-3);
-  font-size: var(--text-base);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--color-border);
-  background: var(--color-bg-elevated);
-  color: var(--color-text);
-}
-
-.form__input:focus,
-.form__select:focus {
-  outline: none;
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 2px var(--color-primary-bg);
-}
-
-.form__input::placeholder {
-  color: var(--color-text-subtle);
-}
+/* .form__group, .form__label, .form__input, .form__select defined in shared-ui.css */
 
 /* ========== Sidebar ========== */
 .sidebar {
@@ -986,49 +752,7 @@
 }
 
 /* ========== Alerts ========== */
-.alert {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  margin-bottom: var(--space-4);
-}
-
-.alert--warning {
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.45);
-  color: #fcd34d;
-}
-
-.alert--warning code {
-  background: rgba(255, 255, 255, 0.08);
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-}
-
-.alert--danger {
-  background: var(--color-danger-bg);
-  border: 1px solid rgba(248, 113, 113, 0.55);
-  color: #fecaca;
-}
-
-.alert--success {
-  background: var(--color-success-bg);
-  border: 1px solid rgba(52, 211, 153, 0.45);
-  color: #6ee7b7;
-}
-
-.alert--info {
-  background: rgba(96, 165, 250, 0.12);
-  border: 1px solid rgba(96, 165, 250, 0.45);
-  color: #93c5fd;
-}
-
-.alert p {
-  margin: var(--space-2) 0 0;
-}
-
-.alert ul {
-  margin: var(--space-2) 0 0 var(--space-4);
-}
+/* .alert variants defined in shared-ui.css */
 
 /* ========== Backup page ========== */
 .backup-page {
@@ -1289,11 +1013,6 @@
   margin-top: var(--space-4);
 }
 
-.form__input--sm {
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--text-sm);
-}
-
 .admin-page__sql {
   display: flex;
   flex-direction: column;
@@ -1346,12 +1065,7 @@
 }
 
 /* ========== Empty / loading states ========== */
-.empty {
-  color: var(--color-text-muted);
-  text-align: center;
-  padding: var(--space-8);
-  font-size: var(--text-sm);
-}
+/* .empty defined in shared-ui.css */
 
 /* ========== Upload zone ========== */
 .upload-zone {
@@ -2124,17 +1838,4 @@
 }
 
 /* ========== Card (shared UI primitive) ========== */
-.card {
-  background: var(--color-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-}
-
-.card--padding {
-  padding: var(--space-4);
-}
-
-.card--padding-lg {
-  padding: var(--space-6);
-}
+/* .card variants defined in shared-ui.css */
