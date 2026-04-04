@@ -1,9 +1,11 @@
 import type { FaceBox, TaggedFace } from "./media-viewer-types";
+import { ResizableFaceBox } from "./resizable-face-box";
 
 interface MediaViewerFaceOverlayProps {
   imgRef: React.RefObject<HTMLImageElement | null>;
   faces: { detected: FaceBox[]; tagged: TaggedFace[] } | null;
   assigningFace?: FaceBox | null;
+  onAssigningFaceChange?: (box: FaceBox) => void;
   /** When false, dashed detection boxes are hidden (manual tagging only). */
   showDetected?: boolean;
 }
@@ -12,30 +14,36 @@ export function MediaViewerFaceOverlay({
   imgRef,
   faces,
   assigningFace,
+  onAssigningFaceChange,
   showDetected = true,
 }: MediaViewerFaceOverlayProps) {
   const img = imgRef.current;
   if (!img) return null;
 
   const rect = img.getBoundingClientRect();
-  const scaleX = rect.width / img.naturalWidth;
-  const scaleY = rect.height / img.naturalHeight;
+  const naturalWidth = img.naturalWidth || 1;
+  const naturalHeight = img.naturalHeight || 1;
+  const scaleX = rect.width / naturalWidth;
+  const scaleY = rect.height / naturalHeight;
 
   return (
     <>
-      {assigningFace && (
-        <div
-          style={{
-            position: "absolute",
-            left: assigningFace.x * scaleX,
-            top: assigningFace.y * scaleY,
-            width: assigningFace.width * scaleX,
-            height: assigningFace.height * scaleY,
-            border: "2px solid #f59e0b",
-            borderRadius: 4,
-            backgroundColor: "rgba(245, 158, 11, 0.2)",
-          }}
-        />
+      {assigningFace && onAssigningFaceChange && (
+        <ResizableFaceBox box={assigningFace} imgRef={imgRef} onBoxChange={onAssigningFaceChange}>
+          <div
+            style={{
+              position: "absolute",
+              left: assigningFace.x * scaleX,
+              top: assigningFace.y * scaleY,
+              width: assigningFace.width * scaleX,
+              height: assigningFace.height * scaleY,
+              border: "2px solid #f59e0b",
+              borderRadius: 4,
+              backgroundColor: "rgba(245, 158, 11, 0.2)",
+              pointerEvents: "none",
+            }}
+          />
+        </ResizableFaceBox>
       )}
       {(faces?.tagged ?? []).map((t, i) => (
         <div

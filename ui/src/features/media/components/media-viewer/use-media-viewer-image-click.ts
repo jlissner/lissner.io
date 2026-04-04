@@ -25,11 +25,13 @@ export function useMediaViewerImageClick(
       const img = imgRef.current;
       if (!img) return null;
       const rect = img.getBoundingClientRect();
-      const scaleX = img.naturalWidth / rect.width;
-      const scaleY = img.naturalHeight / rect.height;
+      const naturalWidth = img.naturalWidth || 1;
+      const naturalHeight = img.naturalHeight || 1;
+      const scaleX = naturalWidth / rect.width;
+      const scaleY = naturalHeight / rect.height;
       const x = (e.clientX - rect.left) * scaleX;
       const y = (e.clientY - rect.top) * scaleY;
-      return { x, y, imgWidth: img.naturalWidth, imgHeight: img.naturalHeight };
+      return { x, y, imgWidth: naturalWidth, imgHeight: naturalHeight };
     },
     [imgRef]
   );

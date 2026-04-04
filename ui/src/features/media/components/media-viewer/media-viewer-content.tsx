@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { isImage, isPixelMotionPhotoBasename, isText, isVideo } from "./media-utils";
 import { PixelMpOrImageVideoPreview } from "./pixel-mp-preview";
 import { MediaViewerFaceOverlay } from "./media-viewer-face-overlay";
-import { MediaViewerAssignModal } from "./media-viewer-assign-modal";
 import { MediaViewerReassignModal } from "./media-viewer-reassign-modal";
 import { MediaViewerDetails } from "./media-viewer-details";
+import { InlineAssignBar } from "./inline-assign-bar";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
 import type { MediaItem } from "./media-utils";
@@ -41,9 +41,7 @@ export function MediaViewerContent({
   const previewUrl = `/api/media/${item.id}/preview`;
   const pixelMp = isPixelMotionPhotoBasename(item.originalName);
   const hasMotionPair = item.motionCompanionId != null && item.motionCompanionId !== "";
-  const motionVideoUrl = hasMotionPair
-    ? `/api/media/${item.motionCompanionId}/preview`
-    : "";
+  const motionVideoUrl = hasMotionPair ? `/api/media/${item.motionCompanionId}/preview` : "";
   const [pixelIsVideo, setPixelIsVideo] = useState(false);
   /** Paired `*.mp.jpg` + `*.mp`: default to motion video; user can switch to still only. */
   const [motionPairView, setMotionPairView] = useState<"video" | "still">("video");
@@ -87,7 +85,9 @@ export function MediaViewerContent({
       const active = document.activeElement as HTMLElement | null;
       const activeTag = active?.tagName?.toLowerCase();
       const typing =
-        activeTag === "input" || activeTag === "textarea" || active?.getAttribute("contenteditable") === "true";
+        activeTag === "input" ||
+        activeTag === "textarea" ||
+        active?.getAttribute("contenteditable") === "true";
       if (e.key === "Escape") {
         if (assigningFace) setAssigningFace(null);
         else if (reassigningFace) setReassigningFace(null);
@@ -154,17 +154,17 @@ export function MediaViewerContent({
         {isImage(item.mimeType, item.originalName) &&
           (!pixelMp || !pixelIsVideo) &&
           (!hasMotionPair || motionPairView === "still") && (
-          <Button
-            onClick={() => setTaggingMode((p) => !p)}
-            style={{
-              ...btnStyle,
-              background: taggingMode ? "var(--color-primary)" : btnStyle.background,
-            }}
-            variant="ghost"
-          >
-            {taggingMode ? "Exit tagging" : "Tagging mode"}
-          </Button>
-        )}
+            <Button
+              onClick={() => setTaggingMode((p) => !p)}
+              style={{
+                ...btnStyle,
+                background: taggingMode ? "var(--color-primary)" : btnStyle.background,
+              }}
+              variant="ghost"
+            >
+              {taggingMode ? "Exit tagging" : "Tagging mode"}
+            </Button>
+          )}
         {taggingMode &&
           isImage(item.mimeType, item.originalName) &&
           (!pixelMp || !pixelIsVideo) &&
@@ -207,40 +207,41 @@ export function MediaViewerContent({
           {isImage(item.mimeType, item.originalName) &&
             !pixelMp &&
             (!hasMotionPair || motionPairView === "still") && (
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <img
-                ref={imgRef}
-                src={previewUrl}
-                alt={item.originalName}
-                onClick={handleImageClick}
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "85vh",
-                  objectFit: "contain",
-                  cursor: taggingMode ? "crosshair" : "default",
-                }}
-              />
-              {taggingMode && (
-                <div
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <img
+                  ref={imgRef}
+                  src={previewUrl}
+                  alt={item.originalName}
+                  onClick={handleImageClick}
                   style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    pointerEvents: "none",
+                    maxWidth: "100%",
+                    maxHeight: "85vh",
+                    objectFit: "contain",
+                    cursor: taggingMode ? "crosshair" : "default",
                   }}
-                >
-                  <MediaViewerFaceOverlay
-                    imgRef={imgRef}
-                    faces={faces}
-                    assigningFace={assigningFace}
-                    showDetected={showDetectedFaces}
-                  />
-                </div>
-              )}
-            </div>
-          )}
+                />
+                {taggingMode && (
+                  <div
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    <MediaViewerFaceOverlay
+                      imgRef={imgRef}
+                      faces={faces}
+                      assigningFace={assigningFace}
+                      onAssigningFaceChange={setAssigningFace}
+                      showDetected={showDetectedFaces}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
           {pixelMp && !isVideo(item.mimeType) && (!hasMotionPair || motionPairView === "still") && (
             <div style={{ position: "relative", display: "inline-block" }}>
               <PixelMpOrImageVideoPreview
@@ -275,6 +276,7 @@ export function MediaViewerContent({
                     imgRef={imgRef}
                     faces={faces}
                     assigningFace={assigningFace}
+                    onAssigningFaceChange={setAssigningFace}
                     showDetected={showDetectedFaces}
                   />
                 </div>
@@ -287,7 +289,9 @@ export function MediaViewerContent({
             </p>
           )}
           {assigningFace && (
-            <MediaViewerAssignModal
+            <InlineAssignBar
+              box={assigningFace}
+              imgRef={imgRef}
               people={people}
               onAssign={handleAssignFace}
               onCancel={() => setAssigningFace(null)}
@@ -332,17 +336,17 @@ export function MediaViewerContent({
             !isVideo(item.mimeType) &&
             !pixelMp &&
             !isText(item.mimeType) && (
-            <p style={{ color: "var(--color-text-muted)" }}>
-              Preview not available.{" "}
-              <a
-                href={`/api/media/${item.id}`}
-                download={item.originalName}
-                style={{ color: "var(--color-primary)" }}
-              >
-                Download
-              </a>
-            </p>
-          )}
+              <p style={{ color: "var(--color-text-muted)" }}>
+                Preview not available.{" "}
+                <a
+                  href={`/api/media/${item.id}`}
+                  download={item.originalName}
+                  style={{ color: "var(--color-primary)" }}
+                >
+                  Download
+                </a>
+              </p>
+            )}
         </div>
         <aside className="viewer-content__details">
           <MediaViewerDetails
