@@ -10,7 +10,7 @@ import {
   updatePerson,
 } from "../api";
 import type { MergeSuggestion, Person } from "./people-types";
-import type { MediaPreview } from "./use-people-preview";
+import type { PersonMediaItem } from "./use-people-preview";
 
 function faceTagLabel(count: number): string {
   return count === 1 ? "face tag" : "face tags";
@@ -28,8 +28,8 @@ interface UsePeopleMutationsOptions {
   fetchPeople: (options?: { silent?: boolean }) => Promise<void>;
   onUpdate?: () => void;
   setSelectedId: (id: number | null) => void;
-  setPreviewMedia: Dispatch<SetStateAction<MediaPreview[]>>;
-  setViewingMedia: Dispatch<SetStateAction<MediaPreview | null>>;
+  setPreviewMedia: Dispatch<SetStateAction<PersonMediaItem[]>>;
+  setViewingMedia: Dispatch<SetStateAction<PersonMediaItem | null>>;
   setEditModal: Dispatch<SetStateAction<Person | null>>;
   setEditDraft: Dispatch<SetStateAction<string>>;
   setMergeModal: Dispatch<SetStateAction<Person | null>>;
@@ -184,4 +184,3 @@ export function usePeopleMutations({
     handleMergeFromSuggestion,
   };
 }
-

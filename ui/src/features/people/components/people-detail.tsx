@@ -1,30 +1,30 @@
 import { Button } from "@/components/ui/button";
-import { isImage, isPixelMotionPhotoBasename } from "@/features/media/components/media-viewer/media-utils";
+import {
+  isImage,
+  isPixelMotionPhotoBasename,
+  type MediaItem,
+} from "@/features/media/components/media-viewer/media-utils";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import type { MergeSuggestion } from "./people-types";
 
-interface MediaPreview {
-  id: string;
-  originalName?: string;
-  mimeType: string;
+export type PersonMediaItem = MediaItem & {
   x?: number;
   y?: number;
   width?: number;
   height?: number;
-  backedUp?: boolean;
-}
+};
 
 interface PeopleDetailProps {
   selectedId: number | null;
   selectedName: string;
   photoCount: number;
-  previewMedia: MediaPreview[];
+  previewMedia: PersonMediaItem[];
   previewLoading: boolean;
   mergeSuggestions: MergeSuggestion[];
   mergeSuggestionsLoading: boolean;
   onMergeIntoSuggestion: (mergeIntoPersonId: number) => void;
   onViewAllPhotos?: (personId: number) => void;
-  onPhotoClick: (m: MediaPreview) => void;
+  onPhotoClick: (m: MediaItem) => void;
 }
 
 export function PeopleDetail({
@@ -99,12 +99,12 @@ export function PeopleDetail({
       ) : (
         <div className="detail__grid">
           {images.map((m) => {
-            const hasBox = selectedId && m.x != null && m.width != null && m.width > 0;
+            const pm = m as PersonMediaItem;
+            const hasBox = selectedId && pm.x != null && pm.width != null && pm.width > 0;
             const thumbSrc = hasBox
               ? `/api/media/${m.id}/face/${selectedId}`
               : `/api/media/${m.id}/preview`;
-            const usePixelHybrid =
-              !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
+            const usePixelHybrid = !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
             return (
               <button
                 key={m.id}

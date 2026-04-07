@@ -5,9 +5,9 @@ import { PeopleDetail } from "./people-detail";
 import { PeopleEditModal } from "./people-edit-modal";
 import { PeopleMergeModal } from "./people-merge-modal";
 import { PeopleAddModal } from "./people-add-modal";
-import { PeopleImageViewer } from "./people-image-viewer";
 import { PeopleMatchFacesWizard } from "./people-match-faces-wizard";
-import { isImage } from "@/features/media/components/media-viewer/media-utils";
+import { isImage, type MediaItem } from "@/features/media/components/media-viewer/media-utils";
+import { MediaViewer } from "@/features/media/components/media-viewer";
 import { usePeoplePage } from "./use-people-page";
 import { runMatchFaces as runMatchFacesApi } from "../api";
 import type { FaceMatchRunResponse } from "./people-types";
@@ -22,8 +22,9 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const [matchFacesOpen, setMatchFacesOpen] = useState(false);
   const [matchFacesBusy, setMatchFacesBusy] = useState(false);
   const [matchFacesQueue, setMatchFacesQueue] = useState<FaceMatchRunResponse["reviewQueue"]>([]);
-  const [matchFacesAutoMerged, setMatchFacesAutoMerged] =
-    useState<FaceMatchRunResponse["autoMerged"]>([]);
+  const [matchFacesAutoMerged, setMatchFacesAutoMerged] = useState<
+    FaceMatchRunResponse["autoMerged"]
+  >([]);
 
   const {
     people,
@@ -49,8 +50,6 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     setMergeModal,
     mergeTargetId,
     setMergeTargetId,
-    handleReassign,
-    handleRemoveFromPhoto,
     handleMerge,
     handleSaveName,
     handleAddPerson,
@@ -146,13 +145,12 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
         />
       )}
       {viewingMedia && selectedId && (
-        <PeopleImageViewer
-          media={viewingMedia}
-          people={people}
-          selectedId={selectedId}
+        <MediaViewer
+          item={viewingMedia}
+          items={previewMedia as MediaItem[]}
+          onSelectItem={setViewingMedia}
           onClose={() => setViewingMedia(null)}
-          onReassign={handleReassign}
-          onRemove={handleRemoveFromPhoto}
+          onUpdate={onUpdate}
         />
       )}
       {matchFacesOpen && (

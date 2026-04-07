@@ -46,7 +46,7 @@ const peopleStmts = {
     "SELECT person_id as personId, x, y, width, height, confidence FROM image_people WHERE media_id = ? AND x IS NOT NULL AND y IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL"
   ),
   getMediaForPerson: db.prepare(
-    `SELECT m.id, m.original_name as originalName, m.mime_type as mimeType, ip.x, ip.y, ip.width, ip.height, m.backed_up_at as backedUpAt
+    `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude, m.backed_up_at as backedUpAt, m.motion_companion_id as motionCompanionId, m.hide_from_gallery as hideFromGallery, (SELECT 1 FROM embeddings e WHERE e.media_id = m.id LIMIT 1) as indexed, ip.x, ip.y, ip.width, ip.height
      FROM image_people ip
      JOIN media m ON m.id = ip.media_id
      WHERE ip.person_id = ? AND COALESCE(m.hide_from_gallery, 0) = 0
@@ -205,7 +205,16 @@ export function reassignPersonInMedia(
     | undefined;
   if (!row) return false;
   peopleStmts.deleteTagPair.run(mediaId, fromPersonId);
-  peopleStmts.replaceFace.run(mediaId, toPersonId, row.x, row.y, row.width, row.height, 1, "manual");
+  peopleStmts.replaceFace.run(
+    mediaId,
+    toPersonId,
+    row.x,
+    row.y,
+    row.width,
+    row.height,
+    1,
+    "manual"
+  );
   return true;
 }
 
@@ -280,22 +289,40 @@ export function getMediaForPerson(
   limit: number
 ): Array<{
   id: string;
+  filename: string;
   originalName: string;
   mimeType: string;
+  size: number;
+  uploadedAt: string;
+  dateTaken: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  backedUpAt: string | null;
+  motionCompanionId: string | null;
+  indexed: boolean;
+  hideFromGallery: boolean;
   x?: number;
   y?: number;
   width?: number;
   height?: number;
-  backedUpAt?: string | null;
 }> {
   return peopleStmts.getMediaForPerson.all(personId, limit) as Array<{
     id: string;
+    filename: string;
     originalName: string;
     mimeType: string;
+    size: number;
+    uploadedAt: string;
+    dateTaken: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    backedUpAt: string | null;
+    motionCompanionId: string | null;
+    indexed: boolean;
+    hideFromGallery: boolean;
     x?: number;
     y?: number;
     width?: number;
     height?: number;
-    backedUpAt?: string | null;
   }>;
 }

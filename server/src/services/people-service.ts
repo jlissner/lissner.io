@@ -7,19 +7,25 @@ import type {
 import * as db from "../db/media.js";
 import type { ServiceFailure } from "./service-result.js";
 
-export function getPersonMediaPreview(
-  personId: number,
-  limit: number
-): PersonMediaPreviewItem[] {
+export function getPersonMediaPreview(personId: number, limit: number): PersonMediaPreviewItem[] {
   const media = db.getMediaForPerson(personId, limit);
   return media.map((m) => ({
     id: m.id,
+    filename: m.filename,
     originalName: m.originalName,
     mimeType: m.mimeType,
+    size: m.size,
+    uploadedAt: m.uploadedAt,
+    dateTaken: m.dateTaken,
+    latitude: m.latitude,
+    longitude: m.longitude,
+    backedUpAt: m.backedUpAt,
+    motionCompanionId: m.motionCompanionId,
     x: m.x ?? null,
     y: m.y ?? null,
     width: m.width ?? null,
     height: m.height ?? null,
+    indexed: m.indexed,
     backedUp: !!m.backedUpAt,
   }));
 }
@@ -54,10 +60,7 @@ export type MergePeopleResult =
   | { ok: true; merged: number; into: number }
   | ServiceFailure<"invalid_ids" | "merge_into_self" | "not_found">;
 
-export function mergePeople(
-  mergeFromId: number,
-  mergeIntoId: number
-): MergePeopleResult {
+export function mergePeople(mergeFromId: number, mergeIntoId: number): MergePeopleResult {
   if (isNaN(mergeFromId) || mergeFromId < 1 || isNaN(mergeIntoId) || mergeIntoId < 1) {
     return { ok: false, reason: "invalid_ids" };
   }

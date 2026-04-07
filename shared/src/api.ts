@@ -110,15 +110,11 @@ export interface PersonSummary {
 }
 
 /** GET /api/people/:id/media */
-export interface PersonMediaPreviewItem {
-  id: string;
-  originalName: string;
-  mimeType: string;
+export interface PersonMediaPreviewItem extends MediaListItem {
   x: number | null;
   y: number | null;
   width: number | null;
   height: number | null;
-  backedUp: boolean;
 }
 
 /** POST /api/people */

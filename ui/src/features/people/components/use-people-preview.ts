@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
 import type { MergeSuggestion } from "./people-types";
 import { listMergeSuggestions, listPersonMediaPreviews } from "../api";
+import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
 
-export interface MediaPreview {
-  id: string;
-  originalName?: string;
-  mimeType: string;
+export type PersonMediaItem = MediaItem & {
   x?: number;
   y?: number;
   width?: number;
   height?: number;
-  backedUp?: boolean;
-}
+};
 
 interface UsePeoplePreviewOptions {
   selectedId: number | null;
@@ -19,7 +16,7 @@ interface UsePeoplePreviewOptions {
 }
 
 export function usePeoplePreview({ selectedId, selectedName }: UsePeoplePreviewOptions) {
-  const [previewMedia, setPreviewMedia] = useState<MediaPreview[]>([]);
+  const [previewMedia, setPreviewMedia] = useState<PersonMediaItem[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [mergeSuggestions, setMergeSuggestions] = useState<MergeSuggestion[]>([]);
   const [mergeSuggestionsLoading, setMergeSuggestionsLoading] = useState(false);
@@ -56,7 +53,7 @@ export function usePeoplePreview({ selectedId, selectedName }: UsePeoplePreviewO
     }
     setPreviewLoading(true);
     listPersonMediaPreviews(selectedId)
-      .then((data) => setPreviewMedia(data as MediaPreview[]))
+      .then((data) => setPreviewMedia(data as PersonMediaItem[]))
       .catch(() => setPreviewMedia([]))
       .finally(() => setPreviewLoading(false));
   }, [selectedId]);
@@ -70,4 +67,3 @@ export function usePeoplePreview({ selectedId, selectedName }: UsePeoplePreviewO
     mergeSuggestionsLoading,
   };
 }
-

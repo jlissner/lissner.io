@@ -126,7 +126,10 @@ export async function getFaceCropOrFullImage(mediaId: string, personId: number) 
       const top = Math.round(Math.max(0, box.y));
       const width = Math.round(Math.max(1, box.width));
       const height = Math.round(Math.max(1, box.height));
-      const buffer = await sharp(filePath).extract({ left, top, width, height }).toBuffer();
+      const buffer = await sharp(filePath)
+        .rotate()
+        .extract({ left, top, width, height })
+        .toBuffer();
       return {
         ok: true as const,
         kind: "buffer" as const,
@@ -156,11 +159,17 @@ export async function getMediaPreviewFile(mediaId: string) {
     return { ok: false as const, reason: "file_missing" as const };
   }
   const filePath = path.join(mediaDir, item.filename);
-  const { mimeTypePreview } = await sniffAndPersistMediaMime(item, filePath, db.updateMediaMimeType);
+  const { mimeTypePreview } = await sniffAndPersistMediaMime(
+    item,
+    filePath,
+    db.updateMediaMimeType
+  );
+  const rotated = await sharp(filePath).rotate().toBuffer();
   return {
     ok: true as const,
-    path: filePath,
+    kind: "buffer" as const,
     mimeType: mimeTypePreview,
+    buffer: rotated,
   };
 }
 
@@ -222,7 +231,10 @@ export async function readTextMediaContent(mediaId: string) {
 
 export async function getThumbnailResponse(mediaId: string): Promise<
   | { ok: true; kind: "file"; path: string; contentType: string }
-  | { ok: false; reason: "not_found" | "bad_type" | "file_missing" | "ffmpeg_missing" | "thumb_failed" }
+  | {
+      ok: false;
+      reason: "not_found" | "bad_type" | "file_missing" | "ffmpeg_missing" | "thumb_failed";
+    }
 > {
   const item = db.getMediaById(mediaId);
   if (!item) {

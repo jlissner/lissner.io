@@ -1,9 +1,9 @@
 import { useState } from "react";
 import type { Person } from "./people-types";
-import type { MediaPreview } from "./use-people-preview";
+import type { PersonMediaItem } from "./use-people-preview";
 
 export function usePeopleUiState() {
-  const [viewingMedia, setViewingMedia] = useState<MediaPreview | null>(null);
+  const [viewingMedia, setViewingMedia] = useState<PersonMediaItem | null>(null);
   const [menuOpen, setMenuOpen] = useState<number | null>(null);
   const [editModal, setEditModal] = useState<Person | null>(null);
   const [editDraft, setEditDraft] = useState("");
@@ -28,4 +28,3 @@ export function usePeopleUiState() {
     setAddModalOpen,
   };
 }
-
