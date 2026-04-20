@@ -168,14 +168,14 @@ export function AuthenticatedApp() {
       )}
       <header className="header">
         <div className="header__top">
-          <div>
-            <h1 className="header__title">Family Media Manager</h1>
-            <p className="header__subtitle u-text-muted">
-              Upload and manage your family photos, videos, and documents.
-            </p>
-          </div>
+          <h1 className="header__title">Family Media</h1>
           <div className="header__top-actions">
-            <Button variant="primary" className="header__upload" onClick={handleOpenUploadModal}>
+            <Button
+              variant="primary"
+              size="sm"
+              className="header__upload"
+              onClick={handleOpenUploadModal}
+            >
               Upload
             </Button>
             {showAccount && (

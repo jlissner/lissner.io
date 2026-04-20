@@ -86,7 +86,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   }
 
   return (
-    <div className="u-flex u-flex-1 u-min-h-0 u-overflow-hidden">
+    <div className="people-layout">
       <PeopleSidebar
         people={people}
         selectedId={selectedId}

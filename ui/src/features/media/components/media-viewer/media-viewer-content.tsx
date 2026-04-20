@@ -115,28 +115,18 @@ export function MediaViewerContent({
     goNext,
   ]);
 
-  const btnStyle = {
-    background: "rgba(255, 255, 255, 0.12)",
-    border: "none",
-    borderRadius: 8,
-    color: "var(--color-text-inverse)",
-    padding: "8px 16px",
-    cursor: "pointer",
-    fontSize: "0.875rem",
-  } as const;
-
   return (
     <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       <div className="viewer-content__actions">
-        <Button onClick={goPrev} style={btnStyle} variant="ghost" disabled={!prevItem}>
+        <Button onClick={goPrev} variant="secondary" size="sm" disabled={!prevItem}>
           Prev
         </Button>
-        <Button onClick={goNext} style={btnStyle} variant="ghost" disabled={!nextItem}>
+        <Button onClick={goNext} variant="secondary" size="sm" disabled={!nextItem}>
           Next
         </Button>
         {hasMotionPair && motionPairView === "video" && (
-          <Button onClick={() => setMotionPairView("still")} style={btnStyle} variant="ghost">
-            View still image
+          <Button onClick={() => setMotionPairView("still")} variant="secondary" size="sm">
+            Still
           </Button>
         )}
         {hasMotionPair && motionPairView === "still" && (
@@ -145,10 +135,10 @@ export function MediaViewerContent({
               setMotionPairView("video");
               setTaggingMode(() => false);
             }}
-            style={btnStyle}
-            variant="ghost"
+            variant="secondary"
+            size="sm"
           >
-            View motion
+            Motion
           </Button>
         )}
         {isImage(item.mimeType, item.originalName) &&
@@ -156,39 +146,26 @@ export function MediaViewerContent({
           (!hasMotionPair || motionPairView === "still") && (
             <Button
               onClick={() => setTaggingMode((p) => !p)}
-              style={{
-                ...btnStyle,
-                background: taggingMode ? "var(--color-primary)" : btnStyle.background,
-              }}
-              variant="ghost"
+              variant={taggingMode ? "primary" : "secondary"}
+              size="sm"
             >
-              {taggingMode ? "Exit tagging" : "Tagging mode"}
+              {taggingMode ? "Exit tagging" : "Tag faces"}
             </Button>
           )}
         {taggingMode &&
           isImage(item.mimeType, item.originalName) &&
           (!pixelMp || !pixelIsVideo) &&
           (!hasMotionPair || motionPairView === "still") && (
-            <label
-              style={{
-                ...btnStyle,
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 8,
-                cursor: "pointer",
-                userSelect: "none",
-              }}
-            >
+            <label className="viewer-content__toggle">
               <input
                 type="checkbox"
                 checked={showDetectedFaces}
                 onChange={(e) => setShowDetectedFaces(e.target.checked)}
-                style={{ accentColor: "var(--color-primary)", cursor: "pointer" }}
               />
-              <span>Face detections</span>
+              <span>Detections</span>
             </label>
           )}
-        <Button onClick={onClose} style={btnStyle} variant="ghost">
+        <Button onClick={onClose} variant="secondary" size="sm">
           Close
         </Button>
       </div>

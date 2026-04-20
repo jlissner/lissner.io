@@ -62,6 +62,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [dbBackupsError, setDbBackupsError] = useState<string | null>(null);
   const [dbBackupsLoading, setDbBackupsLoading] = useState(false);
   const [restoringBackupKey, setRestoringBackupKey] = useState<string | null>(null);
+  const [dbBackupsShowAll, setDbBackupsShowAll] = useState(false);
+
+  const BACKUP_PAGE_SIZE = 5;
 
   const sortedDbBackups = useMemo(() => {
     if (dbBackups == null) return [];
@@ -69,6 +72,11 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       (a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
     );
   }, [dbBackups]);
+
+  const visibleDbBackups = dbBackupsShowAll
+    ? sortedDbBackups
+    : sortedDbBackups.slice(0, BACKUP_PAGE_SIZE);
+  const hasMoreBackups = sortedDbBackups.length > BACKUP_PAGE_SIZE;
 
   const fetchDbBackups = useCallback(async () => {
     setDbBackupsLoading(true);
@@ -288,28 +296,45 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
             </p>
           )}
         {sortedDbBackups.length > 0 && (
-          <ul className="admin-page__list">
-            {sortedDbBackups.map((b) => (
-              <li key={b.key} className="admin-page__list-item admin-page__list-item--stacked">
-                <div>
-                  <code className="admin-page__meta">{b.key}</code>
-                  <span className="admin-page__meta">
-                    {" "}
-                    · {formatBackupDisplayDate(b.lastModified)} · {formatBytes(b.size)}
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  variant="danger"
-                  size="sm"
-                  onClick={() => void handleRestoreDbBackup(b.key)}
-                  disabled={restoringBackupKey !== null}
-                >
-                  {restoringBackupKey === b.key ? "Restoring…" : "Restore"}
-                </Button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul className="admin-page__list">
+              {visibleDbBackups.map((b) => {
+                const filename = b.key.split("/").pop() ?? b.key;
+                return (
+                  <li key={b.key} className="admin-page__list-item admin-page__list-item--stacked">
+                    <div>
+                      <code className="admin-page__meta" title={b.key}>
+                        {filename}
+                      </code>
+                      <span className="admin-page__meta">
+                        {" "}
+                        · {formatBackupDisplayDate(b.lastModified)} · {formatBytes(b.size)}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      size="sm"
+                      onClick={() => void handleRestoreDbBackup(b.key)}
+                      disabled={restoringBackupKey !== null}
+                    >
+                      {restoringBackupKey === b.key ? "Restoring…" : "Restore"}
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+            {hasMoreBackups && !dbBackupsShowAll && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDbBackupsShowAll(true)}
+                style={{ marginTop: "var(--space-2)" }}
+              >
+                Show all {sortedDbBackups.length} backups
+              </Button>
+            )}
+          </>
         )}
       </section>
 

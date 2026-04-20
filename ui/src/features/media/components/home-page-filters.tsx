@@ -37,11 +37,11 @@ export function HomePageFilters({
         </select>
       </label>
       <label className="filters__label">
-        <span>Columns:</span>
+        <span>Cols:</span>
         <input
           type="range"
-          min={1}
-          max={16}
+          min={2}
+          max={12}
           value={columnsPerRow}
           onChange={(e) => setColumnsPerRow(Number(e.target.value))}
           className="filters__range"

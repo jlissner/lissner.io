@@ -7,7 +7,6 @@ interface HomePageToolbarProps {
   searching: boolean;
   onIndex: (force: boolean) => void;
   indexPolling: boolean;
-  /** Search / index API failures only (progress lives in the activity overlay). */
   toolbarError: string | null;
 }
 
@@ -30,21 +29,18 @@ export function HomePageToolbar({
           onChange={(e) => setSearchQuery(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onSearch()}
           className="form__input toolbar__search"
+          enterKeyHint="search"
         />
-        <Button onClick={onSearch} disabled={searching}>
+        <Button onClick={onSearch} disabled={searching} size="sm">
           {searching ? "Searching…" : "Search"}
-        </Button>
-        <Button variant="secondary" onClick={() => onIndex(false)} disabled={indexPolling}>
-          Index for AI search
         </Button>
         <Button
           variant="secondary"
           size="sm"
-          onClick={() => onIndex(true)}
+          onClick={() => onIndex(false)}
           disabled={indexPolling}
-          title="Re-index all files (including already indexed)"
         >
-          Re-index all
+          {indexPolling ? "Indexing…" : "Index"}
         </Button>
       </div>
       {toolbarError && <p className="toolbar__status toolbar__status--danger">{toolbarError}</p>}
