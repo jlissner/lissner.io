@@ -103,4 +103,3 @@ export function useMediaListQuery({ personFilter, isSearchMode }: UseMediaListQu
     setSortBy,
   };
 }
-

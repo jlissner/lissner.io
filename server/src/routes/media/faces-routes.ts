@@ -129,4 +129,3 @@ mediaFacesRouter.post("/:id/people", (req, res) => {
   }
   sendApiError(res, 400, "Person not found", "face_person_unknown");
 });
-

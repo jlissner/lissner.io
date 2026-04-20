@@ -1,43 +1,56 @@
-import { applyNodeRuntimeCompat } from "./bootstrap/runtime-compat.js";
-import { createConfiguredApp, createConfiguredHttpServer } from "./bootstrap/server.js";
-import { ensureServerDirectories, runServerStartedTasks, runStartupMaintenance } from "./bootstrap/startup-tasks.js";
-import { attachActivityWebSocket, broadcastActivity } from "./activity/broadcast.js";
-import { setIndexJobChangeListener } from "./indexing/job-store.js";
-import { getS3Config, setSyncChangeListener } from "./s3/sync.js";
-import { PORT } from "./config/env.js";
+import { SERVER_PORT } from "./config/env.js";
 import { dbDir, mediaDir, thumbnailsDir, uiDistDir } from "./config/paths.js";
 import { logger } from "./logger.js";
+import { maybeRestoreDbFromLatestS3BackupOnStartup } from "./s3/startup-db-restore.js";
 
-applyNodeRuntimeCompat();
-ensureServerDirectories({ mediaDir, dbDir, thumbnailsDir });
-const app = createConfiguredApp(uiDistDir);
-runStartupMaintenance();
-const server = createConfiguredHttpServer(app);
+async function main(): Promise<void> {
+  const { ensureServerDirectories, runServerStartedTasks, runStartupMaintenance } =
+    await import("./bootstrap/startup-tasks.js");
 
-setIndexJobChangeListener(() => broadcastActivity());
-setSyncChangeListener(() => broadcastActivity());
-attachActivityWebSocket(server);
+  ensureServerDirectories({ mediaDir, dbDir, thumbnailsDir });
 
-server.listen(PORT, () => {
-  logger.info({ port: PORT }, "Server listening");
-  runServerStartedTasks();
+  // Must happen before any DB modules are imported (DB opens at first `getDb()` call).
+  await maybeRestoreDbFromLatestS3BackupOnStartup();
 
-  const s3 = getS3Config();
-  if (!s3.configured) {
-    logger.warn(
-      { missingVars: s3.missingVars },
-      "S3 backup not configured; set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and S3_BUCKET to enable sync"
-    );
-  }
-});
-server.on("error", (err: NodeJS.ErrnoException) => {
-  if (err.code === "EADDRINUSE") {
-    logger.error(
-      { port: PORT, err },
-      "Port already in use; stop the other process or change PORT (and the /api proxy in ui/vite.config.ts)"
-    );
-  } else {
-    logger.error({ err }, "Server listen error");
-  }
+  const { createConfiguredApp, createConfiguredHttpServer } = await import("./bootstrap/server.js");
+  const { attachActivityWebSocket, broadcastActivity } = await import("./activity/broadcast.js");
+  const { setIndexJobChangeListener } = await import("./indexing/job-store.js");
+  const { getS3Config, setSyncChangeListener } = await import("./s3/sync.js");
+
+  const app = createConfiguredApp(uiDistDir);
+  void runStartupMaintenance();
+  const server = createConfiguredHttpServer(app);
+
+  setIndexJobChangeListener(() => broadcastActivity());
+  setSyncChangeListener(() => broadcastActivity());
+  attachActivityWebSocket(server);
+
+  server.listen(SERVER_PORT, "0.0.0.0", () => {
+    logger.info({ port: SERVER_PORT }, "Server listening");
+    runServerStartedTasks();
+
+    const s3 = getS3Config();
+    if (!s3.configured) {
+      logger.warn(
+        { missingVars: s3.missingVars },
+        "S3 backup not configured; set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and S3_BUCKET to enable sync"
+      );
+    }
+  });
+  server.on("error", (err: NodeJS.ErrnoException) => {
+    if (err.code === "EADDRINUSE") {
+      logger.error(
+        { port: SERVER_PORT, err },
+        "Port already in use; stop the other process or change PORT (and API_PROXY_TARGET / SERVER_HOST for the Vite dev proxy)"
+      );
+    } else {
+      logger.error({ err }, "Server listen error");
+    }
+    process.exit(1);
+  });
+}
+
+void main().catch((err) => {
+  logger.error({ err }, "Fatal startup error");
   process.exit(1);
 });

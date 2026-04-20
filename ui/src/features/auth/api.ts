@@ -7,4 +7,3 @@ export function sendMagicLink(email: string): Promise<{ ok: true }> {
     body: JSON.stringify({ email }),
   });
 }
-

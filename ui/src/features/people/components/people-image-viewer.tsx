@@ -56,7 +56,10 @@ export function PeopleImageViewer({
             Close
           </Button>
           <div className="u-flex u-items-center u-gap-2">
-            <label className="u-text-sm u-text-subtle" htmlFor="people-image-viewer-reassign-select">
+            <label
+              className="u-text-sm u-text-subtle"
+              htmlFor="people-image-viewer-reassign-select"
+            >
               Reassign to:
             </label>
             <select

@@ -12,12 +12,7 @@ function isUploadClientDisconnect(err: unknown): boolean {
   return code === "ECONNRESET" || code === "EPIPE" || code === "ECONNABORTED";
 }
 
-export function errorHandler(
-  err: unknown,
-  req: Request,
-  res: Response,
-  _next: NextFunction
-): void {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   if (isHttpError(err)) {
     res.status(err.statusCode).json({
       error: err.message,

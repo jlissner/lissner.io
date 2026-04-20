@@ -1,3 +1,4 @@
+import { parse as parseUrl } from "node:url";
 import type { Server } from "node:http";
 import type { WebSocket as WsClient } from "ws";
 import { WebSocketServer } from "ws";
@@ -43,14 +44,7 @@ export function attachActivityWebSocket(server: Server): void {
   const wss = new WebSocketServer({ noServer: true });
 
   server.on("upgrade", async (request, socket, head) => {
-    const host = request.headers.host ?? "localhost";
-    const pathname = (() => {
-      try {
-        return new URL(request.url ?? "/", `http://${host}`).pathname;
-      } catch {
-        return null;
-      }
-    })();
+    const pathname = parseUrl(request.url ?? "/", false).pathname ?? null;
     if (pathname === null) {
       socket.destroy();
       return;

@@ -23,6 +23,7 @@ import {
 import { mediaDir } from "../config/paths.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { isTextMime, isVideoMime } from "../lib/media-mime.js";
+import { computeAndStoreHash } from "../services/duplicate-detection.js";
 import { logger } from "../logger.js";
 
 interface MediaItem {
@@ -140,9 +141,9 @@ async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: stri
     } catch (err) {
       const code = (err as NodeJS.ErrnoException)?.code;
       if (code === "ENOENT") {
-        throw new Error(FFPROBE_NOT_FOUND);
+        throw new Error(FFPROBE_NOT_FOUND, { cause: err });
       }
-      throw new Error(`ffprobe failed: ${err instanceof Error ? err.message : String(err)}`);
+      throw new Error(`ffprobe failed: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
     }
   })();
   const data = JSON.parse(stdout) as {
@@ -202,6 +203,9 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
       if (!text.trim()) return false;
       const embedding = await getEmbedding(text.slice(0, 8000));
       db.upsertEmbedding(item.id, embedding);
+      if (isEffectiveImageItem(item)) {
+        await computeAndStoreHash(item.id);
+      }
       return true;
     } catch (err) {
       logger.error({ err, originalName: item.originalName }, "Auto-index failed");
@@ -224,9 +228,7 @@ export async function indexMediaItems(
   setIndexProgress(0, toIndex.length);
 
   const imageItems = toIndex.filter((i) => isEffectiveImageItem(i));
-  const videoItems = toIndex.filter(
-    (i) => isVideoMime(i.mimeType) && !isEffectiveImageItem(i)
-  );
+  const videoItems = toIndex.filter((i) => isVideoMime(i.mimeType) && !isEffectiveImageItem(i));
   const imageIds = [...new Set(imageItems.map((i) => i.id))];
   const imageItemsById = new Map(imageItems.map((i) => [i.id, i]));
 

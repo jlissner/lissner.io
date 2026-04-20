@@ -1,5 +1,9 @@
 import { ApiError, apiFetch, apiJson } from "@/api/client";
-import type { MediaDetailsApiResponse, MediaPatchRequest, MediaPatchResponse } from "../../../../shared/src/api.js";
+import type {
+  MediaDetailsApiResponse,
+  MediaPatchRequest,
+  MediaPatchResponse,
+} from "../../../../shared/src/api.js";
 import type { FaceBox, TaggedFace } from "./components/media-viewer/media-viewer-types";
 import type { Person } from "../people/components/people-types";
 
@@ -90,4 +94,3 @@ export function listPeopleForTagging(): Promise<Person[]> {
 }
 
 export type { MediaPatchResponse };
-

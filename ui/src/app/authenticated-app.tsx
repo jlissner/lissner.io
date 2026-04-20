@@ -1,4 +1,12 @@
-import { lazy, Suspense, useCallback, useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { NavMenu, NavMenuItem } from "@/components/ui/nav-menu";
@@ -63,6 +71,7 @@ function navigateToPage(
 
 export function AuthenticatedApp() {
   const { authEnabled, user, logout } = useAuth();
+  const canLogOut = authEnabled === true && user != null;
   const activity = useActivity();
   const s3Config = activity
     ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
@@ -110,7 +119,7 @@ export function AuthenticatedApp() {
   const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
-  const showUserInfo = authEnabled && user != null;
+  const showAccount = user != null;
 
   let mainPage: ReactNode = null;
   if (page === "home") {
@@ -166,19 +175,17 @@ export function AuthenticatedApp() {
             </p>
           </div>
           <div className="header__top-actions">
-            <Button
-              variant="primary"
-              className="header__upload"
-              onClick={handleOpenUploadModal}
-            >
+            <Button variant="primary" className="header__upload" onClick={handleOpenUploadModal}>
               Upload
             </Button>
-            {showUserInfo && (
+            {showAccount && (
               <div className="header__user">
                 <span className="header__user-email">{user.email}</span>
-                <Button variant="ghost" size="sm" onClick={() => logout()}>
-                  Logout
-                </Button>
+                {canLogOut && (
+                  <Button variant="ghost" size="sm" onClick={() => void logout()}>
+                    Log out
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -188,11 +195,30 @@ export function AuthenticatedApp() {
         <nav className="nav">
           <NavMenu>
             {navItems.map((item) => (
-              <NavMenuItem key={item.id} active={page === item.id} onClick={() => navigateTo(item.id)}>
+              <NavMenuItem
+                key={item.id}
+                active={page === item.id}
+                onClick={() => navigateTo(item.id)}
+              >
                 {item.label}
               </NavMenuItem>
             ))}
           </NavMenu>
+          {showAccount && (
+            <div className="nav__account">
+              <div className="nav__account-email">{user.email}</div>
+              {canLogOut && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="nav__account-logout"
+                  onClick={() => void logout()}
+                >
+                  Log out
+                </Button>
+              )}
+            </div>
+          )}
         </nav>
         <main className="main">
           <Suspense fallback={<div className="u-pad">Loading…</div>}>{mainPage}</Suspense>

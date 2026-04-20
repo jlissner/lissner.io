@@ -1,7 +1,9 @@
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { unlink } from "fs/promises";
 import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
 import { logger } from "../logger.js";
 import { createS3Client, getS3Config } from "./sync-client.js";
 import { S3_PREFIX } from "./sync-constants.js";
@@ -14,18 +16,12 @@ function isS3NoSuchKey(err: unknown): boolean {
 }
 
 /** Remove a media blob and its video thumbnail (if any) from S3 after local delete. Best-effort; logs errors. */
-export async function deleteMediaFromS3(item: {
-  id: string;
-  filename: string;
-}): Promise<void> {
+export async function deleteMediaFromS3(item: { id: string; filename: string }): Promise<void> {
   if (!getS3Config().configured) return;
   const client = createS3Client();
   if (!client) return;
   const bucket = process.env.S3_BUCKET!;
-  const keys = [
-    `${S3_PREFIX}/media/${item.filename}`,
-    `${S3_PREFIX}/thumbnails/${item.id}.jpg`,
-  ];
+  const keys = [`${S3_PREFIX}/media/${item.filename}`, `${S3_PREFIX}/thumbnails/${item.id}.jpg`];
   for (const Key of keys) {
     try {
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
@@ -74,7 +70,8 @@ export async function tryRestoreMediaFromBackup(item: {
 /** Download a cached video thumbnail from S3 when present in backup. */
 export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promise<boolean> {
   const thumbPath = path.join(thumbnailsDir, `${mediaId}.jpg`);
-  if (await fileExists(thumbPath)) return true;
+  if (await isUsableVideoThumbnailFile(thumbPath)) return true;
+  await unlink(thumbPath).catch(() => {});
   const client = createS3Client();
   if (!client) return false;
   const bucket = process.env.S3_BUCKET!;
@@ -88,7 +85,7 @@ export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promi
     const body = getRes.Body;
     if (!body) return false;
     await downloadS3ObjectToFile(body, thumbPath);
-    return true;
+    return isUsableVideoThumbnailFile(thumbPath);
   } catch (err) {
     if (isS3NoSuchKey(err)) {
       return false;

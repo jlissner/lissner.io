@@ -36,4 +36,3 @@ export const addPersonToMediaBodySchema = z.object({
   box: faceBoxSchema.optional(),
   createNew: z.boolean().optional(),
 });
-

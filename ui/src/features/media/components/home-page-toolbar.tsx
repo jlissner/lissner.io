@@ -47,9 +47,7 @@ export function HomePageToolbar({
           Re-index all
         </Button>
       </div>
-      {toolbarError && (
-        <p className="toolbar__status toolbar__status--danger">{toolbarError}</p>
-      )}
+      {toolbarError && <p className="toolbar__status toolbar__status--danger">{toolbarError}</p>}
     </>
   );
 }

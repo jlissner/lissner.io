@@ -17,10 +17,7 @@ function deletePersonButtonLabel(faceTagCount: number | undefined): string {
   return `Delete person (${faceTagCount} face ${pluralize("tag", faceTagCount)})`;
 }
 
-function deletePersonConfirmMessage(
-  placeholderName: string,
-  count: number | undefined
-): string {
+function deletePersonConfirmMessage(placeholderName: string, count: number | undefined): string {
   if (count == null) {
     return `Delete "${placeholderName}"? All face tags for this person will be removed.`;
   }
@@ -322,10 +319,7 @@ export function PeopleMatchFacesWizard({
   const handleDeletePerson = useCallback(async () => {
     if (!current) return;
     const count = namedPeople.find((p) => p.id === current.placeholderPersonId)?.photoCount;
-    const skipConfirm =
-      count === 1 &&
-      current.topMatch != null &&
-      current.topMatch.score < 0.5;
+    const skipConfirm = count === 1 && current.topMatch != null && current.topMatch.score < 0.5;
     if (!skipConfirm) {
       const confirmMsg = deletePersonConfirmMessage(current.placeholderName, count);
       if (!confirm(confirmMsg)) return;

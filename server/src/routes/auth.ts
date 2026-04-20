@@ -34,7 +34,7 @@ authRouter.post("/magic-link", async (req, res) => {
   }
 
   const { token } = authDb.createMagicLinkToken(normalized);
-  const baseUrl = getMagicLinkBaseUrl(req);
+  const baseUrl = getMagicLinkBaseUrl();
   const link = `${baseUrl}/api/auth/verify?token=${token}`;
 
   try {
@@ -48,7 +48,7 @@ authRouter.post("/magic-link", async (req, res) => {
 
 authRouter.get("/verify", async (req, res) => {
   const token = req.query.token as string;
-  const baseUrl = getMagicLinkBaseUrl(req);
+  const baseUrl = getMagicLinkBaseUrl();
   if (!token) {
     res.redirect(`${baseUrl}/?error=missing_token`);
     return;
@@ -71,8 +71,18 @@ authRouter.get("/verify", async (req, res) => {
 });
 
 authRouter.post("/logout", (req, res) => {
-  req.session?.destroy(() => {});
-  res.json({ ok: true });
+  if (!req.session) {
+    res.json({ ok: true });
+    return;
+  }
+  req.session.destroy((err) => {
+    if (err) {
+      logger.error({ err }, "Session destroy failed");
+      sendApiError(res, 500, "Logout failed", "internal_error");
+      return;
+    }
+    res.json({ ok: true });
+  });
 });
 
 authRouter.get("/me", (req, res) => {

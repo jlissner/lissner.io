@@ -19,11 +19,7 @@ export function DropdownMenuItem({
   return (
     <button
       type={type}
-      className={cn(
-        "dropdown__item",
-        variant === "danger" && "dropdown__item--danger",
-        className
-      )}
+      className={cn("dropdown__item", variant === "danger" && "dropdown__item--danger", className)}
       {...props}
     />
   );

@@ -6,6 +6,7 @@ import * as authDb from "../db/auth.js";
 import * as db from "../db/media.js";
 import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../config/paths.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
+import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
 import { logger } from "../logger.js";
 import { createS3Client, getS3Config } from "./sync-client.js";
 import { S3_PREFIX } from "./sync-constants.js";
@@ -117,9 +118,16 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     // Mark media already in S3 (from previous syncs) as backed up
     db.markMediaBackedUpByFilenames([...s3MediaFilenames]);
 
-    // 3. Upload thumbnails (only if not already in S3)
+    // 3. Upload thumbnails (only if not already in S3; skip empty/corrupt local files)
     const localThumbs = await readdir(thumbnailsDir).catch(() => []);
-    const toUploadThumbs = localThumbs.filter((f) => !s3ThumbFilenames.has(f));
+    const toUploadThumbs: string[] = [];
+    for (const f of localThumbs) {
+      if (s3ThumbFilenames.has(f)) continue;
+      const thumbPath = path.join(thumbnailsDir, f);
+      if (await isUsableVideoThumbnailFile(thumbPath)) {
+        toUploadThumbs.push(f);
+      }
+    }
 
     report({
       phase: "upload-thumbnails",
@@ -197,10 +205,8 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     );
     const toDownloadThumbs: string[] = [];
     for (const id of videoIds) {
-      if (
-        !(await fileExists(path.join(thumbnailsDir, `${id}.jpg`))) &&
-        s3ThumbFilenames.has(`${id}.jpg`)
-      ) {
+      const thumbPath = path.join(thumbnailsDir, `${id}.jpg`);
+      if (!(await isUsableVideoThumbnailFile(thumbPath)) && s3ThumbFilenames.has(`${id}.jpg`)) {
         toDownloadThumbs.push(id);
       }
     }
@@ -262,16 +268,16 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
           `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude FROM media`
         )
         .all() as Array<{
-          id: string;
-          filename: string;
-          originalName: string;
-          mimeType: string;
-          size: number;
-          uploadedAt: string;
-          dateTaken?: string | null;
-          latitude?: number | null;
-          longitude?: number | null;
-        }>;
+        id: string;
+        filename: string;
+        originalName: string;
+        mimeType: string;
+        size: number;
+        uploadedAt: string;
+        dateTaken?: string | null;
+        latitude?: number | null;
+        longitude?: number | null;
+      }>;
 
       const toMerge = backupRows.filter((r) => !localIds.has(r.id));
       report({

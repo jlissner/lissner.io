@@ -17,7 +17,10 @@ interface UseMediaViewerFacesOptions {
   onTagChange?: () => void;
 }
 
-function getAssignFaceBody(personId: number | "new", assigningFace: FaceBox): {
+function getAssignFaceBody(
+  personId: number | "new",
+  assigningFace: FaceBox
+): {
   createNew?: true;
   personId?: number;
   box: FaceBox;

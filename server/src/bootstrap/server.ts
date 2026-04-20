@@ -23,6 +23,16 @@ import { requestLogger } from "../logger.js";
 
 export function createConfiguredApp(uiDistDir: string) {
   const app = express();
+  app.set("trust proxy", true);
+
+  app.get("/", (req, _res, next) => {
+    req.log.info("REQUEST RECIEVED");
+    next();
+  });
+
+  app.get("/health", (_req, res) => {
+    res.status(200).type("text/plain").send("ok");
+  });
 
   app.use(cors({ origin: true, credentials: true }));
   app.use(requestLogger);

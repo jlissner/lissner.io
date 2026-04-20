@@ -74,7 +74,11 @@ export function ModalTitle({
   className?: string;
   children: ReactNode;
 }) {
-  return <Tag id={id} className={cn("modal__title", className)}>{children}</Tag>;
+  return (
+    <Tag id={id} className={cn("modal__title", className)}>
+      {children}
+    </Tag>
+  );
 }
 
 export function ModalBody({ className, children }: { className?: string; children: ReactNode }) {

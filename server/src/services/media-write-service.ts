@@ -117,4 +117,3 @@ export function updateMediaDateTaken(
   scheduleBackupSyncAfterUpload();
   return { ok: true, dateTaken: parsed };
 }
-

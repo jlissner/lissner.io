@@ -18,7 +18,9 @@ export type ReassignToNewPersonResult =
   | { ok: true; body: { newPersonId: number } }
   | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
 
-export type ConfirmFaceTagResult = { ok: true } | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
+export type ConfirmFaceTagResult =
+  | { ok: true }
+  | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
 
 export function addPersonToMediaTag(params: {
   mediaId: string;
@@ -86,12 +88,7 @@ export function reassignPersonInMediaTag(
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
-  if (
-    isNaN(fromPersonId) ||
-    fromPersonId < 1 ||
-    isNaN(toPersonId) ||
-    toPersonId < 1
-  ) {
+  if (isNaN(fromPersonId) || fromPersonId < 1 || isNaN(toPersonId) || toPersonId < 1) {
     return { ok: false as const, reason: "bad_ids" as const };
   }
   if (fromPersonId === toPersonId) {
@@ -141,4 +138,3 @@ export function confirmFaceTag(mediaId: string, personId: number): ConfirmFaceTa
   db.confirmFace(item.id, personId);
   return { ok: true as const };
 }
-

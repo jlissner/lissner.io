@@ -31,7 +31,9 @@ adminWhitelistRouter.post("/whitelist", (req, res) => {
     })
   );
   if (result == null) return;
-  res.status(201).json({ id: result, email: email.toLowerCase(), isAdmin, personId: personId ?? null });
+  res
+    .status(201)
+    .json({ id: result, email: email.toLowerCase(), isAdmin, personId: personId ?? null });
 });
 
 adminWhitelistRouter.delete("/whitelist/:id", (req, res) => {

@@ -7,6 +7,10 @@ export type {
   SyncProgressMessage,
 } from "./activity.js";
 export type {
+  AdminDbBackupItem,
+  AdminDbBackupsResponse,
+  AdminDbRestoreRequest,
+  AdminDbRestoreResponse,
   ApiErrorBody,
   AuthConfigResponse,
   BackupConfigResponse,

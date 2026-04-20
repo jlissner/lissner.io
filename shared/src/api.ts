@@ -149,3 +149,17 @@ export type FaceMatchRunResponse = {
 
 /** GET /api/auth/config or similar bootstrap */
 export type AuthConfigResponse = { authEnabled: boolean };
+
+/** GET /api/admin/db-backups */
+export type AdminDbBackupItem = {
+  key: string;
+  size: number;
+  lastModified: string;
+};
+
+export type AdminDbBackupsResponse = { backups: AdminDbBackupItem[] };
+
+/** POST /api/admin/db-restore */
+export type AdminDbRestoreRequest = { key: string };
+
+export type AdminDbRestoreResponse = { restored: true };

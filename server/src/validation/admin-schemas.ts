@@ -1,10 +1,6 @@
 import { z } from "zod";
 
-const dataExplorerSearchSchema = z
-  .string()
-  .trim()
-  .max(500)
-  .optional();
+const dataExplorerSearchSchema = z.string().trim().max(500).optional();
 
 const recordUnknownSchema = z.record(z.string(), z.unknown());
 
@@ -45,15 +41,16 @@ export const dataExplorerDeleteBodySchema = z.object({
 export const whitelistCreateBodySchema = z.object({
   email: z.string().trim().min(1, "Email required"),
   isAdmin: z.boolean().optional().default(false),
-  personId: z.preprocess(
-    (value) => {
-      if (value == null || value === "") return undefined;
-      return value;
-    },
-    z.coerce.number().int().positive().optional()
-  ),
+  personId: z.preprocess((value) => {
+    if (value == null || value === "") return undefined;
+    return value;
+  }, z.coerce.number().int().positive().optional()),
 });
 
 export const userPeopleBodySchema = z.object({
   personIds: z.array(z.coerce.number().int().positive()).default([]),
+});
+
+export const dbRestoreBodySchema = z.object({
+  key: z.string().trim().min(1, "key required"),
 });

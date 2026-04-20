@@ -2,15 +2,15 @@
 
 ## Layout (bulletproof-react style)
 
-| Path | Role |
-|------|------|
-| `src/app/` | Application shell: default export `app.tsx`, `provider.tsx` (global providers), `authenticated-app.tsx` (nav + page composition). **Only here** should multiple features be wired together. |
-| `src/config/` | Global config with **no** imports from `features/` or `app/` (e.g. `nav.ts`). |
-| `src/components/` | **Shared** presentation + providers used across features (e.g. `components/activity/`). Must not import from `features/` or `app/`. |
-| `src/components/ui/` | **Reusable primitives** — `Button`, `Modal*` (compound), `Alert`, `Banner`, `Card`, `NavMenu` / `NavMenuItem`, `DropdownMenu` / `DropdownMenuItem`. Styles stay in `styles/components.css` (`.btn`, `.modal`, etc.); components map props → those classes. |
-| `src/lib/` | Shared utilities (e.g. `utils.ts` `cn()` for class names). |
-| `src/features/<feature>/` | Vertical slices: `components/`, `hooks/`, `types/`, `utils/` — only what that feature needs. |
-| `src/hooks/`, `src/types/`, `src/utils/` | Cross-cutting shared code (create subfolders/files as needed). |
+| Path                                     | Role                                                                                                                                                                                                                                                       |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/`                               | Application shell: default export `app.tsx`, `provider.tsx` (global providers), `authenticated-app.tsx` (nav + page composition). **Only here** should multiple features be wired together.                                                                |
+| `src/config/`                            | Global config with **no** imports from `features/` or `app/` (e.g. `nav.ts`).                                                                                                                                                                              |
+| `src/components/`                        | **Shared** presentation + providers used across features (e.g. `components/activity/`). Must not import from `features/` or `app/`.                                                                                                                        |
+| `src/components/ui/`                     | **Reusable primitives** — `Button`, `Modal*` (compound), `Alert`, `Banner`, `Card`, `NavMenu` / `NavMenuItem`, `DropdownMenu` / `DropdownMenuItem`. Styles stay in `styles/components.css` (`.btn`, `.modal`, etc.); components map props → those classes. |
+| `src/lib/`                               | Shared utilities (e.g. `utils.ts` `cn()` for class names).                                                                                                                                                                                                 |
+| `src/features/<feature>/`                | Vertical slices: `components/`, `hooks/`, `types/`, `utils/` — only what that feature needs.                                                                                                                                                               |
+| `src/hooks/`, `src/types/`, `src/utils/` | Cross-cutting shared code (create subfolders/files as needed).                                                                                                                                                                                             |
 
 ## Rules of thumb
 

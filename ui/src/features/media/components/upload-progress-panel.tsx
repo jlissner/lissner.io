@@ -37,7 +37,11 @@ export function UploadProgressPanel({
           ? `Uploading file ${progress.currentFile} of ${progress.totalFiles}`
           : "Uploading"}
       </p>
-      <p className="u-text-xs u-text-muted u-mb-2" style={{ marginTop: 0 }} title={progress.fileName}>
+      <p
+        className="u-text-xs u-text-muted u-mb-2"
+        style={{ marginTop: 0 }}
+        title={progress.fileName}
+      >
         {truncateMiddle(progress.fileName)}
       </p>
       <p className="u-text-xs u-text-muted u-mb-1" style={{ marginTop: 0 }}>

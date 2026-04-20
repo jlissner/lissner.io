@@ -37,7 +37,14 @@ export function MediaViewerReassignModal({
           minWidth: 280,
         }}
       >
-        <p style={{ margin: "0 0 4px", color: "var(--color-text)", fontSize: "1.125rem", fontWeight: 600 }}>
+        <p
+          style={{
+            margin: "0 0 4px",
+            color: "var(--color-text)",
+            fontSize: "1.125rem",
+            fontWeight: 600,
+          }}
+        >
           Change tag
         </p>
         <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>

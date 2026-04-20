@@ -28,6 +28,7 @@ export type ApiErrorCode =
   | "sync_in_progress"
   | "sql_explorer_disabled"
   | "data_explorer_disabled"
+  | "hash_failed"
   | "admin_not_found"
   | "no_file_uploaded"
   | "upload_owner_config"
@@ -55,7 +56,10 @@ export type ApiErrorCode =
   | "face_target_missing"
   | "face_box_required"
   | "face_person_required"
-  | "face_person_unknown";
+  | "face_person_unknown"
+  | "invalid_backup_key"
+  | "invalid_db_backup"
+  | "db_restore_failed";
 
 export function sendApiError(
   res: Response,

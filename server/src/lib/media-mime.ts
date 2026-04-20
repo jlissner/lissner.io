@@ -20,4 +20,3 @@ export function isVideoMime(mimeType: string): boolean {
 export function isImageMime(mimeType: string): boolean {
   return mimeType.startsWith("image/");
 }
-

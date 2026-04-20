@@ -41,4 +41,3 @@ export function usePeopleList({ initialSelectedId = null }: UsePeopleListOptions
     fetchPeople,
   };
 }
-

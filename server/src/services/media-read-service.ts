@@ -1,7 +1,5 @@
 import { access, readFile } from "fs/promises";
 import path from "path";
-import { execFile } from "child_process";
-import { promisify } from "util";
 import sharp from "sharp";
 import type { MediaListQueryResponse } from "../../../shared/src/api.js";
 import * as db from "../db/media.js";
@@ -16,8 +14,10 @@ import {
   isPixelMotionPhotoExtension,
   sniffAndPersistMediaMime,
 } from "../lib/effective-image.js";
-
-const execFileAsync = promisify(execFile);
+import {
+  generateVideoThumbnailWithFfmpeg,
+  isUsableVideoThumbnailFile,
+} from "../lib/video-thumbnail.js";
 
 type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
 
@@ -271,28 +271,12 @@ export async function getThumbnailResponse(mediaId: string): Promise<
   const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
   const srcPath = path.join(mediaDir, item.filename);
   try {
-    try {
-      await access(thumbPath);
-    } catch {
+    if (!(await isUsableVideoThumbnailFile(thumbPath))) {
       if (item.backedUpAt) {
         await tryRestoreVideoThumbnailFromBackup(item.id);
       }
-      try {
-        await access(thumbPath);
-      } catch {
-        await execFileAsync("ffmpeg", [
-          "-ss",
-          "0.5",
-          "-i",
-          srcPath,
-          "-vframes",
-          "1",
-          "-f",
-          "image2",
-          "-an",
-          "-y",
-          thumbPath,
-        ]);
+      if (!(await isUsableVideoThumbnailFile(thumbPath))) {
+        await generateVideoThumbnailWithFfmpeg(srcPath, thumbPath);
       }
     }
     return { ok: true, kind: "file", path: thumbPath, contentType: "image/jpeg" };

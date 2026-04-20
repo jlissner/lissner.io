@@ -120,9 +120,7 @@ export async function searchMediaByQuery(q: string): Promise<SearchMediaByQueryR
       return { ok: true, items: [] };
     }
 
-    const items = db.getMediaByIds(mediaIds).filter(
-      (x) => (x.hideFromGallery ?? 0) === 0
-    );
+    const items = db.getMediaByIds(mediaIds).filter((x) => (x.hideFromGallery ?? 0) === 0);
     const order = new Map(mediaIds.map((id, i) => [id, i]));
     items.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
 

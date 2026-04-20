@@ -7,7 +7,11 @@ import * as authDb from "../../db/auth.js";
 import * as db from "../../db/media.js";
 import { mediaDir } from "../../config/paths.js";
 import { resolveMimeTypeAfterUpload } from "../../lib/effective-image.js";
-import { deleteMediaItem, persistUploadedMedia, updateMediaDateTaken } from "../../services/media-service.js";
+import {
+  deleteMediaItem,
+  persistUploadedMedia,
+  updateMediaDateTaken,
+} from "../../services/media-service.js";
 import { parseWithSchema } from "../../validation/parse.js";
 import { mediaIdParamSchema, uploadCheckNamesBodySchema } from "../../validation/media-schemas.js";
 
@@ -132,4 +136,3 @@ mediaWriteRouter.patch("/:id", (req, res) => {
     "patch_invalid_date"
   );
 });
-

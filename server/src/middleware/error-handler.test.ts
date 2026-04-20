@@ -20,7 +20,12 @@ function mockRes(): {
 describe("errorHandler", () => {
   it("uses HttpError code when present", () => {
     const { res, json, status } = mockRes();
-    errorHandler(new HttpError(404, "missing", "person_not_found"), {} as never, res as never, vi.fn());
+    errorHandler(
+      new HttpError(404, "missing", "person_not_found"),
+      {} as never,
+      res as never,
+      vi.fn()
+    );
     expect(status).toHaveBeenCalledWith(404);
     expect(json).toHaveBeenCalledWith({ error: "missing", code: "person_not_found" });
   });

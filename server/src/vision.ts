@@ -1,4 +1,5 @@
-const OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
+import { OLLAMA_HOST } from "./config/env.js";
+
 const VISION_MODEL = process.env.OLLAMA_VISION_MODEL ?? "llava";
 
 export async function describeImage(imagePath: string): Promise<string> {

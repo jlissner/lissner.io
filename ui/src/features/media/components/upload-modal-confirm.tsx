@@ -98,9 +98,7 @@ function LibraryItemPreview({
   const [mode, setMode] = useState<"img" | "video" | "none">("img");
   const st = mediaFitStyle(maxHeight);
   if (mode === "img") {
-    return (
-      <img src={src} alt={originalName} style={st} onError={() => setMode("video")} />
-    );
+    return <img src={src} alt={originalName} style={st} onError={() => setMode("video")} />;
   }
   if (mode === "video") {
     return (
@@ -183,7 +181,10 @@ function DuplicateCompareBlock({
 }) {
   return (
     <div className="upload-duplicate-compare">
-      <p className="upload-duplicate-filename u-text-sm u-font-medium u-mb-3" style={{ marginTop: 0 }}>
+      <p
+        className="upload-duplicate-filename u-text-sm u-font-medium u-mb-3"
+        style={{ marginTop: 0 }}
+      >
         {conflict.requestedName}
       </p>
       <div
@@ -245,7 +246,10 @@ interface UploadModalConfirmProps {
   nameConflicts: UploadNameConflict[];
   checkLoading: boolean;
   conflictDecisions: DuplicateConflictDecision[];
-  onConflictDecisionChange: (index: number, choice: Exclude<DuplicateConflictDecision, null>) => void;
+  onConflictDecisionChange: (
+    index: number,
+    choice: Exclude<DuplicateConflictDecision, null>
+  ) => void;
   onApplyAllDuplicateDecisions: (choice: Exclude<DuplicateConflictDecision, null>) => void;
   onResetDuplicateDecisions: () => void;
 }
@@ -321,7 +325,8 @@ export function UploadModalConfirm({
     <div className="upload-modal-confirm">
       <div className="upload-modal-confirm__scroll">
         <p className="u-mb-3 u-text-muted" style={{ marginTop: 0 }}>
-          <strong>{fileCount}</strong> {fileCount === 1 ? "file" : "files"} · {formatBytes(totalBytes)}
+          <strong>{fileCount}</strong> {fileCount === 1 ? "file" : "files"} ·{" "}
+          {formatBytes(totalBytes)}
           {uploadCountAfterChoices != null && (
             <>
               {" "}
@@ -340,7 +345,8 @@ export function UploadModalConfirm({
                 : `${nameConflicts.length} files match existing names`}
             </p>
             <p className="upload-duplicate-alert__body">
-              Same original filename (case-insensitive). Compare previews, then skip or keep each upload.
+              Same original filename (case-insensitive). Compare previews, then skip or keep each
+              upload.
             </p>
             {multiDuplicates && !duplicatesResolved && (
               <div className="upload-duplicate-bulk">
@@ -426,7 +432,8 @@ export function UploadModalConfirm({
                     Back
                   </button>
                   <span className="upload-duplicate-wizard__progress">
-                    {decidedCount}/{nameConflicts.length} · card {safeStep + 1}/{nameConflicts.length}
+                    {decidedCount}/{nameConflicts.length} · card {safeStep + 1}/
+                    {nameConflicts.length}
                   </span>
                 </div>
                 {stepConflict && (

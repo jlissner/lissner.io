@@ -15,12 +15,14 @@ else
   echo "  (none matched)"
 fi
 
+SERVER_PORT="${SERVER_PORT}"
+UI_PORT="${UI_PORT}"
 echo ""
-echo "=== TCP listeners on ports 3000 (API) and 5173 (Vite) ==="
+echo "=== TCP listeners on ports ${SERVER_PORT} (API) and ${UI_PORT} (Vite) ==="
 if command -v ss >/dev/null 2>&1; then
-  ss -tlnp 2>/dev/null | grep -E ':3000|:5173' || echo "  (no listeners on 3000/5173)"
+  ss -tlnp 2>/dev/null | grep -E ":${SERVER_PORT}|:${UI_PORT}" || echo "  (no listeners on ${SERVER_PORT}/${UI_PORT})"
 elif command -v lsof >/dev/null 2>&1; then
-  lsof -iTCP:3000 -iTCP:5173 -sTCP:LISTEN -n -P 2>/dev/null || echo "  (no listeners on 3000/5173)"
+  lsof -iTCP:"${SERVER_PORT}" -iTCP:"${UI_PORT}" -sTCP:LISTEN -n -P 2>/dev/null || echo "  (no listeners on ${SERVER_PORT}/${UI_PORT})"
 else
   echo "  (install ss or lsof to show port listeners)"
 fi

@@ -1,4 +1,5 @@
-const OLLAMA_HOST = process.env.OLLAMA_HOST ?? "http://localhost:11434";
+import { OLLAMA_HOST } from "./config/env.js";
+
 const OLLAMA_MODEL = process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text";
 
 export async function getEmbedding(text: string): Promise<number[]> {

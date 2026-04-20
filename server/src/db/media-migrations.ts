@@ -126,6 +126,10 @@ const migrations: MigrationStep[] = [
     version: 10,
     apply: (db) => addColumnIfMissing(db, "image_people", "source", "TEXT DEFAULT 'auto'"),
   },
+  {
+    version: 11,
+    apply: (db) => addColumnIfMissing(db, "media", "perceptual_hash", "BLOB"),
+  },
 ];
 
 export function runMediaMigrations(db: Database.Database): void {
@@ -137,4 +141,3 @@ export function runMediaMigrations(db: Database.Database): void {
     markMigrationApplied(db, step.version);
   }
 }
-

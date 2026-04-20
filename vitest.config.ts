@@ -8,6 +8,7 @@ export default defineConfig({
     env: {
       TF_CPP_MIN_LOG_LEVEL: "3",
       TF_ENABLE_ONEDNN_OPTS: "0",
+      SERVER_HOST: "localhost",
     },
     /** Suppress Node DEP0169 from a transitive `url.parse()` user (tfjs dependency chain). */
     execArgv: ["--disable-warning=DEP0169"],

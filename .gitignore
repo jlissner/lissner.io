@@ -4,4 +4,6 @@ dist/
 dist-types/
 *.tsbuildinfo
 .env
-.env.*
+.env.local
+.env.prod
+!.env.example

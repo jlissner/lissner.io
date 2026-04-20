@@ -116,9 +116,7 @@ export function PeopleSidebar({
                 </div>
                 <div className="person-row__info">
                   <div className="person-row__name">{p.name}</div>
-                  <div className="person-row__count">
-                    {photoCountLabel(p.photoCount)}
-                  </div>
+                  <div className="person-row__count">{photoCountLabel(p.photoCount)}</div>
                 </div>
                 <button
                   type="button"

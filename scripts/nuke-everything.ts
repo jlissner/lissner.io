@@ -6,26 +6,13 @@
  * Stop the server first so the DB is not locked.
  */
 
-import { config } from "dotenv";
 import { existsSync } from "fs";
 import { readdir, stat, unlink } from "fs/promises";
 import path from "path";
 import { createInterface } from "readline";
 import Database from "better-sqlite3";
 import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
-import {
-  PROJECT_ROOT,
-  dbPath,
-  mediaDir,
-  syncTempDbPath,
-  thumbnailsDir,
-} from "../server/src/config/paths.js";
-
-config();
-const envLocal = path.join(PROJECT_ROOT, ".env.local");
-if (existsSync(envLocal)) {
-  config({ path: envLocal, override: true });
-}
+import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../server/src/config/paths.js";
 
 const S3_PREFIX = "backup";
 

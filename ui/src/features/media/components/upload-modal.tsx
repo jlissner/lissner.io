@@ -149,11 +149,7 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     <ModalRoot onBackdropClick={handleCancel}>
       <ModalPanel
         className={cn(hasFiles && "upload-modal-panel")}
-        style={
-          hasFiles
-            ? undefined
-            : { minWidth: 360, maxHeight: "90vh", overflow: "auto" }
-        }
+        style={hasFiles ? undefined : { minWidth: 360, maxHeight: "90vh", overflow: "auto" }}
         aria-labelledby="upload-title"
         onEscape={handleCancel}
       >

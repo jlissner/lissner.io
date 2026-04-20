@@ -84,7 +84,11 @@ export function maxPairwiseSimilarity(
   sim: (x: number[], y: number[]) => number
 ): number {
   return a.reduce(
-    (mx, da) => Math.max(mx, b.reduce((m2, db) => Math.max(m2, sim(da, db)), 0)),
+    (mx, da) =>
+      Math.max(
+        mx,
+        b.reduce((m2, db) => Math.max(m2, sim(da, db)), 0)
+      ),
     0
   );
 }
@@ -154,11 +158,5 @@ export async function getMergeSuggestionsForPerson(
   for (const pid of namedIds) {
     namedDescriptors.set(pid, await collectDescriptorsForPerson(pid));
   }
-  return mergeSuggestionsFromDescriptors(
-    sourceDescriptors,
-    namedIds,
-    names,
-    namedDescriptors,
-    sim
-  );
+  return mergeSuggestionsFromDescriptors(sourceDescriptors, namedIds, names, namedDescriptors, sim);
 }

@@ -27,7 +27,9 @@ export function listPersonMediaPreviews(personId: number): Promise<PersonMediaPr
 }
 
 export async function listMergeSuggestions(personId: number): Promise<MergeSuggestion[]> {
-  const data = await apiJson<{ suggestions?: MergeSuggestion[] }>(`people/${personId}/merge-suggestions`);
+  const data = await apiJson<{ suggestions?: MergeSuggestion[] }>(
+    `people/${personId}/merge-suggestions`
+  );
   return Array.isArray(data.suggestions) ? data.suggestions : [];
 }
 
@@ -89,4 +91,3 @@ export async function reassignTagToNewPerson(
     method: "POST",
   });
 }
-

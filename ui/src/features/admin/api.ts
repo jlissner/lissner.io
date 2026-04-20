@@ -1,4 +1,5 @@
-import { apiJson } from "@/api/client";
+import type { AdminDbBackupsResponse, AdminDbRestoreResponse } from "../../../../shared/src/api.js";
+import { apiFetch, apiJson } from "@/api/client";
 
 export interface AdminWhitelistEntry {
   id: number;
@@ -53,7 +54,9 @@ export function getUserPeople(userId: number): Promise<{ personIds: number[] }> 
   return apiJson<{ personIds: number[] }>(`admin/users/${userId}/people`);
 }
 
-export function runSql(query: string): Promise<
+export function runSql(
+  query: string
+): Promise<
   | { type: "select"; columns: string[]; rows: Record<string, unknown>[] }
   | { type: "write"; changes: number; lastInsertRowid: number }
 > {
@@ -148,3 +151,40 @@ export function deleteDataExplorerRow(
   });
 }
 
+export interface DuplicateMatch {
+  mediaId: string;
+  duplicateOfId: string;
+  hammingDistance: number;
+}
+
+export function computeAllHashes(): Promise<{ computed: number; failed: number; total: number }> {
+  return apiJson<{ computed: number; failed: number; total: number }>(
+    "admin/duplicates/compute-all-hashes",
+    { method: "POST" }
+  );
+}
+
+export function getAllDuplicates(): Promise<{ duplicates: DuplicateMatch[] }> {
+  return apiJson<{ duplicates: DuplicateMatch[] }>("admin/duplicates");
+}
+
+export function getDuplicatesForMedia(mediaId: string): Promise<{ duplicates: DuplicateMatch[] }> {
+  return apiJson<{ duplicates: DuplicateMatch[] }>(`admin/duplicates/${mediaId}`);
+}
+
+export async function deleteMediaById(mediaId: string): Promise<void> {
+  const res = await apiFetch(`media/${mediaId}`, { method: "DELETE" });
+  if (!res.ok) throw new Error("Delete failed");
+}
+
+export function listDbBackups(): Promise<AdminDbBackupsResponse> {
+  return apiJson<AdminDbBackupsResponse>("admin/db-backups");
+}
+
+export function restoreDbFromBackup(key: string): Promise<AdminDbRestoreResponse> {
+  return apiJson<AdminDbRestoreResponse>("admin/db-restore", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ key }),
+  });
+}

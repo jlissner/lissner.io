@@ -190,10 +190,7 @@ function clusterFacesWithConfidence(
     const next: FaceCluster = {
       id: matched.id,
       descriptor,
-      faces: [
-        ...matched.faces,
-        { imageId: face.imageId, box: face.box, confidence: best.sim },
-      ],
+      faces: [...matched.faces, { imageId: face.imageId, box: face.box, confidence: best.sim }],
     };
     return clusters.map((cluster, i) => (i === best.idx ? next : cluster));
   }, []);

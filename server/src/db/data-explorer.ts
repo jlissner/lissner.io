@@ -1,4 +1,4 @@
-import { db } from "./media-db.js";
+import { getDb } from "./media-db.js";
 
 const VALID_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -7,7 +7,7 @@ function validateTableName(name: string): void {
 }
 
 export function getDataExplorerTables(): string[] {
-  const rows = db
+  const rows = getDb()
     .prepare(
       "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
     )
@@ -24,7 +24,7 @@ export interface DataExplorerColumn {
 
 export function getDataExplorerTableSchema(tableName: string): DataExplorerColumn[] {
   validateTableName(tableName);
-  const rows = db.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+  const rows = getDb().prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
     name: string;
     type: string;
     notnull: number;
@@ -66,13 +66,13 @@ export function getDataExplorerRows(
   const off = Math.max(0, offset);
   const q = normalizeDataExplorerSearch(search);
   if (!q) {
-    const stmt = db.prepare(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`);
+    const stmt = getDb().prepare(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`);
     return stmt.all(lim, off) as Record<string, unknown>[];
   }
   const schema = getDataExplorerTableSchema(tableName);
   const { whereSql, params } = buildDataExplorerSearchClause(schema, `%${q}%`);
   const sql = `SELECT * FROM ${tableName} WHERE ${whereSql} LIMIT ? OFFSET ?`;
-  const stmt = db.prepare(sql);
+  const stmt = getDb().prepare(sql);
   return stmt.all(...params, lim, off) as Record<string, unknown>[];
 }
 
@@ -80,12 +80,12 @@ export function getDataExplorerRowCount(tableName: string, search?: string | nul
   validateTableName(tableName);
   const q = normalizeDataExplorerSearch(search);
   if (!q) {
-    const row = db.prepare(`SELECT COUNT(*) as c FROM ${tableName}`).get() as { c: number };
+    const row = getDb().prepare(`SELECT COUNT(*) as c FROM ${tableName}`).get() as { c: number };
     return row.c;
   }
   const schema = getDataExplorerTableSchema(tableName);
   const { whereSql, params } = buildDataExplorerSearchClause(schema, `%${q}%`);
-  const row = db
+  const row = getDb()
     .prepare(`SELECT COUNT(*) as c FROM ${tableName} WHERE ${whereSql}`)
     .get(...params) as { c: number };
   return row.c;
@@ -102,7 +102,9 @@ export function insertDataExplorerRow(tableName: string, data: Record<string, un
   const placeholders = colNames.map(() => "?").join(", ");
   const values = colNames.map((n) => data[n]);
   const sql = `INSERT INTO ${tableName} (${colNames.join(", ")}) VALUES (${placeholders})`;
-  const result = db.prepare(sql).run(...values);
+  const result = getDb()
+    .prepare(sql)
+    .run(...values);
   return result.lastInsertRowid as number;
 }
 
@@ -124,7 +126,9 @@ export function updateDataExplorerRow(
   const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
   const values = [...setCols.map((n) => data[n]), ...pkCols.map((n) => pk[n])];
   const sql = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause}`;
-  const result = db.prepare(sql).run(...values);
+  const result = getDb()
+    .prepare(sql)
+    .run(...values);
   return result.changes;
 }
 
@@ -139,7 +143,9 @@ export function deleteDataExplorerRow(tableName: string, pk: Record<string, unkn
   const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
   const values = pkCols.map((n) => pk[n]);
   const sql = `DELETE FROM ${tableName} WHERE ${whereClause}`;
-  const result = db.prepare(sql).run(...values);
+  const result = getDb()
+    .prepare(sql)
+    .run(...values);
   return result.changes;
 }
 
@@ -152,7 +158,7 @@ export function runSql(
   if (!trimmed) {
     throw new Error("Empty query");
   }
-  const stmt = db.prepare(trimmed);
+  const stmt = getDb().prepare(trimmed);
   const isSelect = /^\s*SELECT\b/i.test(trimmed);
   if (isSelect) {
     const rows = stmt.all() as Record<string, unknown>[];

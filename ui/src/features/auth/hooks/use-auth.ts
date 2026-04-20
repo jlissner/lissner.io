@@ -31,8 +31,11 @@ export function useAuth() {
   }, [queryClient]);
 
   const logout = useCallback(async () => {
-    await apiFetch("auth/logout", { method: "POST" });
-    void queryClient.invalidateQueries({ queryKey: ["auth"] });
+    const res = await apiFetch("auth/logout", { method: "POST" });
+    if (!res.ok) {
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ["auth"] });
   }, [queryClient]);
 
   const authEnabled = query.data?.authEnabled ?? null;

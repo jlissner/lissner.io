@@ -7,4 +7,3 @@ export const magicLinkBodySchema = z.object({
 export const updateMyPeopleBodySchema = z.object({
   personIds: z.array(z.number()).optional(),
 });
-

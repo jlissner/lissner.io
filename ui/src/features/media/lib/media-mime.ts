@@ -13,4 +13,3 @@ export function isTextMime(mimeType: string): boolean {
     mimeType === "application/xml"
   );
 }
-

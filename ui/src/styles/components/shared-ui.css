@@ -126,6 +126,24 @@
   flex: 1;
 }
 
+.nav__account {
+  flex-shrink: 0;
+  padding: var(--space-4) var(--space-5) var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+
+.nav__account-email {
+  font-size: var(--text-sm);
+  color: var(--color-text-muted);
+  word-break: break-all;
+}
+
+.nav__account-logout {
+  margin-top: var(--space-2);
+  width: 100%;
+  justify-content: flex-start;
+}
+
 .nav__item {
   display: block;
   width: 100%;

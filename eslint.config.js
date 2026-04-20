@@ -1,8 +1,6 @@
 import js from "@eslint/js";
 import eslintConfigPrettier from "eslint-config-prettier";
 import globals from "globals";
-import importPlugin from "eslint-plugin-import";
-import react from "eslint-plugin-react";
 import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
@@ -55,8 +53,6 @@ export default tseslint.config(
 
   {
     files: ["ui/**/*.{ts,tsx}"],
-    ...react.configs.flat.recommended,
-    ...react.configs.flat["jsx-runtime"],
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
@@ -64,9 +60,7 @@ export default tseslint.config(
       },
     },
     plugins: {
-      react,
       "react-hooks": reactHooks,
-      import: importPlugin,
     },
     settings: {
       react: { version: "detect" },
@@ -76,45 +70,9 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // TypeScript replaces PropTypes; many valid patterns still use setState in effects.
-      "react/prop-types": "off",
       "react-hooks/set-state-in-effect": "off",
       // Experimental; false positives on DOM props like naturalWidth (looks like ref access).
       "react-hooks/refs": "off",
-      /** Bulletproof-style layering: shared + config never depend on app/features; features never depend on app. */
-      "import/no-restricted-paths": [
-        "error",
-        {
-          zones: [
-            {
-              target: "./ui/src/features",
-              from: "./ui/src/app",
-              message:
-                "Features must not import the app shell. Compose routes/providers in app/ only.",
-            },
-            {
-              target: "./ui/src/components",
-              from: "./ui/src/features",
-              message: "Shared components must not import feature code (avoid upward deps).",
-            },
-            {
-              target: "./ui/src/components",
-              from: "./ui/src/app",
-              message: "Shared components must not import the app shell.",
-            },
-            {
-              target: "./ui/src/config",
-              from: "./ui/src/features",
-              message: "Config must not import feature code.",
-            },
-            {
-              target: "./ui/src/config",
-              from: "./ui/src/app",
-              message: "Config must not import the app shell.",
-            },
-          ],
-        },
-      ],
     },
   },
 

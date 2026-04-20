@@ -2,9 +2,10 @@ import Database from "better-sqlite3";
 import { randomBytes, createHash } from "crypto";
 import { dbPath } from "../config/paths.js";
 
-const db = new Database(dbPath);
+let db: InstanceType<typeof Database>;
 
-db.exec(`
+function initAuthDb(): void {
+  db.exec(`
   CREATE TABLE IF NOT EXISTS auth_whitelist (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
@@ -15,17 +16,17 @@ db.exec(`
   )
 `);
 
-// Migration: add person_id to auth_whitelist if missing
-const whitelistCols = (
-  db.prepare("PRAGMA table_info(auth_whitelist)").all() as Array<{ name: string }>
-).map((c) => c.name);
-if (!whitelistCols.includes("person_id")) {
-  db.exec(
-    "ALTER TABLE auth_whitelist ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)"
-  );
-}
+  // Migration: add person_id to auth_whitelist if missing
+  const whitelistCols = (
+    db.prepare("PRAGMA table_info(auth_whitelist)").all() as Array<{ name: string }>
+  ).map((c) => c.name);
+  if (!whitelistCols.includes("person_id")) {
+    db.exec(
+      "ALTER TABLE auth_whitelist ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)"
+    );
+  }
 
-db.exec(`
+  db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     email TEXT NOT NULL UNIQUE,
@@ -35,7 +36,7 @@ db.exec(`
   )
 `);
 
-db.exec(`
+  db.exec(`
   CREATE TABLE IF NOT EXISTS user_people (
     user_id INTEGER NOT NULL,
     person_id INTEGER NOT NULL,
@@ -45,39 +46,39 @@ db.exec(`
   )
 `);
 
-// Migration: add person_id to users if missing (legacy schema)
-const userCols = (db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>).map(
-  (c) => c.name
-);
-if (!userCols.includes("person_id")) {
-  db.exec("ALTER TABLE users ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)");
-}
-// Backfill: create a person for each user with null person_id
-const usersToBackfill = db
-  .prepare("SELECT id, email FROM users WHERE person_id IS NULL")
-  .all() as Array<{
-  id: number;
-  email: string;
-}>;
-for (const u of usersToBackfill) {
-  const maxRow = db
-    .prepare(
-      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
-    )
-    .get() as { m: number | null };
-  const newPersonId = (maxRow?.m ?? 0) + 1;
-  db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(
-    newPersonId,
-    u.email
+  // Migration: add person_id to users if missing (legacy schema)
+  const userCols = (db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>).map(
+    (c) => c.name
   );
-  db.prepare("UPDATE users SET person_id = ? WHERE id = ?").run(newPersonId, u.id);
-  db.prepare("INSERT OR IGNORE INTO user_people (user_id, person_id) VALUES (?, ?)").run(
-    u.id,
-    newPersonId
-  );
-}
+  if (!userCols.includes("person_id")) {
+    db.exec("ALTER TABLE users ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)");
+  }
+  // Backfill: create a person for each user with null person_id
+  const usersToBackfill = db
+    .prepare("SELECT id, email FROM users WHERE person_id IS NULL")
+    .all() as Array<{
+    id: number;
+    email: string;
+  }>;
+  for (const u of usersToBackfill) {
+    const maxRow = db
+      .prepare(
+        "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)"
+      )
+      .get() as { m: number | null };
+    const newPersonId = (maxRow?.m ?? 0) + 1;
+    db.prepare("INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)").run(
+      newPersonId,
+      u.email
+    );
+    db.prepare("UPDATE users SET person_id = ? WHERE id = ?").run(newPersonId, u.id);
+    db.prepare("INSERT OR IGNORE INTO user_people (user_id, person_id) VALUES (?, ?)").run(
+      u.id,
+      newPersonId
+    );
+  }
 
-db.exec(`
+  db.exec(`
   CREATE TABLE IF NOT EXISTS magic_link_tokens (
     token_hash TEXT PRIMARY KEY,
     email TEXT NOT NULL,
@@ -85,6 +86,27 @@ db.exec(`
     used_at TEXT
   )
 `);
+
+  deleteExpiredMagicLinkTokens();
+}
+
+db = new Database(dbPath);
+initAuthDb();
+
+/** Close auth DB handle before replacing `dbPath` on disk (same file as media DB). */
+export function closeAuthDb(): void {
+  db.close();
+}
+
+/** Reopen after `dbPath` was replaced (e.g. restore from S3). */
+export function reopenAuthDb(): void {
+  db = new Database(dbPath);
+  initAuthDb();
+}
+
+function deleteExpiredMagicLinkTokens(): void {
+  db.prepare("DELETE FROM magic_link_tokens WHERE expires_at < datetime('now')").run();
+}
 
 export function isEmailWhitelisted(email: string): boolean {
   const normalized = email.trim().toLowerCase();
@@ -179,10 +201,6 @@ export function getDefaultOwnerId(): number | null {
   if (!email) return null;
   const user = getOrCreateUser(email, true);
   return user.id;
-}
-
-function deleteExpiredMagicLinkTokens(): void {
-  db.prepare("DELETE FROM magic_link_tokens WHERE expires_at < datetime('now')").run();
 }
 
 export function createMagicLinkToken(email: string): { token: string; expiresAt: string } {
@@ -308,6 +326,3 @@ export function getUsers(): Array<{
   }>;
   return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
 }
-
-// Clean up expired tokens on server startup
-deleteExpiredMagicLinkTokens();

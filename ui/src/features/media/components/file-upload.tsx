@@ -117,7 +117,10 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
         <label htmlFor="file-upload" style={{ cursor: "inherit" }}>
           {uploading ? (
             uploadProgress ? (
-              <UploadProgressPanel progress={uploadProgress} rootClassName="upload-modal-progress" />
+              <UploadProgressPanel
+                progress={uploadProgress}
+                rootClassName="upload-modal-progress"
+              />
             ) : (
               <span>Preparing upload…</span>
             )
@@ -133,7 +136,9 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
           )}
         </label>
         {error && (
-          <p style={{ color: "var(--color-danger)", marginTop: 8, fontSize: "0.875rem" }}>{error}</p>
+          <p style={{ color: "var(--color-danger)", marginTop: 8, fontSize: "0.875rem" }}>
+            {error}
+          </p>
         )}
       </div>
     </>

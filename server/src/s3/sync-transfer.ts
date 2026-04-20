@@ -6,6 +6,12 @@ import { access, rename, unlink } from "fs/promises";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
+export type S3ObjectSummary = {
+  key: string;
+  size: number;
+  lastModified: string;
+};
+
 export async function listAllS3Keys(
   client: S3Client,
   bucket: string,
@@ -27,6 +33,34 @@ export async function listAllS3Keys(
   };
   await collect(undefined);
   return keys;
+}
+
+export async function listS3ObjectsWithMetadata(
+  client: S3Client,
+  bucket: string,
+  prefix: string
+): Promise<S3ObjectSummary[]> {
+  const out: S3ObjectSummary[] = [];
+  const collect = async (continuationToken: string | undefined): Promise<void> => {
+    const res = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    );
+    for (const obj of res.Contents ?? []) {
+      if (!obj.Key || obj.Size == null || !obj.LastModified) continue;
+      out.push({
+        key: obj.Key,
+        size: obj.Size,
+        lastModified: obj.LastModified.toISOString(),
+      });
+    }
+    if (res.NextContinuationToken) await collect(res.NextContinuationToken);
+  };
+  await collect(undefined);
+  return out.sort((a, b) => a.key.localeCompare(b.key));
 }
 
 export function fileExists(filePath: string): Promise<boolean> {

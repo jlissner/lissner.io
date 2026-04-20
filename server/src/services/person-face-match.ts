@@ -2,7 +2,11 @@ import * as db from "../db/media.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { getFaceSimilarityFn } from "../faces.js";
 import { mergePeople } from "./people-service.js";
-import type { FaceMatchAutoMerged, FaceMatchReviewItem, FaceMatchRunResponse } from "../../../shared/src/api.js";
+import type {
+  FaceMatchAutoMerged,
+  FaceMatchReviewItem,
+  FaceMatchRunResponse,
+} from "../../../shared/src/api.js";
 import {
   collectDescriptorsForPerson,
   isPlaceholderPersonName,
@@ -108,13 +112,7 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResult> {
     const placeholderName = namesAfter.get(id) ?? `Person ${id}`;
     const hasFaceDescriptors = src.length > 0;
     const suggestions = hasFaceDescriptors
-      ? mergeSuggestionsFromDescriptors(
-          src,
-          namedIdsAfter,
-          namesAfter,
-          namedDescriptorsAfter,
-          sim
-        )
+      ? mergeSuggestionsFromDescriptors(src, namedIdsAfter, namesAfter, namedDescriptorsAfter, sim)
       : [];
     const topMatch = suggestions[0] ?? null;
     const otherMatches = suggestions.slice(1);

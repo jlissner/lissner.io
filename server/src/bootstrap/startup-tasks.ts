@@ -1,6 +1,4 @@
 import { mkdirSync } from "fs";
-import * as authDb from "../db/auth.js";
-import * as db from "../db/media.js";
 import { logger } from "../logger.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 
@@ -14,13 +12,15 @@ export function ensureServerDirectories(paths: {
   mkdirSync(paths.thumbnailsDir, { recursive: true });
 }
 
-export function runStartupMaintenance(): void {
+export async function runStartupMaintenance(): Promise<void> {
   try {
+    const [authDb, db] = await Promise.all([import("../db/auth.js"), import("../db/media.js")]);
     db.migrateNullOwnersToDefault(authDb.getDefaultOwnerId);
   } catch (err) {
     logger.error({ err }, "[db] migrateNullOwnersToDefault failed (continuing startup)");
   }
   try {
+    const db = await import("../db/media.js");
     db.relinkAllMotionPairs();
   } catch (err) {
     logger.error({ err }, "[db] relinkAllMotionPairs failed (continuing startup)");

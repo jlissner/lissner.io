@@ -2,7 +2,10 @@ import { useCallback, useEffect, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import { getMediaDetails, patchMediaDateTaken } from "../../api";
 import type { MediaItem } from "./media-utils";
-import type { MediaDetailsApiResponse, MediaPatchResponse } from "../../../../../../shared/src/api.js";
+import type {
+  MediaDetailsApiResponse,
+  MediaPatchResponse,
+} from "../../../../../../shared/src/api.js";
 type MediaDetails = MediaDetailsApiResponse;
 
 function formatFileSize(bytes: number): string {
@@ -150,51 +153,54 @@ export function MediaViewerDetails({
     setDateTakenEditError(null);
   }, []);
 
-  const saveDateTaken = useCallback(async (evt: React.FormEvent<HTMLFormElement>) => {
-    evt.preventDefault();
+  const saveDateTaken = useCallback(
+    async (evt: React.FormEvent<HTMLFormElement>) => {
+      evt.preventDefault();
 
-    const parsed = parseDateTakenForm(dateTakenDate, dateTakenTime);
-    if (parsed.kind === "error") {
-      setDateTakenEditError(parsed.message);
-      return;
-    }
-    const body =
-      parsed.kind === "clear"
-        ? ({ dateTaken: null } satisfies { dateTaken: string | null })
-        : ({ dateTaken: parsed.at.toISOString() } as const);
-    setDateTakenSaving(true);
-    setDateTakenEditError(null);
-    const res = await patchMediaDateTaken(item.id, body);
-    const rawBody = await res.text();
-    setDateTakenSaving(false);
-    if (!res.ok) {
-      setDateTakenEditError(errorMessageFromPatchResponse(rawBody, res.status));
-      return;
-    }
-    const data = (() => {
-      try {
-        return JSON.parse(rawBody) as unknown;
-      } catch {
-        return null;
+      const parsed = parseDateTakenForm(dateTakenDate, dateTakenTime);
+      if (parsed.kind === "error") {
+        setDateTakenEditError(parsed.message);
+        return;
       }
-    })();
-    if (
-      data === null ||
-      typeof data !== "object" ||
-      !("dateTaken" in data) ||
-      (typeof (data as MediaPatchResponse).dateTaken !== "string" &&
-        (data as MediaPatchResponse).dateTaken !== null)
-    ) {
-      setDateTakenEditError(
-        "The date may have saved, but the server response was not valid. Refresh the page to confirm.",
-      );
-      return;
-    }
-    const patch = data as MediaPatchResponse;
-    setDetails((prev) => (prev ? { ...prev, dateTaken: patch.dateTaken } : prev));
-    setEditingDateTaken(false);
-    onMetadataUpdated?.();
-  }, [dateTakenDate, dateTakenTime, item.id, onMetadataUpdated]);
+      const body =
+        parsed.kind === "clear"
+          ? ({ dateTaken: null } satisfies { dateTaken: string | null })
+          : ({ dateTaken: parsed.at.toISOString() } as const);
+      setDateTakenSaving(true);
+      setDateTakenEditError(null);
+      const res = await patchMediaDateTaken(item.id, body);
+      const rawBody = await res.text();
+      setDateTakenSaving(false);
+      if (!res.ok) {
+        setDateTakenEditError(errorMessageFromPatchResponse(rawBody, res.status));
+        return;
+      }
+      const data = (() => {
+        try {
+          return JSON.parse(rawBody) as unknown;
+        } catch {
+          return null;
+        }
+      })();
+      if (
+        data === null ||
+        typeof data !== "object" ||
+        !("dateTaken" in data) ||
+        (typeof (data as MediaPatchResponse).dateTaken !== "string" &&
+          (data as MediaPatchResponse).dateTaken !== null)
+      ) {
+        setDateTakenEditError(
+          "The date may have saved, but the server response was not valid. Refresh the page to confirm."
+        );
+        return;
+      }
+      const patch = data as MediaPatchResponse;
+      setDetails((prev) => (prev ? { ...prev, dateTaken: patch.dateTaken } : prev));
+      setEditingDateTaken(false);
+      onMetadataUpdated?.();
+    },
+    [dateTakenDate, dateTakenTime, item.id, onMetadataUpdated]
+  );
 
   if (loading) {
     return (
@@ -227,7 +233,9 @@ export function MediaViewerDetails({
           </>
         )}
         <dt className="viewer-details__term">Uploaded</dt>
-        <dd className="viewer-details__value">{formatLocalDateTimeMediumShort(details.uploadedAt)}</dd>
+        <dd className="viewer-details__value">
+          {formatLocalDateTimeMediumShort(details.uploadedAt)}
+        </dd>
         <dt className="viewer-details__term">Date taken</dt>
         <dd className="viewer-details__value">
           {editingDateTaken ? (
@@ -251,17 +259,14 @@ export function MediaViewerDetails({
                 />
               </div>
               <p className="viewer-details__muted viewer-details__hint">
-                Time is optional; if you leave it blank, 12:00 noon on that day is used. Clear the date
-                and save to remove date taken.
+                Time is optional; if you leave it blank, 12:00 noon on that day is used. Clear the
+                date and save to remove date taken.
               </p>
               {dateTakenEditError && (
                 <p className="viewer-details__muted u-text-danger">{dateTakenEditError}</p>
               )}
               <div className="viewer-details__actions">
-                <button
-                  className="btn btn--primary btn--sm"
-                  disabled={dateTakenSaving}
-                >
+                <button className="btn btn--primary btn--sm" disabled={dateTakenSaving}>
                   {dateTakenSaving ? "Saving…" : "Save"}
                 </button>
                 <button

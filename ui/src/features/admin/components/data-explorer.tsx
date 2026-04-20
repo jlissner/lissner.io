@@ -317,7 +317,11 @@ export function DataExplorer() {
                             <td key={col.name}>{String(row[col.name] ?? "NULL")}</td>
                           ))}
                           <td>
-                            <Button variant="secondary" size="sm" onClick={() => setEditingRow({ ...row })}>
+                            <Button
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => setEditingRow({ ...row })}
+                            >
                               Edit
                             </Button>
                             <Button variant="danger" size="sm" onClick={() => handleDelete(row)}>

@@ -83,9 +83,7 @@ export function getIndexJobState(): IndexJobState {
   return s;
 }
 
-export function startIndexJob():
-  | { ok: true; jobId: string; signal: AbortSignal }
-  | { ok: false } {
+export function startIndexJob(): { ok: true; jobId: string; signal: AbortSignal } | { ok: false } {
   const jobId = randomUUID();
   const result = tryStartJob(store.state, new Date().toISOString(), jobId);
   if (!result.ok) return { ok: false };

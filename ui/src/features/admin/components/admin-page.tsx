@@ -1,21 +1,27 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/api/client";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { BackupPage } from "@/features/backup/components/backup-page";
 import {
   addWhitelistEntry,
+  computeAllHashes,
+  deleteMediaById,
+  getAllDuplicates,
   getDataExplorerAvailable,
   getSqlExplorerAvailable,
   getUserPeople,
   listPeopleForAdmin,
   listUsers,
+  listDbBackups,
   listWhitelist,
   removeWhitelistEntry,
+  restoreDbFromBackup,
   runSql,
   setUserPeople as setUserPeopleApi,
   type AdminUser,
   type AdminWhitelistEntry,
+  type DuplicateMatch,
 } from "../api";
 import { DataExplorer } from "./data-explorer";
 
@@ -38,6 +44,46 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   >(null);
   const [sqlError, setSqlError] = useState<string | null>(null);
   const [sqlRunning, setSqlRunning] = useState(false);
+  const [computingHashes, setComputingHashes] = useState(false);
+  const [hashResult, setHashResult] = useState<{
+    computed: number;
+    failed: number;
+    total: number;
+  } | null>(null);
+  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
+  const [findingDuplicates, setFindingDuplicates] = useState(false);
+  const [viewingDuplicate, setViewingDuplicate] = useState<DuplicateMatch | null>(null);
+  const [deletingMedia, setDeletingMedia] = useState<string | null>(null);
+  const [dbBackups, setDbBackups] = useState<Array<{
+    key: string;
+    size: number;
+    lastModified: string;
+  }> | null>(null);
+  const [dbBackupsError, setDbBackupsError] = useState<string | null>(null);
+  const [dbBackupsLoading, setDbBackupsLoading] = useState(false);
+  const [restoringBackupKey, setRestoringBackupKey] = useState<string | null>(null);
+
+  const sortedDbBackups = useMemo(() => {
+    if (dbBackups == null) return [];
+    return [...dbBackups].sort(
+      (a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+    );
+  }, [dbBackups]);
+
+  const fetchDbBackups = useCallback(async () => {
+    setDbBackupsLoading(true);
+    setDbBackupsError(null);
+    try {
+      const { backups } = await listDbBackups();
+      setDbBackups(backups);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to load backups";
+      setDbBackupsError(message);
+      setDbBackups([]);
+    } finally {
+      setDbBackupsLoading(false);
+    }
+  }, []);
 
   const fetchData = useCallback(async () => {
     const [wl, usersData, peopleData, sqlAvailable, dataAvailable] = await Promise.all([
@@ -75,6 +121,10 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    void fetchDbBackups();
+  }, [fetchDbBackups]);
 
   const handleAddWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,6 +176,74 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     handleSetUserPeople(userId, next);
   };
 
+  const handleComputeAllHashes = async () => {
+    setComputingHashes(true);
+    setHashResult(null);
+    try {
+      const result = await computeAllHashes();
+      setHashResult(result);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to compute hashes";
+      alert(message);
+    } finally {
+      setComputingHashes(false);
+    }
+  };
+
+  const handleFindDuplicates = async () => {
+    setFindingDuplicates(true);
+    setDuplicates([]);
+    try {
+      const result = await getAllDuplicates();
+      setDuplicates(result.duplicates);
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to find duplicates";
+      alert(message);
+    } finally {
+      setFindingDuplicates(false);
+    }
+  };
+
+  const handleDeleteDuplicate = async (mediaId: string) => {
+    if (!confirm(`Delete media ${mediaId}? This cannot be undone.`)) return;
+    setDeletingMedia(mediaId);
+    try {
+      await deleteMediaById(mediaId);
+      setDuplicates((prev) =>
+        prev.filter((d) => d.mediaId !== mediaId && d.duplicateOfId !== mediaId)
+      );
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Failed to delete";
+      alert(message);
+    } finally {
+      setDeletingMedia(null);
+    }
+  };
+
+  const handleCloseDuplicateView = () => {
+    setViewingDuplicate(null);
+  };
+
+  const handleRestoreDbBackup = async (key: string) => {
+    if (
+      !confirm(
+        "Replace the local database with this backup? The app will reload. This cannot be undone."
+      )
+    ) {
+      return;
+    }
+    setRestoringBackupKey(key);
+    try {
+      await restoreDbFromBackup(key);
+      window.location.reload();
+    } catch (err) {
+      const message = err instanceof ApiError ? err.message : "Restore failed";
+      alert(message);
+    } finally {
+      setRestoringBackupKey(null);
+    }
+  };
+
   return (
     <div className="admin-page">
       <h2 className="admin-page__title">Admin</h2>
@@ -138,6 +256,158 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         </p>
         <BackupPage onSyncComplete={onSyncComplete} showTitle={false} />
       </section>
+
+      <section className="admin-page__section">
+        <h3>Database backup (S3)</h3>
+        <p className="admin-page__desc">
+          Restore the SQLite database from a file previously uploaded to <code>backup/db/</code> in
+          your bucket. Wait until S3 sync has finished before restoring.
+        </p>
+        <div className="admin-page__form">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void fetchDbBackups()}
+            disabled={dbBackupsLoading}
+          >
+            {dbBackupsLoading ? "Loading…" : "Refresh list"}
+          </Button>
+        </div>
+        {dbBackupsError && (
+          <Alert variant="danger" role="alert">
+            <p>{dbBackupsError}</p>
+          </Alert>
+        )}
+        {!dbBackupsError &&
+          dbBackups !== null &&
+          sortedDbBackups.length === 0 &&
+          !dbBackupsLoading && (
+            <p className="admin-page__meta">
+              No <code>.db</code> backups found under backup/db/.
+            </p>
+          )}
+        {sortedDbBackups.length > 0 && (
+          <ul className="admin-page__list">
+            {sortedDbBackups.map((b) => (
+              <li key={b.key} className="admin-page__list-item admin-page__list-item--stacked">
+                <div>
+                  <code className="admin-page__meta">{b.key}</code>
+                  <span className="admin-page__meta">
+                    {" "}
+                    · {formatBackupDisplayDate(b.lastModified)} · {formatBytes(b.size)}
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="danger"
+                  size="sm"
+                  onClick={() => void handleRestoreDbBackup(b.key)}
+                  disabled={restoringBackupKey !== null}
+                >
+                  {restoringBackupKey === b.key ? "Restoring…" : "Restore"}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="admin-page__section">
+        <h3>Duplicate Detection</h3>
+        <p className="admin-page__desc">
+          Compute perceptual hashes to detect duplicate images by content. Hashes are computed
+          automatically for new uploads, but you can compute them for existing images here.
+        </p>
+        <div className="admin-page__form">
+          <Button onClick={handleComputeAllHashes} disabled={computingHashes}>
+            {computingHashes ? "Computing..." : "Compute All Hashes"}
+          </Button>
+          {hashResult && (
+            <p className="admin-page__meta">
+              Computed {hashResult.computed} of {hashResult.total} images ({hashResult.failed}{" "}
+              failed)
+            </p>
+          )}
+        </div>
+        <div className="admin-page__form" style={{ marginTop: "1rem" }}>
+          <Button onClick={handleFindDuplicates} disabled={findingDuplicates}>
+            {findingDuplicates ? "Finding..." : "Find Duplicates"}
+          </Button>
+          {duplicates.length > 0 && (
+            <ul className="admin-page__list">
+              {duplicates.map((dup, i) => (
+                <li key={i} className="admin-page__list-item">
+                  <button
+                    type="button"
+                    onClick={() => setViewingDuplicate(dup)}
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      textDecoration: "underline",
+                      color: "inherit",
+                    }}
+                  >
+                    {dup.mediaId} ↔ {dup.duplicateOfId} (distance: {dup.hammingDistance})
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </section>
+
+      {viewingDuplicate && (
+        <section className="admin-page__section">
+          <h3>Duplicate Review</h3>
+          <p className="admin-page__desc">
+            Comparing: {viewingDuplicate.mediaId} ↔ {viewingDuplicate.duplicateOfId} (Hamming
+            distance: {viewingDuplicate.hammingDistance})
+          </p>
+          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+            <div style={{ flex: "1 1 300px" }}>
+              <img
+                src={`/api/media/${viewingDuplicate.mediaId}/preview`}
+                alt={viewingDuplicate.mediaId}
+                style={{ maxWidth: "100%", height: "auto" }}
+              />
+              <p>{viewingDuplicate.mediaId}</p>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => handleDeleteDuplicate(viewingDuplicate.mediaId)}
+                disabled={deletingMedia === viewingDuplicate.mediaId}
+              >
+                {deletingMedia === viewingDuplicate.mediaId ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+            <div style={{ flex: "1 1 300px" }}>
+              <img
+                src={`/api/media/${viewingDuplicate.duplicateOfId}/preview`}
+                alt={viewingDuplicate.duplicateOfId}
+                style={{ maxWidth: "100%", height: "auto" }}
+              />
+              <p>{viewingDuplicate.duplicateOfId}</p>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => handleDeleteDuplicate(viewingDuplicate.duplicateOfId)}
+                disabled={deletingMedia === viewingDuplicate.duplicateOfId}
+              >
+                {deletingMedia === viewingDuplicate.duplicateOfId ? "Deleting..." : "Delete"}
+              </Button>
+            </div>
+          </div>
+          <Button
+            variant="secondary"
+            onClick={handleCloseDuplicateView}
+            style={{ marginTop: "1rem" }}
+          >
+            Close
+          </Button>
+        </section>
+      )}
 
       <section className="admin-page__section">
         <h3>Whitelist</h3>
@@ -327,4 +597,24 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       )}
     </div>
   );
+}
+
+function formatBytes(bytes: number): string {
+  const steps = [
+    { threshold: 1024 ** 4, label: "TB" },
+    { threshold: 1024 ** 3, label: "GB" },
+    { threshold: 1024 ** 2, label: "MB" },
+    { threshold: 1024, label: "KB" },
+  ];
+  const match = steps.find((s) => bytes >= s.threshold);
+  if (!match) return `${bytes} B`;
+  const value = bytes / match.threshold;
+  const rounded = value >= 10 || value % 1 < 0.05 ? String(Math.round(value)) : value.toFixed(1);
+  return `${rounded} ${match.label}`;
+}
+
+function formatBackupDisplayDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }

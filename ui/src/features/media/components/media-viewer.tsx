@@ -19,7 +19,10 @@ export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: Me
   const [taggingMode, setTaggingMode] = useState(false);
 
   const itemId = item?.id ?? "";
-  const index = useMemo(() => (itemId ? items.findIndex((x) => x.id === itemId) : -1), [items, itemId]);
+  const index = useMemo(
+    () => (itemId ? items.findIndex((x) => x.id === itemId) : -1),
+    [items, itemId]
+  );
   const prevItem = index > 0 ? items[index - 1] : null;
   const nextItem = index >= 0 && index < items.length - 1 ? items[index + 1] : null;
 

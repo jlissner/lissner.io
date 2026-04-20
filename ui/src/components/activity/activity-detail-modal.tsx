@@ -51,12 +51,18 @@ export function ActivityDetailModal({
         aria-labelledby="activity-detail-title"
       >
         <ModalTitle id="activity-detail-title">Background activity</ModalTitle>
-        <p className="activity-detail-modal__intro u-text-muted u-text-sm u-mb-4" style={{ marginTop: 0 }}>
+        <p
+          className="activity-detail-modal__intro u-text-muted u-text-sm u-mb-4"
+          style={{ marginTop: 0 }}
+        >
           Live updates from the server. This window stays in sync while work is running.
         </p>
 
         {indexing && (
-          <section className="activity-detail-modal__section" aria-labelledby="activity-detail-index">
+          <section
+            className="activity-detail-modal__section"
+            aria-labelledby="activity-detail-index"
+          >
             <h3 id="activity-detail-index" className="activity-detail-modal__heading">
               AI indexing
             </h3>
@@ -101,13 +107,17 @@ export function ActivityDetailModal({
         )}
 
         {syncing && (
-          <section className="activity-detail-modal__section" aria-labelledby="activity-detail-sync">
+          <section
+            className="activity-detail-modal__section"
+            aria-labelledby="activity-detail-sync"
+          >
             <h3 id="activity-detail-sync" className="activity-detail-modal__heading">
               S3 sync
             </h3>
             {!syn.configured ? (
               <p className="u-text-muted u-text-sm">
-                Backup is not configured. Missing: {syn.missingVars.join(", ") || "environment variables"}.
+                Backup is not configured. Missing:{" "}
+                {syn.missingVars.join(", ") || "environment variables"}.
               </p>
             ) : (
               <>
