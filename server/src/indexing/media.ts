@@ -143,7 +143,9 @@ async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: stri
       if (code === "ENOENT") {
         throw new Error(FFPROBE_NOT_FOUND, { cause: err });
       }
-      throw new Error(`ffprobe failed: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
+      throw new Error(`ffprobe failed: ${err instanceof Error ? err.message : String(err)}`, {
+        cause: err,
+      });
     }
   })();
   const data = JSON.parse(stdout) as {

@@ -1,5 +1,3 @@
-
-
 import Database from "better-sqlite3";
 import { mkdtemp, readFile, unlink, writeFile } from "fs/promises";
 import os from "os";
