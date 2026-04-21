@@ -172,7 +172,14 @@ export function MediaViewerContent({
           onClick={goPrev}
           aria-label="Previous"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -184,7 +191,14 @@ export function MediaViewerContent({
           onClick={goNext}
           aria-label="Next"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <path d="M9 18l6-6-6-6" />
           </svg>
         </button>
@@ -235,10 +249,7 @@ export function MediaViewerContent({
           Close
         </Button>
       </div>
-      <div
-        className="viewer-content__body"
-        {...(isMobile && !taggingMode ? tapNav : {})}
-      >
+      <div className="viewer-content__body" {...(isMobile && !taggingMode ? tapNav : {})}>
         <div className="viewer-content__media">
           <p className="viewer-content__filename">{item.originalName}</p>
           {hasMotionPair && motionPairView === "video" && (
