@@ -263,15 +263,27 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     mimeTypeForKind.startsWith("image/") || isPixelMotionPhotoExtension(item.originalName);
 
   if (!isVideoKind && isImageKind) {
-    const contentType = mimeTypeForKind.startsWith("image/")
-      ? mimeTypeForKind
-      : effectiveImageResponseMimeType(item);
-    return {
-      ok: true,
-      kind: "file",
-      path: filePath,
-      contentType,
-    };
+    const imgThumbPath = path.join(thumbnailsDir, `${item.id}_thumb.jpg`);
+    try {
+      if (!(await isUsableVideoThumbnailFile(imgThumbPath))) {
+        await sharp(filePath)
+          .rotate()
+          .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 70 })
+          .toFile(imgThumbPath);
+      }
+      return { ok: true, kind: "file", path: imgThumbPath, contentType: "image/jpeg" };
+    } catch (err) {
+      logger.error({ err, mediaId }, "Image thumbnail generation error");
+      return {
+        ok: true,
+        kind: "file",
+        path: filePath,
+        contentType: mimeTypeForKind.startsWith("image/")
+          ? mimeTypeForKind
+          : effectiveImageResponseMimeType(item),
+      };
+    }
   }
   if (!isVideoKind) {
     return { ok: false, reason: "bad_type" };

@@ -62,7 +62,7 @@ function MotionPairThumbnail({ item }: { item: { id: string; originalName: strin
   return (
     <div className="media-cell__video-wrap">
       <FallbackImage
-        src={`/api/media/${item.id}/preview`}
+        src={`/api/media/${item.id}/thumbnail`}
         alt={item.originalName}
         fallbackIcon="📷"
         className="media-cell__img"
@@ -161,7 +161,7 @@ export function MediaItemCell({
             <VideoThumbnail item={item} />
           ) : isImage(item.mimeType, item.originalName) ? (
             <FallbackImage
-              src={`/api/media/${item.id}/preview`}
+              src={`/api/media/${item.id}/thumbnail`}
               alt={item.originalName}
               fallbackIcon="📷"
               className="media-cell__img"

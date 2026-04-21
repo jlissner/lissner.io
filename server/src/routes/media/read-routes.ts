@@ -161,6 +161,7 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
     return;
   }
   res.setHeader("Content-Type", out.contentType);
+  res.setHeader("Cache-Control", "private, max-age=86400, immutable");
   res.sendFile(out.path);
 });
 
