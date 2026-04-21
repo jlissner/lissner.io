@@ -14,9 +14,11 @@
 
   .people-layout > .sidebar {
     flex: 1;
+    min-height: 0;
     max-height: none;
     border-bottom: none;
     width: 100%;
+    overflow: hidden;
   }
 
   .people-layout > .detail {
