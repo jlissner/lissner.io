@@ -1,5 +1,5 @@
 ---
-status: approved
+status: complete
 branch: feat/mobile-friendly
 ---
 
@@ -41,3 +41,9 @@ Sessions are lost on every deployment because they're stored in-memory. Users mu
 
 - **MODIFIED** `magic_link_tokens` — added `login_code` column (hashed 6-digit code)
 - **ADDED** `refresh_tokens` table — stores hashed refresh tokens with family-based revocation
+
+## Finalization notes
+
+- Baseline features copied to `features/auth/`.
+- Decision moved to `.grimoire/decisions/0001-jwt-with-refresh-tokens.md` (accepted).
+- Post-implementation: `auth/me` removed from the API client’s no-retry list so a 401 on session bootstrap triggers the same silent refresh as other routes (aligns with “Expired access token is silently refreshed” when the first request is `GET /api/auth/me`).

@@ -4,7 +4,7 @@
 > **Features**: `auth/jwt-session.feature`, `auth/login-code.feature`
 > **Decisions**: `0001-jwt-with-refresh-tokens.md`
 > **Test command**: `npm test`
-> **Status**: 19/19 tasks complete
+> **Status**: 20/20 tasks complete
 
 ## Reuse
 
@@ -57,6 +57,7 @@
 - [x] 7.2 Verified `useAuth` hook — no changes needed (endpoints unchanged)
 - [x] 7.3 Add `verifyLoginCode` to `ui/src/features/auth/api.ts`
 - [x] 7.4 Update `ui/src/features/auth/components/login-page.tsx` — code entry form with text input, inputMode=numeric
+- [x] 7.5 Remove `auth/me` from the silent-refresh exclusion list in `ui/src/api/client.ts` so expired access tokens trigger refresh on `GET /api/auth/me` (session bootstrap)
 
 ## 8. Cleanup: remove express-session
 

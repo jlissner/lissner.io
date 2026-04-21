@@ -1,6 +1,6 @@
 ---
-status: proposed
-date: 2026-04-20
+status: accepted
+date: 2026-04-21
 decision-makers: [Joe]
 ---
 

@@ -5,13 +5,7 @@
 
 const API_PREFIX = "/api";
 
-const AUTH_PATHS = new Set([
-  "auth/refresh",
-  "auth/me",
-  "auth/magic-link",
-  "auth/verify-code",
-  "auth/config",
-]);
+const AUTH_PATHS = new Set(["auth/refresh", "auth/magic-link", "auth/verify-code", "auth/config"]);
 
 export class ApiError extends Error {
   readonly status: number;
