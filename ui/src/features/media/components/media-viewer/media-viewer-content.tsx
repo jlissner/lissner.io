@@ -8,6 +8,8 @@ import { InlineAssignBar } from "./inline-assign-bar";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
 import { useSwipeNav } from "./use-swipe-nav";
+import { useTapNav } from "./use-tap-nav";
+import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
 import { Button } from "@/components/ui/button";
 
@@ -23,6 +25,17 @@ interface MediaViewerContentProps {
   setTaggingMode: (fn: (prev: boolean) => boolean) => void;
   onClose: () => void;
   onUpdate?: () => void;
+}
+
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return mobile;
 }
 
 export function MediaViewerContent({
@@ -44,17 +57,22 @@ export function MediaViewerContent({
   const hasMotionPair = item.motionCompanionId != null && item.motionCompanionId !== "";
   const motionVideoUrl = hasMotionPair ? `/api/media/${item.motionCompanionId}/preview` : "";
   const [pixelIsVideo, setPixelIsVideo] = useState(false);
-  /** Paired `*.mp.jpg` + `*.mp`: default to motion video; user can switch to still only. */
   const [motionPairView, setMotionPairView] = useState<"video" | "still">("video");
   const [detailsRefreshKey, setDetailsRefreshKey] = useState(0);
-  /** When false, detection boxes are hidden and clicks don’t snap to model-detected faces. */
   const [showDetectedFaces, setShowDetectedFaces] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     setPixelIsVideo(false);
     setMotionPairView("video");
     setShowDetectedFaces(true);
+    setDetailsOpen(false);
+    setFullscreen(false);
   }, [item.id]);
+
   const handleTagChange = useCallback(() => setDetailsRefreshKey((k) => k + 1), []);
   const {
     faces,
@@ -90,15 +108,16 @@ export function MediaViewerContent({
         activeTag === "textarea" ||
         active?.getAttribute("contenteditable") === "true";
       if (e.key === "Escape") {
-        if (assigningFace) setAssigningFace(null);
+        if (fullscreen) setFullscreen(false);
+        else if (assigningFace) setAssigningFace(null);
         else if (reassigningFace) setReassigningFace(null);
         else onClose();
       }
       if (typing) return;
-      if (e.key === "ArrowLeft" && !assigningFace && !reassigningFace) {
+      if (e.key === "ArrowLeft" && !assigningFace && !reassigningFace && !fullscreen) {
         if (prevItem) goPrev();
       }
-      if (e.key === "ArrowRight" && !assigningFace && !reassigningFace) {
+      if (e.key === "ArrowRight" && !assigningFace && !reassigningFace && !fullscreen) {
         if (nextItem) goNext();
       }
     };
@@ -106,6 +125,7 @@ export function MediaViewerContent({
     return () => window.removeEventListener("keydown", handleKey);
   }, [
     onClose,
+    fullscreen,
     assigningFace,
     reassigningFace,
     setAssigningFace,
@@ -117,10 +137,34 @@ export function MediaViewerContent({
   ]);
 
   const swipeRef = useRef<HTMLDivElement>(null);
-  useSwipeNav(swipeRef, nextItem ? goNext : null, prevItem ? goPrev : null);
+  useSwipeNav(
+    swipeRef,
+    nextItem && !fullscreen ? goNext : null,
+    prevItem && !fullscreen ? goPrev : null
+  );
+
+  const isItemImage =
+    isImage(item.mimeType, item.originalName) &&
+    !pixelIsVideo &&
+    (!hasMotionPair || motionPairView === "still");
+
+  const tapNav = useTapNav(
+    isMobile && prevItem && !taggingMode && !fullscreen ? goPrev : null,
+    isMobile && nextItem && !taggingMode && !fullscreen ? goNext : null,
+    isMobile && isItemImage && !taggingMode && !fullscreen ? () => setFullscreen(true) : null
+  );
+
+  const showDetails = !isMobile || detailsOpen;
 
   return (
     <div ref={swipeRef} onClick={(e) => e.stopPropagation()} className="viewer-content">
+      {fullscreen && (
+        <FullscreenImage
+          src={previewUrl}
+          alt={item.originalName}
+          onClose={() => setFullscreen(false)}
+        />
+      )}
       {prevItem && (
         <button
           type="button"
@@ -128,14 +172,7 @@ export function MediaViewerContent({
           onClick={goPrev}
           aria-label="Previous"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -147,14 +184,7 @@ export function MediaViewerContent({
           onClick={goNext}
           aria-label="Next"
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18l6-6-6-6" />
           </svg>
         </button>
@@ -205,7 +235,10 @@ export function MediaViewerContent({
           Close
         </Button>
       </div>
-      <div className="viewer-content__body">
+      <div
+        className="viewer-content__body"
+        {...(isMobile && !taggingMode ? tapNav : {})}
+      >
         <div className="viewer-content__media">
           <p className="viewer-content__filename">{item.originalName}</p>
           {hasMotionPair && motionPairView === "video" && (
@@ -366,13 +399,35 @@ export function MediaViewerContent({
               </p>
             )}
         </div>
-        <aside className="viewer-content__details">
-          <MediaViewerDetails
-            item={item}
-            refreshTrigger={detailsRefreshKey}
-            onMetadataUpdated={onUpdate}
-          />
-        </aside>
+        {isMobile && (
+          <button
+            type="button"
+            className="viewer-content__details-toggle"
+            onClick={() => setDetailsOpen((o) => !o)}
+          >
+            {detailsOpen ? "Hide details" : "Show details"}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`viewer-content__details-chevron ${detailsOpen ? "viewer-content__details-chevron--open" : ""}`}
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+        )}
+        {showDetails && (
+          <aside className="viewer-content__details">
+            <MediaViewerDetails
+              item={item}
+              refreshTrigger={detailsRefreshKey}
+              onMetadataUpdated={onUpdate}
+            />
+          </aside>
+        )}
       </div>
     </div>
   );
