@@ -1,11 +1,28 @@
-/* People feature styles */
+/* People feature layout */
 
 .people-layout {
   display: flex;
-  flex-direction: column;
   flex: 1;
   min-height: 0;
   overflow: hidden;
+}
+
+@media (max-width: 639px) {
+  .people-layout {
+    flex-direction: column;
+  }
+
+  .people-layout > .sidebar {
+    flex: 1;
+    max-height: none;
+    border-bottom: none;
+    width: 100%;
+  }
+
+  .people-layout > .detail {
+    flex: 1;
+    min-height: 0;
+  }
 }
 
 @media (min-width: 640px) {

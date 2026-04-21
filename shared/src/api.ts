@@ -107,6 +107,7 @@ export interface PersonSummary {
   id: number;
   name: string;
   photoCount: number;
+  representativeMediaId: string | null;
 }
 
 /** GET /api/people/:id/media */

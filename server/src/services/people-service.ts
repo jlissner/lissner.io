@@ -37,6 +37,7 @@ export function listPeopleSummary(): PersonSummary[] {
     id,
     name: names.get(id) ?? `Person ${id}`,
     photoCount: db.getMediaCountForPerson(id),
+    representativeMediaId: db.getRepresentativeMediaId(id),
   }));
 }
 

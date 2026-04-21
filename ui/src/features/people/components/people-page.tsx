@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError } from "@/api/client";
 import { PeopleSidebar } from "./people-sidebar";
 import { PeopleDetail } from "./people-detail";
@@ -12,6 +12,17 @@ import { usePeoplePage } from "./use-people-page";
 import { runMatchFaces as runMatchFacesApi } from "../api";
 import type { FaceMatchRunResponse } from "./people-types";
 
+function useIsMobile(): boolean {
+  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return mobile;
+}
+
 interface PeoplePageProps {
   onUpdate?: () => void;
   onViewAllPhotos?: (personId: number) => void;
@@ -19,6 +30,7 @@ interface PeoplePageProps {
 
 export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
   const [matchFacesOpen, setMatchFacesOpen] = useState(false);
   const [matchFacesBusy, setMatchFacesBusy] = useState(false);
   const [matchFacesQueue, setMatchFacesQueue] = useState<FaceMatchRunResponse["reviewQueue"]>([]);
@@ -75,6 +87,17 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     }
   }, [fetchPeople, onUpdate]);
 
+  const handleSelectPerson = useCallback(
+    (id: number | null) => {
+      setSelectedId(id);
+    },
+    [setSelectedId]
+  );
+
+  const handleBack = useCallback(() => {
+    setSelectedId(null);
+  }, [setSelectedId]);
+
   const selectedPerson = people.find((p) => p.id === selectedId);
   const hasPlaceholders = people.some((p) => p.name.trim().startsWith("Person"));
   const photoCount =
@@ -85,37 +108,45 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     return <div className="u-p-6 u-text-muted u-text-sm">Loading people…</div>;
   }
 
+  const showList = !isMobile || !selectedId;
+  const showDetail = !isMobile || !!selectedId;
+
   return (
     <div className="people-layout">
-      <PeopleSidebar
-        people={people}
-        selectedId={selectedId}
-        menuOpen={menuOpen}
-        onSelect={setSelectedId}
-        onMenuToggle={setMenuOpen}
-        onEdit={(p) => {
-          setEditModal(p);
-          setEditDraft(p.name.startsWith("Person ") ? "" : p.name);
-        }}
-        onMerge={setMergeModal}
-        onDelete={handleDeletePerson}
-        onAddPerson={() => setAddModalOpen(true)}
-        onMatchFaces={hasPlaceholders ? runMatchFaces : undefined}
-        matchFacesBusy={matchFacesBusy}
-        menuRef={menuRef}
-      />
-      <PeopleDetail
-        selectedId={selectedId}
-        selectedName={selectedName || selectedPerson?.name || "Unknown"}
-        photoCount={photoCount}
-        previewMedia={previewMedia}
-        previewLoading={previewLoading}
-        mergeSuggestions={mergeSuggestions}
-        mergeSuggestionsLoading={mergeSuggestionsLoading}
-        onMergeIntoSuggestion={handleMergeFromSuggestion}
-        onViewAllPhotos={onViewAllPhotos}
-        onPhotoClick={setViewingMedia}
-      />
+      {showList && (
+        <PeopleSidebar
+          people={people}
+          selectedId={selectedId}
+          menuOpen={menuOpen}
+          onSelect={handleSelectPerson}
+          onMenuToggle={setMenuOpen}
+          onEdit={(p) => {
+            setEditModal(p);
+            setEditDraft(p.name.startsWith("Person ") ? "" : p.name);
+          }}
+          onMerge={setMergeModal}
+          onDelete={handleDeletePerson}
+          onAddPerson={() => setAddModalOpen(true)}
+          onMatchFaces={hasPlaceholders ? runMatchFaces : undefined}
+          matchFacesBusy={matchFacesBusy}
+          menuRef={menuRef}
+        />
+      )}
+      {showDetail && (
+        <PeopleDetail
+          selectedId={selectedId}
+          selectedName={selectedName || selectedPerson?.name || "Unknown"}
+          photoCount={photoCount}
+          previewMedia={previewMedia}
+          previewLoading={previewLoading}
+          mergeSuggestions={mergeSuggestions}
+          mergeSuggestionsLoading={mergeSuggestionsLoading}
+          onMergeIntoSuggestion={handleMergeFromSuggestion}
+          onViewAllPhotos={onViewAllPhotos}
+          onPhotoClick={setViewingMedia}
+          onBack={isMobile ? handleBack : undefined}
+        />
+      )}
       {addModalOpen && (
         <PeopleAddModal onAdd={handleAddPerson} onClose={() => setAddModalOpen(false)} />
       )}

@@ -1,9 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { Person } from "./people-types";
 
 export type { Person };
+
+const PAGE_SIZE = 20;
 
 interface PeopleSidebarProps {
   people: Person[];
@@ -26,9 +28,39 @@ function photoCountLabel(count: number | undefined): string {
   return `${safeCount} ${noun}`;
 }
 
-function nextSelectedId(currentSelectedId: number | null, personId: number): number | null {
-  if (currentSelectedId === personId) return null;
-  return personId;
+function sortAlphabetically(people: Person[]): Person[] {
+  return [...people].sort((a, b) =>
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+  );
+}
+
+function PersonAvatar({ person }: { person: Person }) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [person.representativeMediaId]);
+
+  if (person.representativeMediaId && !imgError) {
+    return (
+      <div className="person-row__avatar person-row__avatar--photo">
+        <img
+          src={`/api/media/${person.representativeMediaId}/face/${person.id}`}
+          alt=""
+          className="person-row__avatar-img"
+          onError={() => setImgError(true)}
+          loading="lazy"
+        />
+      </div>
+    );
+  }
+
+  const isPlaceholder = person.name.startsWith("Person ");
+  return (
+    <div className={`person-row__avatar ${!isPlaceholder ? "person-row__avatar--initial" : ""}`}>
+      {isPlaceholder ? <span>?</span> : <span>{person.name.charAt(0).toUpperCase()}</span>}
+    </div>
+  );
 }
 
 export function PeopleSidebar({
@@ -45,6 +77,9 @@ export function PeopleSidebar({
   matchFacesBusy = false,
   menuRef,
 }: PeopleSidebarProps) {
+  const [search, setSearch] = useState("");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -55,38 +90,78 @@ export function PeopleSidebar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [menuRef, onMenuToggle]);
 
+  const sorted = useMemo(() => sortAlphabetically(people), [people]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return sorted;
+    return sorted.filter((p) => p.name.toLowerCase().includes(q));
+  }, [sorted, search]);
+
+  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const hasMore = filtered.length > visibleCount;
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((n) => n + PAGE_SIZE);
+  }, []);
+
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [search]);
+
+  const placeholderCount = people.filter((p) => p.name.startsWith("Person ")).length;
+
   return (
     <aside className="sidebar">
       <div className="sidebar__header">
-        <h2 className="sidebar__title">People</h2>
-        <p className="sidebar__subtitle">
-          {people.length} {people.length === 1 ? "person" : "people"}
-        </p>
-        <div className="sidebar__header-actions">
-          {onMatchFaces && (
-            <Button
-              variant="secondary"
-              className="sidebar__match-faces"
-              disabled={matchFacesBusy}
-              onClick={onMatchFaces}
-            >
-              {matchFacesBusy ? "Matching…" : "Match faces"}
+        <div className="sidebar__header-top">
+          <div>
+            <h2 className="sidebar__title">People</h2>
+            <p className="sidebar__subtitle">
+              {people.length} {people.length === 1 ? "person" : "people"}
+              {placeholderCount > 0 && (
+                <span className="sidebar__unmerged"> ({placeholderCount} unmatched)</span>
+              )}
+            </p>
+          </div>
+          <div className="sidebar__header-actions">
+            <Button variant="ghost" size="sm" onClick={onAddPerson}>
+              + Add
             </Button>
-          )}
-          <Button variant="ghost" className="sidebar__add" onClick={onAddPerson}>
-            + Add person
-          </Button>
+            {onMatchFaces && (
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={matchFacesBusy}
+                onClick={onMatchFaces}
+              >
+                {matchFacesBusy ? "Matching…" : "Match"}
+              </Button>
+            )}
+          </div>
         </div>
+        {people.length > PAGE_SIZE && (
+          <input
+            type="text"
+            className="sidebar__search"
+            placeholder="Search people…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        )}
       </div>
       <div className="sidebar__list">
-        {people.length === 0 ? (
-          <p className="empty">No people yet. Add a person or index your photos to detect faces.</p>
+        {visible.length === 0 ? (
+          <p className="sidebar__empty">
+            {search
+              ? "No matches"
+              : "No people yet. Add a person or index your photos to detect faces."}
+          </p>
         ) : (
-          people.map((p) => (
+          visible.map((p) => (
             <div
               key={p.id}
-              className="u-flex"
-              style={{ position: "relative" }}
+              className="person-row__wrap"
               ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}
             >
               <div
@@ -94,26 +169,18 @@ export function PeopleSidebar({
                 tabIndex={0}
                 className={`person-row ${selectedId === p.id ? "person-row--selected" : ""}`}
                 onClick={() => {
-                  onSelect(nextSelectedId(selectedId, p.id));
+                  onSelect(selectedId === p.id ? null : p.id);
                   onMenuToggle(null);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelect(nextSelectedId(selectedId, p.id));
+                    onSelect(selectedId === p.id ? null : p.id);
                     onMenuToggle(null);
                   }
                 }}
               >
-                <div
-                  className={`person-row__avatar ${!p.name.startsWith("Person ") ? "person-row__avatar--initial" : ""}`}
-                >
-                  {p.name.startsWith("Person ") ? (
-                    <span>👤</span>
-                  ) : (
-                    <span>{p.name.charAt(0).toUpperCase()}</span>
-                  )}
-                </div>
+                <PersonAvatar person={p} />
                 <div className="person-row__info">
                   <div className="person-row__name">{p.name}</div>
                   <div className="person-row__count">{photoCountLabel(p.photoCount)}</div>
@@ -164,6 +231,13 @@ export function PeopleSidebar({
               )}
             </div>
           ))
+        )}
+        {hasMore && (
+          <div className="sidebar__load-more">
+            <Button variant="ghost" size="sm" onClick={handleLoadMore}>
+              Show more ({filtered.length - visibleCount} remaining)
+            </Button>
+          </div>
         )}
       </div>
     </aside>

@@ -55,6 +55,17 @@ function buildPeopleStmts() {
        ORDER BY m.uploaded_at DESC, m.filename ASC
        LIMIT ?`
     ),
+    getRepresentativeMediaId: db.prepare(
+      `SELECT ip.media_id as mediaId
+       FROM image_people ip
+       JOIN media m ON m.id = ip.media_id
+       WHERE ip.person_id = ?
+         AND ip.x IS NOT NULL AND ip.width IS NOT NULL
+         AND COALESCE(m.hide_from_gallery, 0) = 0
+         AND m.mime_type LIKE 'image/%'
+       ORDER BY ip.confidence DESC, m.uploaded_at DESC
+       LIMIT 1`
+    ),
   };
 }
 
@@ -348,4 +359,11 @@ export function getMediaForPerson(
     width?: number;
     height?: number;
   }>;
+}
+
+export function getRepresentativeMediaId(personId: number): string | null {
+  const row = peopleStmts().getRepresentativeMediaId.get(personId) as
+    | { mediaId: string }
+    | undefined;
+  return row?.mediaId ?? null;
 }
