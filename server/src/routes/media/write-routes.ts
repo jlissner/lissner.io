@@ -33,7 +33,7 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
     return;
   }
   const id = path.parse(req.file.filename).name;
-  const ownerId = req.session?.userId ?? authDb.getDefaultOwnerId();
+  const ownerId = req.jwtUser?.id ?? authDb.getDefaultOwnerId();
   if (ownerId == null) {
     sendApiError(
       res,
@@ -84,8 +84,8 @@ mediaWriteRouter.post("/upload/check-names", (req, res) => {
 mediaWriteRouter.delete("/:id", async (req, res) => {
   const { id } = parseWithSchema(mediaIdParamSchema, req.params);
   const result = await deleteMediaItem(id, {
-    userId: req.session?.userId,
-    isAdmin: req.session?.isAdmin,
+    userId: req.jwtUser?.id,
+    isAdmin: req.jwtUser?.isAdmin,
   });
   if (result.ok) {
     res.status(204).send();
@@ -105,8 +105,8 @@ mediaWriteRouter.delete("/:id", async (req, res) => {
 mediaWriteRouter.patch("/:id", (req, res) => {
   const { id } = parseWithSchema(mediaIdParamSchema, req.params);
   const result = updateMediaDateTaken(id, req.body, {
-    userId: req.session?.userId,
-    isAdmin: req.session?.isAdmin,
+    userId: req.jwtUser?.id,
+    isAdmin: req.jwtUser?.isAdmin,
   });
   if (result.ok) {
     res.json({ dateTaken: result.dateTaken });

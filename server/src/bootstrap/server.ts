@@ -16,7 +16,7 @@ import {
 import {
   impersonateFirstAdminWhenAuthDisabled,
   requireAuth,
-  sessionMiddleware,
+  jwtMiddleware,
 } from "../auth/middleware.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { requestLogger } from "../logger.js";
@@ -32,7 +32,7 @@ export function createConfiguredApp(uiDistDir: string) {
   app.use(cors({ origin: true, credentials: true }));
   app.use(requestLogger);
   app.use(express.json());
-  app.use(sessionMiddleware());
+  app.use(jwtMiddleware());
   app.use(impersonateFirstAdminWhenAuthDisabled);
 
   app.use("/api/auth", authRouter);

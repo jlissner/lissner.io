@@ -1,0 +1,35 @@
+# Proposed data changes for: update-auth-jwt-and-login-codes
+
+magic_link_tokens:
+  action: modify
+  source: server/src/db/auth.ts
+  fields:
+    login_code:
+      action: add
+      type: text
+      nullable: false
+      notes: "6-digit numeric code hashed with SHA-256, generated alongside the magic link token"
+
+refresh_tokens:
+  action: add
+  source: server/src/db/auth.ts
+  fields:
+    token_hash:
+      type: text
+      primary_key: true
+      notes: "SHA-256 hash of the raw refresh token"
+    user_id:
+      type: integer
+      nullable: false
+      notes: "References users(id)"
+    family_id:
+      type: text
+      nullable: false
+      notes: "Groups related tokens for reuse detection; set on initial login, carried through rotations"
+    expires_at:
+      type: text
+      nullable: false
+    revoked_at:
+      type: text
+      nullable: true
+      notes: "NULL = active; set when rotated, logged out, or family revoked"

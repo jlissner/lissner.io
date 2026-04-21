@@ -59,7 +59,13 @@ export type ApiErrorCode =
   | "face_person_unknown"
   | "invalid_backup_key"
   | "invalid_db_backup"
-  | "db_restore_failed";
+  | "db_restore_failed"
+  | "invalid_code"
+  | "code_expired"
+  | "code_already_used"
+  | "token_reused"
+  | "refresh_failed"
+  | "rate_limited";
 
 export function sendApiError(
   res: Response,

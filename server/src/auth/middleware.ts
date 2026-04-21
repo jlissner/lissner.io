@@ -1,13 +1,11 @@
 import type { Request, Response, NextFunction } from "express";
-import session from "express-session";
 import { sendApiError } from "../lib/api-error.js";
 import * as authDb from "../db/auth.js";
+import { verifyAccessToken } from "./jwt.js";
 
-declare module "express-session" {
-  interface SessionData {
-    userId?: number;
-    email?: string;
-    isAdmin?: boolean;
+declare module "express-serve-static-core" {
+  interface Request {
+    jwtUser?: AuthUser | null;
   }
 }
 
@@ -17,25 +15,32 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
-let _sessionStore: session.Store | null = null;
+function parseCookie(header: string, name: string): string | undefined {
+  for (const part of header.split(";")) {
+    const [key, ...val] = part.trim().split("=");
+    if (key === name) return val.join("=");
+  }
+  return undefined;
+}
 
-export function sessionMiddleware() {
-  const middleware = session({
-    secret: process.env.SESSION_SECRET ?? "family-media-manager-dev-secret",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    },
-  });
-  return (req: Request, res: Response, next: NextFunction) => {
-    middleware(req, res, () => {
-      _sessionStore = req.sessionStore;
+export function jwtMiddleware() {
+  return async (req: Request, _res: Response, next: NextFunction) => {
+    req.jwtUser = null;
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) {
       next();
-    });
+      return;
+    }
+    const token = parseCookie(cookieHeader, "access_token");
+    if (!token) {
+      next();
+      return;
+    }
+    const payload = await verifyAccessToken(token);
+    if (payload) {
+      req.jwtUser = { id: payload.sub, email: payload.email, isAdmin: payload.isAdmin };
+    }
+    next();
   };
 }
 
@@ -45,40 +50,20 @@ export async function validateSessionFromCookie(
   if (process.env.AUTH_ENABLED !== "true") {
     return null;
   }
-  if (!cookieHeader || !_sessionStore) {
+  if (!cookieHeader) {
     return null;
   }
-
-  const cookies = Object.fromEntries(
-    cookieHeader.split(";").map((c) => {
-      const [key, ...val] = c.trim().split("=");
-      return [key, val.join("=")];
-    })
-  );
-
-  const sid = cookies["connect.sid"];
-  if (!sid) {
+  const token = parseCookie(cookieHeader, "access_token");
+  if (!token) {
     return null;
   }
-
-  const sessionId = decodeURIComponent(sid);
-
-  return new Promise((resolve) => {
-    _sessionStore!.get(sessionId, (err, session) => {
-      if (err || !session?.userId || !session?.email) {
-        resolve(null);
-        return;
-      }
-      resolve({
-        id: session.userId,
-        email: session.email,
-        isAdmin: !!session.isAdmin,
-      });
-    });
-  });
+  const payload = await verifyAccessToken(token);
+  if (!payload) {
+    return null;
+  }
+  return { id: payload.sub, email: payload.email, isAdmin: payload.isAdmin };
 }
 
-/** When AUTH_ENABLED=false, treat all requests as the FIRST_ADMIN_EMAIL user. */
 export function impersonateFirstAdminWhenAuthDisabled(
   req: Request,
   _res: Response,
@@ -91,9 +76,7 @@ export function impersonateFirstAdminWhenAuthDisabled(
   const email = process.env.FIRST_ADMIN_EMAIL?.trim();
   if (email) {
     const user = authDb.getOrCreateUser(email, true);
-    req.session!.userId = user.id;
-    req.session!.email = user.email;
-    req.session!.isAdmin = user.isAdmin;
+    req.jwtUser = { id: user.id, email: user.email, isAdmin: user.isAdmin };
   }
   next();
 }
@@ -103,7 +86,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
     next();
     return;
   }
-  if (req.session?.userId) {
+  if (req.jwtUser) {
     next();
   } else {
     sendApiError(res, 401, "Authentication required", "auth_required");
@@ -115,7 +98,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
     next();
     return;
   }
-  if (req.session?.isAdmin) {
+  if (req.jwtUser?.isAdmin) {
     next();
   } else {
     sendApiError(res, 403, "Admin access required", "admin_required");
@@ -123,10 +106,5 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
 }
 
 export function getAuthUser(req: Request): AuthUser | null {
-  if (!req.session?.userId || !req.session?.email) return null;
-  return {
-    id: req.session.userId,
-    email: req.session.email,
-    isAdmin: !!req.session.isAdmin,
-  };
+  return req.jwtUser ?? null;
 }

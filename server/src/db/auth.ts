@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { randomBytes, createHash } from "crypto";
+import { randomBytes, randomInt, createHash } from "crypto";
 import { dbPath } from "../config/paths.js";
 
 let db: InstanceType<typeof Database>;
@@ -87,7 +87,27 @@ function initAuthDb(): void {
   )
 `);
 
+  const mlCols = (
+    db.prepare("PRAGMA table_info(magic_link_tokens)").all() as Array<{ name: string }>
+  ).map((c) => c.name);
+  if (!mlCols.includes("login_code")) {
+    db.exec("ALTER TABLE magic_link_tokens ADD COLUMN login_code TEXT");
+  }
+
+  db.exec(`
+  CREATE TABLE IF NOT EXISTS refresh_tokens (
+    token_hash TEXT PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    family_id TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    revoked_at TEXT
+  )
+`);
+  db.exec("CREATE INDEX IF NOT EXISTS idx_refresh_tokens_family ON refresh_tokens(family_id)");
+  db.exec("CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id)");
+
   deleteExpiredMagicLinkTokens();
+  deleteExpiredRefreshTokens();
 }
 
 db = new Database(dbPath);
@@ -106,6 +126,10 @@ export function reopenAuthDb(): void {
 
 function deleteExpiredMagicLinkTokens(): void {
   db.prepare("DELETE FROM magic_link_tokens WHERE expires_at < datetime('now')").run();
+}
+
+function deleteExpiredRefreshTokens(): void {
+  db.prepare("DELETE FROM refresh_tokens WHERE expires_at < datetime('now')").run();
 }
 
 export function isEmailWhitelisted(email: string): boolean {
@@ -203,21 +227,25 @@ export function getDefaultOwnerId(): number | null {
   return user.id;
 }
 
-export function createMagicLinkToken(email: string): { token: string; expiresAt: string } {
+export function createMagicLinkToken(email: string): {
+  token: string;
+  code: string;
+  expiresAt: string;
+} {
   deleteExpiredMagicLinkTokens();
 
   const normalized = email.trim().toLowerCase();
   const token = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(token).digest("hex");
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 min
+  const code = String(randomInt(0, 1000000)).padStart(6, "0");
+  const codeHash = createHash("sha256").update(code).digest("hex");
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
 
-  db.prepare("INSERT INTO magic_link_tokens (token_hash, email, expires_at) VALUES (?, ?, ?)").run(
-    tokenHash,
-    normalized,
-    expiresAt
-  );
+  db.prepare(
+    "INSERT INTO magic_link_tokens (token_hash, email, expires_at, login_code) VALUES (?, ?, ?, ?)"
+  ).run(tokenHash, normalized, expiresAt, codeHash);
 
-  return { token, expiresAt };
+  return { token, code, expiresAt };
 }
 
 export function consumeMagicLinkToken(token: string): { email: string } | null {
@@ -304,6 +332,85 @@ export function setUserPeople(userId: number, personIds: number[]): void {
   for (const pid of ids) {
     insert.run(userId, pid);
   }
+}
+
+export function consumeLoginCode(
+  email: string,
+  codeHash: string
+): { email: string } | null {
+  deleteExpiredMagicLinkTokens();
+
+  const normalized = email.trim().toLowerCase();
+  const row = db
+    .prepare(
+      "SELECT email FROM magic_link_tokens WHERE login_code = ? AND LOWER(email) = ? AND used_at IS NULL AND expires_at > datetime('now')"
+    )
+    .get(codeHash, normalized) as { email: string } | undefined;
+
+  if (!row) return null;
+
+  db.prepare(
+    "UPDATE magic_link_tokens SET used_at = datetime('now') WHERE login_code = ? AND LOWER(email) = ? AND used_at IS NULL"
+  ).run(codeHash, normalized);
+  return row;
+}
+
+export function createRefreshToken(
+  tokenHash: string,
+  userId: number,
+  familyId: string,
+  expiresAt: string
+): void {
+  deleteExpiredRefreshTokens();
+  db.prepare(
+    "INSERT INTO refresh_tokens (token_hash, user_id, family_id, expires_at) VALUES (?, ?, ?, ?)"
+  ).run(tokenHash, userId, familyId, expiresAt);
+}
+
+export function consumeRefreshToken(
+  tokenHash: string
+): { userId: number; familyId: string } | null {
+  const row = db
+    .prepare(
+      "SELECT user_id as userId, family_id as familyId FROM refresh_tokens WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > datetime('now')"
+    )
+    .get(tokenHash) as { userId: number; familyId: string } | undefined;
+
+  if (!row) return null;
+
+  db.prepare(
+    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE token_hash = ?"
+  ).run(tokenHash);
+  return row;
+}
+
+export function revokeTokenFamily(familyId: string): void {
+  db.prepare(
+    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE family_id = ? AND revoked_at IS NULL"
+  ).run(familyId);
+}
+
+export function isRefreshTokenRevoked(tokenHash: string): boolean {
+  const row = db
+    .prepare("SELECT revoked_at FROM refresh_tokens WHERE token_hash = ?")
+    .get(tokenHash) as { revoked_at: string | null } | undefined;
+  return row != null && row.revoked_at != null;
+}
+
+export function revokeUserRefreshTokens(userId: number): void {
+  db.prepare(
+    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL"
+  ).run(userId);
+}
+
+export function getUserById(
+  userId: number
+): { id: number; email: string; isAdmin: boolean } | null {
+  const row = db
+    .prepare("SELECT id, email, is_admin as isAdmin FROM users WHERE id = ?")
+    .get(userId) as { id: number; email: string; isAdmin: number } | undefined;
+  if (!row) return null;
+  return { ...row, isAdmin: row.isAdmin === 1 };
 }
 
 export function getUsers(): Array<{

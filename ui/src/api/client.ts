@@ -1,9 +1,17 @@
 /**
- * Central fetch helpers for the JSON API (cookie sessions, consistent errors).
+ * Central fetch helpers for the JSON API (JWT cookies, consistent errors, silent refresh).
  * Prefer this over raw `fetch("/api/...")` so credentials and error parsing stay consistent.
  */
 
 const API_PREFIX = "/api";
+
+const AUTH_PATHS = new Set([
+  "auth/refresh",
+  "auth/me",
+  "auth/magic-link",
+  "auth/verify-code",
+  "auth/config",
+]);
 
 export class ApiError extends Error {
   readonly status: number;
@@ -23,11 +31,41 @@ export function apiUrl(path: string): string {
   return trimmed.startsWith("/api") ? trimmed : `${API_PREFIX}${trimmed}`;
 }
 
-export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  return fetch(apiUrl(path), {
+const refreshState: { promise: Promise<boolean> | null } = { promise: null };
+
+function attemptRefresh(): Promise<boolean> {
+  if (refreshState.promise) return refreshState.promise;
+  refreshState.promise = fetch(apiUrl("auth/refresh"), {
+    method: "POST",
+    credentials: "include",
+  })
+    .then((res) => res.ok)
+    .catch(() => false)
+    .finally(() => {
+      refreshState.promise = null;
+    });
+  return refreshState.promise;
+}
+
+function normalizedPath(path: string): string {
+  const trimmed = path.startsWith("/") ? path.slice(1) : path;
+  return trimmed.startsWith("api/") ? trimmed.slice(4) : trimmed;
+}
+
+export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const res = await fetch(apiUrl(path), {
     credentials: "include",
     ...init,
   });
+
+  if (res.status === 401 && !AUTH_PATHS.has(normalizedPath(path))) {
+    const refreshed = await attemptRefresh();
+    if (refreshed) {
+      return fetch(apiUrl(path), { credentials: "include", ...init });
+    }
+  }
+
+  return res;
 }
 
 export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
