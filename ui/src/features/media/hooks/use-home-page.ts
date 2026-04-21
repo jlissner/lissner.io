@@ -6,14 +6,14 @@ import { useMediaSearch } from "./use-media-search";
 import { useMediaSelection } from "./use-media-selection";
 
 interface UseHomePageOptions {
-  personFilter: number | null;
+  personFilter?: number | null;
 }
 
-export function useHomePage({ personFilter }: UseHomePageOptions) {
+export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
   const activity = useActivity();
   const mediaSearch = useMediaSearch();
   const mediaList = useMediaListQuery({
-    personFilter,
+    personFilter: personFilter ?? null,
     isSearchMode: mediaSearch.searchResults !== null,
   });
   const fetchItems = mediaList.fetchItems;

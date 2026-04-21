@@ -6,18 +6,10 @@ import { BulkDateModal } from "./BulkDateModal";
 import { useHomePage } from "../hooks/use-home-page";
 
 interface HomePageProps {
-  personFilter: number | null;
-  personFilterName: string | null;
-  onClearPersonFilter: () => void;
-  onPersonFilterChange: (personId: number | null) => void;
+  title?: string;
 }
 
-export function HomePage({
-  personFilter,
-  personFilterName,
-  onClearPersonFilter,
-  onPersonFilterChange,
-}: HomePageProps) {
+export function HomePage({ title: titleProp }: HomePageProps) {
   const [bulkDateOpen, setBulkDateOpen] = useState(false);
 
   const {
@@ -56,13 +48,9 @@ export function HomePage({
     fetchItems,
     hasUnindexed,
     jumpToOffset,
-  } = useHomePage({ personFilter });
+  } = useHomePage();
 
-  const title = isSearchMode
-    ? "Search results"
-    : personFilterName
-      ? `Photos of ${personFilterName}`
-      : "Your files";
+  const title = titleProp ?? (isSearchMode ? "Search results" : "Your files");
 
   const handleBulkDateDone = useCallback(() => {
     setBulkDateOpen(false);
@@ -82,11 +70,6 @@ export function HomePage({
         toolbarError={toolbarError}
         hasUnindexed={hasUnindexed}
         title={title}
-        personFilter={personFilter}
-        onPersonFilterChange={onPersonFilterChange}
-        onClearFilter={personFilterName ? onClearPersonFilter : undefined}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
         columnsPerRow={columnsPerRow}
         setColumnsPerRow={setColumnsPerRow}
         selectedCount={selected.size}
@@ -128,7 +111,7 @@ export function HomePage({
         </div>
         <TimelineScrubber
           sortBy={sortBy}
-          personFilter={personFilter}
+          setSortBy={setSortBy}
           scrollContainerRef={scrollContainerRef}
           onJumpToMonth={jumpToOffset}
         />

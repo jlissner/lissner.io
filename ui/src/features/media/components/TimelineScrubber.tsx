@@ -3,7 +3,7 @@ import { apiJson } from "@/api/client";
 
 interface TimelineScrubberProps {
   sortBy: "uploaded" | "taken";
-  personFilter: number | null;
+  setSortBy: (v: "uploaded" | "taken") => void;
   scrollContainerRef: React.RefObject<HTMLElement | null>;
   onJumpToMonth: (offset: number) => void;
 }
@@ -37,7 +37,7 @@ function formatMonthKeyFull(key: string): string {
 
 export function TimelineScrubber({
   sortBy,
-  personFilter,
+  setSortBy,
   scrollContainerRef,
   onJumpToMonth,
 }: TimelineScrubberProps) {
@@ -45,11 +45,10 @@ export function TimelineScrubber({
 
   useEffect(() => {
     const params = new URLSearchParams({ sortBy });
-    if (personFilter != null) params.set("personId", String(personFilter));
     apiJson<{ months: string[] }>(`media/timeline?${params}`)
       .then((data) => setMonths(data.months))
       .catch(() => setMonths([]));
-  }, [sortBy, personFilter]);
+  }, [sortBy]);
 
   const yearGroups = useMemo(() => {
     const groups: Array<{ year: string; months: string[] }> = [];
@@ -86,18 +85,28 @@ export function TimelineScrubber({
       }
 
       const params = new URLSearchParams({ sortBy, month: monthKey });
-      if (personFilter != null) params.set("personId", String(personFilter));
       apiJson<{ offset: number }>(`media/timeline/offset?${params}`)
         .then(({ offset }) => onJumpToMonth(offset))
         .catch(() => {});
     },
-    [scrollContainerRef, sortBy, personFilter, onJumpToMonth]
+    [scrollContainerRef, sortBy, onJumpToMonth]
   );
 
   if (months.length === 0) return null;
 
   return (
     <div className="timeline-scrubber">
+      <div className="timeline-scrubber__sort">
+        <div className="timeline-scrubber__sort-label">Sort by</div>
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as "uploaded" | "taken")}
+          className="timeline-scrubber__sort-select"
+        >
+          <option value="uploaded">Uploaded</option>
+          <option value="taken">Taken</option>
+        </select>
+      </div>
       <div className="timeline-scrubber__track">
         {yearGroups.map((group) => (
           <div key={group.year} className="timeline-scrubber__year">

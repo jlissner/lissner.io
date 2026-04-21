@@ -12,11 +12,6 @@ interface HomePageHeaderBarProps {
   toolbarError: string | null;
   hasUnindexed: boolean;
   title: string;
-  personFilter: number | null;
-  onPersonFilterChange: (personId: number | null) => void;
-  onClearFilter?: () => void;
-  sortBy: "uploaded" | "taken";
-  setSortBy: (v: "uploaded" | "taken") => void;
   columnsPerRow: number;
   setColumnsPerRow: (v: number) => void;
   selectedCount: number;
@@ -39,11 +34,6 @@ export function HomePageHeaderBar({
   toolbarError,
   hasUnindexed,
   title,
-  personFilter,
-  onPersonFilterChange,
-  onClearFilter,
-  sortBy,
-  setSortBy,
   columnsPerRow,
   setColumnsPerRow,
   selectedCount,
@@ -84,11 +74,6 @@ export function HomePageHeaderBar({
       </div>
       <HomePageFilters
         title={title}
-        personFilter={personFilter}
-        onPersonFilterChange={onPersonFilterChange}
-        onClearFilter={onClearFilter}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
         columnsPerRow={columnsPerRow}
         setColumnsPerRow={setColumnsPerRow}
       />

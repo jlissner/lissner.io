@@ -12,16 +12,9 @@ import { Button } from "@/components/ui/button";
 import { NavMenu, NavMenuItem } from "@/components/ui/nav-menu";
 import { useActivity } from "@/components/activity/activity-provider";
 import { GlobalActivityOverlay } from "@/components/activity/global-activity-overlay";
-import { apiJson } from "@/api/client";
 import { UploadModal } from "@/features/media/components/upload-modal";
 import { useAuth } from "@/features/auth/hooks/use-auth";
-import {
-  NAV_ITEMS,
-  pageToPath,
-  pathToPage,
-  getPersonIdFromSearch,
-  type PageId,
-} from "@/config/nav";
+import { NAV_ITEMS, pageToPath, pathToPage, type PageId } from "@/config/nav";
 
 const HomePage = lazy(async () => {
   const m = await import("@/features/media/components/home-page");
@@ -41,32 +34,8 @@ function buildPathWithSearch(path: string, search?: string): string {
   return `${path}?${search}`;
 }
 
-function getHomePersonFilter(search?: string): number | null {
-  if (!search) return null;
-  const personMatch = /person=(\d+)/.exec(search);
-  if (!personMatch) return null;
-  return parseInt(personMatch[1], 10);
-}
-
 function s3AlertMessage(missingVars: string[]): string {
   return `S3 sync not configured. Missing: ${missingVars.join(", ")}.`;
-}
-
-function navigateToPage(
-  pageId: PageId,
-  search: string | undefined,
-  setPage: (page: PageId) => void,
-  setPersonFilter: (value: number | null) => void
-): void {
-  setPage(pageId);
-  const path = pageToPath(pageId);
-  const fullPath = buildPathWithSearch(path, search);
-  if (window.location.pathname + window.location.search !== fullPath) {
-    window.history.pushState({}, "", fullPath);
-  }
-  if (pageId === "home") {
-    setPersonFilter(getHomePersonFilter(search));
-  }
 }
 
 export function AuthenticatedApp() {
@@ -77,36 +46,25 @@ export function AuthenticatedApp() {
     ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
     : null;
   const [page, setPage] = useState<PageId>(() => pathToPage(window.location.pathname));
-  const [personFilter, setPersonFilter] = useState<number | null>(() => getPersonIdFromSearch());
-  const [personFilterName, setPersonFilterName] = useState<string | null>(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [s3AlertDismissed, setS3AlertDismissed] = useState(false);
 
   useEffect(() => {
     const onPopState = () => {
       setPage(pathToPage(window.location.pathname));
-      setPersonFilter(getPersonIdFromSearch());
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   const navigateTo = useCallback((pageId: PageId, search?: string) => {
-    navigateToPage(pageId, search, setPage, setPersonFilter);
-  }, []);
-
-  useEffect(() => {
-    if (personFilter == null) {
-      setPersonFilterName(null);
-      return;
+    setPage(pageId);
+    const path = pageToPath(pageId);
+    const fullPath = buildPathWithSearch(path, search);
+    if (window.location.pathname + window.location.search !== fullPath) {
+      window.history.pushState({}, "", fullPath);
     }
-    void apiJson<Array<{ id: number; name: string }>>("people")
-      .then((people) => {
-        const p = people.find((x) => x.id === personFilter);
-        setPersonFilterName(p?.name ?? `Person ${personFilter}`);
-      })
-      .catch(() => setPersonFilterName(`Person ${personFilter}`));
-  }, [personFilter]);
+  }, []);
 
   const fetchItems = useCallback(() => {
     window.dispatchEvent(new CustomEvent("home-refresh"));
@@ -121,27 +79,9 @@ export function AuthenticatedApp() {
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
   const showAccount = user != null;
 
-  const handlePersonFilterChange = useCallback(
-    (personId: number | null) => {
-      if (personId == null) {
-        navigateTo("home");
-      } else {
-        navigateTo("home", `person=${personId}`);
-      }
-    },
-    [navigateTo]
-  );
-
   let mainPage: ReactNode = null;
   if (page === "home") {
-    mainPage = (
-      <HomePage
-        personFilter={personFilter}
-        personFilterName={personFilterName}
-        onClearPersonFilter={() => navigateTo("home")}
-        onPersonFilterChange={handlePersonFilterChange}
-      />
-    );
+    mainPage = <HomePage />;
   }
   if (page === "people") {
     mainPage = (

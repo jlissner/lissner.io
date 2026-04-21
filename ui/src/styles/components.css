@@ -1649,17 +1649,43 @@
 /* ========== Timeline scrubber ========== */
 .timeline-scrubber {
   flex-shrink: 0;
-  width: 72px;
+  width: 140px;
   overflow-y: auto;
   border-left: 1px solid var(--color-border);
   background: var(--color-bg-elevated);
   -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 639px) {
   .timeline-scrubber {
     display: none;
   }
+}
+
+.timeline-scrubber__sort {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-scrubber__sort-label {
+  font-size: 10px;
+  font-weight: var(--font-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
+}
+
+.timeline-scrubber__sort-select {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  font-size: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  color: var(--color-text);
+  cursor: pointer;
 }
 
 .timeline-scrubber__track {
@@ -1675,7 +1701,7 @@
 
 .timeline-scrubber__year-label {
   padding: var(--space-2) var(--space-2) var(--space-1);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: var(--font-semibold);
   color: var(--color-text);
   text-align: center;
@@ -1687,7 +1713,7 @@
   border: none;
   background: none;
   cursor: pointer;
-  font-size: 10px;
+  font-size: 11px;
   color: var(--color-text-muted);
   text-align: center;
   white-space: nowrap;
