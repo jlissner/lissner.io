@@ -150,6 +150,12 @@ async function evalAstOrdered(ast: SearchQueryAst): Promise<string[]> {
     }
     case "text":
       return textSearchOrderedIds(ast.text);
+    case "not": {
+      const universe = db.listVisibleGalleryMediaIds();
+      const inner = await evalAstOrdered(ast.child);
+      const exclude = new Set(inner);
+      return universe.filter((id) => !exclude.has(id));
+    }
     case "and": {
       const left = await evalAstOrdered(ast.left);
       const right = new Set(await evalAstOrdered(ast.right));

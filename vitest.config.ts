@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     environment: "node",
-    include: ["server/src/**/*.test.ts"],
+    include: ["server/src/**/*.test.ts", "ui/src/**/*.test.ts"],
     /** Quiet TensorFlow native INFO logs when tests import `faces` → tfjs-node. */
     env: {
       TF_CPP_MIN_LOG_LEVEL: "3",

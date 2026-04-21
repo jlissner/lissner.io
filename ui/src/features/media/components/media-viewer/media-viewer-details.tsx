@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import { getMediaDetails, patchMediaDateTaken, putMediaTags } from "../../api";
@@ -118,6 +119,7 @@ export function MediaViewerDetails({
   refreshTrigger = 0,
   onMetadataUpdated,
 }: MediaViewerDetailsProps) {
+  const queryClient = useQueryClient();
   const [details, setDetails] = useState<MediaDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,9 +190,10 @@ export function MediaViewerDetails({
       setTagsError(failMessage);
       return;
     }
+    await queryClient.invalidateQueries({ queryKey: ["mediaTags"] });
     await loadDetails();
     onMetadataUpdated?.();
-  }, [item.id, loadDetails, onMetadataUpdated, workingTags]);
+  }, [item.id, loadDetails, onMetadataUpdated, queryClient, workingTags]);
 
   const beginEditDateTaken = useCallback(() => {
     const { date, time } = isoToDateAndTimeInputs(details?.dateTaken);
@@ -339,7 +342,7 @@ export function MediaViewerDetails({
           </div>
           {tagsError && <p className="viewer-details__muted u-text-danger">{tagsError}</p>}
           <p className="viewer-details__muted viewer-details__hint">
-            Use #tag, @person, AND, OR in search (example: (#vacation) AND beach).
+            Use #tag, @person, AND, OR, NOT in search (example: @someone AND NOT @other).
           </p>
         </dd>
         <dt className="viewer-details__term">Uploaded</dt>

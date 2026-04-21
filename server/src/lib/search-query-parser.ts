@@ -4,6 +4,7 @@ export type SearchQueryAst =
   | { kind: "legacy"; text: string }
   | { kind: "and"; left: SearchQueryAst; right: SearchQueryAst }
   | { kind: "or"; left: SearchQueryAst; right: SearchQueryAst }
+  | { kind: "not"; child: SearchQueryAst }
   | { kind: "tag"; tag: string }
   | { kind: "person"; handle: string }
   | { kind: "text"; text: string };
@@ -13,6 +14,7 @@ type RawToken =
   | { kind: "RPAREN" }
   | { kind: "AND" }
   | { kind: "OR" }
+  | { kind: "NOT" }
   | { kind: "TAG"; value: string }
   | { kind: "AT"; value: string }
   | { kind: "WORD"; value: string };
@@ -60,6 +62,7 @@ export function isLegacyQueryString(q: string): boolean {
   if (/\(.*\)/.test(t)) return false;
   if (/\bAND\b/i.test(t)) return false;
   if (/\bOR\b/i.test(t)) return false;
+  if (/\bNOT\b/i.test(t)) return false;
   return true;
 }
 
@@ -113,6 +116,8 @@ function tokenize(s: string): RawToken[] {
       tokens.push({ kind: "AND" });
     } else if (upper === "OR") {
       tokens.push({ kind: "OR" });
+    } else if (upper === "NOT") {
+      tokens.push({ kind: "NOT" });
     } else {
       tokens.push({ kind: "WORD", value: word });
     }
@@ -161,6 +166,17 @@ class ParserState {
   }
 }
 
+function canStartFactor(t: RawToken | undefined): boolean {
+  if (t == null) return false;
+  return (
+    t.kind === "LPAREN" ||
+    t.kind === "TAG" ||
+    t.kind === "AT" ||
+    t.kind === "WORD" ||
+    t.kind === "NOT"
+  );
+}
+
 function parseOr(state: ParserState): SearchQueryAst {
   let left = parseAnd(state);
   while (state.peek()?.kind === "OR") {
@@ -171,20 +187,42 @@ function parseOr(state: ParserState): SearchQueryAst {
   return left;
 }
 
+/** `AND` between unary clauses, or implicit `AND` when two factors are adjacent. */
 function parseAnd(state: ParserState): SearchQueryAst {
-  let left = parsePrimary(state);
-  while (state.peek()?.kind === "AND") {
-    state.consume();
-    const right = parsePrimary(state);
+  let left = parseUnary(state);
+  while (true) {
+    const next = state.peek();
+    if (next?.kind === "OR") break;
+    const hasExplicitAnd = next?.kind === "AND";
+    if (hasExplicitAnd) {
+      state.consume();
+    } else if (canStartFactor(next)) {
+      /* implicit AND */
+    } else {
+      break;
+    }
+    const right = parseUnary(state);
     left = { kind: "and", left, right };
   }
   return left;
+}
+
+function parseUnary(state: ParserState): SearchQueryAst {
+  if (state.peek()?.kind === "NOT") {
+    state.consume();
+    const child = parseUnary(state);
+    return { kind: "not", child };
+  }
+  return parsePrimary(state);
 }
 
 function parsePrimary(state: ParserState): SearchQueryAst {
   const t = state.peek();
   if (!t) {
     throw new Error("Unexpected end of query");
+  }
+  if (t.kind === "AND" || t.kind === "OR" || t.kind === "NOT") {
+    throw new Error(`Unexpected ${t.kind} in search query`);
   }
   if (t.kind === "LPAREN") {
     state.consume();

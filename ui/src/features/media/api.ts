@@ -3,6 +3,7 @@ import type {
   MediaDetailsApiResponse,
   MediaPatchRequest,
   MediaPatchResponse,
+  MediaTagsListResponse,
   MediaTagsPutRequest,
 } from "../../../../shared/src/api.js";
 import type { FaceBox, TaggedFace } from "./components/media-viewer/media-viewer-types";
@@ -18,6 +19,10 @@ async function toApiError(res: Response, fallback: string): Promise<ApiError> {
 
 export function getMediaDetails(mediaId: string): Promise<MediaDetailsApiResponse> {
   return apiJson<MediaDetailsApiResponse>(`media/${mediaId}/details`);
+}
+
+export function listMediaTags(): Promise<MediaTagsListResponse> {
+  return apiJson<MediaTagsListResponse>("media/tags");
 }
 
 export function patchMediaDateTaken(mediaId: string, body: MediaPatchRequest): Promise<Response> {

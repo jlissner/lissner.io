@@ -9,6 +9,7 @@ vi.mock("../db/media.js", () => ({
   getPersonNames: vi.fn(),
   getMediaForPerson: vi.fn(),
   getMediaIdsForTag: vi.fn(),
+  listVisibleGalleryMediaIds: vi.fn(),
 }));
 
 vi.mock("../embeddings.js", () => ({
@@ -29,6 +30,7 @@ describe("searchMediaByQuery", () => {
     vi.mocked(db.getPersonNames).mockReset();
     vi.mocked(db.getMediaForPerson).mockReset();
     vi.mocked(db.getMediaIdsForTag).mockReset();
+    vi.mocked(db.listVisibleGalleryMediaIds).mockReset();
     vi.mocked(embeddings.getEmbedding).mockReset();
     vi.mocked(embeddings.cosineSimilarity).mockReset();
   });
@@ -110,5 +112,42 @@ describe("searchMediaByQuery", () => {
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.reason).toBe("invalid_query");
+  });
+
+  it("AND NOT excludes second person from first within visible universe", async () => {
+    vi.mocked(db.listVisibleGalleryMediaIds).mockReturnValue(["m1", "m2", "m3"]);
+    vi.mocked(db.getPersonNames).mockReturnValue(
+      new Map([
+        [1, "Alpha"],
+        [2, "Beta"],
+      ])
+    );
+    vi.mocked(db.getMediaForPerson).mockImplementation((pid: number) => {
+      if (pid === 1) {
+        return [{ id: "m1", hideFromGallery: 0 } as never];
+      }
+      if (pid === 2) {
+        return [{ id: "m2", hideFromGallery: 0 } as never];
+      }
+      return [];
+    });
+    vi.mocked(db.getMediaByIds).mockImplementation((ids: string[]) =>
+      ids.map((id) => ({
+        id,
+        filename: `${id}.jpg`,
+        originalName: `${id}.jpg`,
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "t",
+        hideFromGallery: 0,
+      }))
+    );
+    vi.mocked(db.getImagePeople).mockReturnValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+
+    const r = await searchMediaByQuery("@alpha AND NOT @beta");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.items.map((i) => i.id)).toEqual(["m1"]);
   });
 });

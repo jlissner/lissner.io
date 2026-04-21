@@ -50,6 +50,44 @@ describe("parseStructuredSearchQuery", () => {
     });
   });
 
+  it("parses @a AND NOT @b as AND with NOT binding to @b", () => {
+    const r = parseStructuredSearchQuery("@person1 AND NOT @person2");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({
+      kind: "and",
+      left: { kind: "person", handle: "person1" },
+      right: {
+        kind: "not",
+        child: { kind: "person", handle: "person2" },
+      },
+    });
+  });
+
+  it("joins adjacent unary factors with implicit AND", () => {
+    const r = parseStructuredSearchQuery("@person snowboarding");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({
+      kind: "and",
+      left: { kind: "person", handle: "person" },
+      right: { kind: "text", text: "snowboarding" },
+    });
+  });
+
+  it("parses NOT NOT @a as double negation", () => {
+    const r = parseStructuredSearchQuery("NOT NOT @x");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({
+      kind: "not",
+      child: {
+        kind: "not",
+        child: { kind: "person", handle: "x" },
+      },
+    });
+  });
+
   it("rejects unclosed paren", () => {
     const r = parseStructuredSearchQuery("(#broken");
     expect(r.ok).toBe(false);
@@ -64,6 +102,13 @@ describe("parseSearchQuery", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.ast).toEqual({ kind: "legacy", text: "holiday photos" });
+  });
+
+  it("does not use legacy path when NOT appears", () => {
+    const r = parseSearchQuery("#a AND NOT #b");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast.kind).not.toBe("legacy");
   });
 
   it("parses structured when # is present", () => {

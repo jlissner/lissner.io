@@ -126,14 +126,12 @@ export function HomePage({
           )}
           {loadingMore && !isSearchMode && <p className="empty">Loading more…</p>}
         </div>
-        {!isSearchMode && (
-          <TimelineScrubber
-            sortBy={sortBy}
-            personFilter={personFilter}
-            scrollContainerRef={scrollContainerRef}
-            onJumpToMonth={jumpToOffset}
-          />
-        )}
+        <TimelineScrubber
+          sortBy={sortBy}
+          personFilter={personFilter}
+          scrollContainerRef={scrollContainerRef}
+          onJumpToMonth={jumpToOffset}
+        />
       </div>
       {bulkDateOpen && selected.size > 0 && (
         <BulkDateModal

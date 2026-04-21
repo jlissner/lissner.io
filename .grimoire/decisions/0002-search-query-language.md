@@ -29,14 +29,15 @@ Chosen option: **String grammar with parser**, because it matches the user-facin
 Grammar (v1):
 
 - **Terms**: `#identifier` (tag), `@identifier` (person handle), or **free text** (semantic; one or more words; semantic term is the concatenation of free-text tokens in order)
-- **Operators**: `AND`, `OR` (case-insensitive), parentheses `(` `)`
-- **Precedence**: `OR` binds looser than `AND` (use explicit parens for clarity; document equivalence to `(A AND B) OR C` parsing rules in parser tests)
+- **Operators**: `NOT` (unary prefix), `AND`, `OR` (case-insensitive), parentheses `(` `)`
+- **Precedence**: `NOT` binds tightest (applies to the following _factor_: another `NOT`, a parenthesized sub-expression, `#`, `@`, or text). `OR` binds looser than `AND`. **Adjacent unary factors without `AND`/`OR` between them are joined by implicit `AND`** (e.g. `@person snowboarding` ≡ `@person AND snowboarding`). Example: `@a AND NOT @b` → intersection of `@a` with the complement of `@b`.
+- **Complement (`NOT`)**: `NOT expr` is **all gallery-visible media** minus media matching the inner expression (same visibility rules as browse lists).
 
 **Evaluation order**
 
 1. Parse to AST; reject invalid input with 400 and stable error code.
 2. For each leaf: resolve `#tag` to media id set; `@handle` to media ids for matching person; free text to ranked ids from existing cosine similarity (cap as today, e.g. top 20) against **only the free-text span** (not the full query string with `#`/`@`).
-3. Combine sets with `AND` = intersection, `OR` = union.
+3. Combine sets with `AND` = intersection, `OR` = union; `NOT x` is the complement of `eval(x)` in the universe `U` of gallery-visible media ids.
 4. If the AST has non-text leaves combined with text: **intersect** final boolean media set with embedding top set when free text is present; if only free text, behavior matches current semantic search.
 
 ### Consequences

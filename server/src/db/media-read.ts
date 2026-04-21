@@ -26,6 +26,9 @@ function buildReadStmts() {
        FROM media ORDER BY uploaded_at DESC, filename ASC`
     ),
     getMediaCount: db.prepare(`SELECT COUNT(*) as count FROM media WHERE ${GALLERY_VISIBLE_SQL}`),
+    listVisibleGalleryIds: db.prepare(
+      `SELECT id FROM media WHERE ${GALLERY_VISIBLE_SQL} ORDER BY uploaded_at DESC, filename ASC`
+    ),
     listPaginatedPersonUploaded: db.prepare(
       `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude, m.backed_up_at as backedUpAt,
               m.motion_companion_id as motionCompanionId
@@ -164,6 +167,12 @@ export function listMedia() {
 export function getMediaCount(): number {
   const row = readStmts().getMediaCount.get() as { count: number };
   return row.count;
+}
+
+/** Gallery-visible media IDs (same filter as paginated lists), stable browse order. */
+export function listVisibleGalleryMediaIds(): string[] {
+  const rows = readStmts().listVisibleGalleryIds.all() as Array<{ id: string }>;
+  return rows.map((r) => r.id);
 }
 
 export function listMediaPaginated(
