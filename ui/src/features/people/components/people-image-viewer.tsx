@@ -2,6 +2,7 @@ import { Button } from "@/components/ui/button";
 import { isPixelMotionPhotoBasename } from "@/features/media/components/media-viewer/media-utils";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import { ModalPanel, ModalRoot } from "@/components/ui/modal";
+import { PersonSelect } from "./PersonSelect";
 
 interface MediaPreview {
   id: string;
@@ -62,8 +63,12 @@ export function PeopleImageViewer({
             >
               Reassign to:
             </label>
-            <select
+            <PersonSelect
               id="people-image-viewer-reassign-select"
+              people={people}
+              excludeIds={[selectedId]}
+              placeholder="Select person"
+              extraOptions={[{ value: "new", label: "Create new person" }]}
               value=""
               onChange={(e) => {
                 const v = e.target.value;
@@ -72,17 +77,7 @@ export function PeopleImageViewer({
                 e.target.value = "";
               }}
               className="form__select"
-            >
-              <option value="">Select person</option>
-              {people
-                .filter((p) => p.id !== selectedId)
-                .map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name}
-                  </option>
-                ))}
-              <option value="new">Create new person</option>
-            </select>
+            />
           </div>
           <Button variant="danger" onClick={() => onRemove(media.id)}>
             Remove from photo

@@ -5,6 +5,7 @@ import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-vi
 import { ModalBody, ModalPanel, ModalRoot, ModalTitle, ModalActions } from "@/components/ui/modal";
 import { deletePerson, mergePeople, removeTagFromMedia, updatePerson } from "../api";
 import type { FaceMatchAutoMerged, FaceMatchReviewItem, Person } from "./people-types";
+import { PersonSelect } from "./PersonSelect";
 
 function pluralize(base: string, count: number): string {
   return count === 1 ? base : `${base}s`;
@@ -139,19 +140,14 @@ function MatchFaceReviewCard({
             Merge into someone else
           </label>
           <div className="match-faces-modal__row">
-            <select
+            <PersonSelect
               id="match-faces-merge-into"
               className="match-faces-modal__select"
+              people={namedOptions}
               value={otherTargetId}
               onChange={(e) => setOtherTargetId(e.target.value)}
               disabled={busy || namedOptions.length === 0}
-            >
-              {namedOptions.map((p) => (
-                <option key={p.id} value={String(p.id)}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+            />
             <Button
               type="button"
               variant="secondary"
