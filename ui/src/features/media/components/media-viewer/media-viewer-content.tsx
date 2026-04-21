@@ -117,11 +117,7 @@ export function MediaViewerContent({
   ]);
 
   const swipeRef = useRef<HTMLDivElement>(null);
-  useSwipeNav(
-    swipeRef,
-    nextItem ? goNext : null,
-    prevItem ? goPrev : null
-  );
+  useSwipeNav(swipeRef, nextItem ? goNext : null, prevItem ? goPrev : null);
 
   return (
     <div ref={swipeRef} onClick={(e) => e.stopPropagation()} className="viewer-content">
@@ -132,7 +128,16 @@ export function MediaViewerContent({
           onClick={goPrev}
           aria-label="Previous"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
         </button>
       )}
       {nextItem && (
@@ -142,7 +147,16 @@ export function MediaViewerContent({
           onClick={goNext}
           aria-label="Next"
         >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M9 18l6-6-6-6" />
+          </svg>
         </button>
       )}
       <div className="viewer-content__actions">

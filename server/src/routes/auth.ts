@@ -116,7 +116,8 @@ authRouter.post("/refresh", async (req, res) => {
   const result = await refreshTokens(refreshCookie);
   if ("error" in result) {
     clearTokenCookies(res);
-    const code = result.error === "reused" ? "token_reused" as const : "refresh_failed" as const;
+    const code =
+      result.error === "reused" ? ("token_reused" as const) : ("refresh_failed" as const);
     sendApiError(res, 401, "Refresh failed", code);
     return;
   }

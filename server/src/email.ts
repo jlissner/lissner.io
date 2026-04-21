@@ -27,11 +27,7 @@ export function isEmailConfigured(): boolean {
   return isSESConfigured() && !!process.env.SES_FROM_EMAIL?.trim();
 }
 
-export async function sendMagicLink(
-  email: string,
-  link: string,
-  code: string
-): Promise<void> {
+export async function sendMagicLink(email: string, link: string, code: string): Promise<void> {
   const ses = getSESClient();
   const from = process.env.SES_FROM_EMAIL?.trim();
 

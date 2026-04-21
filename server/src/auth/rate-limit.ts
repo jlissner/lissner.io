@@ -3,9 +3,7 @@ const CODE_WINDOW_MS = 15 * 60 * 1000;
 
 const attempts = new Map<string, { count: number; resetAt: number }>();
 
-export function checkCodeRateLimit(
-  email: string
-): { allowed: boolean; retryAfterSec?: number } {
+export function checkCodeRateLimit(email: string): { allowed: boolean; retryAfterSec?: number } {
   const key = email.trim().toLowerCase();
   const now = Date.now();
   const entry = attempts.get(key);

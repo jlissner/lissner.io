@@ -35,10 +35,10 @@ Option 2 (SQLite session store) would be simpler but still requires a DB lookup 
 
 ### Token Design
 
-| Token | Lifetime | Storage | Verification |
-|-------|----------|---------|-------------|
-| Access token | 1 hour | httpOnly cookie `access_token` | Signature check only (no DB) |
-| Refresh token | 7 days | httpOnly cookie `refresh_token` (path `/api/auth`); SHA-256 hash in `refresh_tokens` table | DB lookup + signature check |
+| Token         | Lifetime | Storage                                                                                    | Verification                 |
+| ------------- | -------- | ------------------------------------------------------------------------------------------ | ---------------------------- |
+| Access token  | 1 hour   | httpOnly cookie `access_token`                                                             | Signature check only (no DB) |
+| Refresh token | 7 days   | httpOnly cookie `refresh_token` (path `/api/auth`); SHA-256 hash in `refresh_tokens` table | DB lookup + signature check  |
 
 **Library: `jose`** — zero-dependency, async, TypeScript-native, Web Crypto API. Preferred over `jsonwebtoken` which is legacy and sync-only.
 

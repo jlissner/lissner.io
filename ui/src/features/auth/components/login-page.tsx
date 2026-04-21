@@ -11,9 +11,7 @@ interface LoginPageProps {
 
 export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<
-    "idle" | "sending" | "sent" | "verifying" | "error"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "verifying" | "error">("idle");
   const [error, setError] = useState("");
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
@@ -50,9 +48,7 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
       window.location.reload();
     } catch (err) {
       setStatus("sent");
-      setCodeError(
-        err instanceof ApiError ? err.message : "Failed to verify code"
-      );
+      setCodeError(err instanceof ApiError ? err.message : "Failed to verify code");
     }
   };
 
@@ -71,8 +67,8 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
         <div>
           <Alert variant="success">
             <p>
-              Check your email for the magic link, or enter the 6-digit code
-              below. It expires in 15 minutes.
+              Check your email for the magic link, or enter the 6-digit code below. It expires in 15
+              minutes.
             </p>
             <p className="login-page__hint">
               No email configured? Check the server console for the code.

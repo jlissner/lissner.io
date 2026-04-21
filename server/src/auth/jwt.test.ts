@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SignJWT } from "jose";
-import {
-  signAccessToken,
-  verifyAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-} from "./jwt.js";
+import { signAccessToken, verifyAccessToken, signRefreshToken, verifyRefreshToken } from "./jwt.js";
 
 describe("signAccessToken / verifyAccessToken", () => {
   it("round-trips with correct payload", async () => {

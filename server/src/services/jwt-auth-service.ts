@@ -1,10 +1,6 @@
 import { randomUUID, createHash } from "crypto";
 import type { Response } from "express";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefreshToken,
-} from "../auth/jwt.js";
+import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../auth/jwt.js";
 import * as authDb from "../db/auth.js";
 
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -26,9 +22,7 @@ export async function issueTokens(
     isAdmin: user.isAdmin,
   });
   const refreshToken = await signRefreshToken({ sub: user.id, familyId: fid });
-  const expiresAt = new Date(
-    Date.now() + REFRESH_MAX_AGE * 1000
-  ).toISOString();
+  const expiresAt = new Date(Date.now() + REFRESH_MAX_AGE * 1000).toISOString();
   authDb.createRefreshToken(hashToken(refreshToken), user.id, fid, expiresAt);
   return { accessToken, refreshToken };
 }
@@ -37,9 +31,7 @@ type RefreshResult =
   | { accessToken: string; refreshToken: string }
   | { error: "invalid" | "revoked" | "reused" };
 
-export async function refreshTokens(
-  rawRefreshToken: string
-): Promise<RefreshResult> {
+export async function refreshTokens(rawRefreshToken: string): Promise<RefreshResult> {
   const claims = await verifyRefreshToken(rawRefreshToken);
   if (!claims) return { error: "invalid" };
 
@@ -61,19 +53,13 @@ export async function refreshTokens(
   return tokens;
 }
 
-export async function revokeSession(
-  rawRefreshToken: string
-): Promise<void> {
+export async function revokeSession(rawRefreshToken: string): Promise<void> {
   const claims = await verifyRefreshToken(rawRefreshToken);
   if (!claims) return;
   authDb.revokeTokenFamily(claims.familyId);
 }
 
-export function setTokenCookies(
-  res: Response,
-  accessToken: string,
-  refreshToken: string
-): void {
+export function setTokenCookies(res: Response, accessToken: string, refreshToken: string): void {
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: IS_PROD,

@@ -334,10 +334,7 @@ export function setUserPeople(userId: number, personIds: number[]): void {
   }
 }
 
-export function consumeLoginCode(
-  email: string,
-  codeHash: string
-): { email: string } | null {
+export function consumeLoginCode(email: string, codeHash: string): { email: string } | null {
   deleteExpiredMagicLinkTokens();
 
   const normalized = email.trim().toLowerCase();
@@ -378,9 +375,9 @@ export function consumeRefreshToken(
 
   if (!row) return null;
 
-  db.prepare(
-    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE token_hash = ?"
-  ).run(tokenHash);
+  db.prepare("UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE token_hash = ?").run(
+    tokenHash
+  );
   return row;
 }
 

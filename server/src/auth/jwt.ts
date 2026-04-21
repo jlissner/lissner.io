@@ -47,9 +47,7 @@ export async function signRefreshToken(payload: {
     .sign(REFRESH_KEY);
 }
 
-export async function verifyAccessToken(
-  token: string
-): Promise<AccessTokenPayload | null> {
+export async function verifyAccessToken(token: string): Promise<AccessTokenPayload | null> {
   try {
     const { payload } = await jwtVerify(token, ACCESS_KEY, {
       algorithms: ["HS256"],
@@ -67,9 +65,7 @@ export async function verifyAccessToken(
   }
 }
 
-export async function verifyRefreshToken(
-  token: string
-): Promise<RefreshTokenPayload | null> {
+export async function verifyRefreshToken(token: string): Promise<RefreshTokenPayload | null> {
   try {
     const { payload } = await jwtVerify(token, REFRESH_KEY, {
       algorithms: ["HS256"],

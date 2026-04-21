@@ -1532,7 +1532,9 @@
   color: rgba(255, 255, 255, 0.85);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
-  transition: background-color 0.15s, color 0.15s;
+  transition:
+    background-color 0.15s,
+    color 0.15s;
   padding: 0;
   align-items: center;
   justify-content: center;
