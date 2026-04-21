@@ -70,6 +70,46 @@ function buildReadStmts() {
       `SELECT media_id as mediaId, embedding, indexed_at as indexedAt FROM embeddings`
     ),
     getIndexedMediaIds: db.prepare("SELECT media_id FROM embeddings"),
+    distinctMonthsUploaded: db.prepare(
+      `SELECT DISTINCT SUBSTR(uploaded_at, 1, 7) as month
+       FROM media WHERE ${GALLERY_VISIBLE_SQL}
+       ORDER BY month DESC`
+    ),
+    distinctMonthsTaken: db.prepare(
+      `SELECT DISTINCT SUBSTR(COALESCE(date_taken, uploaded_at), 1, 7) as month
+       FROM media WHERE ${GALLERY_VISIBLE_SQL}
+       ORDER BY month DESC`
+    ),
+    distinctMonthsPersonUploaded: db.prepare(
+      `SELECT DISTINCT SUBSTR(m.uploaded_at, 1, 7) as month
+       FROM media m JOIN image_people ip ON ip.media_id = m.id
+       WHERE ip.person_id = ? AND ${GALLERY_VISIBLE_M}
+       ORDER BY month DESC`
+    ),
+    distinctMonthsPersonTaken: db.prepare(
+      `SELECT DISTINCT SUBSTR(COALESCE(m.date_taken, m.uploaded_at), 1, 7) as month
+       FROM media m JOIN image_people ip ON ip.media_id = m.id
+       WHERE ip.person_id = ? AND ${GALLERY_VISIBLE_M}
+       ORDER BY month DESC`
+    ),
+    countBeforeMonthUploaded: db.prepare(
+      `SELECT COUNT(*) as cnt FROM media
+       WHERE ${GALLERY_VISIBLE_SQL} AND uploaded_at >= ?`
+    ),
+    countBeforeMonthTaken: db.prepare(
+      `SELECT COUNT(*) as cnt FROM media
+       WHERE ${GALLERY_VISIBLE_SQL} AND COALESCE(date_taken, uploaded_at) >= ?`
+    ),
+    countBeforeMonthPersonUploaded: db.prepare(
+      `SELECT COUNT(*) as cnt FROM media m
+       JOIN image_people ip ON ip.media_id = m.id
+       WHERE ip.person_id = ? AND ${GALLERY_VISIBLE_M} AND m.uploaded_at >= ?`
+    ),
+    countBeforeMonthPersonTaken: db.prepare(
+      `SELECT COUNT(*) as cnt FROM media m
+       JOIN image_people ip ON ip.media_id = m.id
+       WHERE ip.person_id = ? AND ${GALLERY_VISIBLE_M} AND COALESCE(m.date_taken, m.uploaded_at) >= ?`
+    ),
   };
 }
 
@@ -249,4 +289,43 @@ export function getMediaPerceptualHash(mediaId: string): Buffer | null {
     .prepare("SELECT perceptual_hash as perceptualHash FROM media WHERE id = ?")
     .get(mediaId) as { perceptualHash: Buffer | null } | undefined;
   return row?.perceptualHash ?? null;
+}
+
+export function getDistinctMonths(sortBy: MediaSortBy, personId?: number): string[] {
+  const stmt = personId
+    ? sortBy === "taken"
+      ? readStmts().distinctMonthsPersonTaken
+      : readStmts().distinctMonthsPersonUploaded
+    : sortBy === "taken"
+      ? readStmts().distinctMonthsTaken
+      : readStmts().distinctMonthsUploaded;
+  const rows = personId
+    ? (stmt.all(personId) as Array<{ month: string }>)
+    : (stmt.all() as Array<{ month: string }>);
+  return rows.map((r) => r.month);
+}
+
+function nextMonthBoundary(monthKey: string): string {
+  const [y, m] = monthKey.split("-").map(Number);
+  const next = m === 12 ? new Date(y + 1, 0, 1) : new Date(y, m, 1);
+  return next.toISOString();
+}
+
+export function getOffsetForMonth(
+  sortBy: MediaSortBy,
+  monthKey: string,
+  personId?: number
+): number {
+  const boundary = nextMonthBoundary(monthKey);
+  const stmt = personId
+    ? sortBy === "taken"
+      ? readStmts().countBeforeMonthPersonTaken
+      : readStmts().countBeforeMonthPersonUploaded
+    : sortBy === "taken"
+      ? readStmts().countBeforeMonthTaken
+      : readStmts().countBeforeMonthUploaded;
+  const row = personId
+    ? (stmt.get(personId, boundary) as { cnt: number })
+    : (stmt.get(boundary) as { cnt: number });
+  return row.cnt;
 }

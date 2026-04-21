@@ -93,4 +93,21 @@ export function listPeopleForTagging(): Promise<Person[]> {
   return apiJson<Person[]>("people");
 }
 
+export async function bulkPatchDateTaken(
+  mediaIds: string[],
+  dateTaken: string | null
+): Promise<{ succeeded: number; failed: number }> {
+  const acc = { succeeded: 0, failed: 0 };
+  for (const id of mediaIds) {
+    const res = await apiFetch(`media/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ dateTaken }),
+    });
+    if (res.ok) acc.succeeded += 1;
+    else acc.failed += 1;
+  }
+  return acc;
+}
+
 export type { MediaPatchResponse };

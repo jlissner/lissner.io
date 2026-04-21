@@ -33,6 +33,23 @@ mediaReadRouter.get("/", (req, res) => {
   res.json({ items, total });
 });
 
+mediaReadRouter.get("/timeline", (req, res) => {
+  const { personId, sortBy } = parseWithSchema(mediaListQuerySchema, req.query);
+  const months = db.getDistinctMonths(sortBy, personId);
+  res.json({ months });
+});
+
+mediaReadRouter.get("/timeline/offset", (req, res) => {
+  const { personId, sortBy } = parseWithSchema(mediaListQuerySchema, req.query);
+  const monthKey = String(req.query.month ?? "");
+  if (!/^\d{4}-\d{2}$/.test(monthKey)) {
+    res.status(400).json({ error: "month must be YYYY-MM" });
+    return;
+  }
+  const offset = db.getOffsetForMonth(sortBy, monthKey, personId);
+  res.json({ offset });
+});
+
 mediaReadRouter.get("/:id", async (req, res) => {
   const { id } = parseWithSchema(mediaIdParamSchema, req.params);
   const item = db.getMediaById(id);

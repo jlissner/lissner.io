@@ -56,7 +56,7 @@ export function MediaList({
         const allSelected = ids.length > 0 && selectedCount === ids.length;
         const someSelected = selectedCount > 0;
         return (
-          <section key={dateKey} className="section">
+          <section key={dateKey} className="section" data-date-key={dateKey}>
             <label className="section__header">
               <span className="section__title">{dateLabel}</span>
               <input

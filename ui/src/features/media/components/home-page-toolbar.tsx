@@ -8,6 +8,7 @@ interface HomePageToolbarProps {
   onIndex: (force: boolean) => void;
   indexPolling: boolean;
   toolbarError: string | null;
+  hasUnindexed: boolean;
 }
 
 export function HomePageToolbar({
@@ -18,6 +19,7 @@ export function HomePageToolbar({
   onIndex,
   indexPolling,
   toolbarError,
+  hasUnindexed,
 }: HomePageToolbarProps) {
   return (
     <>
@@ -34,14 +36,16 @@ export function HomePageToolbar({
         <Button onClick={onSearch} disabled={searching} size="sm">
           {searching ? "Searching…" : "Search"}
         </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => onIndex(false)}
-          disabled={indexPolling}
-        >
-          {indexPolling ? "Indexing…" : "Index"}
-        </Button>
+        {(hasUnindexed || indexPolling) && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => onIndex(false)}
+            disabled={indexPolling}
+          >
+            {indexPolling ? "Indexing…" : "Index new"}
+          </Button>
+        )}
       </div>
       {toolbarError && <p className="toolbar__status toolbar__status--danger">{toolbarError}</p>}
     </>

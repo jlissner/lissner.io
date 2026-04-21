@@ -121,6 +121,17 @@ export function AuthenticatedApp() {
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
   const showAccount = user != null;
 
+  const handlePersonFilterChange = useCallback(
+    (personId: number | null) => {
+      if (personId == null) {
+        navigateTo("home");
+      } else {
+        navigateTo("home", `person=${personId}`);
+      }
+    },
+    [navigateTo]
+  );
+
   let mainPage: ReactNode = null;
   if (page === "home") {
     mainPage = (
@@ -128,6 +139,7 @@ export function AuthenticatedApp() {
         personFilter={personFilter}
         personFilterName={personFilterName}
         onClearPersonFilter={() => navigateTo("home")}
+        onPersonFilterChange={handlePersonFilterChange}
       />
     );
   }

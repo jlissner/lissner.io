@@ -30,6 +30,8 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
   const prevActivityBusy = useRef(false);
 
   const indexPolling = activity?.index.inProgress ?? false;
+  const displayItems = mediaSearch.searchResults ?? mediaList.items;
+  const hasUnindexed = displayItems.some((item) => !item.indexed);
 
   useEffect(() => {
     if (!activity) {
@@ -47,7 +49,8 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
 
   return {
     fetchItems,
-    displayItems: mediaSearch.searchResults ?? mediaList.items,
+    displayItems,
+    hasUnindexed,
     loading: mediaList.loading,
     loadingMore: mediaList.loadingMore,
     isSearchMode: mediaSearch.searchResults !== null,
@@ -80,5 +83,10 @@ export function useHomePage({ personFilter }: UseHomePageOptions) {
     handleBulkDeleteWrapped: bulkActions.handleBulkDeleteWrapped,
     handleBulkIndexWrapped: bulkActions.handleBulkIndexWrapped,
     bulkAction: bulkActions.bulkAction,
+    jumpToOffset: mediaList.jumpToOffset,
+    startOffset: mediaList.startOffset,
+    topSentinelRef: mediaList.topSentinelRef,
+    loadingPrevious: mediaList.loadingPrevious,
+    hasPreviousPage: mediaList.hasPreviousPage,
   };
 }

@@ -10,7 +10,10 @@ interface HomePageHeaderBarProps {
   onIndex: (force: boolean) => void;
   indexPolling: boolean;
   toolbarError: string | null;
+  hasUnindexed: boolean;
   title: string;
+  personFilter: number | null;
+  onPersonFilterChange: (personId: number | null) => void;
   onClearFilter?: () => void;
   sortBy: "uploaded" | "taken";
   setSortBy: (v: "uploaded" | "taken") => void;
@@ -20,6 +23,7 @@ interface HomePageHeaderBarProps {
   onBulkDownload: () => void;
   onBulkDelete?: () => void;
   onBulkIndex?: () => void;
+  onBulkDateTaken?: () => void;
   onCancelSelection: () => void;
   bulkDeleting: boolean;
   bulkIndexing: boolean;
@@ -33,7 +37,10 @@ export function HomePageHeaderBar({
   onIndex,
   indexPolling,
   toolbarError,
+  hasUnindexed,
   title,
+  personFilter,
+  onPersonFilterChange,
   onClearFilter,
   sortBy,
   setSortBy,
@@ -43,6 +50,7 @@ export function HomePageHeaderBar({
   onBulkDownload,
   onBulkDelete,
   onBulkIndex,
+  onBulkDateTaken,
   onCancelSelection,
   bulkDeleting,
   bulkIndexing,
@@ -56,6 +64,7 @@ export function HomePageHeaderBar({
             onDownload={onBulkDownload}
             onDelete={onBulkDelete}
             onIndex={onBulkIndex}
+            onDateTaken={onBulkDateTaken}
             onCancel={onCancelSelection}
             deleting={bulkDeleting}
             indexing={bulkIndexing}
@@ -69,11 +78,14 @@ export function HomePageHeaderBar({
             onIndex={onIndex}
             indexPolling={indexPolling}
             toolbarError={toolbarError}
+            hasUnindexed={hasUnindexed}
           />
         )}
       </div>
       <HomePageFilters
         title={title}
+        personFilter={personFilter}
+        onPersonFilterChange={onPersonFilterChange}
         onClearFilter={onClearFilter}
         sortBy={sortBy}
         setSortBy={setSortBy}
