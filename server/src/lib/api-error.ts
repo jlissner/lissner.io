@@ -23,6 +23,7 @@ export type ApiErrorCode =
   | "index_in_progress"
   | "index_job_not_cancelable"
   | "missing_query"
+  | "search_query_invalid"
   | "search_failed"
   | "backup_not_configured"
   | "sync_in_progress"

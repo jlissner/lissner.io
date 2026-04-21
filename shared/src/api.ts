@@ -52,7 +52,17 @@ export type MediaMotionCompanionSummary = {
 /** GET /api/media/:id/details — extends list fields with optional motion companion. */
 export type MediaDetailsApiResponse = MediaListItem & {
   motionCompanion?: MediaMotionCompanionSummary | null;
+  /** User tags (normalized to lowercase). */
+  tags?: string[];
 };
+
+/** GET /api/media/tags — distinct tags for search/autocomplete. */
+export type MediaTagsListResponse = { tags: string[] };
+
+/** PUT /api/media/:id/tags */
+export type MediaTagsPutRequest = { tags: string[] };
+
+export type MediaTagsPutResponse = { ok: true };
 
 /** PATCH /api/media/:id */
 export type MediaPatchRequest = { dateTaken: string | null };

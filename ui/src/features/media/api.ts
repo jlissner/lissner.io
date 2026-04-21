@@ -3,6 +3,7 @@ import type {
   MediaDetailsApiResponse,
   MediaPatchRequest,
   MediaPatchResponse,
+  MediaTagsPutRequest,
 } from "../../../../shared/src/api.js";
 import type { FaceBox, TaggedFace } from "./components/media-viewer/media-viewer-types";
 import type { Person } from "../people/components/people-types";
@@ -25,6 +26,15 @@ export function patchMediaDateTaken(mediaId: string, body: MediaPatchRequest): P
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+export async function putMediaTags(mediaId: string, body: MediaTagsPutRequest): Promise<void> {
+  const res = await apiFetch(`media/${mediaId}/tags`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw await toApiError(res, "Could not save tags");
 }
 
 export async function deleteMediaById(id: string): Promise<void> {

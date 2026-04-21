@@ -12,6 +12,7 @@ import {
   listMediaEnriched,
   readTextMediaContent,
 } from "../../services/media-service.js";
+import { listDistinctMediaTags } from "../../services/media-tags-service.js";
 import { mediaDir } from "../../config/paths.js";
 import { parseWithSchema } from "../../validation/parse.js";
 import {
@@ -48,6 +49,10 @@ mediaReadRouter.get("/timeline/offset", (req, res) => {
   }
   const offset = db.getOffsetForMonth(sortBy, monthKey, personId);
   res.json({ offset });
+});
+
+mediaReadRouter.get("/tags", (_req, res) => {
+  res.json({ tags: listDistinctMediaTags() });
 });
 
 mediaReadRouter.get("/:id", async (req, res) => {

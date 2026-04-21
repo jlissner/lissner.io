@@ -8,3 +8,4 @@ export * from "./media-read.js";
 export * from "./media-motion.js";
 export * from "./media-write.js";
 export * from "./media-people.js";
+export * from "./media-tags.js";

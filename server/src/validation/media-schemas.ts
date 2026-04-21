@@ -20,6 +20,10 @@ export const uploadCheckNamesBodySchema = z.object({
   names: z.array(z.string()).max(200, "At most 200 names per request"),
 });
 
+export const mediaTagsBodySchema = z.object({
+  tags: z.array(z.string()).max(200, "At most 200 tags per request"),
+});
+
 export const reassignFaceBodySchema = z.object({
   assignTo: z.coerce.number().int().positive(),
 });

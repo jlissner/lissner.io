@@ -130,6 +130,20 @@ const migrations: MigrationStep[] = [
     version: 11,
     apply: (db) => addColumnIfMissing(db, "media", "perceptual_hash", "BLOB"),
   },
+  {
+    version: 12,
+    apply: (db) => {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS media_tags (
+          media_id TEXT NOT NULL,
+          tag TEXT NOT NULL,
+          PRIMARY KEY (media_id, tag),
+          FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
+        )
+      `);
+      db.exec(`CREATE INDEX IF NOT EXISTS idx_media_tags_tag ON media_tags(tag)`);
+    },
+  },
 ];
 
 export function runMediaMigrations(db: Database.Database): void {

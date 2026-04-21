@@ -59,6 +59,10 @@ searchRouter.get(
         sendApiError(res, 400, "Missing query parameter: q", "missing_query");
         return;
       }
+      if (searchResult.reason === "invalid_query") {
+        sendApiError(res, 400, searchResult.message, "search_query_invalid");
+        return;
+      }
       sendApiError(res, 500, searchResult.message, "search_failed");
       return;
     }

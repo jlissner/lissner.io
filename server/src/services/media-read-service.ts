@@ -204,11 +204,13 @@ export function getMediaDetailsEnriched(mediaId: string) {
         }
       : undefined;
   const { hideFromGallery: _hid, ...rest } = item;
+  const tags = db.listTagsForMedia(item.id);
   return {
     ok: true as const,
     body: {
       ...rest,
       people: people.length ? people : undefined,
+      tags: tags.length ? tags : undefined,
       indexed: indexedIds.has(item.id),
       backedUp: !!item.backedUpAt,
       motionCompanion,

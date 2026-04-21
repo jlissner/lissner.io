@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
-import { getMediaDetails, patchMediaDateTaken } from "../../api";
+import { getMediaDetails, patchMediaDateTaken, putMediaTags } from "../../api";
 import type { MediaItem } from "./media-utils";
 import type {
   MediaDetailsApiResponse,
@@ -126,6 +126,10 @@ export function MediaViewerDetails({
   const [dateTakenTime, setDateTakenTime] = useState("");
   const [dateTakenSaving, setDateTakenSaving] = useState(false);
   const [dateTakenEditError, setDateTakenEditError] = useState<string | null>(null);
+  const [workingTags, setWorkingTags] = useState<string[]>([]);
+  const [tagDraft, setTagDraft] = useState("");
+  const [tagsSaving, setTagsSaving] = useState(false);
+  const [tagsError, setTagsError] = useState<string | null>(null);
 
   const loadDetails = useCallback(() => {
     setLoading(true);
@@ -139,6 +143,54 @@ export function MediaViewerDetails({
   useEffect(() => {
     loadDetails();
   }, [item.id, refreshTrigger, loadDetails]);
+
+  useEffect(() => {
+    if (!details || details.id !== item.id) return;
+    setWorkingTags(details.tags ? [...details.tags] : []);
+    setTagDraft("");
+    setTagsError(null);
+  }, [item.id, details, refreshTrigger]);
+
+  const tagsDirty = useMemo(() => {
+    if (!details) return false;
+    const prev = [...(details.tags ?? [])].sort().join("\n");
+    const next = [...workingTags].sort().join("\n");
+    return prev !== next;
+  }, [details, workingTags]);
+
+  const addDraftTag = useCallback(() => {
+    const raw = tagDraft.trim().toLowerCase();
+    if (!raw) return;
+    setWorkingTags((prev) => {
+      if (prev.includes(raw)) return prev;
+      return [...prev, raw].sort((a, b) => a.localeCompare(b));
+    });
+    setTagDraft("");
+  }, [tagDraft]);
+
+  const removeTag = useCallback((tag: string) => {
+    setWorkingTags((prev) => prev.filter((t) => t !== tag));
+  }, []);
+
+  const saveTags = useCallback(async () => {
+    setTagsSaving(true);
+    setTagsError(null);
+    const failMessage = await (async (): Promise<string | null> => {
+      try {
+        await putMediaTags(item.id, { tags: workingTags });
+        return null;
+      } catch (e) {
+        return e instanceof Error ? e.message : "Could not save tags";
+      }
+    })();
+    setTagsSaving(false);
+    if (failMessage != null) {
+      setTagsError(failMessage);
+      return;
+    }
+    await loadDetails();
+    onMetadataUpdated?.();
+  }, [item.id, loadDetails, onMetadataUpdated, workingTags]);
 
   const beginEditDateTaken = useCallback(() => {
     const { date, time } = isoToDateAndTimeInputs(details?.dateTaken);
@@ -232,6 +284,64 @@ export function MediaViewerDetails({
             <dd className="viewer-details__value">{details.people.join(", ")}</dd>
           </>
         )}
+        <dt className="viewer-details__term">Tags</dt>
+        <dd className="viewer-details__value">
+          <div className="viewer-details__tags">
+            {workingTags.map((t) => (
+              <span key={t} className="viewer-details__tag">
+                #{t}
+                <button
+                  type="button"
+                  className="viewer-details__tag-remove"
+                  onClick={() => removeTag(t)}
+                  disabled={tagsSaving}
+                  aria-label={`Remove tag ${t}`}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="viewer-details__tag-add">
+            <input
+              type="text"
+              className="viewer-details__datetime-input"
+              value={tagDraft}
+              onChange={(e) => setTagDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addDraftTag();
+                }
+              }}
+              placeholder="Add tag (e.g. summer2025)"
+              disabled={tagsSaving}
+              aria-label="New tag"
+            />
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm"
+              onClick={addDraftTag}
+              disabled={tagsSaving}
+            >
+              Add
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary btn--sm"
+              onClick={() => {
+                void saveTags();
+              }}
+              disabled={tagsSaving || !tagsDirty}
+            >
+              {tagsSaving ? "Saving…" : "Save tags"}
+            </button>
+          </div>
+          {tagsError && <p className="viewer-details__muted u-text-danger">{tagsError}</p>}
+          <p className="viewer-details__muted viewer-details__hint">
+            Use #tag, @person, AND, OR in search (example: (#vacation) AND beach).
+          </p>
+        </dd>
         <dt className="viewer-details__term">Uploaded</dt>
         <dd className="viewer-details__value">
           {formatLocalDateTimeMediumShort(details.uploadedAt)}

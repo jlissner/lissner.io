@@ -12,8 +12,13 @@ import {
   persistUploadedMedia,
   updateMediaDateTaken,
 } from "../../services/media-service.js";
+import { setMediaTags } from "../../services/media-tags-service.js";
 import { parseWithSchema } from "../../validation/parse.js";
-import { mediaIdParamSchema, uploadCheckNamesBodySchema } from "../../validation/media-schemas.js";
+import {
+  mediaIdParamSchema,
+  mediaTagsBodySchema,
+  uploadCheckNamesBodySchema,
+} from "../../validation/media-schemas.js";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -79,6 +84,24 @@ mediaWriteRouter.post("/upload/check-names", (req, res) => {
     }
   }
   res.json({ conflicts });
+});
+
+mediaWriteRouter.put("/:id/tags", (req, res) => {
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const body = parseWithSchema(mediaTagsBodySchema, req.body);
+  const result = setMediaTags(id, body.tags, {
+    userId: req.jwtUser?.id,
+    isAdmin: req.jwtUser?.isAdmin,
+  });
+  if (result.ok) {
+    res.json({ ok: true as const });
+    return;
+  }
+  if (result.reason === "not_found") {
+    sendApiError(res, 404, "Not found", "not_found");
+    return;
+  }
+  sendApiError(res, 403, "Only the owner or an admin can edit tags", "patch_forbidden");
 });
 
 mediaWriteRouter.delete("/:id", async (req, res) => {
