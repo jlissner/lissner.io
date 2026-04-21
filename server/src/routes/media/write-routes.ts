@@ -32,6 +32,49 @@ const upload = multer({ storage });
 
 export const mediaWriteRouter = Router();
 
+mediaWriteRouter.post("/share-target", upload.array("files"), async (req, res) => {
+  const ownerId = req.jwtUser?.id ?? authDb.getDefaultOwnerId();
+  if (ownerId == null) {
+    sendApiError(
+      res,
+      500,
+      "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
+      "upload_owner_config"
+    );
+    return;
+  }
+  if (!req.files || req.files.length === 0) {
+    sendApiError(res, 400, "No files shared", "no_files_shared");
+    return;
+  }
+  const uploaded = [];
+  for (const file of req.files as Express.Multer.File[]) {
+    const id = path.parse(file.filename).name;
+    const absolutePath = path.join(mediaDir, file.filename);
+    const mimeType = await resolveMimeTypeAfterUpload(
+      file.originalname,
+      file.mimetype,
+      absolutePath
+    );
+    persistUploadedMedia({
+      id,
+      filename: file.filename,
+      originalName: file.originalname,
+      mimeType,
+      size: file.size,
+      ownerId,
+    });
+    uploaded.push({
+      id,
+      filename: file.filename,
+      originalName: file.originalname,
+      mimeType,
+      size: file.size,
+    });
+  }
+  res.redirect("/?uploaded=" + uploaded.map((u) => u.id).join(","));
+});
+
 mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
     sendApiError(res, 400, "No file uploaded", "no_file_uploaded");

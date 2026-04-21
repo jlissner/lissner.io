@@ -35,10 +35,8 @@ services:
     healthcheck:
       test:
         [
-          "CMD",
-          "node",
-          "-e",
-          "fetch('http://127.0.0.1:'+(process.env.SERVER_PORT)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+          "CMD-SHELL",
+          'ffmpeg -version >/dev/null 2>&1 && node -e "fetch(''http://127.0.0.1:''+process.env.SERVER_PORT+''/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
         ]
       interval: 5s
       timeout: 5s

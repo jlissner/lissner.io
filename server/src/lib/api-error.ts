@@ -32,6 +32,7 @@ export type ApiErrorCode =
   | "hash_failed"
   | "admin_not_found"
   | "no_file_uploaded"
+  | "no_files_shared"
   | "upload_owner_config"
   | "delete_forbidden"
   | "delete_failed"

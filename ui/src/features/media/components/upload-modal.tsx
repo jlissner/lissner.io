@@ -159,6 +159,7 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
             <input
               type="file"
               multiple
+              accept="image/*,video/*"
               onChange={handleInputChange}
               className="u-sr-only"
               id="upload-modal-input"
@@ -169,6 +170,26 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
               </span>
               <span className="upload-zone__hint">Images, videos, documents</span>
             </label>
+            <div className="upload-zone__actions">
+              <button
+                type="button"
+                className="upload-zone__camera-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.setAttribute("capture", "environment");
+                  input.onchange = (ev) => {
+                    const files = (ev.target as HTMLInputElement).files;
+                    if (files) handleFilesSelected(files);
+                  };
+                  input.click();
+                }}
+              >
+                Take Photo
+              </button>
+            </div>
           </div>
         ) : (
           <UploadModalConfirm
