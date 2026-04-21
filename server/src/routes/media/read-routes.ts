@@ -107,6 +107,12 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+  if (out.kind === "file") {
+    res.sendFile(out.path, { headers: { "Content-Type": out.mimeType } }, (err) => {
+      if (err && !res.headersSent) sendApiError(res, 500, "Send failed", "internal_error");
+    });
+    return;
+  }
   res.setHeader("Content-Type", out.mimeType);
   res.send(out.buffer);
 });

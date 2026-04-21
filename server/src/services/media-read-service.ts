@@ -6,7 +6,7 @@ import * as db from "../db/media.js";
 import { extractFacesFromImage } from "../faces.js";
 import { tryRestoreMediaFromBackup, tryRestoreVideoThumbnailFromBackup } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
-import { isTextMime } from "../lib/media-mime.js";
+import { isTextMime, isVideoMime } from "../lib/media-mime.js";
 import { logger } from "../logger.js";
 import {
   effectiveImageResponseMimeType,
@@ -164,6 +164,14 @@ export async function getMediaPreviewFile(mediaId: string) {
     filePath,
     db.updateMediaMimeType
   );
+  if (isVideoMime(mimeTypePreview)) {
+    return {
+      ok: true as const,
+      kind: "file" as const,
+      mimeType: mimeTypePreview,
+      path: filePath,
+    };
+  }
   const rotated = await sharp(filePath).rotate().toBuffer();
   return {
     ok: true as const,

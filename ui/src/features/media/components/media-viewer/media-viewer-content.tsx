@@ -7,6 +7,7 @@ import { MediaViewerDetails } from "./media-viewer-details";
 import { InlineAssignBar } from "./inline-assign-bar";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
+import { useSwipeNav } from "./use-swipe-nav";
 import type { MediaItem } from "./media-utils";
 import { Button } from "@/components/ui/button";
 
@@ -115,15 +116,36 @@ export function MediaViewerContent({
     goNext,
   ]);
 
+  const swipeRef = useRef<HTMLDivElement>(null);
+  useSwipeNav(
+    swipeRef,
+    nextItem ? goNext : null,
+    prevItem ? goPrev : null
+  );
+
   return (
-    <div onClick={(e) => e.stopPropagation()} className="viewer-content">
+    <div ref={swipeRef} onClick={(e) => e.stopPropagation()} className="viewer-content">
+      {prevItem && (
+        <button
+          type="button"
+          className="viewer-nav viewer-nav--prev"
+          onClick={goPrev}
+          aria-label="Previous"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+        </button>
+      )}
+      {nextItem && (
+        <button
+          type="button"
+          className="viewer-nav viewer-nav--next"
+          onClick={goNext}
+          aria-label="Next"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+        </button>
+      )}
       <div className="viewer-content__actions">
-        <Button onClick={goPrev} variant="secondary" size="sm" disabled={!prevItem}>
-          Prev
-        </Button>
-        <Button onClick={goNext} variant="secondary" size="sm" disabled={!nextItem}>
-          Next
-        </Button>
         {hasMotionPair && motionPairView === "video" && (
           <Button onClick={() => setMotionPairView("still")} variant="secondary" size="sm">
             Still
@@ -174,12 +196,14 @@ export function MediaViewerContent({
           <p className="viewer-content__filename">{item.originalName}</p>
           {hasMotionPair && motionPairView === "video" && (
             <video
-              src={motionVideoUrl}
+              key={motionVideoUrl}
               controls
               autoPlay
               playsInline
               style={{ maxWidth: "100%", maxHeight: "85vh" }}
-            />
+            >
+              <source src={motionVideoUrl} type={item.mimeType} />
+            </video>
           )}
           {isImage(item.mimeType, item.originalName) &&
             !pixelMp &&
@@ -284,11 +308,14 @@ export function MediaViewerContent({
           )}
           {isVideo(item.mimeType) && (
             <video
-              src={previewUrl}
+              key={previewUrl}
               controls
               autoPlay
+              playsInline
               style={{ maxWidth: "100%", maxHeight: "85vh" }}
-            />
+            >
+              <source src={previewUrl} type={item.mimeType} />
+            </video>
           )}
           {isText(item.mimeType) && (
             <pre
