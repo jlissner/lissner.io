@@ -70,6 +70,8 @@ export function HomePage({ title: titleProp }: HomePageProps) {
         toolbarError={toolbarError}
         hasUnindexed={hasUnindexed}
         title={title}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
         columnsPerRow={columnsPerRow}
         setColumnsPerRow={setColumnsPerRow}
         selectedCount={selected.size}

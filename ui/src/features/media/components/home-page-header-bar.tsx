@@ -12,6 +12,8 @@ interface HomePageHeaderBarProps {
   toolbarError: string | null;
   hasUnindexed: boolean;
   title: string;
+  sortBy: "uploaded" | "taken";
+  setSortBy: (v: "uploaded" | "taken") => void;
   columnsPerRow: number;
   setColumnsPerRow: (v: number) => void;
   selectedCount: number;
@@ -34,6 +36,8 @@ export function HomePageHeaderBar({
   toolbarError,
   hasUnindexed,
   title,
+  sortBy,
+  setSortBy,
   columnsPerRow,
   setColumnsPerRow,
   selectedCount,
@@ -74,6 +78,8 @@ export function HomePageHeaderBar({
       </div>
       <HomePageFilters
         title={title}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
         columnsPerRow={columnsPerRow}
         setColumnsPerRow={setColumnsPerRow}
       />

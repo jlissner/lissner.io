@@ -3,6 +3,7 @@ import {
   Suspense,
   useCallback,
   useEffect,
+  useRef,
   useState,
   type MouseEvent,
   type ReactNode,
@@ -73,6 +74,19 @@ export function AuthenticatedApp() {
   const handleOpenUploadModal = useCallback(() => setUploadModalOpen(true), []);
   const handleCloseUploadModal = useCallback(() => setUploadModalOpen(false), []);
   const handleDismissS3Alert = useCallback(() => setS3AlertDismissed(true), []);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("click", handleClickOutside as never);
+    return () => document.removeEventListener("click", handleClickOutside as never);
+  }, [showUserMenu]);
 
   const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
@@ -94,6 +108,8 @@ export function AuthenticatedApp() {
   if (page === "admin" && user?.isAdmin) {
     mainPage = <AdminPage onSyncComplete={fetchItems} />;
   }
+
+  const userInitial = user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
     <div className="app">
@@ -131,12 +147,32 @@ export function AuthenticatedApp() {
               Upload
             </Button>
             {showAccount && (
-              <div className="header__user">
-                <span className="header__user-email">{user.email}</span>
-                {canLogOut && (
-                  <Button variant="ghost" size="sm" onClick={() => void logout()}>
-                    Log out
-                  </Button>
+              <div className="header__user" ref={userMenuRef}>
+                <button
+                  type="button"
+                  className="header__avatar"
+                  onClick={() => setShowUserMenu((v) => !v)}
+                  aria-label="User menu"
+                >
+                  {userInitial}
+                </button>
+                {showUserMenu && (
+                  <div className="header__user-menu">
+                    <div className="header__user-info">{user.email}</div>
+                    {canLogOut && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="header__logout"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          void logout();
+                        }}
+                      >
+                        Log out
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -156,21 +192,6 @@ export function AuthenticatedApp() {
               </NavMenuItem>
             ))}
           </NavMenu>
-          {showAccount && (
-            <div className="nav__account">
-              <div className="nav__account-email">{user.email}</div>
-              {canLogOut && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="nav__account-logout"
-                  onClick={() => void logout()}
-                >
-                  Log out
-                </Button>
-              )}
-            </div>
-          )}
         </nav>
         <main className="main">
           <Suspense fallback={<div className="u-pad">Loading…</div>}>{mainPage}</Suspense>

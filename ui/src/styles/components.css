@@ -358,9 +358,17 @@
   margin-left: auto;
 }
 
+.filters__label--sort {
+  display: none;
+}
+
 @media (max-width: 639px) {
   .filters__label--cols {
     margin-left: 0;
+  }
+
+  .filters__label--sort {
+    display: inline-flex;
   }
 }
 
@@ -1683,6 +1691,12 @@
 
 @media (max-width: 639px) {
   .timeline-scrubber {
+    display: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .timeline-scrubber__sort {
     display: none;
   }
 }
