@@ -43,7 +43,7 @@ authRouter.post("/magic-link", async (req, res) => {
 
   const { token, code } = authDb.createMagicLinkToken(normalized);
   const baseUrl = getMagicLinkBaseUrl();
-  const link = `${baseUrl}/api/auth/verify?token=${token}`;
+  const link = `${baseUrl}/?code=${code}`;
 
   try {
     await sendMagicLink(normalized, link, code);
@@ -52,29 +52,6 @@ authRouter.post("/magic-link", async (req, res) => {
     logger.error({ err, email: normalized }, "Magic link send error");
     sendApiError(res, 500, "Failed to send magic link", "magic_link_send_failed");
   }
-});
-
-authRouter.get("/verify", async (req, res) => {
-  const token = req.query.token as string;
-  const baseUrl = getMagicLinkBaseUrl();
-  if (!token) {
-    res.redirect(`${baseUrl}/?error=missing_token`);
-    return;
-  }
-
-  const result = authDb.consumeMagicLinkToken(token);
-  if (!result) {
-    res.redirect(`${baseUrl}/?error=invalid_token`);
-    return;
-  }
-
-  const isAdmin = authDb.isEmailAdmin(result.email);
-  const user = authDb.getOrCreateUser(result.email, isAdmin);
-
-  const tokens = await issueTokens(user);
-  setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
-
-  res.redirect(`${baseUrl}/`);
 });
 
 authRouter.post("/verify-code", async (req, res) => {
