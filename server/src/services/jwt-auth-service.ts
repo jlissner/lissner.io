@@ -1,6 +1,10 @@
 import { randomUUID, createHash } from "crypto";
 import type { Response } from "express";
-import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../auth/jwt.js";
+import {
+  signAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "../auth/jwt.js";
 import * as authDb from "../db/auth.js";
 
 const IS_PROD = process.env.NODE_ENV === "production";
@@ -13,7 +17,7 @@ function hashToken(raw: string): string {
 
 export async function issueTokens(
   user: { id: number; email: string; isAdmin: boolean },
-  familyId?: string
+  familyId?: string,
 ): Promise<{ accessToken: string; refreshToken: string }> {
   const fid = familyId ?? randomUUID();
   const accessToken = await signAccessToken({
@@ -31,7 +35,9 @@ type RefreshResult =
   | { accessToken: string; refreshToken: string }
   | { error: "invalid" | "revoked" | "reused" };
 
-export async function refreshTokens(rawRefreshToken: string): Promise<RefreshResult> {
+export async function refreshTokens(
+  rawRefreshToken: string,
+): Promise<RefreshResult> {
   const claims = await verifyRefreshToken(rawRefreshToken);
   if (!claims) return { error: "invalid" };
 
@@ -59,7 +65,11 @@ export async function revokeSession(rawRefreshToken: string): Promise<void> {
   authDb.revokeTokenFamily(claims.familyId);
 }
 
-export function setTokenCookies(res: Response, accessToken: string, refreshToken: string): void {
+export function setTokenCookies(
+  res: Response,
+  accessToken: string,
+  refreshToken: string,
+): void {
   res.cookie("access_token", accessToken, {
     httpOnly: true,
     secure: IS_PROD,

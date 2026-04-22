@@ -74,7 +74,7 @@ export function sendApiError(
   status: number,
   message: string,
   code: ApiErrorCode,
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
 ): void {
   res.status(status).json({ error: message, code, ...extra });
 }

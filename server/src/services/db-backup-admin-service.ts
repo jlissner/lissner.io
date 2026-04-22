@@ -12,7 +12,10 @@ import { logger } from "../logger.js";
 import { validateSqliteDbFile } from "../s3/startup-db-restore.js";
 import { S3_PREFIX } from "../s3/sync-constants.js";
 import { createS3Client, getS3Config } from "../s3/sync-client.js";
-import { downloadS3ObjectToFile, listS3ObjectsWithMetadata } from "../s3/sync-transfer.js";
+import {
+  downloadS3ObjectToFile,
+  listS3ObjectsWithMetadata,
+} from "../s3/sync-transfer.js";
 import { isSyncInProgress } from "../s3/sync-state.js";
 
 export type DbBackupListItem = {
@@ -26,11 +29,17 @@ export async function listDbBackupsForAdmin(): Promise<
   | { ok: false; reason: "not_configured"; missingVars: string[] }
 > {
   const s3 = getS3Config();
-  if (!s3.configured) return { ok: false, reason: "not_configured", missingVars: s3.missingVars };
+  if (!s3.configured)
+    return { ok: false, reason: "not_configured", missingVars: s3.missingVars };
   const client = createS3Client();
-  if (!client) return { ok: false, reason: "not_configured", missingVars: s3.missingVars };
+  if (!client)
+    return { ok: false, reason: "not_configured", missingVars: s3.missingVars };
   const bucket = process.env.S3_BUCKET!;
-  const objects = await listS3ObjectsWithMetadata(client, bucket, `${S3_PREFIX}/db/`);
+  const objects = await listS3ObjectsWithMetadata(
+    client,
+    bucket,
+    `${S3_PREFIX}/db/`,
+  );
   const backups = objects
     .filter((o) => o.key.endsWith(".db"))
     .map((o) => ({ key: o.key, size: o.size, lastModified: o.lastModified }))
@@ -57,7 +66,9 @@ export type RestoreDbResult =
         | "invalid_db";
     };
 
-export async function restoreDbFromS3BackupKey(key: string): Promise<RestoreDbResult> {
+export async function restoreDbFromS3BackupKey(
+  key: string,
+): Promise<RestoreDbResult> {
   if (!isValidDbBackupKey(key)) return { ok: false, reason: "invalid_key" };
   if (isSyncInProgress()) return { ok: false, reason: "sync_in_progress" };
   const s3 = getS3Config();
@@ -78,7 +89,9 @@ export async function restoreDbFromS3BackupKey(key: string): Promise<RestoreDbRe
   const outcome = await (async (): Promise<RestoreDbResult> => {
     try {
       await mkdir(dbDir, { recursive: true });
-      const getRes = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      const getRes = await client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
+      );
       const body = getRes.Body;
       if (!body) {
         return { ok: false, reason: "download_failed" };
@@ -102,7 +115,10 @@ export async function restoreDbFromS3BackupKey(key: string): Promise<RestoreDbRe
     reopenAuthDb();
     getDb();
   } catch (err) {
-    logger.error({ err }, "[admin-db-restore] failed to reopen DB after restore attempt");
+    logger.error(
+      { err },
+      "[admin-db-restore] failed to reopen DB after restore attempt",
+    );
     throw err;
   }
   return outcome;

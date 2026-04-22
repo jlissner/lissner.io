@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export function NavMenu({ className, children }: { className?: string; children: ReactNode }) {
+export function NavMenu({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return <div className={cn("nav__items", className)}>{children}</div>;
 }
 

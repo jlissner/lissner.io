@@ -4,7 +4,9 @@ import type { ServiceFailure } from "./service-result.js";
 
 export type AddPersonToMediaTagResult =
   | { ok: true; personId: number; created: "new" | "existing" }
-  | ServiceFailure<"not_found" | "box_required" | "person_required" | "person_not_found">;
+  | ServiceFailure<
+      "not_found" | "box_required" | "person_required" | "person_not_found"
+    >;
 
 export type RemovePersonFromMediaTagResult =
   | { ok: true }
@@ -12,7 +14,9 @@ export type RemovePersonFromMediaTagResult =
 
 export type ReassignPersonInMediaTagResult =
   | { ok: true; body: { reassigned: number; to: number } }
-  | ServiceFailure<"not_found" | "bad_ids" | "same_person" | "target_missing" | "not_tagged">;
+  | ServiceFailure<
+      "not_found" | "bad_ids" | "same_person" | "target_missing" | "not_tagged"
+    >;
 
 export type ReassignToNewPersonResult =
   | { ok: true; body: { newPersonId: number } }
@@ -63,7 +67,7 @@ export function addPersonToMediaTag(params: {
 
 export function removePersonFromMediaTag(
   mediaId: string,
-  personId: number
+  personId: number,
 ): RemovePersonFromMediaTagResult {
   const item = db.getMediaById(mediaId);
   if (!item) {
@@ -82,13 +86,18 @@ export function removePersonFromMediaTag(
 export function reassignPersonInMediaTag(
   mediaId: string,
   fromPersonId: number,
-  toPersonId: number
+  toPersonId: number,
 ): ReassignPersonInMediaTagResult {
   const item = db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
-  if (isNaN(fromPersonId) || fromPersonId < 1 || isNaN(toPersonId) || toPersonId < 1) {
+  if (
+    isNaN(fromPersonId) ||
+    fromPersonId < 1 ||
+    isNaN(toPersonId) ||
+    toPersonId < 1
+  ) {
     return { ok: false as const, reason: "bad_ids" as const };
   }
   if (fromPersonId === toPersonId) {
@@ -102,12 +111,15 @@ export function reassignPersonInMediaTag(
   if (!ok) {
     return { ok: false as const, reason: "not_tagged" as const };
   }
-  return { ok: true as const, body: { reassigned: fromPersonId, to: toPersonId } };
+  return {
+    ok: true as const,
+    body: { reassigned: fromPersonId, to: toPersonId },
+  };
 }
 
 export function reassignToNewPerson(
   mediaId: string,
-  fromPersonId: number
+  fromPersonId: number,
 ): ReassignToNewPersonResult {
   const item = db.getMediaById(mediaId);
   if (!item) {
@@ -123,7 +135,10 @@ export function reassignToNewPerson(
   return { ok: true as const, body: { newPersonId: newId } };
 }
 
-export function confirmFaceTag(mediaId: string, personId: number): ConfirmFaceTagResult {
+export function confirmFaceTag(
+  mediaId: string,
+  personId: number,
+): ConfirmFaceTagResult {
   const item = db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };

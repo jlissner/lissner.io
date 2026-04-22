@@ -7,7 +7,10 @@ import type {
 import * as db from "../db/media.js";
 import type { ServiceFailure } from "./service-result.js";
 
-export function getPersonMediaPreview(personId: number, limit: number): PersonMediaPreviewItem[] {
+export function getPersonMediaPreview(
+  personId: number,
+  limit: number,
+): PersonMediaPreviewItem[] {
   const media = db.getMediaForPerson(personId, limit);
   return media.map((m) => ({
     id: m.id,
@@ -61,8 +64,16 @@ export type MergePeopleResult =
   | { ok: true; merged: number; into: number }
   | ServiceFailure<"invalid_ids" | "merge_into_self" | "not_found">;
 
-export function mergePeople(mergeFromId: number, mergeIntoId: number): MergePeopleResult {
-  if (isNaN(mergeFromId) || mergeFromId < 1 || isNaN(mergeIntoId) || mergeIntoId < 1) {
+export function mergePeople(
+  mergeFromId: number,
+  mergeIntoId: number,
+): MergePeopleResult {
+  if (
+    isNaN(mergeFromId) ||
+    mergeFromId < 1 ||
+    isNaN(mergeIntoId) ||
+    mergeIntoId < 1
+  ) {
     return { ok: false, reason: "invalid_ids" };
   }
   if (mergeFromId === mergeIntoId) {
@@ -76,7 +87,10 @@ export function mergePeople(mergeFromId: number, mergeIntoId: number): MergePeop
   return { ok: true, merged: mergeFromId, into: mergeIntoId };
 }
 
-export function renamePerson(personId: number, name: string): UpdatePersonResponse {
+export function renamePerson(
+  personId: number,
+  name: string,
+): UpdatePersonResponse {
   db.setPersonName(personId, name.trim());
   return { id: personId, name: name.trim() };
 }

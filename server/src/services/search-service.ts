@@ -1,4 +1,7 @@
-import type { SearchIndexStatusResponse, SearchResultItem } from "../../../shared/src/api.js";
+import type {
+  SearchIndexStatusResponse,
+  SearchResultItem,
+} from "../../../shared/src/api.js";
 import * as db from "../db/media.js";
 import { getEmbedding, cosineSimilarity } from "../embeddings.js";
 import { indexMediaItems } from "../indexing/media.js";
@@ -13,10 +16,17 @@ import { logger } from "../logger.js";
 import { getSyncState, getS3Config } from "../s3/sync.js";
 import type { ServiceFailure } from "./service-result.js";
 import { normalizePersonHandle } from "../lib/search-query-normalize.js";
-import { parseSearchQuery, type SearchQueryAst } from "../lib/search-query-parser.js";
+import {
+  parseSearchQuery,
+  type SearchQueryAst,
+} from "../lib/search-query-parser.js";
 
 export function getIndexStatusBody(): SearchIndexStatusResponse {
-  const snap = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
+  const snap = buildActivitySnapshot(
+    getIndexJobState(),
+    getSyncState(),
+    getS3Config(),
+  );
   const s = snap.index;
   return {
     inProgress: s.inProgress,
@@ -51,7 +61,10 @@ export function startBulkIndexingJob(params: {
       ? allItems.filter((i) => params.mediaIds!.includes(i.id))
       : allItems;
 
-  void indexMediaItems(items, { skipIndexed: !params.force, signal: started.signal })
+  void indexMediaItems(items, {
+    skipIndexed: !params.force,
+    signal: started.signal,
+  })
     .then(({ indexed, skipped, cancelled }) => {
       finishIndexJob({
         indexed,
@@ -73,7 +86,7 @@ const EMBEDDING_TOP = 20;
 function resolvePersonIdForHandle(handle: string): number | null {
   const personNames = db.getPersonNames();
   const matching = [...personNames.entries()].filter(
-    ([, name]) => normalizePersonHandle(name) === handle
+    ([, name]) => normalizePersonHandle(name) === handle,
   );
   if (matching.length === 0) {
     return null;
@@ -122,7 +135,10 @@ async function legacySearchOrderedIds(query: string): Promise<string[]> {
     const queryEmbedding = await getEmbedding(query);
     const scored = stored.map(({ mediaId, embedding }) => ({
       mediaId,
-      score: cosineSimilarity(queryEmbedding, JSON.parse(embedding) as number[]),
+      score: cosineSimilarity(
+        queryEmbedding,
+        JSON.parse(embedding) as number[],
+      ),
     }));
     scored.sort((a, b) => b.score - a.score);
     for (const id of scored.slice(0, EMBEDDING_TOP).map((s) => s.mediaId)) {
@@ -187,7 +203,9 @@ export type SearchMediaByQueryResult =
   | { ok: false; reason: "invalid_query"; message: string }
   | { ok: false; reason: "search_failed"; message: string };
 
-export async function searchMediaByQuery(q: string): Promise<SearchMediaByQueryResult> {
+export async function searchMediaByQuery(
+  q: string,
+): Promise<SearchMediaByQueryResult> {
   const query = q.trim();
   if (!query) {
     return { ok: false, reason: "missing_query" };
@@ -205,7 +223,9 @@ export async function searchMediaByQuery(q: string): Promise<SearchMediaByQueryR
     }
 
     const personNames = db.getPersonNames();
-    const items = db.getMediaByIds(mediaIds).filter((x) => (x.hideFromGallery ?? 0) === 0);
+    const items = db
+      .getMediaByIds(mediaIds)
+      .filter((x) => (x.hideFromGallery ?? 0) === 0);
     const order = new Map(mediaIds.map((id, i) => [id, i]));
     items.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
 
@@ -219,13 +239,15 @@ export async function searchMediaByQuery(q: string): Promise<SearchMediaByQueryR
 
 function mapSearchItems(
   items: ReturnType<typeof db.getMediaByIds>,
-  personNames: Map<number, string>
+  personNames: Map<number, string>,
 ): SearchResultItem[] {
   const indexedIds = db.getIndexedMediaIds();
   return items.map((item) => {
     const { hideFromGallery: _h, ...rest } = item;
     const personIds = db.getImagePeople(rest.id);
-    const people = personIds.map((pid) => personNames.get(pid) ?? `Person ${pid}`);
+    const people = personIds.map(
+      (pid) => personNames.get(pid) ?? `Person ${pid}`,
+    );
     return {
       ...rest,
       indexed: indexedIds.has(item.id),

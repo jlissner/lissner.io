@@ -1,24 +1,31 @@
 import { getDb } from "./media-db.js";
-import { findMediaByOriginalNameCaseInsensitive, getMediaById } from "./media-read.js";
+import {
+  findMediaByOriginalNameCaseInsensitive,
+  getMediaById,
+} from "./media-read.js";
 
 function buildMotionStmts() {
   const db = getDb();
   return {
-    selectCompanionId: db.prepare(`SELECT motion_companion_id FROM media WHERE id = ?`),
+    selectCompanionId: db.prepare(
+      `SELECT motion_companion_id FROM media WHERE id = ?`,
+    ),
     clearPair: db.prepare(
-      `UPDATE media SET motion_companion_id = NULL, hide_from_gallery = 0 WHERE id = ?`
+      `UPDATE media SET motion_companion_id = NULL, hide_from_gallery = 0 WHERE id = ?`,
     ),
     setCompanionStill: db.prepare(
-      `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 0 WHERE id = ?`
+      `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 0 WHERE id = ?`,
     ),
     setCompanionVideo: db.prepare(
-      `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 1 WHERE id = ?`
+      `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 1 WHERE id = ?`,
     ),
     listAllMediaIds: db.prepare("SELECT id FROM media"),
   };
 }
 
-const motionState = { stmts: null as null | ReturnType<typeof buildMotionStmts> };
+const motionState = {
+  stmts: null as null | ReturnType<typeof buildMotionStmts>,
+};
 
 export function resetMediaMotionStatementCache(): void {
   motionState.stmts = null;
@@ -55,7 +62,11 @@ export function linkMotionPairForMedia(mediaId: string): void {
   if (lower.endsWith(".mp.jpg")) {
     const videoName = name.slice(0, -4);
     const video = findMediaByOriginalNameCaseInsensitive(videoName);
-    if (video && video.id !== mediaId && isPixelMotionVideoBasename(video.originalName)) {
+    if (
+      video &&
+      video.id !== mediaId &&
+      isPixelMotionVideoBasename(video.originalName)
+    ) {
       setMotionPair(mediaId, video.id);
     } else {
       breakMotionPairForMedia(mediaId);

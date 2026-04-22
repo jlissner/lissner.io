@@ -32,6 +32,9 @@ describe("personSearchHandle", () => {
 
 describe("filterTagSuggestions", () => {
   it("filters by prefix", () => {
-    expect(filterTagSuggestions(["apple", "apricot", "berry"], "ap")).toEqual(["apple", "apricot"]);
+    expect(filterTagSuggestions(["apple", "apricot", "berry"], "ap")).toEqual([
+      "apple",
+      "apricot",
+    ]);
   });
 });

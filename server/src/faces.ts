@@ -13,9 +13,12 @@ const Human = require("@vladmandic/human").default as new (config?: object) => {
     node: { decodeImage: (buf: Buffer, channels?: number) => unknown };
     dispose: (t: unknown) => void;
   };
-  detect: (
-    input: unknown
-  ) => Promise<{ face: Array<{ box: [number, number, number, number]; embedding?: number[] }> }>;
+  detect: (input: unknown) => Promise<{
+    face: Array<{
+      box: [number, number, number, number];
+      embedding?: number[];
+    }>;
+  }>;
   match: { similarity: (a: number[], b: number[]) => number };
 };
 
@@ -63,7 +66,7 @@ type HumanInstance = InstanceType<typeof Human>;
 
 function facesFromDetectResult(
   result: Awaited<ReturnType<HumanInstance["detect"]>>,
-  imageId: string
+  imageId: string,
 ): FaceInImage[] {
   const faces: FaceInImage[] = [];
   for (const f of result.face) {
@@ -72,7 +75,9 @@ function facesFromDetectResult(
     faces.push({
       imageId,
       descriptor: Array.from(f.embedding),
-      box: box ? { x: box[0], y: box[1], width: box[2], height: box[3] } : undefined,
+      box: box
+        ? { x: box[0], y: box[1], width: box[2], height: box[3] }
+        : undefined,
     });
   }
   return faces;
@@ -82,7 +87,7 @@ async function detectFacesFromBuffer(
   human: HumanInstance,
   buffer: Buffer,
   imageId: string,
-  imagePath: string
+  imagePath: string,
 ): Promise<FaceInImage[]> {
   const tf = human.tf;
   const tensor = (() => {
@@ -113,13 +118,16 @@ async function detectFacesFromBuffer(
 
 export async function extractFacesFromImage(
   imagePath: string,
-  imageId: string
+  imageId: string,
 ): Promise<FaceInImage[]> {
   const work = async (): Promise<FaceInImage[]> => {
     const human = await getHuman();
     const fileStats = await stat(imagePath).catch(() => null);
     if (fileStats == null || !fileStats.isFile()) {
-      logger.warn({ imageId, imagePath }, "Face extraction skipped: missing file");
+      logger.warn(
+        { imageId, imagePath },
+        "Face extraction skipped: missing file",
+      );
       return [];
     }
     if (fileStats.size < MIN_IMAGE_BYTES) {
@@ -127,8 +135,13 @@ export async function extractFacesFromImage(
     }
     if (fileStats.size > MAX_FACE_DETECT_IMAGE_BYTES) {
       logger.warn(
-        { imageId, imagePath, size: fileStats.size, maxBytes: MAX_FACE_DETECT_IMAGE_BYTES },
-        "Face extraction skipped: file too large"
+        {
+          imageId,
+          imagePath,
+          size: fileStats.size,
+          maxBytes: MAX_FACE_DETECT_IMAGE_BYTES,
+        },
+        "Face extraction skipped: file too large",
       );
       return [];
     }
@@ -160,15 +173,18 @@ type FaceCluster = { id: number; descriptor: number[]; faces: ClusterFace[] };
 
 function clusterFacesWithConfidence(
   faces: FaceInImage[],
-  similarityFn: (a: number[], b: number[]) => number
+  similarityFn: (a: number[], b: number[]) => number,
 ): FaceCluster[] {
   return faces.reduce<FaceCluster[]>((clusters, face) => {
-    const best = clusters.reduce<{ idx: number; sim: number } | null>((pick, cluster, idx) => {
-      const sim = similarityFn(face.descriptor, cluster.descriptor);
-      if (sim <= FACE_SIMILARITY_THRESHOLD) return pick;
-      if (pick == null || sim > pick.sim) return { idx, sim };
-      return pick;
-    }, null);
+    const best = clusters.reduce<{ idx: number; sim: number } | null>(
+      (pick, cluster, idx) => {
+        const sim = similarityFn(face.descriptor, cluster.descriptor);
+        if (sim <= FACE_SIMILARITY_THRESHOLD) return pick;
+        if (pick == null || sim > pick.sim) return { idx, sim };
+        return pick;
+      },
+      null,
+    );
 
     if (best == null) {
       return [
@@ -185,28 +201,34 @@ function clusterFacesWithConfidence(
     const prevCount = matched.faces.length;
     const n = prevCount + 1;
     const descriptor = matched.descriptor.map(
-      (value, i) => (value * prevCount + face.descriptor[i]!) / n
+      (value, i) => (value * prevCount + face.descriptor[i]!) / n,
     );
     const next: FaceCluster = {
       id: matched.id,
       descriptor,
-      faces: [...matched.faces, { imageId: face.imageId, box: face.box, confidence: best.sim }],
+      faces: [
+        ...matched.faces,
+        { imageId: face.imageId, box: face.box, confidence: best.sim },
+      ],
     };
     return clusters.map((cluster, i) => (i === best.idx ? next : cluster));
   }, []);
 }
 
 /** Cosine-style similarity between two face descriptors (same as clustering). */
-export async function getFaceSimilarityFn(): Promise<(a: number[], b: number[]) => number> {
+export async function getFaceSimilarityFn(): Promise<
+  (a: number[], b: number[]) => number
+> {
   const human = await getHuman();
   return (a, b) => human.match.similarity(a, b);
 }
 
 export async function clusterAllFaces(
-  faces: FaceInImage[]
+  faces: FaceInImage[],
 ): Promise<Map<string, ImagePersonEntry[]>> {
   const human = await getHuman();
-  const similarityFn = (a: number[], b: number[]) => human.match.similarity(a, b);
+  const similarityFn = (a: number[], b: number[]) =>
+    human.match.similarity(a, b);
   const clusters = clusterFacesWithConfidence(faces, similarityFn);
   const imageToEntries = new Map<string, ImagePersonEntry[]>();
 

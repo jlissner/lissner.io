@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { searchIndexBodySchema, searchListQuerySchema } from "./search-schemas.js";
+import {
+  searchIndexBodySchema,
+  searchListQuerySchema,
+} from "./search-schemas.js";
 
 describe("searchListQuerySchema", () => {
   it("accepts empty query object", () => {

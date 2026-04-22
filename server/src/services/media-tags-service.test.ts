@@ -9,7 +9,11 @@ vi.mock("../db/media.js", () => ({
 }));
 
 import * as db from "../db/media.js";
-import { getMediaTags, listDistinctMediaTags, setMediaTags } from "./media-tags-service.js";
+import {
+  getMediaTags,
+  listDistinctMediaTags,
+  setMediaTags,
+} from "./media-tags-service.js";
 
 describe("media-tags-service", () => {
   beforeEach(() => {
@@ -65,7 +69,9 @@ describe("media-tags-service", () => {
       uploadedAt: "t",
     });
     vi.mocked(db.getMediaOwnerId).mockReturnValue(2);
-    expect(setMediaTags("m", ["x"], { userId: 2, isAdmin: false })).toEqual({ ok: true });
+    expect(setMediaTags("m", ["x"], { userId: 2, isAdmin: false })).toEqual({
+      ok: true,
+    });
     expect(db.setTagsForMedia).toHaveBeenCalledWith("m", ["x"]);
   });
 

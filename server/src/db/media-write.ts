@@ -5,29 +5,41 @@ import { linkMotionPairForMedia } from "./media-motion.js";
 function buildWriteStmts() {
   const db = getDb();
   return {
-    migrateNullOwners: db.prepare("UPDATE media SET owner_id = ? WHERE owner_id IS NULL"),
+    migrateNullOwners: db.prepare(
+      "UPDATE media SET owner_id = ? WHERE owner_id IS NULL",
+    ),
     insertMedia: db.prepare(
       `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at, owner_id)
-       VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`
+       VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`,
     ),
     updateMimeType: db.prepare("UPDATE media SET mime_type = ? WHERE id = ?"),
     insertFromBackup: db.prepare(
       `INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, size, uploaded_at, date_taken, latitude, longitude, owner_id, backed_up_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     ),
     setDateTaken: db.prepare("UPDATE media SET date_taken = ? WHERE id = ?"),
-    markBackedUp: db.prepare("UPDATE media SET backed_up_at = datetime('now') WHERE id = ?"),
-    clearBackedUpAt: db.prepare("UPDATE media SET backed_up_at = NULL WHERE id = ?"),
-    setLocation: db.prepare("UPDATE media SET latitude = ?, longitude = ? WHERE id = ?"),
+    markBackedUp: db.prepare(
+      "UPDATE media SET backed_up_at = datetime('now') WHERE id = ?",
+    ),
+    clearBackedUpAt: db.prepare(
+      "UPDATE media SET backed_up_at = NULL WHERE id = ?",
+    ),
+    setLocation: db.prepare(
+      "UPDATE media SET latitude = ?, longitude = ? WHERE id = ?",
+    ),
     upsertEmbedding: db.prepare(
       `INSERT INTO embeddings (media_id, embedding, indexed_at) VALUES (?, ?, datetime('now'))
-       ON CONFLICT(media_id) DO UPDATE SET embedding = excluded.embedding, indexed_at = excluded.indexed_at`
+       ON CONFLICT(media_id) DO UPDATE SET embedding = excluded.embedding, indexed_at = excluded.indexed_at`,
     ),
     deleteEmbeddingsAll: db.prepare("DELETE FROM embeddings"),
     deleteImagePeopleAll: db.prepare("DELETE FROM image_people"),
     deletePersonNamesAll: db.prepare("DELETE FROM person_names"),
-    deleteImagePeopleForMedia: db.prepare("DELETE FROM image_people WHERE media_id = ?"),
-    deleteEmbeddingsForMedia: db.prepare("DELETE FROM embeddings WHERE media_id = ?"),
+    deleteImagePeopleForMedia: db.prepare(
+      "DELETE FROM image_people WHERE media_id = ?",
+    ),
+    deleteEmbeddingsForMedia: db.prepare(
+      "DELETE FROM embeddings WHERE media_id = ?",
+    ),
     deleteMediaRow: db.prepare("DELETE FROM media WHERE id = ?"),
   };
 }
@@ -45,14 +57,16 @@ function writeStmts() {
   return stmts;
 }
 
-export function migrateNullOwnersToDefault(getDefaultOwnerId: () => number | null): void {
+export function migrateNullOwnersToDefault(
+  getDefaultOwnerId: () => number | null,
+): void {
   const defaultOwnerId = getDefaultOwnerId();
   if (defaultOwnerId) {
     const result = writeStmts().migrateNullOwners.run(defaultOwnerId);
     if (result.changes > 0) {
       logger.warn(
         { changes: result.changes, defaultOwnerId },
-        "[db] Assigned null media owners to default owner"
+        "[db] Assigned null media owners to default owner",
       );
     }
   }
@@ -64,9 +78,16 @@ export function insertMedia(
   originalName: string,
   mimeType: string,
   size: number,
-  ownerId: number
+  ownerId: number,
 ) {
-  writeStmts().insertMedia.run(id, filename, originalName, mimeType, size, ownerId);
+  writeStmts().insertMedia.run(
+    id,
+    filename,
+    originalName,
+    mimeType,
+    size,
+    ownerId,
+  );
   linkMotionPairForMedia(id);
 }
 
@@ -87,7 +108,7 @@ export function insertMediaFromBackup(
     latitude?: number | null;
     longitude?: number | null;
   },
-  ownerId: number
+  ownerId: number,
 ): boolean {
   const result = writeStmts().insertFromBackup.run(
     row.id,
@@ -99,7 +120,7 @@ export function insertMediaFromBackup(
     row.dateTaken ?? null,
     row.latitude ?? null,
     row.longitude ?? null,
-    ownerId
+    ownerId,
   );
   if (result.changes > 0) {
     linkMotionPairForMedia(row.id);
@@ -108,7 +129,10 @@ export function insertMediaFromBackup(
   return false;
 }
 
-export function setMediaDateTaken(mediaId: string, dateTaken: string | null): void {
+export function setMediaDateTaken(
+  mediaId: string,
+  dateTaken: string | null,
+): void {
   writeStmts().setDateTaken.run(dateTaken, mediaId);
 }
 
@@ -125,14 +149,16 @@ export function markMediaBackedUpByFilenames(filenames: string[]): void {
   if (filenames.length === 0) return;
   const placeholders = filenames.map(() => "?").join(", ");
   getDb()
-    .prepare(`UPDATE media SET backed_up_at = datetime('now') WHERE filename IN (${placeholders})`)
+    .prepare(
+      `UPDATE media SET backed_up_at = datetime('now') WHERE filename IN (${placeholders})`,
+    )
     .run(...filenames);
 }
 
 export function setMediaLocation(
   mediaId: string,
   latitude: number | null,
-  longitude: number | null
+  longitude: number | null,
 ): void {
   writeStmts().setLocation.run(latitude, longitude, mediaId);
 }
@@ -155,5 +181,7 @@ export function deleteMedia(id: string) {
 }
 
 export function setMediaPerceptualHash(mediaId: string, hash: Buffer): void {
-  getDb().prepare("UPDATE media SET perceptual_hash = ? WHERE id = ?").run(hash, mediaId);
+  getDb()
+    .prepare("UPDATE media SET perceptual_hash = ? WHERE id = ?")
+    .run(hash, mediaId);
 }

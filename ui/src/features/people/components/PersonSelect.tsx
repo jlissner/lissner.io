@@ -25,7 +25,9 @@ export function PersonSelect({
     const exclude = new Set(excludeIds);
     return [...people]
       .filter((p) => !exclude.has(p.id))
-      .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      .sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
+      );
   }, [people, excludeIds]);
 
   return (

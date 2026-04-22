@@ -12,7 +12,8 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<MediaUploadProgress | null>(null);
+  const [uploadProgress, setUploadProgress] =
+    useState<MediaUploadProgress | null>(null);
 
   const uploadFiles = useCallback(
     async (files: FileList | null) => {
@@ -34,12 +35,13 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
         setUploadProgress(null);
       }
     },
-    [onUpload, disabled, uploading]
+    [onUpload, disabled, uploading],
   );
 
   useEffect(() => {
     const onDragOver = (e: DragEvent) => {
-      if (!e.dataTransfer?.types?.includes("Files") || disabled || uploading) return;
+      if (!e.dataTransfer?.types?.includes("Files") || disabled || uploading)
+        return;
       e.preventDefault();
       e.stopPropagation();
       e.dataTransfer.dropEffect = "copy";
@@ -70,7 +72,7 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
       uploadFiles(e.target.files);
       e.target.value = "";
     },
-    [uploadFiles]
+    [uploadFiles],
   );
 
   return (
@@ -101,7 +103,9 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
           borderRadius: 8,
           padding: "2rem",
           textAlign: "center",
-          backgroundColor: dragging ? "var(--color-primary-bg)" : "var(--color-bg-subtle)",
+          backgroundColor: dragging
+            ? "var(--color-primary-bg)"
+            : "var(--color-bg-subtle)",
           cursor: disabled || uploading ? "not-allowed" : "pointer",
           opacity: disabled || uploading ? 0.7 : 1,
         }}
@@ -129,14 +133,25 @@ export function FileUpload({ onUpload, disabled }: FileUploadProps) {
               <span style={{ display: "block", marginBottom: 4 }}>
                 Drop files here or <strong>click to browse</strong>
               </span>
-              <span style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}>
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  color: "var(--color-text-muted)",
+                }}
+              >
                 Images, videos, documents
               </span>
             </>
           )}
         </label>
         {error && (
-          <p style={{ color: "var(--color-danger)", marginTop: 8, fontSize: "0.875rem" }}>
+          <p
+            style={{
+              color: "var(--color-danger)",
+              marginTop: 8,
+              fontSize: "0.875rem",
+            }}
+          >
             {error}
           </p>
         )}

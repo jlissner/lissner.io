@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { buildSyncDoneProgress, buildSyncNotConfiguredProgress } from "./sync-progress.js";
+import {
+  buildSyncDoneProgress,
+  buildSyncNotConfiguredProgress,
+} from "./sync-progress.js";
 
 describe("buildSyncNotConfiguredProgress", () => {
   it("includes missing vars in error text", () => {

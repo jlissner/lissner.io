@@ -47,7 +47,13 @@ export function MediaViewerReassignModal({
         >
           Change tag
         </p>
-        <p style={{ margin: "0 0 16px", color: "var(--color-text-muted)", fontSize: "0.875rem" }}>
+        <p
+          style={{
+            margin: "0 0 16px",
+            color: "var(--color-text-muted)",
+            fontSize: "0.875rem",
+          }}
+        >
           Currently: {reassigningFace.name}
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>

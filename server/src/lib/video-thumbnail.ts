@@ -7,7 +7,9 @@ const execFileAsync = promisify(execFile);
 /** Ignore empty/trivial files so deleted or truncated thumbnails are regenerated. */
 const MIN_VIDEO_THUMB_BYTES = 64;
 
-export async function isUsableVideoThumbnailFile(thumbPath: string): Promise<boolean> {
+export async function isUsableVideoThumbnailFile(
+  thumbPath: string,
+): Promise<boolean> {
   try {
     const s = await stat(thumbPath);
     return s.size >= MIN_VIDEO_THUMB_BYTES;
@@ -18,7 +20,7 @@ export async function isUsableVideoThumbnailFile(thumbPath: string): Promise<boo
 
 export async function generateVideoThumbnailWithFfmpeg(
   srcPath: string,
-  destPath: string
+  destPath: string,
 ): Promise<void> {
   await execFileAsync("ffmpeg", [
     "-ss",

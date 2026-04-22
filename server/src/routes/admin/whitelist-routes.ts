@@ -2,7 +2,10 @@ import { Router } from "express";
 import { sendApiError } from "../../lib/api-error.js";
 import { getAuthUser } from "../../auth/middleware.js";
 import { parseWithSchema } from "../../validation/parse.js";
-import { idParamSchema, whitelistCreateBodySchema } from "../../validation/admin-schemas.js";
+import {
+  idParamSchema,
+  whitelistCreateBodySchema,
+} from "../../validation/admin-schemas.js";
 import {
   addWhitelistEntry,
   listWhitelistEntries,
@@ -19,7 +22,10 @@ adminWhitelistRouter.get("/whitelist", (_req, res) => {
 });
 
 adminWhitelistRouter.post("/whitelist", (req, res) => {
-  const { email, isAdmin, personId } = parseWithSchema(whitelistCreateBodySchema, req.body);
+  const { email, isAdmin, personId } = parseWithSchema(
+    whitelistCreateBodySchema,
+    req.body,
+  );
   const user = getAuthUser(req);
   const result = sendAdminResult(
     res,
@@ -28,12 +34,15 @@ adminWhitelistRouter.post("/whitelist", (req, res) => {
       isAdmin,
       personId,
       actorUserId: user?.id,
-    })
+    }),
   );
   if (result == null) return;
-  res
-    .status(201)
-    .json({ id: result, email: email.toLowerCase(), isAdmin, personId: personId ?? null });
+  res.status(201).json({
+    id: result,
+    email: email.toLowerCase(),
+    isAdmin,
+    personId: personId ?? null,
+  });
 });
 
 adminWhitelistRouter.delete("/whitelist/:id", (req, res) => {

@@ -32,48 +32,52 @@ const upload = multer({ storage });
 
 export const mediaWriteRouter = Router();
 
-mediaWriteRouter.post("/share-target", upload.array("files"), async (req, res) => {
-  const ownerId = req.jwtUser?.id ?? authDb.getDefaultOwnerId();
-  if (ownerId == null) {
-    sendApiError(
-      res,
-      500,
-      "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
-      "upload_owner_config"
-    );
-    return;
-  }
-  if (!req.files || req.files.length === 0) {
-    sendApiError(res, 400, "No files shared", "no_files_shared");
-    return;
-  }
-  const uploaded = [];
-  for (const file of req.files as Express.Multer.File[]) {
-    const id = path.parse(file.filename).name;
-    const absolutePath = path.join(mediaDir, file.filename);
-    const mimeType = await resolveMimeTypeAfterUpload(
-      file.originalname,
-      file.mimetype,
-      absolutePath
-    );
-    persistUploadedMedia({
-      id,
-      filename: file.filename,
-      originalName: file.originalname,
-      mimeType,
-      size: file.size,
-      ownerId,
-    });
-    uploaded.push({
-      id,
-      filename: file.filename,
-      originalName: file.originalname,
-      mimeType,
-      size: file.size,
-    });
-  }
-  res.redirect("/?uploaded=" + uploaded.map((u) => u.id).join(","));
-});
+mediaWriteRouter.post(
+  "/share-target",
+  upload.array("files"),
+  async (req, res) => {
+    const ownerId = req.jwtUser?.id ?? authDb.getDefaultOwnerId();
+    if (ownerId == null) {
+      sendApiError(
+        res,
+        500,
+        "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
+        "upload_owner_config",
+      );
+      return;
+    }
+    if (!req.files || req.files.length === 0) {
+      sendApiError(res, 400, "No files shared", "no_files_shared");
+      return;
+    }
+    const uploaded = [];
+    for (const file of req.files as Express.Multer.File[]) {
+      const id = path.parse(file.filename).name;
+      const absolutePath = path.join(mediaDir, file.filename);
+      const mimeType = await resolveMimeTypeAfterUpload(
+        file.originalname,
+        file.mimetype,
+        absolutePath,
+      );
+      persistUploadedMedia({
+        id,
+        filename: file.filename,
+        originalName: file.originalname,
+        mimeType,
+        size: file.size,
+        ownerId,
+      });
+      uploaded.push({
+        id,
+        filename: file.filename,
+        originalName: file.originalname,
+        mimeType,
+        size: file.size,
+      });
+    }
+    res.redirect("/?uploaded=" + uploaded.map((u) => u.id).join(","));
+  },
+);
 
 mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
   if (!req.file) {
@@ -87,7 +91,7 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
       res,
       500,
       "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
-      "upload_owner_config"
+      "upload_owner_config",
     );
     return;
   }
@@ -95,7 +99,7 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
   const mimeType = await resolveMimeTypeAfterUpload(
     req.file.originalname,
     req.file.mimetype,
-    absolutePath
+    absolutePath,
   );
   persistUploadedMedia({
     id,
@@ -144,7 +148,12 @@ mediaWriteRouter.put("/:id/tags", (req, res) => {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
-  sendApiError(res, 403, "Only the owner or an admin can edit tags", "patch_forbidden");
+  sendApiError(
+    res,
+    403,
+    "Only the owner or an admin can edit tags",
+    "patch_forbidden",
+  );
 });
 
 mediaWriteRouter.delete("/:id", async (req, res) => {
@@ -162,7 +171,12 @@ mediaWriteRouter.delete("/:id", async (req, res) => {
     return;
   }
   if (result.reason === "forbidden") {
-    sendApiError(res, 403, "Only the owner or an admin can delete this file", "delete_forbidden");
+    sendApiError(
+      res,
+      403,
+      "Only the owner or an admin can delete this file",
+      "delete_forbidden",
+    );
     return;
   }
   sendApiError(res, 500, "Failed to delete file", "delete_failed");
@@ -183,7 +197,12 @@ mediaWriteRouter.patch("/:id", (req, res) => {
     return;
   }
   if (result.reason === "forbidden") {
-    sendApiError(res, 403, "Only the owner or an admin can edit this file", "patch_forbidden");
+    sendApiError(
+      res,
+      403,
+      "Only the owner or an admin can edit this file",
+      "patch_forbidden",
+    );
     return;
   }
   if (result.reason === "bad_request") {
@@ -191,7 +210,7 @@ mediaWriteRouter.patch("/:id", (req, res) => {
       res,
       400,
       "JSON body must include dateTaken (ISO string or null to clear)",
-      "patch_bad_request"
+      "patch_bad_request",
     );
     return;
   }
@@ -199,6 +218,6 @@ mediaWriteRouter.patch("/:id", (req, res) => {
     res,
     400,
     "That dateTaken value is not a valid date or time. Use an ISO 8601 timestamp or null to clear.",
-    "patch_invalid_date"
+    "patch_invalid_date",
   );
 });

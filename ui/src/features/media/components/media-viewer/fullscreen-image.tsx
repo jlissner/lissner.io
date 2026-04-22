@@ -13,7 +13,12 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const pinchRef = useRef<{ dist: number; scale: number } | null>(null);
-  const panRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  const panRef = useRef<{
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
+  } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const resetTransform = useCallback(() => {
@@ -41,11 +46,16 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
         panRef.current = null;
       } else if (e.touches.length === 1 && scale > 1) {
         const t = e.touches[0];
-        panRef.current = { x: t.clientX, y: t.clientY, tx: translate.x, ty: translate.y };
+        panRef.current = {
+          x: t.clientX,
+          y: t.clientY,
+          tx: translate.x,
+          ty: translate.y,
+        };
         pinchRef.current = null;
       }
     },
-    [scale, translate]
+    [scale, translate],
   );
 
   const onTouchMove = useCallback(
@@ -53,7 +63,10 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
       if (e.touches.length === 2 && pinchRef.current) {
         const dist = getPinchDist(e.touches);
         const ratio = dist / pinchRef.current.dist;
-        const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, pinchRef.current.scale * ratio));
+        const newScale = Math.min(
+          MAX_SCALE,
+          Math.max(MIN_SCALE, pinchRef.current.scale * ratio),
+        );
         setScale(newScale);
         if (newScale <= 1) setTranslate({ x: 0, y: 0 });
       } else if (e.touches.length === 1 && panRef.current && scale > 1) {
@@ -63,7 +76,7 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
         setTranslate({ x: panRef.current.tx + dx, y: panRef.current.ty + dy });
       }
     },
-    [scale]
+    [scale],
   );
 
   const onTouchEnd = useCallback(() => {
@@ -82,7 +95,9 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
     }
   }, [scale, resetTransform]);
 
-  const doubleTapRef = useRef<{ time: number; x: number; y: number } | null>(null);
+  const doubleTapRef = useRef<{ time: number; x: number; y: number } | null>(
+    null,
+  );
 
   const handleTap = useCallback(
     (e: React.TouchEvent) => {
@@ -106,13 +121,16 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
 
       if (scale <= 1) {
         setTimeout(() => {
-          if (doubleTapRef.current && Date.now() - doubleTapRef.current.time >= 280) {
+          if (
+            doubleTapRef.current &&
+            Date.now() - doubleTapRef.current.time >= 280
+          ) {
             onClose();
           }
         }, 300);
       }
     },
-    [scale, handleDoubleTap, onClose]
+    [scale, handleDoubleTap, onClose],
   );
 
   return (

@@ -5,7 +5,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./sync-client.js", () => {
   return {
-    getS3Config: vi.fn(() => ({ configured: true, missingVars: [] as string[] })),
+    getS3Config: vi.fn(() => ({
+      configured: true,
+      missingVars: [] as string[],
+    })),
     createS3Client: vi.fn(() => ({
       send: vi.fn(async () => ({ Body: { mocked: true } })),
     })),
@@ -15,15 +18,19 @@ vi.mock("./sync-client.js", () => {
 vi.mock("./sync-transfer.js", () => {
   return {
     listAllS3Keys: vi.fn(async () => new Set<string>()),
-    downloadS3ObjectToFile: vi.fn(async (_body: unknown, targetPath: string) => {
-      await writeFile(targetPath, "not-a-db");
-    }),
+    downloadS3ObjectToFile: vi.fn(
+      async (_body: unknown, targetPath: string) => {
+        await writeFile(targetPath, "not-a-db");
+      },
+    ),
   };
 });
 
 vi.mock("../config/paths.js", async () => {
   const realPath = await import("path");
-  const tempRoot = await mkdtemp(realPath.default.join(os.tmpdir(), "fim-startup-restore-"));
+  const tempRoot = await mkdtemp(
+    realPath.default.join(os.tmpdir(), "fim-startup-restore-"),
+  );
   return {
     dbDir: realPath.default.join(tempRoot, "db"),
     dbPath: realPath.default.join(tempRoot, "db", "media.db"),
@@ -53,13 +60,16 @@ describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
     });
   });
   beforeEach(async () => {
-    const { downloadS3ObjectToFile, listAllS3Keys } = await import("./sync-transfer.js");
-    (listAllS3Keys as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(new Set<string>());
-    (downloadS3ObjectToFile as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      async (_body: unknown, targetPath: string) => {
-        await writeFile(targetPath, "not-a-db");
-      }
+    const { downloadS3ObjectToFile, listAllS3Keys } =
+      await import("./sync-transfer.js");
+    (listAllS3Keys as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Set<string>(),
     );
+    (
+      downloadS3ObjectToFile as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementation(async (_body: unknown, targetPath: string) => {
+      await writeFile(targetPath, "not-a-db");
+    });
   });
 
   it("continues when no DB backups exist", async () => {
@@ -69,27 +79,31 @@ describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
   });
 
   it("uses the newest backup key when local DB is missing", async () => {
-    const { listAllS3Keys, downloadS3ObjectToFile } = await import("./sync-transfer.js");
+    const { listAllS3Keys, downloadS3ObjectToFile } =
+      await import("./sync-transfer.js");
     const keys = new Set([
       "backup/db/media_2026-01-01T00-00-00-000Z.db",
       "backup/db/media_2026-02-01T00-00-00-000Z.db",
     ]);
-    (listAllS3Keys as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(keys);
+    (listAllS3Keys as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
+      keys,
+    );
 
     const mod = await import("./startup-db-restore.js");
 
     // Make the mocked download write a valid sqlite file
-    (downloadS3ObjectToFile as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      async (_body: unknown, targetPath: string) => {
-        const db = new Database(targetPath);
-        db.exec("CREATE TABLE IF NOT EXISTS media(id TEXT PRIMARY KEY);");
-        db.close();
-      }
-    );
+    (
+      downloadS3ObjectToFile as unknown as ReturnType<typeof vi.fn>
+    ).mockImplementation(async (_body: unknown, targetPath: string) => {
+      const db = new Database(targetPath);
+      db.exec("CREATE TABLE IF NOT EXISTS media(id TEXT PRIMARY KEY);");
+      db.close();
+    });
 
     const res = await mod.maybeRestoreDbFromLatestS3BackupOnStartup();
     expect(res.restored).toBe(true);
-    if (res.restored) expect(res.key).toBe("backup/db/media_2026-02-01T00-00-00-000Z.db");
+    if (res.restored)
+      expect(res.key).toBe("backup/db/media_2026-02-01T00-00-00-000Z.db");
 
     const { dbPath } = await import("../config/paths.js");
     const content = await readFile(dbPath);
@@ -111,7 +125,7 @@ describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
   it("falls back when downloaded DB is invalid", async () => {
     const { listAllS3Keys } = await import("./sync-transfer.js");
     (listAllS3Keys as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
-      new Set(["backup/db/media_2026-02-01T00-00-00-000Z.db"])
+      new Set(["backup/db/media_2026-02-01T00-00-00-000Z.db"]),
     );
 
     const mod = await import("./startup-db-restore.js");
@@ -121,7 +135,7 @@ describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
     const { dbPath } = await import("../config/paths.js");
     const exists = await readFile(dbPath).then(
       () => true,
-      () => false
+      () => false,
     );
     expect(exists).toBe(false);
   });

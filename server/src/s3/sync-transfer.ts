@@ -15,16 +15,18 @@ export type S3ObjectSummary = {
 export async function listAllS3Keys(
   client: S3Client,
   bucket: string,
-  prefix: string
+  prefix: string,
 ): Promise<Set<string>> {
   const keys = new Set<string>();
-  const collect = async (continuationToken: string | undefined): Promise<void> => {
+  const collect = async (
+    continuationToken: string | undefined,
+  ): Promise<void> => {
     const res = await client.send(
       new ListObjectsV2Command({
         Bucket: bucket,
         Prefix: prefix,
         ContinuationToken: continuationToken,
-      })
+      }),
     );
     for (const obj of res.Contents ?? []) {
       if (obj.Key) keys.add(obj.Key);
@@ -38,16 +40,18 @@ export async function listAllS3Keys(
 export async function listS3ObjectsWithMetadata(
   client: S3Client,
   bucket: string,
-  prefix: string
+  prefix: string,
 ): Promise<S3ObjectSummary[]> {
   const out: S3ObjectSummary[] = [];
-  const collect = async (continuationToken: string | undefined): Promise<void> => {
+  const collect = async (
+    continuationToken: string | undefined,
+  ): Promise<void> => {
     const res = await client.send(
       new ListObjectsV2Command({
         Bucket: bucket,
         Prefix: prefix,
         ContinuationToken: continuationToken,
-      })
+      }),
     );
     for (const obj of res.Contents ?? []) {
       if (!obj.Key || obj.Size == null || !obj.LastModified) continue;
@@ -73,7 +77,10 @@ function isNodeReadableStream(body: unknown): body is Readable {
   return typeof (body as Readable | null)?.pipe === "function";
 }
 
-export async function downloadS3ObjectToFile(body: unknown, targetPath: string): Promise<void> {
+export async function downloadS3ObjectToFile(
+  body: unknown,
+  targetPath: string,
+): Promise<void> {
   if (!isNodeReadableStream(body)) {
     throw new Error("S3 GetObject Body was not a Node.js readable stream");
   }
@@ -89,7 +96,7 @@ export async function uploadLocalFileToS3(
   client: S3Client,
   bucket: string,
   key: string,
-  filePath: string
+  filePath: string,
 ): Promise<void> {
   const body = createReadStream(filePath);
   const upload = new Upload({

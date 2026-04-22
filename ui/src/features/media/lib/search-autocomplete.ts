@@ -15,7 +15,10 @@ export type ActiveSearchToken =
  * If the cursor is inside a #word or @word token (after the trigger), returns
  * token span and prefix being typed.
  */
-export function parseActiveSearchToken(value: string, cursor: number): ActiveSearchToken | null {
+export function parseActiveSearchToken(
+  value: string,
+  cursor: number,
+): ActiveSearchToken | null {
   const before = value.slice(0, cursor);
   let i = before.length - 1;
   while (i >= 0 && /[a-zA-Z0-9_]/.test(before[i]!)) {
@@ -43,7 +46,10 @@ export function parseActiveSearchToken(value: string, cursor: number): ActiveSea
   };
 }
 
-export function filterTagSuggestions(allTags: readonly string[], prefix: string): string[] {
+export function filterTagSuggestions(
+  allTags: readonly string[],
+  prefix: string,
+): string[] {
   const p = prefix.trim().toLowerCase();
   const ranked = allTags
     .filter((t) => (p === "" ? true : t.startsWith(p)))
@@ -53,14 +59,20 @@ export function filterTagSuggestions(allTags: readonly string[], prefix: string)
 
 export function filterPeopleSuggestions(
   people: readonly PersonSummary[],
-  prefix: string
+  prefix: string,
 ): PersonSummary[] {
   const p = prefix.trim().toLowerCase();
   const scored = people
     .map((person) => {
       const handle = personSearchHandle(person.name);
       const match =
-        p === "" ? 1 : handle.startsWith(p) ? 3 : person.name.toLowerCase().includes(p) ? 2 : 0;
+        p === ""
+          ? 1
+          : handle.startsWith(p)
+            ? 3
+            : person.name.toLowerCase().includes(p)
+              ? 2
+              : 0;
       return { person, match };
     })
     .filter((x) => x.match > 0)

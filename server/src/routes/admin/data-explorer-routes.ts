@@ -45,8 +45,14 @@ adminDataExplorerRouter.get("/data-explorer/tables/:table", (req, res) => {
 adminDataExplorerRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
   const { table } = parseWithSchema(tableParamSchema, req.params);
-  const { limit, offset, q } = parseWithSchema(dataExplorerRowsQuerySchema, req.query);
-  const result = sendAdminResult(res, listDataExplorerRows(table, limit, offset, q));
+  const { limit, offset, q } = parseWithSchema(
+    dataExplorerRowsQuerySchema,
+    req.query,
+  );
+  const result = sendAdminResult(
+    res,
+    listDataExplorerRows(table, limit, offset, q),
+  );
   if (result == null) return;
   res.json(result);
 });
@@ -63,7 +69,10 @@ adminDataExplorerRouter.post("/data-explorer/tables/:table", (req, res) => {
 adminDataExplorerRouter.put("/data-explorer/tables/:table", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
   const { table } = parseWithSchema(tableParamSchema, req.params);
-  const { pk, ...data } = parseWithSchema(dataExplorerUpdateBodySchema, req.body);
+  const { pk, ...data } = parseWithSchema(
+    dataExplorerUpdateBodySchema,
+    req.body,
+  );
   const result = sendAdminResult(res, updateDataExplorerRow(table, pk, data));
   if (result == null) return;
   res.json({ changes: result });

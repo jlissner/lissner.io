@@ -1,7 +1,13 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type TextVariant = "body" | "muted" | "subtle" | "danger" | "success" | "primary";
+export type TextVariant =
+  | "body"
+  | "muted"
+  | "subtle"
+  | "danger"
+  | "success"
+  | "primary";
 
 const variantClass: Record<TextVariant, string> = {
   body: "",
@@ -40,7 +46,10 @@ export function Text({
   ...rest
 }: TextProps) {
   return (
-    <Tag className={cn(variantClass[variant], sizeClass[size], className)} {...rest}>
+    <Tag
+      className={cn(variantClass[variant], sizeClass[size], className)}
+      {...rest}
+    >
       {children}
     </Tag>
   );

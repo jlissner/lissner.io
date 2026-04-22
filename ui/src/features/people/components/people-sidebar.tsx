@@ -30,7 +30,7 @@ function photoCountLabel(count: number | undefined): string {
 
 function sortAlphabetically(people: Person[]): Person[] {
   return [...people].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+    a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
   );
 }
 
@@ -57,8 +57,14 @@ function PersonAvatar({ person }: { person: Person }) {
 
   const isPlaceholder = person.name.startsWith("Person ");
   return (
-    <div className={`person-row__avatar ${!isPlaceholder ? "person-row__avatar--initial" : ""}`}>
-      {isPlaceholder ? <span>?</span> : <span>{person.name.charAt(0).toUpperCase()}</span>}
+    <div
+      className={`person-row__avatar ${!isPlaceholder ? "person-row__avatar--initial" : ""}`}
+    >
+      {isPlaceholder ? (
+        <span>?</span>
+      ) : (
+        <span>{person.name.charAt(0).toUpperCase()}</span>
+      )}
     </div>
   );
 }
@@ -98,7 +104,10 @@ export function PeopleSidebar({
     return sorted.filter((p) => p.name.toLowerCase().includes(q));
   }, [sorted, search]);
 
-  const visible = useMemo(() => filtered.slice(0, visibleCount), [filtered, visibleCount]);
+  const visible = useMemo(
+    () => filtered.slice(0, visibleCount),
+    [filtered, visibleCount],
+  );
   const hasMore = filtered.length > visibleCount;
 
   const handleLoadMore = useCallback(() => {
@@ -109,7 +118,9 @@ export function PeopleSidebar({
     setVisibleCount(PAGE_SIZE);
   }, [search]);
 
-  const placeholderCount = people.filter((p) => p.name.startsWith("Person ")).length;
+  const placeholderCount = people.filter((p) =>
+    p.name.startsWith("Person "),
+  ).length;
 
   return (
     <aside className="sidebar">
@@ -120,7 +131,10 @@ export function PeopleSidebar({
             <p className="sidebar__subtitle">
               {people.length} {people.length === 1 ? "person" : "people"}
               {placeholderCount > 0 && (
-                <span className="sidebar__unmerged"> ({placeholderCount} unmatched)</span>
+                <span className="sidebar__unmerged">
+                  {" "}
+                  ({placeholderCount} unmatched)
+                </span>
               )}
             </p>
           </div>
@@ -162,7 +176,11 @@ export function PeopleSidebar({
             <div
               key={p.id}
               className="person-row__wrap"
-              ref={menuOpen === p.id ? (menuRef as React.RefObject<HTMLDivElement>) : undefined}
+              ref={
+                menuOpen === p.id
+                  ? (menuRef as React.RefObject<HTMLDivElement>)
+                  : undefined
+              }
             >
               <div
                 role="button"
@@ -183,7 +201,9 @@ export function PeopleSidebar({
                 <PersonAvatar person={p} />
                 <div className="person-row__info">
                   <div className="person-row__name">{p.name}</div>
-                  <div className="person-row__count">{photoCountLabel(p.photoCount)}</div>
+                  <div className="person-row__count">
+                    {photoCountLabel(p.photoCount)}
+                  </div>
                 </div>
                 <button
                   type="button"

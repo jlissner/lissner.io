@@ -4,7 +4,10 @@ import sharp from "sharp";
 import type { MediaListQueryResponse } from "../../../shared/src/api.js";
 import * as db from "../db/media.js";
 import { extractFacesFromImage } from "../faces.js";
-import { tryRestoreMediaFromBackup, tryRestoreVideoThumbnailFromBackup } from "../s3/sync.js";
+import {
+  tryRestoreMediaFromBackup,
+  tryRestoreVideoThumbnailFromBackup,
+} from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { isTextMime, isVideoMime } from "../lib/media-mime.js";
 import { logger } from "../logger.js";
@@ -22,7 +25,9 @@ import {
 type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
 
 /** If the file is missing locally but the row says it was backed up, pull it from S3. */
-export async function ensureLocalMediaFile(item: MediaItemRow): Promise<boolean> {
+export async function ensureLocalMediaFile(
+  item: MediaItemRow,
+): Promise<boolean> {
   const filePath = path.join(mediaDir, item.filename);
   try {
     await access(filePath);
@@ -48,8 +53,18 @@ export function listMediaEnriched(params: {
 }): MediaListQueryResponse {
   const items =
     params.personId != null && !isNaN(params.personId)
-      ? db.listMediaPaginated(params.limit, params.offset, params.personId, params.sortBy)
-      : db.listMediaPaginated(params.limit, params.offset, undefined, params.sortBy);
+      ? db.listMediaPaginated(
+          params.limit,
+          params.offset,
+          params.personId,
+          params.sortBy,
+        )
+      : db.listMediaPaginated(
+          params.limit,
+          params.offset,
+          undefined,
+          params.sortBy,
+        );
   const total =
     params.personId != null && !isNaN(params.personId)
       ? db.getMediaCountForPerson(params.personId)
@@ -58,7 +73,9 @@ export function listMediaEnriched(params: {
   const personNames = db.getPersonNames();
   const enriched = items.map((item) => {
     const personIds = db.getImagePeople(item.id);
-    const people = personIds.map((pid) => personNames.get(pid) ?? `Person ${pid}`);
+    const people = personIds.map(
+      (pid) => personNames.get(pid) ?? `Person ${pid}`,
+    );
     return {
       ...item,
       indexed: indexedIds.has(item.id),
@@ -83,7 +100,10 @@ export async function getFacesPayloadForMedia(mediaId: string) {
     const faces = await extractFacesFromImage(filePath, item.id);
     const detected = faces
       .map((f) => f.box)
-      .filter((b): b is { x: number; y: number; width: number; height: number } => !!b);
+      .filter(
+        (b): b is { x: number; y: number; width: number; height: number } =>
+          !!b,
+      );
     const tagged = db.getTaggedFacesInMedia(item.id);
     const personNames = db.getPersonNames();
     return {
@@ -102,7 +122,10 @@ export async function getFacesPayloadForMedia(mediaId: string) {
   }
 }
 
-export async function getFaceCropOrFullImage(mediaId: string, personId: number) {
+export async function getFaceCropOrFullImage(
+  mediaId: string,
+  personId: number,
+) {
   const item = db.getMediaById(mediaId);
   if (!item || !isEffectiveImageItem(item)) {
     return { ok: false as const, reason: "not_found" as const };
@@ -162,7 +185,7 @@ export async function getMediaPreviewFile(mediaId: string) {
   const { mimeTypePreview } = await sniffAndPersistMediaMime(
     item,
     filePath,
-    db.updateMediaMimeType
+    db.updateMediaMimeType,
   );
   if (isVideoMime(mimeTypePreview)) {
     return {
@@ -188,7 +211,9 @@ export function getMediaDetailsEnriched(mediaId: string) {
   }
   const personIds = db.getImagePeople(item.id);
   const personNames = db.getPersonNames();
-  const people = personIds.map((pid) => personNames.get(pid) ?? `Person ${pid}`);
+  const people = personIds.map(
+    (pid) => personNames.get(pid) ?? `Person ${pid}`,
+  );
   const indexedIds = db.getIndexedMediaIds();
   const companion =
     item.motionCompanionId != null && item.motionCompanionId !== ""
@@ -243,7 +268,12 @@ export async function getThumbnailResponse(mediaId: string): Promise<
   | { ok: true; kind: "file"; path: string; contentType: string }
   | {
       ok: false;
-      reason: "not_found" | "bad_type" | "file_missing" | "ffmpeg_missing" | "thumb_failed";
+      reason:
+        | "not_found"
+        | "bad_type"
+        | "file_missing"
+        | "ffmpeg_missing"
+        | "thumb_failed";
     }
 > {
   const item = db.getMediaById(mediaId);
@@ -258,11 +288,12 @@ export async function getThumbnailResponse(mediaId: string): Promise<
   const { mimeTypeForKind } = await sniffAndPersistMediaMime(
     item,
     filePath,
-    db.updateMediaMimeType
+    db.updateMediaMimeType,
   );
   const isVideoKind = mimeTypeForKind.startsWith("video/");
   const isImageKind =
-    mimeTypeForKind.startsWith("image/") || isPixelMotionPhotoExtension(item.originalName);
+    mimeTypeForKind.startsWith("image/") ||
+    isPixelMotionPhotoExtension(item.originalName);
 
   if (!isVideoKind && isImageKind) {
     const imgThumbPath = path.join(thumbnailsDir, `${item.id}_thumb.jpg`);
@@ -274,7 +305,12 @@ export async function getThumbnailResponse(mediaId: string): Promise<
           .jpeg({ quality: 70 })
           .toFile(imgThumbPath);
       }
-      return { ok: true, kind: "file", path: imgThumbPath, contentType: "image/jpeg" };
+      return {
+        ok: true,
+        kind: "file",
+        path: imgThumbPath,
+        contentType: "image/jpeg",
+      };
     } catch (err) {
       logger.error({ err, mediaId }, "Image thumbnail generation error");
       return {
@@ -301,7 +337,12 @@ export async function getThumbnailResponse(mediaId: string): Promise<
         await generateVideoThumbnailWithFfmpeg(srcPath, thumbPath);
       }
     }
-    return { ok: true, kind: "file", path: thumbPath, contentType: "image/jpeg" };
+    return {
+      ok: true,
+      kind: "file",
+      path: thumbPath,
+      contentType: "image/jpeg",
+    };
   } catch (err) {
     const code = (err as NodeJS.ErrnoException)?.code;
     if (code === "ENOENT") {
@@ -312,9 +353,21 @@ export async function getThumbnailResponse(mediaId: string): Promise<
   }
 }
 
-export type GetFacesPayloadForMediaResult = Awaited<ReturnType<typeof getFacesPayloadForMedia>>;
-export type GetFaceCropOrFullImageResult = Awaited<ReturnType<typeof getFaceCropOrFullImage>>;
-export type GetMediaPreviewFileResult = Awaited<ReturnType<typeof getMediaPreviewFile>>;
-export type GetMediaDetailsEnrichedResult = ReturnType<typeof getMediaDetailsEnriched>;
-export type ReadTextMediaContentResult = Awaited<ReturnType<typeof readTextMediaContent>>;
-export type GetThumbnailResponseResult = Awaited<ReturnType<typeof getThumbnailResponse>>;
+export type GetFacesPayloadForMediaResult = Awaited<
+  ReturnType<typeof getFacesPayloadForMedia>
+>;
+export type GetFaceCropOrFullImageResult = Awaited<
+  ReturnType<typeof getFaceCropOrFullImage>
+>;
+export type GetMediaPreviewFileResult = Awaited<
+  ReturnType<typeof getMediaPreviewFile>
+>;
+export type GetMediaDetailsEnrichedResult = ReturnType<
+  typeof getMediaDetailsEnriched
+>;
+export type ReadTextMediaContentResult = Awaited<
+  ReturnType<typeof readTextMediaContent>
+>;
+export type GetThumbnailResponseResult = Awaited<
+  ReturnType<typeof getThumbnailResponse>
+>;

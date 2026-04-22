@@ -1,4 +1,10 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 import { apiFetch } from "@/api/client";
 import type { ActivitySnapshot } from "./activity-types";
 
@@ -154,7 +160,11 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  return <ActivityContext.Provider value={snapshot}>{children}</ActivityContext.Provider>;
+  return (
+    <ActivityContext.Provider value={snapshot}>
+      {children}
+    </ActivityContext.Provider>
+  );
 }
 
 export function useActivity(): ActivitySnapshot | null {

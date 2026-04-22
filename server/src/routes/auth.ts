@@ -36,7 +36,7 @@ authRouter.post("/magic-link", async (req, res) => {
       res,
       403,
       "Email not on whitelist. Contact an admin to get access.",
-      "not_whitelisted"
+      "not_whitelisted",
     );
     return;
   }
@@ -50,7 +50,12 @@ authRouter.post("/magic-link", async (req, res) => {
     res.json({ sent: true });
   } catch (err) {
     logger.error({ err, email: normalized }, "Magic link send error");
-    sendApiError(res, 500, "Failed to send magic link", "magic_link_send_failed");
+    sendApiError(
+      res,
+      500,
+      "Failed to send magic link",
+      "magic_link_send_failed",
+    );
   }
 });
 
@@ -94,7 +99,9 @@ authRouter.post("/refresh", async (req, res) => {
   if ("error" in result) {
     clearTokenCookies(res);
     const code =
-      result.error === "reused" ? ("token_reused" as const) : ("refresh_failed" as const);
+      result.error === "reused"
+        ? ("token_reused" as const)
+        : ("refresh_failed" as const);
     sendApiError(res, 401, "Refresh failed", code);
     return;
   }

@@ -4,7 +4,12 @@ import { readdir, unlink } from "fs/promises";
 import path from "path";
 import * as authDb from "../db/auth.js";
 import * as db from "../db/media.js";
-import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../config/paths.js";
+import {
+  dbPath,
+  mediaDir,
+  syncTempDbPath,
+  thumbnailsDir,
+} from "../config/paths.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
 import { logger } from "../logger.js";
@@ -27,7 +32,9 @@ import {
   uploadLocalFileToS3,
 } from "./sync-transfer.js";
 
-export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<SyncProgress> {
+export async function runSync(
+  onProgress?: (p: SyncProgress) => void,
+): Promise<SyncProgress> {
   const client = createS3Client();
   if (!client) {
     const { missingVars } = getS3Config();
@@ -80,17 +87,20 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     ]);
 
     const s3MediaFilenames = new Set(
-      [...s3MediaKeys].map((k) => k.replace(`${S3_PREFIX}/media/`, ""))
+      [...s3MediaKeys].map((k) => k.replace(`${S3_PREFIX}/media/`, "")),
     );
     const s3ThumbFilenames = new Set(
-      [...s3ThumbKeys].map((k) => k.replace(`${S3_PREFIX}/thumbnails/`, ""))
+      [...s3ThumbKeys].map((k) => k.replace(`${S3_PREFIX}/thumbnails/`, "")),
     );
 
     // 2. Upload media (only if not yet backed up per backed_up_at)
     const localMedia = db.listMedia();
     const toUploadMedia: typeof localMedia = [];
     for (const m of localMedia) {
-      if (!m.backedUpAt && (await fileExists(path.join(mediaDir, m.filename)))) {
+      if (
+        !m.backedUpAt &&
+        (await fileExists(path.join(mediaDir, m.filename)))
+      ) {
         toUploadMedia.push(m);
       }
     }
@@ -104,7 +114,12 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
 
     for (const [i, m] of toUploadMedia.entries()) {
       const filePath = path.join(mediaDir, m.filename);
-      await uploadLocalFileToS3(client, bucket, `${S3_PREFIX}/media/${m.filename}`, filePath);
+      await uploadLocalFileToS3(
+        client,
+        bucket,
+        `${S3_PREFIX}/media/${m.filename}`,
+        filePath,
+      );
       db.markMediaBackedUp(m.id);
       tally.uploadedMedia++;
       report({
@@ -138,7 +153,12 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
 
     for (const [i, filename] of toUploadThumbs.entries()) {
       const filePath = path.join(thumbnailsDir, filename);
-      await uploadLocalFileToS3(client, bucket, `${S3_PREFIX}/thumbnails/${filename}`, filePath);
+      await uploadLocalFileToS3(
+        client,
+        bucket,
+        `${S3_PREFIX}/thumbnails/${filename}`,
+        filePath,
+      );
       tally.uploadedThumbs++;
       report({
         phase: "upload-thumbnails",
@@ -183,7 +203,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
         new GetObjectCommand({
           Bucket: bucket,
           Key: `${S3_PREFIX}/media/${m.filename}`,
-        })
+        }),
       );
       const body = getRes.Body;
       if (body) {
@@ -201,12 +221,17 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
 
     // 6. Download missing thumbnails (for videos we have)
     const videoIds = new Set(
-      localMedia.filter((m) => m.mimeType.startsWith("video/")).map((m) => m.id)
+      localMedia
+        .filter((m) => m.mimeType.startsWith("video/"))
+        .map((m) => m.id),
     );
     const toDownloadThumbs: string[] = [];
     for (const id of videoIds) {
       const thumbPath = path.join(thumbnailsDir, `${id}.jpg`);
-      if (!(await isUsableVideoThumbnailFile(thumbPath)) && s3ThumbFilenames.has(`${id}.jpg`)) {
+      if (
+        !(await isUsableVideoThumbnailFile(thumbPath)) &&
+        s3ThumbFilenames.has(`${id}.jpg`)
+      ) {
         toDownloadThumbs.push(id);
       }
     }
@@ -220,10 +245,15 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
 
     for (const [i, id] of toDownloadThumbs.entries()) {
       const key = `${S3_PREFIX}/thumbnails/${id}.jpg`;
-      const getRes = await client.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      const getRes = await client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
+      );
       const body = getRes.Body;
       if (body) {
-        await downloadS3ObjectToFile(body, path.join(thumbnailsDir, `${id}.jpg`));
+        await downloadS3ObjectToFile(
+          body,
+          path.join(thumbnailsDir, `${id}.jpg`),
+        );
         tally.downloadedThumbs++;
       }
       report({
@@ -239,19 +269,25 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
     // sync start would point at an older backup that still contained rows we deleted locally, which
     // incorrectly re-inserted them here.
     const defaultOwnerId = authDb.getDefaultOwnerId();
-    const s3DbKeysAfterUpload = await listAllS3Keys(client, bucket, `${S3_PREFIX}/db/`);
+    const s3DbKeysAfterUpload = await listAllS3Keys(
+      client,
+      bucket,
+      `${S3_PREFIX}/db/`,
+    );
     const sortedMergeDbKeys = [...s3DbKeysAfterUpload]
       .filter((k) => k.endsWith(".db"))
       .sort()
       .reverse();
     const mergeDbKey =
-      sortedMergeDbKeys.find((k) => k === dbBackupKey) ?? sortedMergeDbKeys[0] ?? null;
+      sortedMergeDbKeys.find((k) => k === dbBackupKey) ??
+      sortedMergeDbKeys[0] ??
+      null;
 
     const backupDbPath: string | null =
       mergeDbKey != null
         ? await (async (): Promise<string | null> => {
             const getRes = await client.send(
-              new GetObjectCommand({ Bucket: bucket, Key: mergeDbKey })
+              new GetObjectCommand({ Bucket: bucket, Key: mergeDbKey }),
             );
             const body = getRes.Body;
             if (!body) return null;
@@ -265,7 +301,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       const localIds = new Set(db.listMedia().map((m) => m.id));
       const backupRows = backupDb
         .prepare(
-          `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude FROM media`
+          `SELECT id, filename, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt, date_taken as dateTaken, latitude, longitude FROM media`,
         )
         .all() as Array<{
         id: string;
@@ -300,7 +336,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
             latitude: r.latitude,
             longitude: r.longitude,
           },
-          defaultOwnerId
+          defaultOwnerId,
         );
         if (inserted) tally.mergedMedia++;
 
@@ -312,7 +348,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
               new GetObjectCommand({
                 Bucket: bucket,
                 Key: `${S3_PREFIX}/media/${r.filename}`,
-              })
+              }),
             );
             const body = getRes.Body;
             if (body) {
@@ -339,7 +375,7 @@ export async function runSync(onProgress?: (p: SyncProgress) => void): Promise<S
       client,
       bucket,
       s3ThumbKeys,
-      mediaIds
+      mediaIds,
     );
     tally.deletedOrphanThumbsLocal = await deleteOrphanedLocalThumbnailFiles();
 

@@ -4,16 +4,21 @@ import { logger } from "./logger.js";
 import { maybeRestoreDbFromLatestS3BackupOnStartup } from "./s3/startup-db-restore.js";
 
 async function main(): Promise<void> {
-  const { ensureServerDirectories, runServerStartedTasks, runStartupMaintenance } =
-    await import("./bootstrap/startup-tasks.js");
+  const {
+    ensureServerDirectories,
+    runServerStartedTasks,
+    runStartupMaintenance,
+  } = await import("./bootstrap/startup-tasks.js");
 
   ensureServerDirectories({ mediaDir, dbDir, thumbnailsDir });
 
   // Must happen before any DB modules are imported (DB opens at first `getDb()` call).
   await maybeRestoreDbFromLatestS3BackupOnStartup();
 
-  const { createConfiguredApp, createConfiguredHttpServer } = await import("./bootstrap/server.js");
-  const { attachActivityWebSocket, broadcastActivity } = await import("./activity/broadcast.js");
+  const { createConfiguredApp, createConfiguredHttpServer } =
+    await import("./bootstrap/server.js");
+  const { attachActivityWebSocket, broadcastActivity } =
+    await import("./activity/broadcast.js");
   const { setIndexJobChangeListener } = await import("./indexing/job-store.js");
   const { getS3Config, setSyncChangeListener } = await import("./s3/sync.js");
 
@@ -33,7 +38,7 @@ async function main(): Promise<void> {
     if (!s3.configured) {
       logger.warn(
         { missingVars: s3.missingVars },
-        "S3 backup not configured; set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and S3_BUCKET to enable sync"
+        "S3 backup not configured; set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, and S3_BUCKET to enable sync",
       );
     }
   });
@@ -41,7 +46,7 @@ async function main(): Promise<void> {
     if (err.code === "EADDRINUSE") {
       logger.error(
         { port: SERVER_PORT, err },
-        "Port already in use; stop the other process or change PORT (and API_PROXY_TARGET / SERVER_HOST for the Vite dev proxy)"
+        "Port already in use; stop the other process or change PORT (and API_PROXY_TARGET / SERVER_HOST for the Vite dev proxy)",
       );
     } else {
       logger.error({ err }, "Server listen error");

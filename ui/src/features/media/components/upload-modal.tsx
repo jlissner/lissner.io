@@ -22,8 +22,11 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [nameConflicts, setNameConflicts] = useState<UploadNameConflict[]>([]);
   const [checkLoading, setCheckLoading] = useState(false);
-  const [conflictDecisions, setConflictDecisions] = useState<DuplicateConflictDecision[]>([]);
-  const [uploadProgress, setUploadProgress] = useState<MediaUploadProgress | null>(null);
+  const [conflictDecisions, setConflictDecisions] = useState<
+    DuplicateConflictDecision[]
+  >([]);
+  const [uploadProgress, setUploadProgress] =
+    useState<MediaUploadProgress | null>(null);
 
   const handleFilesSelected = useCallback((files: FileList | null) => {
     if (!files?.length) return;
@@ -42,12 +45,15 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     const names = pendingFiles.map((f) => f.name);
     const ac = new AbortController();
     setCheckLoading(true);
-    void apiJson<{ conflicts?: UploadNameConflict[] }>("/media/upload/check-names", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ names }),
-      signal: ac.signal,
-    })
+    void apiJson<{ conflicts?: UploadNameConflict[] }>(
+      "/media/upload/check-names",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ names }),
+        signal: ac.signal,
+      },
+    )
       .then((data) => {
         setNameConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
       })
@@ -70,7 +76,7 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
       e.stopPropagation();
       handleFilesSelected(e.dataTransfer?.files ?? null);
     },
-    [handleFilesSelected]
+    [handleFilesSelected],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -84,7 +90,7 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
       handleFilesSelected(e.target.files);
       e.target.value = "";
     },
-    [handleFilesSelected]
+    [handleFilesSelected],
   );
 
   const handleConfirm = useCallback(async () => {
@@ -94,7 +100,9 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
       (conflictDecisions.length !== nameConflicts.length ||
         conflictDecisions.some((d) => d == null))
     ) {
-      setError("Choose for each conflicting file whether to skip it or upload it as new.");
+      setError(
+        "Choose for each conflicting file whether to skip it or upload it as new.",
+      );
       return;
     }
     const filesToUpload =
@@ -103,7 +111,7 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
         : getFilesToUploadAfterDecisions(
             pendingFiles,
             nameConflicts,
-            conflictDecisions as ("skip" | "upload")[]
+            conflictDecisions as ("skip" | "upload")[],
           );
     if (filesToUpload.length === 0) {
       setError(null);
@@ -149,13 +157,21 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     <ModalRoot onBackdropClick={handleCancel}>
       <ModalPanel
         className={cn(hasFiles && "upload-modal-panel")}
-        style={hasFiles ? undefined : { minWidth: 360, maxHeight: "90vh", overflow: "auto" }}
+        style={
+          hasFiles
+            ? undefined
+            : { minWidth: 360, maxHeight: "90vh", overflow: "auto" }
+        }
         aria-labelledby="upload-title"
         onEscape={handleCancel}
       >
         <ModalTitle id="upload-title">Upload files</ModalTitle>
         {!hasFiles ? (
-          <div className="upload-zone" onDrop={handleDrop} onDragOver={handleDragOver}>
+          <div
+            className="upload-zone"
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+          >
             <input
               type="file"
               multiple
@@ -168,7 +184,9 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
               <span className="upload-zone__title">
                 Drop files here or <strong>click to browse</strong>
               </span>
-              <span className="upload-zone__hint">Images, videos, documents</span>
+              <span className="upload-zone__hint">
+                Images, videos, documents
+              </span>
             </label>
             <div className="upload-zone__actions">
               <button

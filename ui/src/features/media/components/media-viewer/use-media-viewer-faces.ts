@@ -19,7 +19,7 @@ interface UseMediaViewerFacesOptions {
 
 function getAssignFaceBody(
   personId: number | "new",
-  assigningFace: FaceBox
+  assigningFace: FaceBox,
 ): {
   createNew?: true;
   personId?: number;
@@ -37,10 +37,15 @@ export function useMediaViewerFaces({
   onUpdate,
   onTagChange,
 }: UseMediaViewerFacesOptions) {
-  const [faces, setFaces] = useState<{ detected: FaceBox[]; tagged: TaggedFace[] } | null>(null);
+  const [faces, setFaces] = useState<{
+    detected: FaceBox[];
+    tagged: TaggedFace[];
+  } | null>(null);
   const [facesLoading, setFacesLoading] = useState(false);
   const [assigningFace, setAssigningFace] = useState<FaceBox | null>(null);
-  const [reassigningFace, setReassigningFace] = useState<TaggedFace | null>(null);
+  const [reassigningFace, setReassigningFace] = useState<TaggedFace | null>(
+    null,
+  );
   const [people, setPeople] = useState<Array<{ id: number; name: string }>>([]);
 
   const loadFaces = useCallback(async () => {
@@ -51,7 +56,10 @@ export function useMediaViewerFaces({
         listMediaFaces(mediaId),
         listPeopleForTagging(),
       ]);
-      setFaces({ detected: facesData.detected ?? [], tagged: facesData.tagged ?? [] });
+      setFaces({
+        detected: facesData.detected ?? [],
+        tagged: facesData.tagged ?? [],
+      });
       setPeople(peopleData);
     } catch {
       setFaces({ detected: [], tagged: [] });
@@ -69,17 +77,21 @@ export function useMediaViewerFaces({
     async (personId: number | "new") => {
       if (!mediaId || !assigningFace) return;
       try {
-        await addPersonToMedia(mediaId, getAssignFaceBody(personId, assigningFace));
+        await addPersonToMedia(
+          mediaId,
+          getAssignFaceBody(personId, assigningFace),
+        );
         setAssigningFace(null);
         loadFaces();
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Failed to add tag";
+        const message =
+          err instanceof ApiError ? err.message : "Failed to add tag";
         alert(message);
       }
     },
-    [mediaId, assigningFace, loadFaces, onUpdate, onTagChange]
+    [mediaId, assigningFace, loadFaces, onUpdate, onTagChange],
   );
 
   const handleReassignFace = useCallback(
@@ -93,7 +105,8 @@ export function useMediaViewerFaces({
           onUpdate?.();
           onTagChange?.();
         } catch (err) {
-          const message = err instanceof ApiError ? err.message : "Failed to remove tag";
+          const message =
+            err instanceof ApiError ? err.message : "Failed to remove tag";
           alert(message);
         }
         return;
@@ -106,7 +119,8 @@ export function useMediaViewerFaces({
           onUpdate?.();
           onTagChange?.();
         } catch (err) {
-          const message = err instanceof ApiError ? err.message : "Failed to reassign";
+          const message =
+            err instanceof ApiError ? err.message : "Failed to reassign";
           alert(message);
         }
         return;
@@ -118,11 +132,12 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Failed to reassign";
+        const message =
+          err instanceof ApiError ? err.message : "Failed to reassign";
         alert(message);
       }
     },
-    [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange]
+    [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange],
   );
 
   return {

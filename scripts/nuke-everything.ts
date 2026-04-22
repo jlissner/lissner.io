@@ -11,18 +11,32 @@ import { readdir, stat, unlink } from "fs/promises";
 import path from "path";
 import { createInterface } from "readline";
 import Database from "better-sqlite3";
-import { S3Client, ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
-import { dbPath, mediaDir, syncTempDbPath, thumbnailsDir } from "../server/src/config/paths.js";
+import {
+  S3Client,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from "@aws-sdk/client-s3";
+import {
+  dbPath,
+  mediaDir,
+  syncTempDbPath,
+  thumbnailsDir,
+} from "../server/src/config/paths.js";
 
 const S3_PREFIX = "backup";
 
 function s3Configured(): boolean {
-  return ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET"].every((k) =>
-    process.env[k]?.trim()
-  );
+  return [
+    "AWS_ACCESS_KEY_ID",
+    "AWS_SECRET_ACCESS_KEY",
+    "AWS_REGION",
+    "S3_BUCKET",
+  ].every((k) => process.env[k]?.trim());
 }
 
-async function dirStats(dir: string): Promise<{ files: number; bytes: number }> {
+async function dirStats(
+  dir: string,
+): Promise<{ files: number; bytes: number }> {
   if (!existsSync(dir)) return { files: 0, bytes: 0 };
   const names = await readdir(dir);
   const acc = { files: 0, bytes: 0 };
@@ -45,7 +59,7 @@ function formatBytes(n: number): string {
 
 async function listAllS3BackupObjects(
   client: S3Client,
-  bucket: string
+  bucket: string,
 ): Promise<{ keys: string[]; bytes: number }> {
   const keys: string[] = [];
   const acc = { bytes: 0 };
@@ -56,7 +70,7 @@ async function listAllS3BackupObjects(
         Bucket: bucket,
         Prefix: `${S3_PREFIX}/`,
         ContinuationToken: paging.token,
-      })
+      }),
     );
     for (const obj of res.Contents ?? []) {
       if (obj.Key) {
@@ -69,11 +83,15 @@ async function listAllS3BackupObjects(
   return { keys, bytes: acc.bytes };
 }
 
-async function deleteS3Objects(client: S3Client, bucket: string, keys: string[]): Promise<void> {
+async function deleteS3Objects(
+  client: S3Client,
+  bucket: string,
+  keys: string[],
+): Promise<void> {
   const chunkSize = 1000;
   const chunkStarts = Array.from(
     { length: Math.ceil(keys.length / chunkSize) },
-    (_, j) => j * chunkSize
+    (_, j) => j * chunkSize,
   );
   for (const start of chunkStarts) {
     const chunk = keys.slice(start, start + chunkSize);
@@ -84,7 +102,7 @@ async function deleteS3Objects(client: S3Client, bucket: string, keys: string[])
           Objects: chunk.map((Key) => ({ Key })),
           Quiet: true,
         },
-      })
+      }),
     );
   }
 }
@@ -92,10 +110,12 @@ async function deleteS3Objects(client: S3Client, bucket: string, keys: string[])
 function getTableNames(db: Database.Database): string[] {
   const rows = db
     .prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`
+      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`,
     )
     .all() as Array<{ name: string }>;
-  return rows.map((r) => r.name).filter((n) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n));
+  return rows
+    .map((r) => r.name)
+    .filter((n) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n));
 }
 
 function ask(question: string): Promise<string> {
@@ -137,11 +157,15 @@ async function unlinkDirFiles(dir: string): Promise<number> {
 }
 
 async function main(): Promise<void> {
-  console.log("\n\x1b[1;31m══════════════════════════════════════════════════════════════\x1b[0m");
   console.log(
-    "\x1b[1;31m  NUCLEAR RESET — this will PERMANENTLY destroy local and cloud data\x1b[0m"
+    "\n\x1b[1;31m══════════════════════════════════════════════════════════════\x1b[0m",
   );
-  console.log("\x1b[1;31m══════════════════════════════════════════════════════════════\x1b[0m\n");
+  console.log(
+    "\x1b[1;31m  NUCLEAR RESET — this will PERMANENTLY destroy local and cloud data\x1b[0m",
+  );
+  console.log(
+    "\x1b[1;31m══════════════════════════════════════════════════════════════\x1b[0m\n",
+  );
 
   const mediaStats = await dirStats(mediaDir);
   const thumbStats = await dirStats(thumbnailsDir);
@@ -153,7 +177,9 @@ async function main(): Promise<void> {
     const db = new Database(dbPath);
     try {
       for (const t of getTableNames(db)) {
-        const c = db.prepare(`SELECT COUNT(*) as c FROM "${t.replace(/"/g, '""')}"`).get() as {
+        const c = db
+          .prepare(`SELECT COUNT(*) as c FROM "${t.replace(/"/g, '""')}"`)
+          .get() as {
           c: number;
         };
         dbRowCounts[t] = c.c;
@@ -185,9 +211,13 @@ async function main(): Promise<void> {
 
   console.log("The following will be removed:\n");
   console.log(`  Local media files     (${mediaDir})`);
-  console.log(`    → ${mediaStats.files} file(s), ${formatBytes(mediaStats.bytes)}`);
+  console.log(
+    `    → ${mediaStats.files} file(s), ${formatBytes(mediaStats.bytes)}`,
+  );
   console.log(`  Local thumbnails      (${thumbnailsDir})`);
-  console.log(`    → ${thumbStats.files} file(s), ${formatBytes(thumbStats.bytes)}`);
+  console.log(
+    `    → ${thumbStats.files} file(s), ${formatBytes(thumbStats.bytes)}`,
+  );
   if (syncTempExists) {
     console.log(`  Sync temp DB          (${syncTempDbPath})`);
     console.log(`    → 1 file`);
@@ -198,24 +228,32 @@ async function main(): Promise<void> {
   } else {
     const totalRows = Object.values(dbRowCounts).reduce((a, b) => a + b, 0);
     console.log(
-      `    → ALL ROWS in ${Object.keys(dbRowCounts).length} table(s) (${totalRows} total rows):`
+      `    → ALL ROWS in ${Object.keys(dbRowCounts).length} table(s) (${totalRows} total rows):`,
     );
-    for (const [t, c] of Object.entries(dbRowCounts).sort(([a], [b]) => a.localeCompare(b))) {
+    for (const [t, c] of Object.entries(dbRowCounts).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
       console.log(`        ${t}: ${c}`);
     }
   }
   if (s3Configured()) {
-    console.log(`  S3 backup prefix      (${S3_PREFIX}/ in ${process.env.S3_BUCKET})`);
-    console.log(`    → ${s3List.keys.length} object(s), ${formatBytes(s3List.bytes)}`);
+    console.log(
+      `  S3 backup prefix      (${S3_PREFIX}/ in ${process.env.S3_BUCKET})`,
+    );
+    console.log(
+      `    → ${s3List.keys.length} object(s), ${formatBytes(s3List.bytes)}`,
+    );
   } else {
-    console.log(`  S3 backup prefix      (skipped — AWS/S3 not fully configured in env)`);
+    console.log(
+      `  S3 backup prefix      (skipped — AWS/S3 not fully configured in env)`,
+    );
   }
 
   console.log("\n\x1b[33mThis cannot be undone.\x1b[0m\n");
 
   const code = String(Math.floor(100000 + Math.random() * 900000));
   const answer = await ask(
-    `Type the confirmation code \x1b[1m${code}\x1b[0m to proceed (or anything else to abort): `
+    `Type the confirmation code \x1b[1m${code}\x1b[0m to proceed (or anything else to abort): `,
   );
 
   if (answer !== code) {
@@ -226,7 +264,9 @@ async function main(): Promise<void> {
   console.log("\nDeleting local files…");
   const removedMedia = await unlinkDirFiles(mediaDir);
   const removedThumbs = await unlinkDirFiles(thumbnailsDir);
-  console.log(`  Removed ${removedMedia} media file(s), ${removedThumbs} thumbnail file(s).`);
+  console.log(
+    `  Removed ${removedMedia} media file(s), ${removedThumbs} thumbnail file(s).`,
+  );
 
   if (syncTempExists) {
     await unlink(syncTempDbPath).catch(() => {});
@@ -257,7 +297,9 @@ async function main(): Promise<void> {
     }
   }
 
-  console.log("\n\x1b[32mDone.\x1b[0m Restart the server before using the app.\n");
+  console.log(
+    "\n\x1b[32mDone.\x1b[0m Restart the server before using the app.\n",
+  );
 }
 
 main().catch((err) => {

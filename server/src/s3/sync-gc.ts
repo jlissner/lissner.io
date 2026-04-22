@@ -8,7 +8,7 @@ export async function deleteOrphanS3Thumbnails(
   client: S3Client,
   bucket: string,
   thumbKeys: Set<string>,
-  validMediaIds: Set<string>
+  validMediaIds: Set<string>,
 ): Promise<number> {
   const prefix = `${S3_PREFIX}/thumbnails/`;
   const acc = { removed: 0 };
@@ -22,7 +22,10 @@ export async function deleteOrphanS3Thumbnails(
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
       acc.removed += 1;
     } catch (err) {
-      logger.error({ err, key }, "[s3-sync] DeleteObject orphan thumbnail failed");
+      logger.error(
+        { err, key },
+        "[s3-sync] DeleteObject orphan thumbnail failed",
+      );
     }
   }
   return acc.removed;

@@ -1,7 +1,14 @@
 import { Router } from "express";
 import { parseWithSchema } from "../../validation/parse.js";
-import { idParamSchema, userPeopleBodySchema } from "../../validation/admin-schemas.js";
-import { getUserPeople, listUsers, setUserPeople } from "../../services/admin-service.js";
+import {
+  idParamSchema,
+  userPeopleBodySchema,
+} from "../../validation/admin-schemas.js";
+import {
+  getUserPeople,
+  listUsers,
+  setUserPeople,
+} from "../../services/admin-service.js";
 import { sendAdminResult } from "./response.js";
 
 export const adminUsersRouter = Router();

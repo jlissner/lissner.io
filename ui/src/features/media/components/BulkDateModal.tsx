@@ -1,6 +1,12 @@
 import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ModalActions, ModalBody, ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
+import {
+  ModalActions,
+  ModalBody,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+} from "@/components/ui/modal";
 import { bulkPatchDateTaken } from "../api";
 
 interface BulkDateModalProps {
@@ -9,7 +15,11 @@ interface BulkDateModalProps {
   onDone: () => void;
 }
 
-export function BulkDateModal({ mediaIds, onClose, onDone }: BulkDateModalProps) {
+export function BulkDateModal({
+  mediaIds,
+  onClose,
+  onDone,
+}: BulkDateModalProps) {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [saving, setSaving] = useState(false);
@@ -40,7 +50,11 @@ export function BulkDateModal({ mediaIds, onClose, onDone }: BulkDateModalProps)
     }
 
     const at = new Date(y, mo - 1, d, hh, mm, 0, 0);
-    if (at.getFullYear() !== y || at.getMonth() !== mo - 1 || at.getDate() !== d) {
+    if (
+      at.getFullYear() !== y ||
+      at.getMonth() !== mo - 1 ||
+      at.getDate() !== d
+    ) {
       setError("That calendar date is not valid.");
       return;
     }
@@ -77,9 +91,13 @@ export function BulkDateModal({ mediaIds, onClose, onDone }: BulkDateModalProps)
 
   return (
     <ModalRoot onBackdropClick={saving ? () => {} : onClose}>
-      <ModalPanel onEscape={saving ? undefined : onClose} aria-labelledby="bulk-date-title">
+      <ModalPanel
+        onEscape={saving ? undefined : onClose}
+        aria-labelledby="bulk-date-title"
+      >
         <ModalTitle id="bulk-date-title">
-          Set date taken ({mediaIds.length} {mediaIds.length === 1 ? "file" : "files"})
+          Set date taken ({mediaIds.length}{" "}
+          {mediaIds.length === 1 ? "file" : "files"})
         </ModalTitle>
         <ModalBody>
           <div className="bulk-date__fields">
@@ -107,7 +125,12 @@ export function BulkDateModal({ mediaIds, onClose, onDone }: BulkDateModalProps)
           {error && <p className="bulk-date__error">{error}</p>}
         </ModalBody>
         <ModalActions>
-          <Button variant="ghost" size="sm" onClick={handleClear} disabled={saving}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleClear}
+            disabled={saving}
+          >
             Clear dates
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>

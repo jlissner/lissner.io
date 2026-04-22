@@ -27,7 +27,7 @@ peopleRouter.post(
   asyncHandler(async (_req, res) => {
     const result = await runFaceMatchBatch();
     res.json(result);
-  })
+  }),
 );
 
 peopleRouter.get(
@@ -36,7 +36,7 @@ peopleRouter.get(
     const { id } = parseWithSchema(personIdParamsSchema, req.params);
     const suggestions = await getMergeSuggestionsForPerson(id);
     res.json({ suggestions });
-  })
+  }),
 );
 
 peopleRouter.get("/:id/media", (req, res) => {
@@ -75,11 +75,21 @@ peopleRouter.post("/:id/merge", (req, res) => {
     return;
   }
   if (result.reason === "invalid_ids") {
-    sendApiError(res, 400, "mergeInto (person ID) required", "merge_invalid_ids");
+    sendApiError(
+      res,
+      400,
+      "mergeInto (person ID) required",
+      "merge_invalid_ids",
+    );
     return;
   }
   if (result.reason === "merge_into_self") {
-    sendApiError(res, 400, "Cannot merge a person into themselves", "merge_into_self");
+    sendApiError(
+      res,
+      400,
+      "Cannot merge a person into themselves",
+      "merge_into_self",
+    );
     return;
   }
   sendApiError(res, 404, "Person not found", "person_not_found");

@@ -12,7 +12,10 @@ const PAGE_SIZE = 50;
 
 type PageWithOffset = MediaListQueryResponse & { __offset: number };
 
-export function useMediaListQuery({ personFilter, isSearchMode }: UseMediaListQueryOptions) {
+export function useMediaListQuery({
+  personFilter,
+  isSearchMode,
+}: UseMediaListQueryOptions) {
   const queryClient = useQueryClient();
   const [columnsPerRow, setColumnsPerRow] = useState(8);
   const [sortBy, setSortBy] = useState<"uploaded" | "taken">("uploaded");
@@ -38,22 +41,24 @@ export function useMediaListQuery({ personFilter, isSearchMode }: UseMediaListQu
     },
     getNextPageParam: (_lastPage, allPages) => {
       const maxOffset = allPages.reduce(
-        (max, p) => Math.max(max, (p as PageWithOffset).__offset + p.items.length),
-        0
+        (max, p) =>
+          Math.max(max, (p as PageWithOffset).__offset + p.items.length),
+        0,
       );
       return maxOffset < (_lastPage.total ?? 0) ? maxOffset : undefined;
     },
     getPreviousPageParam: (_firstPage, allPages) => {
       const minOffset = allPages.reduce(
         (min, p) => Math.min(min, (p as PageWithOffset).__offset),
-        Infinity
+        Infinity,
       );
       return minOffset > 0 ? Math.max(0, minOffset - PAGE_SIZE) : undefined;
     },
     select: (data) => ({
       ...data,
       pages: [...data.pages].sort(
-        (a, b) => (a as PageWithOffset).__offset - (b as PageWithOffset).__offset
+        (a, b) =>
+          (a as PageWithOffset).__offset - (b as PageWithOffset).__offset,
       ),
     }),
   });
@@ -77,7 +82,11 @@ export function useMediaListQuery({ personFilter, isSearchMode }: UseMediaListQu
   }, []);
 
   const loadMore = useCallback(async () => {
-    if (loadingMoreRef.current || !mediaQuery.hasNextPage || mediaQuery.isFetchingNextPage) {
+    if (
+      loadingMoreRef.current ||
+      !mediaQuery.hasNextPage ||
+      mediaQuery.isFetchingNextPage
+    ) {
       return;
     }
     loadingMoreRef.current = true;
@@ -130,7 +139,7 @@ export function useMediaListQuery({ personFilter, isSearchMode }: UseMediaListQu
       (entries) => {
         if (entries[0]?.isIntersecting) void loadMore();
       },
-      { root: container, rootMargin: "200px", threshold: 0 }
+      { root: container, rootMargin: "200px", threshold: 0 },
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -145,7 +154,7 @@ export function useMediaListQuery({ personFilter, isSearchMode }: UseMediaListQu
       (entries) => {
         if (entries[0]?.isIntersecting) void loadPrevious();
       },
-      { root: container, rootMargin: "200px", threshold: 0 }
+      { root: container, rootMargin: "200px", threshold: 0 },
     );
     observer.observe(el);
     return () => observer.disconnect();

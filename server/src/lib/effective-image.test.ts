@@ -25,10 +25,17 @@ describe("isGenericBinaryMime", () => {
 
 describe("isEffectiveImageItem", () => {
   it("classifies by mime and pixel .mp extension", () => {
-    expect(isEffectiveImageItem({ mimeType: "image/jpeg", originalName: "a.jpg" })).toBe(true);
-    expect(isEffectiveImageItem({ mimeType: "video/mp4", originalName: "a.mp4" })).toBe(false);
     expect(
-      isEffectiveImageItem({ mimeType: "application/octet-stream", originalName: "a.mp" })
+      isEffectiveImageItem({ mimeType: "image/jpeg", originalName: "a.jpg" }),
+    ).toBe(true);
+    expect(
+      isEffectiveImageItem({ mimeType: "video/mp4", originalName: "a.mp4" }),
+    ).toBe(false);
+    expect(
+      isEffectiveImageItem({
+        mimeType: "application/octet-stream",
+        originalName: "a.mp",
+      }),
     ).toBe(true);
   });
 });

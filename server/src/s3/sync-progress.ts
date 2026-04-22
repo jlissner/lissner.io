@@ -11,7 +11,9 @@ export type SyncCompletionTally = {
   deletedOrphanThumbsLocal: number;
 };
 
-export function buildSyncNotConfiguredProgress(missingVars: string[]): SyncProgressMessage {
+export function buildSyncNotConfiguredProgress(
+  missingVars: string[],
+): SyncProgressMessage {
   return {
     phase: "error",
     current: 0,
@@ -31,13 +33,16 @@ export function buildSyncFailedProgress(detail: string): SyncProgressMessage {
   };
 }
 
-export function buildSyncDoneProgress(tally: SyncCompletionTally): SyncProgressMessage {
+export function buildSyncDoneProgress(
+  tally: SyncCompletionTally,
+): SyncProgressMessage {
   const message = [
     `Sync complete.`,
     tally.uploadedMedia > 0 && `Uploaded ${tally.uploadedMedia} media`,
     tally.uploadedThumbs > 0 && `Uploaded ${tally.uploadedThumbs} thumbnails`,
     tally.downloadedMedia > 0 && `Downloaded ${tally.downloadedMedia} media`,
-    tally.downloadedThumbs > 0 && `Downloaded ${tally.downloadedThumbs} thumbnails`,
+    tally.downloadedThumbs > 0 &&
+      `Downloaded ${tally.downloadedThumbs} thumbnails`,
     tally.mergedMedia > 0 && `Added ${tally.mergedMedia} from backup`,
     tally.deletedOrphanThumbsS3 > 0 &&
       `Removed ${tally.deletedOrphanThumbsS3} orphaned S3 thumbnails`,

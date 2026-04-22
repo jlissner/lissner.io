@@ -22,7 +22,7 @@ export function useMediaSelection() {
     (id: string) => {
       toggleSelect(id);
     },
-    [toggleSelect]
+    [toggleSelect],
   );
 
   const toggleSelectAllForDay = useCallback((groupItems: MediaItem[]) => {

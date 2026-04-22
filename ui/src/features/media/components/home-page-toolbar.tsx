@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { listPeople } from "@/features/people/api";
@@ -23,7 +30,12 @@ interface HomePageToolbarProps {
 }
 
 type TagSuggestion = { type: "tag"; label: string };
-type PersonSuggestion = { type: "person"; label: string; handle: string; person: PersonSummary };
+type PersonSuggestion = {
+  type: "person";
+  label: string;
+  handle: string;
+  person: PersonSummary;
+};
 type SearchSuggestionItem = TagSuggestion | PersonSuggestion;
 
 function suggestionKey(s: SearchSuggestionItem): string {
@@ -70,7 +82,7 @@ export function HomePageToolbar({
 
   const activeToken = useMemo(
     () => parseActiveSearchToken(searchQuery, cursor),
-    [searchQuery, cursor]
+    [searchQuery, cursor],
   );
 
   const suggestionItems: SearchSuggestionItem[] = useMemo(() => {
@@ -83,15 +95,17 @@ export function HomePageToolbar({
         label,
       }));
     }
-    return filterPeopleSuggestions(peopleList, activeToken.prefix).map((person) => {
-      const handle = personSearchHandle(person.name);
-      return {
-        type: "person" as const,
-        person,
-        handle: handle.length > 0 ? handle : `person${person.id}`,
-        label: person.name,
-      };
-    });
+    return filterPeopleSuggestions(peopleList, activeToken.prefix).map(
+      (person) => {
+        const handle = personSearchHandle(person.name);
+        return {
+          type: "person" as const,
+          person,
+          handle: handle.length > 0 ? handle : `person${person.id}`,
+          label: person.name,
+        };
+      },
+    );
   }, [activeToken, tagsQuery.data?.tags, peopleQuery.data]);
 
   const open = focused && activeToken != null && suggestionItems.length > 0;
@@ -115,13 +129,17 @@ export function HomePageToolbar({
       const cur = el?.selectionStart ?? cursor;
       const token = parseActiveSearchToken(searchQuery, cur);
       if (!token) return;
-      const replacement = item.type === "tag" ? `#${item.label}` : `@${item.handle}`;
+      const replacement =
+        item.type === "tag" ? `#${item.label}` : `@${item.handle}`;
       const next =
-        searchQuery.slice(0, token.at) + replacement + searchQuery.slice(token.end) + " ";
+        searchQuery.slice(0, token.at) +
+        replacement +
+        searchQuery.slice(token.end) +
+        " ";
       pendingCursorRef.current = token.at + replacement.length + 1;
       setSearchQuery(next);
     },
-    [cursor, searchQuery, setSearchQuery]
+    [cursor, searchQuery, setSearchQuery],
   );
 
   const clearBlurTimer = useCallback(() => {
@@ -135,7 +153,7 @@ export function HomePageToolbar({
     () => () => {
       clearBlurTimer();
     },
-    [clearBlurTimer]
+    [clearBlurTimer],
   );
 
   return (
@@ -166,7 +184,9 @@ export function HomePageToolbar({
               if (e.key === "ArrowDown") {
                 e.preventDefault();
                 setHighlight((h) =>
-                  suggestionItems.length === 0 ? 0 : (h + 1) % suggestionItems.length
+                  suggestionItems.length === 0
+                    ? 0
+                    : (h + 1) % suggestionItems.length,
                 );
                 return;
               }
@@ -175,7 +195,7 @@ export function HomePageToolbar({
                 setHighlight((h) =>
                   suggestionItems.length === 0
                     ? 0
-                    : (h - 1 + suggestionItems.length) % suggestionItems.length
+                    : (h - 1 + suggestionItems.length) % suggestionItems.length,
                 );
                 return;
               }
@@ -207,7 +227,9 @@ export function HomePageToolbar({
             aria-expanded={open}
             aria-autocomplete="list"
             aria-controls={open ? "search-autocomplete-list" : undefined}
-            aria-activedescendant={open ? `search-autocomplete-option-${highlight}` : undefined}
+            aria-activedescendant={
+              open ? `search-autocomplete-option-${highlight}` : undefined
+            }
           />
           {open && (
             <ul
@@ -245,8 +267,12 @@ export function HomePageToolbar({
                     ) : (
                       <>
                         <span className="toolbar__autocomplete-kind">@</span>
-                        <span className="toolbar__autocomplete-label">{item.label}</span>
-                        <span className="toolbar__autocomplete-meta">@{item.handle}</span>
+                        <span className="toolbar__autocomplete-label">
+                          {item.label}
+                        </span>
+                        <span className="toolbar__autocomplete-meta">
+                          @{item.handle}
+                        </span>
                       </>
                     )}
                   </li>
@@ -269,7 +295,11 @@ export function HomePageToolbar({
           </Button>
         )}
       </div>
-      {toolbarError && <p className="toolbar__status toolbar__status--danger">{toolbarError}</p>}
+      {toolbarError && (
+        <p className="toolbar__status toolbar__status--danger">
+          {toolbarError}
+        </p>
+      )}
     </>
   );
 }

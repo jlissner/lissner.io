@@ -13,7 +13,13 @@ interface MediaViewerProps {
   onUpdate?: () => void;
 }
 
-export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: MediaViewerProps) {
+export function MediaViewer({
+  item,
+  items,
+  onSelectItem,
+  onClose,
+  onUpdate,
+}: MediaViewerProps) {
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState<string | null>(null);
   const [taggingMode, setTaggingMode] = useState(false);
@@ -21,10 +27,11 @@ export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: Me
   const itemId = item?.id ?? "";
   const index = useMemo(
     () => (itemId ? items.findIndex((x) => x.id === itemId) : -1),
-    [items, itemId]
+    [items, itemId],
   );
   const prevItem = index > 0 ? items[index - 1] : null;
-  const nextItem = index >= 0 && index < items.length - 1 ? items[index + 1] : null;
+  const nextItem =
+    index >= 0 && index < items.length - 1 ? items[index + 1] : null;
 
   const goPrev = useCallback(() => {
     if (!prevItem) return;
@@ -40,7 +47,9 @@ export function MediaViewer({ item, items, onSelectItem, onClose, onUpdate }: Me
     if (!item) return;
     if (isText(item.mimeType)) {
       apiFetch(`/media/${item.id}/content`)
-        .then((res) => (res.ok ? res.text() : Promise.reject(new Error("Failed to load"))))
+        .then((res) =>
+          res.ok ? res.text() : Promise.reject(new Error("Failed to load")),
+        )
         .then(setTextContent)
         .catch(() => setTextError("Could not load content"));
     } else {

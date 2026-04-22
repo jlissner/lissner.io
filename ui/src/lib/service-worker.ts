@@ -9,7 +9,10 @@ export function registerServiceWorker(): void {
             if (!newWorker) return;
 
             newWorker.addEventListener("statechange", () => {
-              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
+              if (
+                newWorker.state === "installed" &&
+                navigator.serviceWorker.controller
+              ) {
                 if (confirm("New version available. Reload to update?")) {
                   newWorker.postMessage({ type: "SKIP_WAITING" });
                   window.location.reload();

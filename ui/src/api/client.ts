@@ -5,7 +5,12 @@
 
 const API_PREFIX = "/api";
 
-const AUTH_PATHS = new Set(["auth/refresh", "auth/magic-link", "auth/verify-code", "auth/config"]);
+const AUTH_PATHS = new Set([
+  "auth/refresh",
+  "auth/magic-link",
+  "auth/verify-code",
+  "auth/config",
+]);
 
 export class ApiError extends Error {
   readonly status: number;
@@ -46,7 +51,10 @@ function normalizedPath(path: string): string {
   return trimmed.startsWith("api/") ? trimmed.slice(4) : trimmed;
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+export async function apiFetch(
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> {
   const res = await fetch(apiUrl(path), {
     credentials: "include",
     ...init,
@@ -62,7 +70,10 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   return res;
 }
 
-export async function apiJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function apiJson<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
   const res = await apiFetch(path, init);
   const text = await res.text();
   const data = (text ? JSON.parse(text) : null) as unknown;

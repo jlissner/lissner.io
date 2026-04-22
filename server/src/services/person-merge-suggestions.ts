@@ -1,7 +1,11 @@
 import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir } from "../config/paths.js";
-import { extractFacesFromImage, getFaceSimilarityFn, type FaceInImage } from "../faces.js";
+import {
+  extractFacesFromImage,
+  getFaceSimilarityFn,
+  type FaceInImage,
+} from "../faces.js";
 import { ensureLocalMediaFile } from "./media-service.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 
@@ -12,7 +16,7 @@ export function isPlaceholderPersonName(name: string): boolean {
 
 function boxIoU(
   a: { x: number; y: number; width: number; height: number },
-  b: { x: number; y: number; width: number; height: number }
+  b: { x: number; y: number; width: number; height: number },
 ): number {
   const ax2 = a.x + a.width;
   const ay2 = a.y + a.height;
@@ -33,7 +37,9 @@ function boxIoU(
 
 function pickMatchingFace(
   faces: FaceInImage[],
-  storedBox: { x: number; y: number; width: number; height: number } | undefined
+  storedBox:
+    | { x: number; y: number; width: number; height: number }
+    | undefined,
 ): FaceInImage | null {
   if (faces.length === 0) return null;
   if (!storedBox || storedBox.width <= 0 || storedBox.height <= 0) {
@@ -46,7 +52,7 @@ function pickMatchingFace(
       const iou = boxIoU(sb, f.box);
       return iou > acc.bestIou ? { best: f, bestIou: iou } : acc;
     },
-    { best: null as FaceInImage | null, bestIou: 0 }
+    { best: null as FaceInImage | null, bestIou: 0 },
   );
   return picked.bestIou >= 0.1 && picked.best ? picked.best : null;
 }
@@ -56,7 +62,9 @@ const MAX_DESCRIPTORS = 12;
 const MIN_SUGGESTION_SIMILARITY = 0.42;
 const MAX_SUGGESTIONS = 12;
 
-export async function collectDescriptorsForPerson(personId: number): Promise<number[][]> {
+export async function collectDescriptorsForPerson(
+  personId: number,
+): Promise<number[][]> {
   const rows = db.getMediaForPerson(personId, SAMPLE_IMAGE_LIMIT);
   const descriptors: number[][] = [];
   for (const row of rows) {
@@ -69,7 +77,11 @@ export async function collectDescriptorsForPerson(personId: number): Promise<num
     const filePath = path.join(mediaDir, item.filename);
     const faces = await extractFacesFromImage(filePath, row.id);
     const storedBox =
-      row.x != null && row.y != null && row.width != null && row.height != null && row.width > 0
+      row.x != null &&
+      row.y != null &&
+      row.width != null &&
+      row.height != null &&
+      row.width > 0
         ? { x: row.x, y: row.y, width: row.width, height: row.height }
         : undefined;
     const match = pickMatchingFace(faces, storedBox);
@@ -81,15 +93,15 @@ export async function collectDescriptorsForPerson(personId: number): Promise<num
 export function maxPairwiseSimilarity(
   a: number[][],
   b: number[][],
-  sim: (x: number[], y: number[]) => number
+  sim: (x: number[], y: number[]) => number,
 ): number {
   return a.reduce(
     (mx, da) =>
       Math.max(
         mx,
-        b.reduce((m2, db) => Math.max(m2, sim(da, db)), 0)
+        b.reduce((m2, db) => Math.max(m2, sim(da, db)), 0),
       ),
-    0
+    0,
   );
 }
 
@@ -103,7 +115,7 @@ export function mergeSuggestionsFromDescriptors(
   namedIds: number[],
   names: Map<number, string>,
   namedDescriptors: Map<number, number[][]>,
-  sim: (a: number[], b: number[]) => number
+  sim: (a: number[], b: number[]) => number,
 ): MergeSuggestion[] {
   if (sourceDescriptors.length === 0) {
     return [];
@@ -112,7 +124,11 @@ export function mergeSuggestionsFromDescriptors(
   for (const pid of namedIds) {
     const candDescriptors = namedDescriptors.get(pid);
     if (!candDescriptors || candDescriptors.length === 0) continue;
-    const score = maxPairwiseSimilarity(sourceDescriptors, candDescriptors, sim);
+    const score = maxPairwiseSimilarity(
+      sourceDescriptors,
+      candDescriptors,
+      sim,
+    );
     if (score >= MIN_SUGGESTION_SIMILARITY) {
       out.push({
         personId: pid,
@@ -130,7 +146,7 @@ export function mergeSuggestionsFromDescriptors(
  * to every **named** person. Returns likely duplicates sorted by score.
  */
 export async function getMergeSuggestionsForPerson(
-  sourcePersonId: number
+  sourcePersonId: number,
 ): Promise<MergeSuggestion[]> {
   const name = db.getPersonName(sourcePersonId);
   const displayName = name ?? `Person ${sourcePersonId}`;
@@ -158,5 +174,11 @@ export async function getMergeSuggestionsForPerson(
   for (const pid of namedIds) {
     namedDescriptors.set(pid, await collectDescriptorsForPerson(pid));
   }
-  return mergeSuggestionsFromDescriptors(sourceDescriptors, namedIds, names, namedDescriptors, sim);
+  return mergeSuggestionsFromDescriptors(
+    sourceDescriptors,
+    namedIds,
+    names,
+    namedDescriptors,
+    sim,
+  );
 }

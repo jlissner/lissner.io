@@ -22,7 +22,9 @@ function getAppliedVersions(db: Database.Database): Set<number> {
 }
 
 function markMigrationApplied(db: Database.Database, version: number): void {
-  db.prepare("INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)").run(version);
+  db.prepare(
+    "INSERT OR IGNORE INTO schema_migrations (version) VALUES (?)",
+  ).run(version);
 }
 
 const MEDIA_BASE_TABLE_SQL = `
@@ -64,11 +66,11 @@ function addColumnIfMissing(
   db: Database.Database,
   table: string,
   column: string,
-  columnSqlType: string
+  columnSqlType: string,
 ): void {
-  const cols = (db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>).map(
-    (c) => c.name
-  );
+  const cols = (
+    db.prepare(`PRAGMA table_info(${table})`).all() as Array<{ name: string }>
+  ).map((c) => c.name);
   if (!cols.includes(column)) {
     db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${columnSqlType}`);
   }
@@ -116,15 +118,18 @@ const migrations: MigrationStep[] = [
   },
   {
     version: 8,
-    apply: (db) => addColumnIfMissing(db, "media", "motion_companion_id", "TEXT"),
+    apply: (db) =>
+      addColumnIfMissing(db, "media", "motion_companion_id", "TEXT"),
   },
   {
     version: 9,
-    apply: (db) => addColumnIfMissing(db, "media", "hide_from_gallery", "INTEGER DEFAULT 0"),
+    apply: (db) =>
+      addColumnIfMissing(db, "media", "hide_from_gallery", "INTEGER DEFAULT 0"),
   },
   {
     version: 10,
-    apply: (db) => addColumnIfMissing(db, "image_people", "source", "TEXT DEFAULT 'auto'"),
+    apply: (db) =>
+      addColumnIfMissing(db, "image_people", "source", "TEXT DEFAULT 'auto'"),
   },
   {
     version: 11,
@@ -141,7 +146,9 @@ const migrations: MigrationStep[] = [
           FOREIGN KEY (media_id) REFERENCES media(id) ON DELETE CASCADE
         )
       `);
-      db.exec(`CREATE INDEX IF NOT EXISTS idx_media_tags_tag ON media_tags(tag)`);
+      db.exec(
+        `CREATE INDEX IF NOT EXISTS idx_media_tags_tag ON media_tags(tag)`,
+      );
     },
   },
 ];

@@ -9,8 +9,14 @@ export function getItemDateKey(item: MediaItem): string {
   return localCalendarDateKeyFromIso(dateStr);
 }
 
-export function getItemDateKeyForSort(item: MediaItem, sortBy: "uploaded" | "taken"): string {
-  const dateStr = sortBy === "uploaded" ? item.uploadedAt : (item.dateTaken ?? item.uploadedAt);
+export function getItemDateKeyForSort(
+  item: MediaItem,
+  sortBy: "uploaded" | "taken",
+): string {
+  const dateStr =
+    sortBy === "uploaded"
+      ? item.uploadedAt
+      : (item.dateTaken ?? item.uploadedAt);
   return localCalendarDateKeyFromIso(dateStr);
 }
 
@@ -28,7 +34,7 @@ export function formatDateLabel(dateKey: string): string {
 
 export function groupItemsByDay(
   items: MediaItem[],
-  sortBy: "uploaded" | "taken" = "taken"
+  sortBy: "uploaded" | "taken" = "taken",
 ): Array<{ dateKey: string; dateLabel: string; items: MediaItem[] }> {
   const map = items.reduce((acc, item) => {
     const key = getItemDateKeyForSort(item, sortBy);
@@ -56,7 +62,11 @@ export function isPixelMotionPhotoBasename(originalName: string): boolean {
 
 export function isImage(mimeType: string, originalName?: string): boolean {
   if (isImageMime(mimeType)) return true;
-  if (originalName != null && originalName !== "" && isPixelMotionPhotoBasename(originalName)) {
+  if (
+    originalName != null &&
+    originalName !== "" &&
+    isPixelMotionPhotoBasename(originalName)
+  ) {
     return true;
   }
   return false;

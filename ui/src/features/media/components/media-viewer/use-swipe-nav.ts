@@ -5,7 +5,7 @@ const SWIPE_THRESHOLD = 50;
 export function useSwipeNav(
   ref: RefObject<HTMLElement | null>,
   onSwipeLeft: (() => void) | null,
-  onSwipeRight: (() => void) | null
+  onSwipeRight: (() => void) | null,
 ): void {
   const touchStart = useRef<{ x: number; y: number } | null>(null);
 

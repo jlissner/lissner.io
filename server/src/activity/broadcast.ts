@@ -31,7 +31,11 @@ if (typeof pingInterval.unref === "function") {
 }
 
 export function broadcastActivity(): void {
-  const payload = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
+  const payload = buildActivitySnapshot(
+    getIndexJobState(),
+    getSyncState(),
+    getS3Config(),
+  );
   const msg = JSON.stringify({ type: "activity", v: 1, payload });
   for (const ws of clients) {
     if (ws.readyState === WS_OPEN) {
@@ -64,7 +68,11 @@ export function attachActivityWebSocket(server: Server): void {
 
     wss.handleUpgrade(request, socket, head, (ws) => {
       clients.add(ws);
-      const payload = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
+      const payload = buildActivitySnapshot(
+        getIndexJobState(),
+        getSyncState(),
+        getS3Config(),
+      );
       ws.send(JSON.stringify({ type: "activity", v: 1, payload }));
 
       ws.on("pong", () => {

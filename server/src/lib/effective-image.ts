@@ -9,7 +9,10 @@ export function isPixelMotionPhotoExtension(originalName: string): boolean {
   return /\.mp$/i.test(path.extname(originalName));
 }
 
-export function isEffectiveImageItem(item: { mimeType: string; originalName: string }): boolean {
+export function isEffectiveImageItem(item: {
+  mimeType: string;
+  originalName: string;
+}): boolean {
   if (item.mimeType.startsWith("image/")) return true;
   if (item.mimeType.startsWith("video/")) return false;
   return isPixelMotionPhotoExtension(item.originalName);
@@ -27,7 +30,11 @@ export function effectiveImageResponseMimeType(item: {
 }
 
 export function isGenericBinaryMime(mimeType: string): boolean {
-  return mimeType === "application/octet-stream" || mimeType === "binary/octet-stream" || !mimeType;
+  return (
+    mimeType === "application/octet-stream" ||
+    mimeType === "binary/octet-stream" ||
+    !mimeType
+  );
 }
 
 /**
@@ -50,23 +57,44 @@ export function sniffMediaMimeFromBuffer(head: Buffer): string | null {
   ) {
     return "image/png";
   }
-  if (head[4] === 0x66 && head[5] === 0x74 && head[6] === 0x79 && head[7] === 0x70) {
+  if (
+    head[4] === 0x66 &&
+    head[5] === 0x74 &&
+    head[6] === 0x79 &&
+    head[7] === 0x70
+  ) {
     return "video/mp4";
   }
-  if (head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3) {
+  if (
+    head[0] === 0x1a &&
+    head[1] === 0x45 &&
+    head[2] === 0xdf &&
+    head[3] === 0xa3
+  ) {
     return "video/webm";
   }
   const scanLen = Math.min(head.length, 65536);
-  const ftypAnchors = Array.from({ length: Math.max(0, scanLen - 7) }, (_, k) => k + 4);
+  const ftypAnchors = Array.from(
+    { length: Math.max(0, scanLen - 7) },
+    (_, k) => k + 4,
+  );
   for (const i of ftypAnchors) {
-    if (head[i] === 0x66 && head[i + 1] === 0x74 && head[i + 2] === 0x79 && head[i + 3] === 0x70) {
+    if (
+      head[i] === 0x66 &&
+      head[i + 1] === 0x74 &&
+      head[i + 2] === 0x79 &&
+      head[i + 3] === 0x70
+    ) {
       return "video/mp4";
     }
   }
   return null;
 }
 
-async function readFileHead(absolutePath: string, byteLength: number): Promise<Buffer> {
+async function readFileHead(
+  absolutePath: string,
+  byteLength: number,
+): Promise<Buffer> {
   const fh = await open(absolutePath, "r");
   try {
     const buf = Buffer.alloc(byteLength);
@@ -77,7 +105,9 @@ async function readFileHead(absolutePath: string, byteLength: number): Promise<B
   }
 }
 
-export async function sniffMediaMimeFromFile(absolutePath: string): Promise<string | null> {
+export async function sniffMediaMimeFromFile(
+  absolutePath: string,
+): Promise<string | null> {
   const head = await readFileHead(absolutePath, 65536);
   return sniffMediaMimeFromBuffer(head);
 }
@@ -101,10 +131,11 @@ export type SniffMediaMimePersistResult = {
 export async function sniffAndPersistMediaMime(
   item: { id: string; mimeType: string; originalName: string },
   absoluteFilePath: string,
-  persist: (mediaId: string, mime: string) => void
+  persist: (mediaId: string, mime: string) => void,
 ): Promise<SniffMediaMimePersistResult> {
   const shouldSniff =
-    isPixelMotionPhotoExtension(item.originalName) || isGenericBinaryMime(item.mimeType);
+    isPixelMotionPhotoExtension(item.originalName) ||
+    isGenericBinaryMime(item.mimeType);
   if (!shouldSniff) {
     const mimeTypePreview = effectiveImageResponseMimeType(item);
     return {
@@ -146,7 +177,7 @@ export async function sniffAndPersistMediaMime(
 export async function resolveMimeTypeAfterUpload(
   originalName: string,
   multerMimeType: string,
-  absoluteFilePath: string
+  absoluteFilePath: string,
 ): Promise<string> {
   const ext = path.extname(originalName).toLowerCase();
   const genericMime =

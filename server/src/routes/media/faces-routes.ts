@@ -18,7 +18,10 @@ import {
 export const mediaFacesRouter = Router();
 
 mediaFacesRouter.delete("/:id/people/:personId", (req, res) => {
-  const { id, personId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const { id, personId } = parseWithSchema(
+    mediaIdPersonIdParamSchema,
+    req.params,
+  );
   const result = removePersonFromMediaTag(id, personId);
   if (result.ok) {
     res.status(204).send();
@@ -33,15 +36,26 @@ mediaFacesRouter.delete("/:id/people/:personId", (req, res) => {
     return;
   }
   if (result.reason === "not_tagged") {
-    sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
+    sendApiError(
+      res,
+      404,
+      "Person not tagged in this image",
+      "face_not_tagged",
+    );
     return;
   }
   sendApiError(res, 404, "Not found", "not_found");
 });
 
 mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
-  const { id, personId: fromPersonId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
-  const { assignTo: toPersonId } = parseWithSchema(reassignFaceBodySchema, req.body);
+  const { id, personId: fromPersonId } = parseWithSchema(
+    mediaIdPersonIdParamSchema,
+    req.params,
+  );
+  const { assignTo: toPersonId } = parseWithSchema(
+    reassignFaceBodySchema,
+    req.body,
+  );
   const result = reassignPersonInMediaTag(id, fromPersonId, toPersonId);
   if (result.ok) {
     res.json(result.body);
@@ -52,11 +66,21 @@ mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
     return;
   }
   if (result.reason === "bad_ids") {
-    sendApiError(res, 400, "assignTo (person ID) required", "face_bad_assign_to");
+    sendApiError(
+      res,
+      400,
+      "assignTo (person ID) required",
+      "face_bad_assign_to",
+    );
     return;
   }
   if (result.reason === "same_person") {
-    sendApiError(res, 400, "Cannot reassign to the same person", "face_same_person");
+    sendApiError(
+      res,
+      400,
+      "Cannot reassign to the same person",
+      "face_same_person",
+    );
     return;
   }
   if (result.reason === "target_missing") {
@@ -67,7 +91,10 @@ mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
 });
 
 mediaFacesRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
-  const { id, personId: fromPersonId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const { id, personId: fromPersonId } = parseWithSchema(
+    mediaIdPersonIdParamSchema,
+    req.params,
+  );
   const result = reassignToNewPerson(id, fromPersonId);
   if (result.ok) {
     res.json(result.body);
@@ -85,7 +112,10 @@ mediaFacesRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
 });
 
 mediaFacesRouter.post("/:id/people/:personId/confirm", (req, res) => {
-  const { id, personId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const { id, personId } = parseWithSchema(
+    mediaIdPersonIdParamSchema,
+    req.params,
+  );
   const result = confirmFaceTag(id, personId);
   if (result.ok) {
     res.json({ confirmed: true });
@@ -120,11 +150,21 @@ mediaFacesRouter.post("/:id/people", (req, res) => {
     return;
   }
   if (result.reason === "box_required") {
-    sendApiError(res, 400, "box { x, y, width, height } required", "face_box_required");
+    sendApiError(
+      res,
+      400,
+      "box { x, y, width, height } required",
+      "face_box_required",
+    );
     return;
   }
   if (result.reason === "person_required") {
-    sendApiError(res, 400, "personId required when not createNew", "face_person_required");
+    sendApiError(
+      res,
+      400,
+      "personId required when not createNew",
+      "face_person_required",
+    );
     return;
   }
   sendApiError(res, 400, "Person not found", "face_person_unknown");

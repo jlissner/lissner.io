@@ -24,11 +24,17 @@ function fail<T>(status: number, error: string): AdminServiceResult<T> {
 }
 
 export function isSqlExplorerEnabled(): boolean {
-  return process.env.SQL_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
+  return (
+    process.env.SQL_EXPLORER_ENABLED === "true" &&
+    process.env.NODE_ENV !== "production"
+  );
 }
 
 export function isDataExplorerEnabled(): boolean {
-  return process.env.DATA_EXPLORER_ENABLED === "true" && process.env.NODE_ENV !== "production";
+  return (
+    process.env.DATA_EXPLORER_ENABLED === "true" &&
+    process.env.NODE_ENV !== "production"
+  );
 }
 
 export function runSqlQuery(query: string) {
@@ -58,7 +64,12 @@ export function getDataExplorerSchemaAndCount(table: string, q?: string) {
   }
 }
 
-export function listDataExplorerRows(table: string, limit: number, offset: number, q?: string) {
+export function listDataExplorerRows(
+  table: string,
+  limit: number,
+  offset: number,
+  q?: string,
+) {
   try {
     return ok(mediaDb().getDataExplorerRows(table, limit, offset, q));
   } catch (err) {
@@ -66,7 +77,10 @@ export function listDataExplorerRows(table: string, limit: number, offset: numbe
   }
 }
 
-export function insertDataExplorerRow(table: string, body: Record<string, unknown>) {
+export function insertDataExplorerRow(
+  table: string,
+  body: Record<string, unknown>,
+) {
   try {
     return ok(mediaDb().insertDataExplorerRow(table, body));
   } catch (err) {
@@ -77,7 +91,7 @@ export function insertDataExplorerRow(table: string, body: Record<string, unknow
 export function updateDataExplorerRow(
   table: string,
   pk: Record<string, unknown>,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ) {
   try {
     return ok(mediaDb().updateDataExplorerRow(table, pk, data));
@@ -86,7 +100,10 @@ export function updateDataExplorerRow(
   }
 }
 
-export function deleteDataExplorerRow(table: string, pk: Record<string, unknown>) {
+export function deleteDataExplorerRow(
+  table: string,
+  pk: Record<string, unknown>,
+) {
   try {
     return ok(mediaDb().deleteDataExplorerRow(table, pk));
   } catch (err) {
@@ -106,7 +123,12 @@ export function addWhitelistEntry(input: {
 }) {
   try {
     return ok(
-      authDb().addToWhitelist(input.email, input.isAdmin, input.actorUserId, input.personId)
+      authDb().addToWhitelist(
+        input.email,
+        input.isAdmin,
+        input.actorUserId,
+        input.personId,
+      ),
     );
   } catch {
     return fail(400, "Email may already be on whitelist");

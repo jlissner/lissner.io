@@ -28,7 +28,8 @@ tools:
     command: npx knip
   secrets:
     name: llm
-    prompt: Review these changed files for hardcoded secrets, API keys, passwords,
+    prompt:
+      Review these changed files for hardcoded secrets, API keys, passwords,
       tokens, private keys, or credentials. Flag any string that looks like a
       secret value rather than a placeholder or environment variable reference.
   best_practices:

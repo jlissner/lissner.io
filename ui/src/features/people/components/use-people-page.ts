@@ -11,7 +11,13 @@ export function usePeoplePage(onUpdate?: () => void) {
     selectedId: listState.selectedId,
     selectedName: listState.selectedName,
   });
-  const { setViewingMedia, setEditModal, setMergeModal, setAddModalOpen, setMenuOpen } = uiState;
+  const {
+    setViewingMedia,
+    setEditModal,
+    setMergeModal,
+    setAddModalOpen,
+    setMenuOpen,
+  } = uiState;
   const mutations = usePeopleMutations({
     selectedId: listState.selectedId,
     fetchPeople: listState.fetchPeople,
@@ -41,7 +47,13 @@ export function usePeoplePage(onUpdate?: () => void) {
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [setViewingMedia, setEditModal, setMergeModal, setAddModalOpen, setMenuOpen]);
+  }, [
+    setViewingMedia,
+    setEditModal,
+    setMergeModal,
+    setAddModalOpen,
+    setMenuOpen,
+  ]);
 
   return {
     people: listState.people,

@@ -8,7 +8,10 @@ export function sendMagicLink(email: string): Promise<{ ok: true }> {
   });
 }
 
-export function verifyLoginCode(email: string, code: string): Promise<{ ok: true }> {
+export function verifyLoginCode(
+  email: string,
+  code: string,
+): Promise<{ ok: true }> {
   return apiJson<{ ok: true }>("auth/verify-code", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

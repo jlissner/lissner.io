@@ -15,13 +15,15 @@ import { pinoHttp } from "pino-http";
 const level = process.env.LOG_LEVEL ?? "info";
 
 const httpLogVerbose =
-  process.env.HTTP_LOG_VERBOSE === "1" || process.env.HTTP_LOG_VERBOSE === "true";
+  process.env.HTTP_LOG_VERBOSE === "1" ||
+  process.env.HTTP_LOG_VERBOSE === "true";
 
 const logHttpSuccessInDev =
   process.env.HTTP_ACCESS_LOG === "1" || process.env.HTTP_ACCESS_LOG === "true";
 
 const logHttpClientErrorsInDev =
-  process.env.HTTP_LOG_CLIENT_ERRORS === "1" || process.env.HTTP_LOG_CLIENT_ERRORS === "true";
+  process.env.HTTP_LOG_CLIENT_ERRORS === "1" ||
+  process.env.HTTP_LOG_CLIENT_ERRORS === "true";
 
 const isProduction = process.env.NODE_ENV === "production";
 
@@ -55,7 +57,9 @@ export const requestLogger = pinoHttp({
     const raw = req.headers["x-request-id"];
     const fromHeader = Array.isArray(raw) ? raw[0] : raw;
     const id =
-      typeof fromHeader === "string" && fromHeader.trim() ? fromHeader.trim() : randomUUID();
+      typeof fromHeader === "string" && fromHeader.trim()
+        ? fromHeader.trim()
+        : randomUUID();
     res.setHeader("x-request-id", id);
     return id;
   },
@@ -67,7 +71,8 @@ export const requestLogger = pinoHttp({
     if (err) return "error";
     const code = res.statusCode;
     if (code >= 500) return "error";
-    if (code >= 400) return isProduction || logHttpClientErrorsInDev ? "warn" : "debug";
+    if (code >= 400)
+      return isProduction || logHttpClientErrorsInDev ? "warn" : "debug";
     if (!isProduction && !logHttpSuccessInDev) return "silent";
     return "info";
   },

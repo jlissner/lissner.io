@@ -6,7 +6,10 @@ import type {
   MediaTagsListResponse,
   MediaTagsPutRequest,
 } from "../../../../shared/src/api.js";
-import type { FaceBox, TaggedFace } from "./components/media-viewer/media-viewer-types";
+import type {
+  FaceBox,
+  TaggedFace,
+} from "./components/media-viewer/media-viewer-types";
 import type { Person } from "../people/components/people-types";
 
 type ErrorBody = { error?: unknown };
@@ -17,7 +20,9 @@ async function toApiError(res: Response, fallback: string): Promise<ApiError> {
   return new ApiError(res.status, message, body);
 }
 
-export function getMediaDetails(mediaId: string): Promise<MediaDetailsApiResponse> {
+export function getMediaDetails(
+  mediaId: string,
+): Promise<MediaDetailsApiResponse> {
   return apiJson<MediaDetailsApiResponse>(`media/${mediaId}/details`);
 }
 
@@ -25,7 +30,10 @@ export function listMediaTags(): Promise<MediaTagsListResponse> {
   return apiJson<MediaTagsListResponse>("media/tags");
 }
 
-export function patchMediaDateTaken(mediaId: string, body: MediaPatchRequest): Promise<Response> {
+export function patchMediaDateTaken(
+  mediaId: string,
+  body: MediaPatchRequest,
+): Promise<Response> {
   return apiFetch(`media/${mediaId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -33,7 +41,10 @@ export function patchMediaDateTaken(mediaId: string, body: MediaPatchRequest): P
   });
 }
 
-export async function putMediaTags(mediaId: string, body: MediaTagsPutRequest): Promise<void> {
+export async function putMediaTags(
+  mediaId: string,
+  body: MediaTagsPutRequest,
+): Promise<void> {
   const res = await apiFetch(`media/${mediaId}/tags`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -55,20 +66,26 @@ export async function runBulkIndex(mediaIds: string[]): Promise<void> {
   });
 }
 
-export async function triggerIndex(force = false): Promise<{ started?: boolean; error?: string }> {
+export async function triggerIndex(
+  force = false,
+): Promise<{ started?: boolean; error?: string }> {
   const path = force ? "search/index?force=true" : "search/index";
-  return apiJson<{ started?: boolean; error?: string }>(path, { method: "POST" });
+  return apiJson<{ started?: boolean; error?: string }>(path, {
+    method: "POST",
+  });
 }
 
 export function listMediaFaces(
-  mediaId: string
+  mediaId: string,
 ): Promise<{ detected?: FaceBox[]; tagged?: TaggedFace[] }> {
-  return apiJson<{ detected?: FaceBox[]; tagged?: TaggedFace[] }>(`media/${mediaId}/faces`);
+  return apiJson<{ detected?: FaceBox[]; tagged?: TaggedFace[] }>(
+    `media/${mediaId}/faces`,
+  );
 }
 
 export function addPersonToMedia(
   mediaId: string,
-  body: { createNew?: true; personId?: number; box: FaceBox }
+  body: { createNew?: true; personId?: number; box: FaceBox },
 ): Promise<unknown> {
   return apiJson(`media/${mediaId}/people`, {
     method: "POST",
@@ -77,15 +94,20 @@ export function addPersonToMedia(
   });
 }
 
-export async function removePersonFromMedia(mediaId: string, personId: number): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}/people/${personId}`, { method: "DELETE" });
+export async function removePersonFromMedia(
+  mediaId: string,
+  personId: number,
+): Promise<void> {
+  const res = await apiFetch(`media/${mediaId}/people/${personId}`, {
+    method: "DELETE",
+  });
   if (!res.ok) throw await toApiError(res, "Failed to remove tag");
 }
 
 export async function reassignPersonInMedia(
   mediaId: string,
   personId: number,
-  assignTo: number
+  assignTo: number,
 ): Promise<void> {
   const res = await apiFetch(`media/${mediaId}/people/${personId}`, {
     method: "PUT",
@@ -97,11 +119,14 @@ export async function reassignPersonInMedia(
 
 export function reassignPersonToNewInMedia(
   mediaId: string,
-  personId: number
+  personId: number,
 ): Promise<{ newPersonId: number }> {
-  return apiJson<{ newPersonId: number }>(`media/${mediaId}/people/${personId}/reassign-new`, {
-    method: "POST",
-  });
+  return apiJson<{ newPersonId: number }>(
+    `media/${mediaId}/people/${personId}/reassign-new`,
+    {
+      method: "POST",
+    },
+  );
 }
 
 export function listPeopleForTagging(): Promise<Person[]> {
@@ -110,7 +135,7 @@ export function listPeopleForTagging(): Promise<Person[]> {
 
 export async function bulkPatchDateTaken(
   mediaIds: string[],
-  dateTaken: string | null
+  dateTaken: string | null,
 ): Promise<{ succeeded: number; failed: number }> {
   const acc = { succeeded: 0, failed: 0 };
   for (const id of mediaIds) {

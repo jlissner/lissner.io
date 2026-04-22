@@ -20,7 +20,7 @@ interface AbortControllerLike {
 export function postMediaUploadWithProgress(
   formData: FormData,
   onProgress: (loaded: number, total: number) => void,
-  controller?: AbortControllerLike
+  controller?: AbortControllerLike,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -50,7 +50,9 @@ export function postMediaUploadWithProgress(
       }
       const body = xhr.response as { error?: string } | null;
       const err =
-        body && typeof body.error === "string" ? body.error : `Upload failed (${xhr.status})`;
+        body && typeof body.error === "string"
+          ? body.error
+          : `Upload failed (${xhr.status})`;
       reject(new Error(err));
     });
     xhr.addEventListener("error", () => {

@@ -3,7 +3,11 @@
  * Prefer importing these instead of duplicating inline object types.
  */
 
-import type { IndexActivitySlice, SyncPhase, SyncProgressMessage } from "./activity.js";
+import type {
+  IndexActivitySlice,
+  SyncPhase,
+  SyncProgressMessage,
+} from "./activity.js";
 
 export type { IndexActivitySlice, SyncPhase, SyncProgressMessage };
 
@@ -141,7 +145,11 @@ export type MergePeopleResponse = { merged: number; into: number };
 export type UpdatePersonResponse = { id: number; name: string };
 
 /** POST /api/people/match-faces */
-export type FaceMatchAutoMerged = { merged: number; into: number; intoName: string };
+export type FaceMatchAutoMerged = {
+  merged: number;
+  into: number;
+  intoName: string;
+};
 
 export type FaceMatchReviewItem = {
   placeholderPersonId: number;

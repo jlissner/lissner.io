@@ -13,7 +13,9 @@ const EMAIL_KEY = "pending_login_email";
 
 export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
   const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "sent" | "verifying" | "error">("idle");
+  const [status, setStatus] = useState<"idle" | "sent" | "verifying" | "error">(
+    "idle",
+  );
   const [error, setError] = useState("");
   const [codeError, setCodeError] = useState("");
 
@@ -63,12 +65,17 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
   return (
     <div className="login-page">
       <h1 className="login-page__title">Family Media Manager</h1>
-      <p className="login-page__subtitle">Sign in with a magic link sent to your email</p>
+      <p className="login-page__subtitle">
+        Sign in with a magic link sent to your email
+      </p>
 
       {status === "sent" ? (
         <div>
           <Alert variant="success">
-            <p>Check your email for the magic link. The link expires in 15 minutes.</p>
+            <p>
+              Check your email for the magic link. The link expires in 15
+              minutes.
+            </p>
             <p className="login-page__hint">
               No email configured? Check the server console for the code.
             </p>

@@ -13,7 +13,11 @@ export function ModalRoot({
   className?: string;
 }) {
   return (
-    <div className={cn("modal", className)} onClick={onBackdropClick} role="presentation">
+    <div
+      className={cn("modal", className)}
+      onClick={onBackdropClick}
+      role="presentation"
+    >
       {children}
     </div>
   );
@@ -81,10 +85,22 @@ export function ModalTitle({
   );
 }
 
-export function ModalBody({ className, children }: { className?: string; children: ReactNode }) {
+export function ModalBody({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return <div className={cn("modal__body", className)}>{children}</div>;
 }
 
-export function ModalActions({ className, children }: { className?: string; children: ReactNode }) {
+export function ModalActions({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) {
   return <div className={cn("modal__actions", className)}>{children}</div>;
 }

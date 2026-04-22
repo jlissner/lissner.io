@@ -64,18 +64,27 @@ export function usePeopleMutations({
         const nextSelectedId = isNewPerson
           ? (await reassignTagToNewPerson(mediaId, selectedId)).newPersonId
           : assignTo;
-        if (!isNewPerson) await reassignTagToPerson(mediaId, selectedId, assignTo);
+        if (!isNewPerson)
+          await reassignTagToPerson(mediaId, selectedId, assignTo);
         setPreviewMedia((prev) => prev.filter((m) => m.id !== mediaId));
         setViewingMedia(null);
         await fetchPeople();
         onUpdate?.();
         setSelectedId(nextSelectedId);
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Reassign failed";
+        const message =
+          err instanceof ApiError ? err.message : "Reassign failed";
         alert(message);
       }
     },
-    [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia, setSelectedId]
+    [
+      selectedId,
+      fetchPeople,
+      onUpdate,
+      setPreviewMedia,
+      setViewingMedia,
+      setSelectedId,
+    ],
   );
 
   const handleRemoveFromPhoto = useCallback(
@@ -91,11 +100,12 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Failed to remove tag";
+        const message =
+          err instanceof ApiError ? err.message : "Failed to remove tag";
         alert(message);
       }
     },
-    [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia]
+    [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia],
   );
 
   const handleMerge = useCallback(
@@ -112,7 +122,7 @@ export function usePeopleMutations({
         alert(message);
       }
     },
-    [fetchPeople, onUpdate, setMergeModal, setMergeTargetId, setSelectedId]
+    [fetchPeople, onUpdate, setMergeModal, setMergeTargetId, setSelectedId],
   );
 
   const handleAddPerson = useCallback(
@@ -123,11 +133,12 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Failed to add person";
+        const message =
+          err instanceof ApiError ? err.message : "Failed to add person";
         alert(message);
       }
     },
-    [fetchPeople, onUpdate, setAddModalOpen]
+    [fetchPeople, onUpdate, setAddModalOpen],
   );
 
   const handleDeletePerson = useCallback(
@@ -142,11 +153,19 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Failed to delete";
+        const message =
+          err instanceof ApiError ? err.message : "Failed to delete";
         alert(message);
       }
     },
-    [selectedId, fetchPeople, onUpdate, setSelectedId, setEditModal, setMergeModal]
+    [
+      selectedId,
+      fetchPeople,
+      onUpdate,
+      setSelectedId,
+      setEditModal,
+      setMergeModal,
+    ],
   );
 
   const handleSaveName = useCallback(async () => {
@@ -160,7 +179,8 @@ export function usePeopleMutations({
       await fetchPeople();
       onUpdate?.();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to rename";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to rename";
       alert(message);
     }
   }, [editModal, editDraft, fetchPeople, onUpdate, setEditModal, setEditDraft]);
@@ -171,7 +191,7 @@ export function usePeopleMutations({
       await handleMerge(selectedId, mergeIntoId);
       setMergeSuggestions([]);
     },
-    [selectedId, handleMerge, setMergeSuggestions]
+    [selectedId, handleMerge, setMergeSuggestions],
   );
 
   return {

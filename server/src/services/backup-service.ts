@@ -1,14 +1,26 @@
-import type { BackupConfigResponse, BackupSyncStatusResponse } from "../../../shared/src/api.js";
+import type {
+  BackupConfigResponse,
+  BackupSyncStatusResponse,
+} from "../../../shared/src/api.js";
 import { buildActivitySnapshot } from "../activity/snapshot.js";
 import { getIndexJobState } from "../indexing/job-store.js";
-import { getS3Config, getSyncState, isSyncInProgress, runSync } from "../s3/sync.js";
+import {
+  getS3Config,
+  getSyncState,
+  isSyncInProgress,
+  runSync,
+} from "../s3/sync.js";
 
 export function getBackupConfig(): BackupConfigResponse {
   return getS3Config();
 }
 
 export function getSyncStatusBody(): BackupSyncStatusResponse {
-  const snap = buildActivitySnapshot(getIndexJobState(), getSyncState(), getS3Config());
+  const snap = buildActivitySnapshot(
+    getIndexJobState(),
+    getSyncState(),
+    getS3Config(),
+  );
   const s = snap.sync;
   return {
     configured: s.configured,

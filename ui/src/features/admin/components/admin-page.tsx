@@ -52,7 +52,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   } | null>(null);
   const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
   const [findingDuplicates, setFindingDuplicates] = useState(false);
-  const [viewingDuplicate, setViewingDuplicate] = useState<DuplicateMatch | null>(null);
+  const [viewingDuplicate, setViewingDuplicate] =
+    useState<DuplicateMatch | null>(null);
   const [deletingMedia, setDeletingMedia] = useState<string | null>(null);
   const [dbBackups, setDbBackups] = useState<Array<{
     key: string;
@@ -61,7 +62,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   }> | null>(null);
   const [dbBackupsError, setDbBackupsError] = useState<string | null>(null);
   const [dbBackupsLoading, setDbBackupsLoading] = useState(false);
-  const [restoringBackupKey, setRestoringBackupKey] = useState<string | null>(null);
+  const [restoringBackupKey, setRestoringBackupKey] = useState<string | null>(
+    null,
+  );
   const [dbBackupsShowAll, setDbBackupsShowAll] = useState(false);
 
   const BACKUP_PAGE_SIZE = 5;
@@ -69,7 +72,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const sortedDbBackups = useMemo(() => {
     if (dbBackups == null) return [];
     return [...dbBackups].sort(
-      (a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+      (a, b) =>
+        new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime(),
     );
   }, [dbBackups]);
 
@@ -85,7 +89,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       const { backups } = await listDbBackups();
       setDbBackups(backups);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to load backups";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to load backups";
       setDbBackupsError(message);
       setDbBackups([]);
     } finally {
@@ -94,20 +99,24 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   }, []);
 
   const fetchData = useCallback(async () => {
-    const [wl, usersData, peopleData, sqlAvailable, dataAvailable] = await Promise.all([
-      listWhitelist(),
-      listUsers(),
-      listPeopleForAdmin(),
-      getSqlExplorerAvailable(),
-      getDataExplorerAvailable(),
-    ]);
+    const [wl, usersData, peopleData, sqlAvailable, dataAvailable] =
+      await Promise.all([
+        listWhitelist(),
+        listUsers(),
+        listPeopleForAdmin(),
+        getSqlExplorerAvailable(),
+        getDataExplorerAvailable(),
+      ]);
     setWhitelist(wl);
     setUsers(usersData);
     setPeople(peopleData);
     setSqlExplorerAvailable(sqlAvailable.available);
     setDataExplorerAvailable(dataAvailable.available);
     const peopleByUserEntries = await Promise.all(
-      usersData.map(async (user) => [user.id, (await getUserPeople(user.id)).personIds] as const)
+      usersData.map(
+        async (user) =>
+          [user.id, (await getUserPeople(user.id)).personIds] as const,
+      ),
     );
     setUserPeople(Object.fromEntries(peopleByUserEntries));
   }, []);
@@ -160,7 +169,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       await removeWhitelistEntry(id);
       await fetchData();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to remove";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to remove";
       alert(message);
     }
   };
@@ -171,7 +181,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       setUserPeople((prev) => ({ ...prev, [userId]: personIds }));
       setLinkingUser(null);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to update user people";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to update user people";
       alert(message);
     }
   };
@@ -191,7 +202,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       const result = await computeAllHashes();
       setHashResult(result);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to compute hashes";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to compute hashes";
       alert(message);
     } finally {
       setComputingHashes(false);
@@ -205,7 +217,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       const result = await getAllDuplicates();
       setDuplicates(result.duplicates);
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to find duplicates";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to find duplicates";
       alert(message);
     } finally {
       setFindingDuplicates(false);
@@ -218,10 +231,13 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     try {
       await deleteMediaById(mediaId);
       setDuplicates((prev) =>
-        prev.filter((d) => d.mediaId !== mediaId && d.duplicateOfId !== mediaId)
+        prev.filter(
+          (d) => d.mediaId !== mediaId && d.duplicateOfId !== mediaId,
+        ),
       );
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to delete";
+      const message =
+        err instanceof ApiError ? err.message : "Failed to delete";
       alert(message);
     } finally {
       setDeletingMedia(null);
@@ -235,7 +251,7 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const handleRestoreDbBackup = async (key: string) => {
     if (
       !confirm(
-        "Replace the local database with this backup? The app will reload. This cannot be undone."
+        "Replace the local database with this backup? The app will reload. This cannot be undone.",
       )
     ) {
       return;
@@ -259,8 +275,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       <section className="admin-page__section">
         <h3>S3 sync</h3>
         <p className="admin-page__desc">
-          Two-way sync with your bucket: upload new files, download missing ones, and merge media
-          from other devices.
+          Two-way sync with your bucket: upload new files, download missing
+          ones, and merge media from other devices.
         </p>
         <BackupPage onSyncComplete={onSyncComplete} showTitle={false} />
       </section>
@@ -268,8 +284,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       <section className="admin-page__section">
         <h3>Database backup (S3)</h3>
         <p className="admin-page__desc">
-          Restore the SQLite database from a file previously uploaded to <code>backup/db/</code> in
-          your bucket. Wait until S3 sync has finished before restoring.
+          Restore the SQLite database from a file previously uploaded to{" "}
+          <code>backup/db/</code> in your bucket. Wait until S3 sync has
+          finished before restoring.
         </p>
         <div className="admin-page__form">
           <Button
@@ -301,14 +318,18 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
               {visibleDbBackups.map((b) => {
                 const filename = b.key.split("/").pop() ?? b.key;
                 return (
-                  <li key={b.key} className="admin-page__list-item admin-page__list-item--stacked">
+                  <li
+                    key={b.key}
+                    className="admin-page__list-item admin-page__list-item--stacked"
+                  >
                     <div>
                       <code className="admin-page__meta" title={b.key}>
                         {filename}
                       </code>
                       <span className="admin-page__meta">
                         {" "}
-                        · {formatBackupDisplayDate(b.lastModified)} · {formatBytes(b.size)}
+                        · {formatBackupDisplayDate(b.lastModified)} ·{" "}
+                        {formatBytes(b.size)}
                       </span>
                     </div>
                     <Button
@@ -341,8 +362,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       <section className="admin-page__section">
         <h3>Duplicate Detection</h3>
         <p className="admin-page__desc">
-          Compute perceptual hashes to detect duplicate images by content. Hashes are computed
-          automatically for new uploads, but you can compute them for existing images here.
+          Compute perceptual hashes to detect duplicate images by content.
+          Hashes are computed automatically for new uploads, but you can compute
+          them for existing images here.
         </p>
         <div className="admin-page__form">
           <Button onClick={handleComputeAllHashes} disabled={computingHashes}>
@@ -350,8 +372,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
           </Button>
           {hashResult && (
             <p className="admin-page__meta">
-              Computed {hashResult.computed} of {hashResult.total} images ({hashResult.failed}{" "}
-              failed)
+              Computed {hashResult.computed} of {hashResult.total} images (
+              {hashResult.failed} failed)
             </p>
           )}
         </div>
@@ -374,7 +396,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                       color: "inherit",
                     }}
                   >
-                    {dup.mediaId} ↔ {dup.duplicateOfId} (distance: {dup.hammingDistance})
+                    {dup.mediaId} ↔ {dup.duplicateOfId} (distance:{" "}
+                    {dup.hammingDistance})
                   </button>
                 </li>
               ))}
@@ -387,8 +410,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         <section className="admin-page__section">
           <h3>Duplicate Review</h3>
           <p className="admin-page__desc">
-            Comparing: {viewingDuplicate.mediaId} ↔ {viewingDuplicate.duplicateOfId} (Hamming
-            distance: {viewingDuplicate.hammingDistance})
+            Comparing: {viewingDuplicate.mediaId} ↔{" "}
+            {viewingDuplicate.duplicateOfId} (Hamming distance:{" "}
+            {viewingDuplicate.hammingDistance})
           </p>
           <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
             <div style={{ flex: "1 1 300px" }}>
@@ -404,7 +428,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                 onClick={() => handleDeleteDuplicate(viewingDuplicate.mediaId)}
                 disabled={deletingMedia === viewingDuplicate.mediaId}
               >
-                {deletingMedia === viewingDuplicate.mediaId ? "Deleting..." : "Delete"}
+                {deletingMedia === viewingDuplicate.mediaId
+                  ? "Deleting..."
+                  : "Delete"}
               </Button>
             </div>
             <div style={{ flex: "1 1 300px" }}>
@@ -417,10 +443,14 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
               <Button
                 variant="danger"
                 size="sm"
-                onClick={() => handleDeleteDuplicate(viewingDuplicate.duplicateOfId)}
+                onClick={() =>
+                  handleDeleteDuplicate(viewingDuplicate.duplicateOfId)
+                }
                 disabled={deletingMedia === viewingDuplicate.duplicateOfId}
               >
-                {deletingMedia === viewingDuplicate.duplicateOfId ? "Deleting..." : "Delete"}
+                {deletingMedia === viewingDuplicate.duplicateOfId
+                  ? "Deleting..."
+                  : "Delete"}
               </Button>
             </div>
           </div>
@@ -437,7 +467,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       <section className="admin-page__section">
         <h3>Whitelist</h3>
         <p className="admin-page__desc">
-          Only whitelisted emails can receive magic links. Add users here to grant access.
+          Only whitelisted emails can receive magic links. Add users here to
+          grant access.
         </p>
         <form onSubmit={handleAddWhitelist} className="admin-page__form">
           <input
@@ -459,7 +490,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
             className="form__select"
             value={newPersonId === "" ? "" : newPersonId}
             onChange={(e) =>
-              setNewPersonId(e.target.value === "" ? "" : parseInt(e.target.value, 10))
+              setNewPersonId(
+                e.target.value === "" ? "" : parseInt(e.target.value, 10),
+              )
             }
             title="Assign existing person (optional)"
           >
@@ -479,15 +512,23 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         <ul className="admin-page__list">
           {whitelist.map((w) => {
             const assignedPerson =
-              w.personId != null ? people.find((p) => p.id === w.personId) : null;
+              w.personId != null
+                ? people.find((p) => p.id === w.personId)
+                : null;
             return (
               <li key={w.id} className="admin-page__list-item">
                 <span>{w.email}</span>
                 {w.isAdmin && <span className="admin-page__badge">admin</span>}
                 {assignedPerson && (
-                  <span className="admin-page__meta">→ {assignedPerson.name}</span>
+                  <span className="admin-page__meta">
+                    → {assignedPerson.name}
+                  </span>
                 )}
-                <Button variant="ghost" size="sm" onClick={() => handleRemoveWhitelist(w.id)}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRemoveWhitelist(w.id)}
+                >
                   Remove
                 </Button>
               </li>
@@ -499,20 +540,30 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       <section className="admin-page__section">
         <h3>Users & People</h3>
         <p className="admin-page__desc">
-          Each user is one person (identity). Users can act on behalf of additional people to filter
-          photos. The identity person is always included.
+          Each user is one person (identity). Users can act on behalf of
+          additional people to filter photos. The identity person is always
+          included.
         </p>
         <ul className="admin-page__list">
           {users.map((u) => {
             const identityPerson =
-              u.personId != null ? people.find((p) => p.id === u.personId) : null;
+              u.personId != null
+                ? people.find((p) => p.id === u.personId)
+                : null;
             return (
-              <li key={u.id} className="admin-page__list-item admin-page__list-item--stacked">
+              <li
+                key={u.id}
+                className="admin-page__list-item admin-page__list-item--stacked"
+              >
                 <div>
                   <span>{u.email}</span>
-                  {u.isAdmin && <span className="admin-page__badge">admin</span>}
+                  {u.isAdmin && (
+                    <span className="admin-page__badge">admin</span>
+                  )}
                   {identityPerson && (
-                    <span className="admin-page__meta">is {identityPerson.name}</span>
+                    <span className="admin-page__meta">
+                      is {identityPerson.name}
+                    </span>
                   )}
                 </div>
                 <div className="admin-page__people">
@@ -528,7 +579,9 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                             <input
                               type="checkbox"
                               checked={(userPeople[u.id] ?? []).includes(p.id)}
-                              onChange={() => !isIdentity && togglePersonForUser(u.id, p.id)}
+                              onChange={() =>
+                                !isIdentity && togglePersonForUser(u.id, p.id)
+                              }
                               disabled={isIdentity}
                             />
                             {p.name}
@@ -536,12 +589,20 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                           </label>
                         );
                       })}
-                      <Button variant="ghost" size="sm" onClick={() => setLinkingUser(null)}>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLinkingUser(null)}
+                      >
                         Done
                       </Button>
                     </div>
                   ) : (
-                    <Button variant="secondary" size="sm" onClick={() => setLinkingUser(u.id)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setLinkingUser(u.id)}
+                    >
                       {(userPeople[u.id] ?? []).length} people
                     </Button>
                   )}
@@ -598,14 +659,17 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                         {sqlResult.rows.map((row, i) => (
                           <tr key={i}>
                             {sqlResult.columns.map((c) => (
-                              <td key={c}>{row[c] == null ? "NULL" : String(row[c])}</td>
+                              <td key={c}>
+                                {row[c] == null ? "NULL" : String(row[c])}
+                              </td>
                             ))}
                           </tr>
                         ))}
                       </tbody>
                     </table>
                     <p className="admin-page__sql-meta">
-                      {sqlResult.rows.length} row{sqlResult.rows.length !== 1 ? "s" : ""}
+                      {sqlResult.rows.length} row
+                      {sqlResult.rows.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                 ) : (
@@ -634,12 +698,18 @@ function formatBytes(bytes: number): string {
   const match = steps.find((s) => bytes >= s.threshold);
   if (!match) return `${bytes} B`;
   const value = bytes / match.threshold;
-  const rounded = value >= 10 || value % 1 < 0.05 ? String(Math.round(value)) : value.toFixed(1);
+  const rounded =
+    value >= 10 || value % 1 < 0.05
+      ? String(Math.round(value))
+      : value.toFixed(1);
   return `${rounded} ${match.label}`;
 }
 
 function formatBackupDisplayDate(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }

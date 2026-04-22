@@ -70,7 +70,10 @@ export function MediaList({
                 onClick={(e) => e.stopPropagation()}
               />
             </label>
-            <ul className={gridClass} style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            <ul
+              className={gridClass}
+              style={{ listStyle: "none", padding: 0, margin: 0 }}
+            >
               {groupItems.map((item) => (
                 <MediaItemCell
                   key={item.id}

@@ -329,9 +329,11 @@ items:
     severity: high
     location: src/api/views.py
     title: "High-churn, high-complexity API view module"
-    detail: "38 commits in 6 months, cyclomatic complexity 24. Handles 12 endpoints
+    detail:
+      "38 commits in 6 months, cyclomatic complexity 24. Handles 12 endpoints
       with mixed concerns (auth, validation, serialization, business logic)."
-    consequences: "Every API change requires understanding 847 lines of interleaved
+    consequences:
+      "Every API change requires understanding 847 lines of interleaved
       concerns. Bug rate in this file is 3x the project average."
     causes: evolution
     metrics:
@@ -352,15 +354,18 @@ items:
     severity: high
     location: src/models/order.py
     title: "God class: Order model with 34 methods"
-    detail: "Order class has 34 methods spanning validation, pricing, fulfillment,
+    detail:
+      "Order class has 34 methods spanning validation, pricing, fulfillment,
       notification, and reporting. 680 lines."
-    consequences: "Cannot test pricing logic without instantiating the full Order.
+    consequences:
+      "Cannot test pricing logic without instantiating the full Order.
       Fulfillment changes risk breaking notification logic."
     causes: evolution
     metrics:
       methods: 34
       lines: 680
-    suggestion: "Extract concerns: OrderPricing, OrderFulfillment, OrderNotifier.
+    suggestion:
+      "Extract concerns: OrderPricing, OrderFulfillment, OrderNotifier.
       Keep Order as the aggregate root with delegated behavior."
     effort: large
     status: open
@@ -374,9 +379,11 @@ items:
     severity: medium
     location: src/types/config.ts
     title: "AppConfig interface with 28 optional fields"
-    detail: "28 fields, 22 optional. Used in 3 different contexts (server, client,
+    detail:
+      "28 fields, 22 optional. Used in 3 different contexts (server, client,
       CLI) with different required subsets."
-    consequences: "Every consumer must null-check fields that are always present in
+    consequences:
+      "Every consumer must null-check fields that are always present in
       its context. TypeScript can't catch missing required fields."
     causes: evolution
     metrics:
@@ -398,14 +405,17 @@ items:
     severity: high
     location: src/auth/session.py:42
     title: "TODO: replace with proper session store"
-    detail: "Comment added 2024-01-15 (>1 year old). Session data stored in signed
+    detail:
+      "Comment added 2024-01-15 (>1 year old). Session data stored in signed
       cookies — works but doesn't support server-side invalidation."
-    consequences: "Cannot revoke sessions on password change or account compromise.
+    consequences:
+      "Cannot revoke sessions on password change or account compromise.
       Security incident response requires waiting for cookie expiry."
     causes: deadline
     metrics:
       age_days: 450
-    suggestion: "Migrate to Redis-backed sessions (infrastructure already available
+    suggestion:
+      "Migrate to Redis-backed sessions (infrastructure already available
       per context.yml)."
     effort: medium
     status: open
@@ -421,7 +431,8 @@ items:
     title: "Circular import between orders and inventory"
     detail: "orders/service.py imports inventory/check.py, inventory/reserve.py
       imports orders/models.py. Coupled through model references."
-    consequences: "Cannot deploy or test orders without inventory, and vice versa.
+    consequences:
+      "Cannot deploy or test orders without inventory, and vice versa.
       Import order is fragile — adding a new import can break both."
     causes: evolution
     metrics:

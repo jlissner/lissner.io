@@ -7,8 +7,11 @@ const TAP_TIME_THRESHOLD = 300;
 export function useTapNav(
   onTapLeft: (() => void) | null,
   onTapRight: (() => void) | null,
-  onTapCenter: (() => void) | null
-): { onTouchStart: (e: React.TouchEvent) => void; onTouchEnd: (e: React.TouchEvent) => void } {
+  onTapCenter: (() => void) | null,
+): {
+  onTouchStart: (e: React.TouchEvent) => void;
+  onTouchEnd: (e: React.TouchEvent) => void;
+} {
   const startRef = useRef<{ x: number; y: number; t: number } | null>(null);
 
   const onTouchStart = useCallback((e: React.TouchEvent) => {
@@ -25,7 +28,12 @@ export function useTapNav(
       const dt = Date.now() - startRef.current.t;
       startRef.current = null;
 
-      if (dx > TAP_MOVE_THRESHOLD || dy > TAP_MOVE_THRESHOLD || dt > TAP_TIME_THRESHOLD) return;
+      if (
+        dx > TAP_MOVE_THRESHOLD ||
+        dy > TAP_MOVE_THRESHOLD ||
+        dt > TAP_TIME_THRESHOLD
+      )
+        return;
 
       const x = t.clientX;
       const w = window.innerWidth;
@@ -38,7 +46,7 @@ export function useTapNav(
         onTapCenter();
       }
     },
-    [onTapLeft, onTapRight, onTapCenter]
+    [onTapLeft, onTapRight, onTapCenter],
   );
 
   return { onTouchStart, onTouchEnd };

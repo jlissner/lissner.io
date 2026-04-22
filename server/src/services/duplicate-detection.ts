@@ -1,7 +1,10 @@
 import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir } from "../config/paths.js";
-import { computePerceptualHash, hammingDistance } from "../lib/perceptual-hash.js";
+import {
+  computePerceptualHash,
+  hammingDistance,
+} from "../lib/perceptual-hash.js";
 import { ensureLocalMediaFile } from "../services/media-read-service.js";
 import { logger } from "../logger.js";
 
@@ -13,7 +16,9 @@ export interface DuplicateMatch {
   hammingDistance: number;
 }
 
-export async function findDuplicatesForMedia(mediaId: string): Promise<DuplicateMatch[]> {
+export async function findDuplicatesForMedia(
+  mediaId: string,
+): Promise<DuplicateMatch[]> {
   const item = db.getMediaById(mediaId);
   if (!item) return [];
 

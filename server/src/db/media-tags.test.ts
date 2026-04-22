@@ -26,7 +26,7 @@ function insertMinimalMedia(id: string): void {
   getDb()
     .prepare(
       `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
     )
     .run(id, `${id}.jpg`, `${id}.jpg`, "image/jpeg", 1);
 }
@@ -39,12 +39,16 @@ describe("media_tags migration and helpers", () => {
 
   it("creates media_tags with media_id, tag, and composite primary key", () => {
     const db = getDb();
-    const info = db.prepare("PRAGMA table_info(media_tags)").all() as Array<{ name: string }>;
+    const info = db.prepare("PRAGMA table_info(media_tags)").all() as Array<{
+      name: string;
+    }>;
     const names = info.map((c) => c.name).sort();
     expect(names).toContain("media_id");
     expect(names).toContain("tag");
     const pk = db
-      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='media_tags'")
+      .prepare(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='media_tags'",
+      )
       .get() as { sql: string };
     expect(pk.sql).toMatch(/PRIMARY KEY/i);
   });

@@ -9,7 +9,7 @@ function validateTableName(name: string): void {
 export function getDataExplorerTables(): string[] {
   const rows = getDb()
     .prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name"
+      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
     )
     .all() as Array<{ name: string }>;
   return rows.map((r) => r.name);
@@ -22,9 +22,13 @@ export interface DataExplorerColumn {
   pk: number;
 }
 
-export function getDataExplorerTableSchema(tableName: string): DataExplorerColumn[] {
+export function getDataExplorerTableSchema(
+  tableName: string,
+): DataExplorerColumn[] {
   validateTableName(tableName);
-  const rows = getDb().prepare(`PRAGMA table_info(${tableName})`).all() as Array<{
+  const rows = getDb()
+    .prepare(`PRAGMA table_info(${tableName})`)
+    .all() as Array<{
     name: string;
     type: string;
     notnull: number;
@@ -36,16 +40,20 @@ export function getDataExplorerTableSchema(tableName: string): DataExplorerColum
 
 const DATA_EXPLORER_SEARCH_MAX_LEN = 500;
 
-function normalizeDataExplorerSearch(search: string | null | undefined): string | null {
+function normalizeDataExplorerSearch(
+  search: string | null | undefined,
+): string | null {
   if (search == null || typeof search !== "string") return null;
   const t = search.trim();
   if (t.length === 0) return null;
-  return t.length > DATA_EXPLORER_SEARCH_MAX_LEN ? t.slice(0, DATA_EXPLORER_SEARCH_MAX_LEN) : t;
+  return t.length > DATA_EXPLORER_SEARCH_MAX_LEN
+    ? t.slice(0, DATA_EXPLORER_SEARCH_MAX_LEN)
+    : t;
 }
 
 function buildDataExplorerSearchClause(
   schema: DataExplorerColumn[],
-  pattern: string
+  pattern: string,
 ): { whereSql: string; params: unknown[] } {
   if (schema.length === 0) {
     return { whereSql: "0", params: [] };
@@ -59,7 +67,7 @@ export function getDataExplorerRows(
   tableName: string,
   limit: number,
   offset: number,
-  search?: string | null
+  search?: string | null,
 ): Record<string, unknown>[] {
   validateTableName(tableName);
   const lim = Math.min(Math.max(1, limit), 500);
@@ -76,11 +84,16 @@ export function getDataExplorerRows(
   return stmt.all(...params, lim, off) as Record<string, unknown>[];
 }
 
-export function getDataExplorerRowCount(tableName: string, search?: string | null): number {
+export function getDataExplorerRowCount(
+  tableName: string,
+  search?: string | null,
+): number {
   validateTableName(tableName);
   const q = normalizeDataExplorerSearch(search);
   if (!q) {
-    const row = getDb().prepare(`SELECT COUNT(*) as c FROM ${tableName}`).get() as { c: number };
+    const row = getDb()
+      .prepare(`SELECT COUNT(*) as c FROM ${tableName}`)
+      .get() as { c: number };
     return row.c;
   }
   const schema = getDataExplorerTableSchema(tableName);
@@ -91,11 +104,14 @@ export function getDataExplorerRowCount(tableName: string, search?: string | nul
   return row.c;
 }
 
-export function insertDataExplorerRow(tableName: string, data: Record<string, unknown>): number {
+export function insertDataExplorerRow(
+  tableName: string,
+  data: Record<string, unknown>,
+): number {
   validateTableName(tableName);
   const schema = getDataExplorerTableSchema(tableName);
   const cols = schema.filter(
-    (c) => c.name in data && data[c.name] !== undefined && data[c.name] !== ""
+    (c) => c.name in data && data[c.name] !== undefined && data[c.name] !== "",
   );
   if (cols.length === 0) throw new Error("No columns to insert");
   const colNames = cols.map((c) => c.name);
@@ -111,7 +127,7 @@ export function insertDataExplorerRow(tableName: string, data: Record<string, un
 export function updateDataExplorerRow(
   tableName: string,
   pk: Record<string, unknown>,
-  data: Record<string, unknown>
+  data: Record<string, unknown>,
 ): number {
   validateTableName(tableName);
   const schema = getDataExplorerTableSchema(tableName);
@@ -120,7 +136,9 @@ export function updateDataExplorerRow(
   for (const c of pkCols) {
     if (!(c in pk)) throw new Error(`Primary key ${c} required`);
   }
-  const setCols = schema.filter((c) => !c.pk && c.name in data).map((c) => c.name);
+  const setCols = schema
+    .filter((c) => !c.pk && c.name in data)
+    .map((c) => c.name);
   if (setCols.length === 0) throw new Error("No columns to update");
   const setClause = setCols.map((c) => `${c} = ?`).join(", ");
   const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
@@ -132,7 +150,10 @@ export function updateDataExplorerRow(
   return result.changes;
 }
 
-export function deleteDataExplorerRow(tableName: string, pk: Record<string, unknown>): number {
+export function deleteDataExplorerRow(
+  tableName: string,
+  pk: Record<string, unknown>,
+): number {
   validateTableName(tableName);
   const schema = getDataExplorerTableSchema(tableName);
   const pkCols = schema.filter((c) => c.pk).map((c) => c.name);
@@ -150,7 +171,7 @@ export function deleteDataExplorerRow(tableName: string, pk: Record<string, unkn
 }
 
 export function runSql(
-  query: string
+  query: string,
 ):
   | { type: "select"; columns: string[]; rows: Record<string, unknown>[] }
   | { type: "write"; changes: number; lastInsertRowid: number } {

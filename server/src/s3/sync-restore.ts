@@ -16,12 +16,18 @@ function isS3NoSuchKey(err: unknown): boolean {
 }
 
 /** Remove a media blob and its video thumbnail (if any) from S3 after local delete. Best-effort; logs errors. */
-export async function deleteMediaFromS3(item: { id: string; filename: string }): Promise<void> {
+export async function deleteMediaFromS3(item: {
+  id: string;
+  filename: string;
+}): Promise<void> {
   if (!getS3Config().configured) return;
   const client = createS3Client();
   if (!client) return;
   const bucket = process.env.S3_BUCKET!;
-  const keys = [`${S3_PREFIX}/media/${item.filename}`, `${S3_PREFIX}/thumbnails/${item.id}.jpg`];
+  const keys = [
+    `${S3_PREFIX}/media/${item.filename}`,
+    `${S3_PREFIX}/thumbnails/${item.id}.jpg`,
+  ];
   for (const Key of keys) {
     try {
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
@@ -42,7 +48,10 @@ export async function tryRestoreMediaFromBackup(item: {
   if (await fileExists(localPath)) return true;
   const client = createS3Client();
   if (!client) {
-    logger.warn({ mediaId: item.id }, "restore: S3 not configured; cannot restore media");
+    logger.warn(
+      { mediaId: item.id },
+      "restore: S3 not configured; cannot restore media",
+    );
     return false;
   }
   const bucket = process.env.S3_BUCKET!;
@@ -51,7 +60,7 @@ export async function tryRestoreMediaFromBackup(item: {
       new GetObjectCommand({
         Bucket: bucket,
         Key: `${S3_PREFIX}/media/${item.filename}`,
-      })
+      }),
     );
     const body = getRes.Body;
     if (!body) return false;
@@ -62,13 +71,18 @@ export async function tryRestoreMediaFromBackup(item: {
       db.clearMediaBackedUpAt(item.id);
       return false;
     }
-    logger.error({ err, mediaId: item.id }, "restore: failed to download media from S3");
+    logger.error(
+      { err, mediaId: item.id },
+      "restore: failed to download media from S3",
+    );
     return false;
   }
 }
 
 /** Download a cached video thumbnail from S3 when present in backup. */
-export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promise<boolean> {
+export async function tryRestoreVideoThumbnailFromBackup(
+  mediaId: string,
+): Promise<boolean> {
   const thumbPath = path.join(thumbnailsDir, `${mediaId}.jpg`);
   if (await isUsableVideoThumbnailFile(thumbPath)) return true;
   await unlink(thumbPath).catch(() => {});
@@ -80,7 +94,7 @@ export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promi
       new GetObjectCommand({
         Bucket: bucket,
         Key: `${S3_PREFIX}/thumbnails/${mediaId}.jpg`,
-      })
+      }),
     );
     const body = getRes.Body;
     if (!body) return false;
@@ -90,7 +104,10 @@ export async function tryRestoreVideoThumbnailFromBackup(mediaId: string): Promi
     if (isS3NoSuchKey(err)) {
       return false;
     }
-    logger.error({ err, mediaId }, "restore: failed to download thumbnail from S3");
+    logger.error(
+      { err, mediaId },
+      "restore: failed to download thumbnail from S3",
+    );
     return false;
   }
 }

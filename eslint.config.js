@@ -5,7 +5,14 @@ import reactHooks from "eslint-plugin-react-hooks";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["**/dist/**", "**/dist-types/**", "**/node_modules/**", "**/*.min.*"] },
+  {
+    ignores: [
+      "**/dist/**",
+      "**/dist-types/**",
+      "**/node_modules/**",
+      "**/*.min.*",
+    ],
+  },
 
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -84,5 +91,5 @@ export default tseslint.config(
         ...globals.browser,
       },
     },
-  }
+  },
 );

@@ -1,7 +1,9 @@
 import * as db from "../db/media.js";
 import type { ServiceFailure } from "./service-result.js";
 
-export type GetMediaTagsResult = { ok: true; tags: string[] } | ServiceFailure<"not_found">;
+export type GetMediaTagsResult =
+  | { ok: true; tags: string[] }
+  | ServiceFailure<"not_found">;
 
 export function getMediaTags(mediaId: string): GetMediaTagsResult {
   const item = db.getMediaById(mediaId);
@@ -11,12 +13,14 @@ export function getMediaTags(mediaId: string): GetMediaTagsResult {
   return { ok: true, tags: db.listTagsForMedia(mediaId) };
 }
 
-export type SetMediaTagsResult = { ok: true } | ServiceFailure<"not_found" | "forbidden">;
+export type SetMediaTagsResult =
+  | { ok: true }
+  | ServiceFailure<"not_found" | "forbidden">;
 
 export function setMediaTags(
   mediaId: string,
   tags: string[],
-  ctx: { userId: number | undefined; isAdmin: boolean | undefined }
+  ctx: { userId: number | undefined; isAdmin: boolean | undefined },
 ): SetMediaTagsResult {
   const item = db.getMediaById(mediaId);
   if (!item) {

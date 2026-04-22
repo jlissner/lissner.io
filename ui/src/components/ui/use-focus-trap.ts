@@ -4,14 +4,14 @@ const FOCUSABLE_SELECTOR =
   'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 function collectFocusable(root: HTMLElement): HTMLElement[] {
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((el) =>
-    root.contains(el)
-  );
+  return Array.from(
+    root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+  ).filter((el) => root.contains(el));
 }
 
 export function useFocusTrap(
   rootRef: RefObject<HTMLElement | null>,
-  options: { enabled?: boolean; onEscape?: () => void } = {}
+  options: { enabled?: boolean; onEscape?: () => void } = {},
 ) {
   const { enabled = true, onEscape } = options;
   const onEscapeRef = useRef(onEscape);

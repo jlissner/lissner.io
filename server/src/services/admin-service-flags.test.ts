@@ -37,7 +37,8 @@ describe("admin explorer env flags", () => {
     vi.unstubAllEnvs();
     vi.stubEnv("NODE_ENV", "production");
     vi.stubEnv("DATA_EXPLORER_ENABLED", "true");
-    const { isDataExplorerEnabled: dataProd } = await import("./admin-service.js");
+    const { isDataExplorerEnabled: dataProd } =
+      await import("./admin-service.js");
     expect(dataProd()).toBe(false);
   });
 });

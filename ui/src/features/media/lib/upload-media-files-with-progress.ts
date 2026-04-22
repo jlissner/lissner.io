@@ -3,7 +3,11 @@ import {
   type MediaUploadProgress,
 } from "./post-media-upload-with-progress.js";
 
-function resolveFileTotal(file: File, xhrTotal: number, fallback: number): number {
+function resolveFileTotal(
+  file: File,
+  xhrTotal: number,
+  fallback: number,
+): number {
   if (xhrTotal > 0) return xhrTotal;
   if (file.size > 0) return file.size;
   return fallback;
@@ -21,7 +25,7 @@ async function uploadWithRetry(
   formData: FormData,
   onProgress: (loaded: number, total: number) => void,
   controller: UploadController,
-  onRetry: (attempt: number) => void
+  onRetry: (attempt: number) => void,
 ): Promise<void> {
   let lastError: Error | null = null;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -38,7 +42,9 @@ async function uploadWithRetry(
       lastError = e instanceof Error ? e : new Error(String(e));
       if (attempt < MAX_RETRIES) {
         onRetry(attempt + 1);
-        await new Promise((r) => setTimeout(r, RETRY_DELAY_BASE * Math.pow(2, attempt)));
+        await new Promise((r) =>
+          setTimeout(r, RETRY_DELAY_BASE * Math.pow(2, attempt)),
+        );
       }
     }
   }
@@ -48,9 +54,12 @@ async function uploadWithRetry(
 export async function uploadMediaFilesWithProgress(
   files: File[],
   onProgress: (progress: MediaUploadProgress | null) => void,
-  uploadController?: UploadController
+  uploadController?: UploadController,
 ): Promise<void> {
-  const controller = uploadController ?? { abort: () => {}, isAborted: () => false };
+  const controller = uploadController ?? {
+    abort: () => {},
+    isAborted: () => false,
+  };
   const overallTotal = files.reduce((sum, f) => sum + f.size, 0);
   let retryCount = 0;
   const acc = { completedBytes: 0 };

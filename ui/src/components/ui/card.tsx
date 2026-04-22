@@ -18,7 +18,7 @@ export function Card({
         "card",
         padding === "md" && "card--padding",
         padding === "lg" && "card--padding-lg",
-        className
+        className,
       )}
     >
       {children}

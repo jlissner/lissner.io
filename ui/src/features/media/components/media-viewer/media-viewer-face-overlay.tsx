@@ -29,7 +29,11 @@ export function MediaViewerFaceOverlay({
   return (
     <>
       {assigningFace && onAssigningFaceChange && (
-        <ResizableFaceBox box={assigningFace} imgRef={imgRef} onBoxChange={onAssigningFaceChange}>
+        <ResizableFaceBox
+          box={assigningFace}
+          imgRef={imgRef}
+          onBoxChange={onAssigningFaceChange}
+        >
           <div
             style={{
               position: "absolute",

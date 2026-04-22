@@ -17,7 +17,7 @@ function formatBytes(bytes: number): string {
 /** Pair each name conflict with the next matching pending file (same order as the upload check). */
 export function pairConflictsWithFiles(
   pendingFiles: File[],
-  conflicts: UploadNameConflict[]
+  conflicts: UploadNameConflict[],
 ): (File | undefined)[] {
   const queues = pendingFiles.reduce((acc, file) => {
     const current = acc.get(file.name) ?? [];
@@ -38,7 +38,7 @@ export type DuplicateConflictDecision = "skip" | "upload" | null;
 export function getFilesToUploadAfterDecisions(
   pendingFiles: File[],
   conflicts: UploadNameConflict[],
-  decisions: DuplicateConflictDecision[]
+  decisions: DuplicateConflictDecision[],
 ): File[] {
   const paired = pairConflictsWithFiles(pendingFiles, conflicts);
   const skip = new Set<File>();
@@ -64,7 +64,13 @@ function mediaFitStyle(maxHeight: number): CSSProperties {
   };
 }
 
-function LocalUploadPreview({ file, maxHeight }: { file: File; maxHeight: number }) {
+function LocalUploadPreview({
+  file,
+  maxHeight,
+}: {
+  file: File;
+  maxHeight: number;
+}) {
   const objectUrl = useMemo(() => URL.createObjectURL(file), [file]);
   useEffect(() => () => URL.revokeObjectURL(objectUrl), [objectUrl]);
   const st = mediaFitStyle(maxHeight);
@@ -98,11 +104,25 @@ function LibraryItemPreview({
   const [mode, setMode] = useState<"img" | "video" | "none">("img");
   const st = mediaFitStyle(maxHeight);
   if (mode === "img") {
-    return <img src={src} alt={originalName} style={st} onError={() => setMode("video")} />;
+    return (
+      <img
+        src={src}
+        alt={originalName}
+        style={st}
+        onError={() => setMode("video")}
+      />
+    );
   }
   if (mode === "video") {
     return (
-      <video src={src} controls muted playsInline style={st} onError={() => setMode("none")}>
+      <video
+        src={src}
+        controls
+        muted
+        playsInline
+        style={st}
+        onError={() => setMode("none")}
+      >
         {originalName}
       </video>
     );
@@ -124,24 +144,38 @@ function DuplicateChoiceButtons({
   disabled: boolean;
 }) {
   return (
-    <div className="upload-duplicate-actions" role="group" aria-label="Duplicate decision">
+    <div
+      className="upload-duplicate-actions"
+      role="group"
+      aria-label="Duplicate decision"
+    >
       <button
         type="button"
         disabled={disabled}
-        className={cn("upload-duplicate-actions__btn", decision === "skip" && "is-selected")}
+        className={cn(
+          "upload-duplicate-actions__btn",
+          decision === "skip" && "is-selected",
+        )}
         onClick={() => onChoice("skip")}
       >
         <span className="upload-duplicate-actions__title">Skip upload</span>
-        <span className="upload-duplicate-actions__hint">Same file — don’t add to library</span>
+        <span className="upload-duplicate-actions__hint">
+          Same file — don’t add to library
+        </span>
       </button>
       <button
         type="button"
         disabled={disabled}
-        className={cn("upload-duplicate-actions__btn", decision === "upload" && "is-selected")}
+        className={cn(
+          "upload-duplicate-actions__btn",
+          decision === "upload" && "is-selected",
+        )}
         onClick={() => onChoice("upload")}
       >
         <span className="upload-duplicate-actions__title">Upload as new</span>
-        <span className="upload-duplicate-actions__hint">Different file — keep both</span>
+        <span className="upload-duplicate-actions__hint">
+          Different file — keep both
+        </span>
       </button>
     </div>
   );
@@ -202,9 +236,15 @@ function DuplicateCompareBlock({
           </p>
           <div style={comparePaneStyle}>
             {localFile ? (
-              <LocalUploadPreview file={localFile} maxHeight={previewMaxHeight} />
+              <LocalUploadPreview
+                file={localFile}
+                maxHeight={previewMaxHeight}
+              />
             ) : (
-              <p className="u-text-muted u-text-sm u-m-0" style={{ padding: "0.75rem" }}>
+              <p
+                className="u-text-muted u-text-sm u-m-0"
+                style={{ padding: "0.75rem" }}
+              >
                 Could not match file.
               </p>
             )}
@@ -227,7 +267,11 @@ function DuplicateCompareBlock({
         </div>
       </div>
       <div className="u-mt-3">
-        <DuplicateChoiceButtons decision={decision} onChoice={onChoice} disabled={uploading} />
+        <DuplicateChoiceButtons
+          decision={decision}
+          onChoice={onChoice}
+          disabled={uploading}
+        />
       </div>
     </div>
   );
@@ -248,9 +292,11 @@ interface UploadModalConfirmProps {
   conflictDecisions: DuplicateConflictDecision[];
   onConflictDecisionChange: (
     index: number,
-    choice: Exclude<DuplicateConflictDecision, null>
+    choice: Exclude<DuplicateConflictDecision, null>,
   ) => void;
-  onApplyAllDuplicateDecisions: (choice: Exclude<DuplicateConflictDecision, null>) => void;
+  onApplyAllDuplicateDecisions: (
+    choice: Exclude<DuplicateConflictDecision, null>,
+  ) => void;
   onResetDuplicateDecisions: () => void;
 }
 
@@ -273,7 +319,7 @@ export function UploadModalConfirm({
 }: UploadModalConfirmProps) {
   const conflictFiles = useMemo(
     () => pairConflictsWithFiles(pendingFiles, nameConflicts),
-    [pendingFiles, nameConflicts]
+    [pendingFiles, nameConflicts],
   );
   const hasDuplicateNames = nameConflicts.length > 0;
   const multiDuplicates = nameConflicts.length > 1;
@@ -293,9 +339,15 @@ export function UploadModalConfirm({
     return getFilesToUploadAfterDecisions(
       pendingFiles,
       nameConflicts,
-      conflictDecisions as ("skip" | "upload")[]
+      conflictDecisions as ("skip" | "upload")[],
     ).length;
-  }, [hasDuplicateNames, allConflictChoicesMade, pendingFiles, nameConflicts, conflictDecisions]);
+  }, [
+    hasDuplicateNames,
+    allConflictChoicesMade,
+    pendingFiles,
+    nameConflicts,
+    conflictDecisions,
+  ]);
 
   const continueDisabled = uploading || checkLoading || !allConflictChoicesMade;
 
@@ -308,7 +360,9 @@ export function UploadModalConfirm({
     return conflictDecisions[safeStep] ?? null;
   })();
 
-  const handleStepChoice = (choice: Exclude<DuplicateConflictDecision, null>) => {
+  const handleStepChoice = (
+    choice: Exclude<DuplicateConflictDecision, null>,
+  ) => {
     onConflictDecisionChange(safeStep, choice);
     if (multiDuplicates && safeStep < nameConflicts.length - 1) {
       setWizardStep(safeStep + 1);
@@ -319,7 +373,8 @@ export function UploadModalConfirm({
   const decidedCount = conflictDecisions.filter((d) => d != null).length;
   const skipCount = conflictDecisions.filter((d) => d === "skip").length;
   const uploadNewCount = conflictDecisions.filter((d) => d === "upload").length;
-  const duplicatesResolved = hasDuplicateNames && allConflictChoicesMade && !checkLoading;
+  const duplicatesResolved =
+    hasDuplicateNames && allConflictChoicesMade && !checkLoading;
 
   return (
     <div className="upload-modal-confirm">
@@ -335,18 +390,23 @@ export function UploadModalConfirm({
           )}
         </p>
         {checkLoading && (
-          <p className="u-mb-3 u-text-muted u-text-sm">Checking for duplicate names…</p>
+          <p className="u-mb-3 u-text-muted u-text-sm">
+            Checking for duplicate names…
+          </p>
         )}
         {!checkLoading && hasDuplicateNames && (
-          <div className="upload-duplicate-stack alert alert--warning" role="status">
+          <div
+            className="upload-duplicate-stack alert alert--warning"
+            role="status"
+          >
             <p className="upload-duplicate-alert__title">
               {nameConflicts.length === 1
                 ? "This name is already in your library"
                 : `${nameConflicts.length} files match existing names`}
             </p>
             <p className="upload-duplicate-alert__body">
-              Same original filename (case-insensitive). Compare previews, then skip or keep each
-              upload.
+              Same original filename (case-insensitive). Compare previews, then
+              skip or keep each upload.
             </p>
             {multiDuplicates && !duplicatesResolved && (
               <div className="upload-duplicate-bulk">
@@ -393,7 +453,9 @@ export function UploadModalConfirm({
             {duplicatesResolved ? (
               multiDuplicates ? (
                 <div className="upload-duplicate-summary">
-                  <p className="upload-duplicate-summary__title">All duplicate names resolved</p>
+                  <p className="upload-duplicate-summary__title">
+                    All duplicate names resolved
+                  </p>
                   <p className="upload-duplicate-summary__meta">
                     Skip {skipCount}
                     <span className="upload-duplicate-summary__sep" aria-hidden>
@@ -464,7 +526,9 @@ export function UploadModalConfirm({
           </div>
         )}
         {!uploading && !hasDuplicateNames && (
-          <p className="u-mb-3 u-text-muted u-text-sm">Ready to upload when you continue.</p>
+          <p className="u-mb-3 u-text-muted u-text-sm">
+            Ready to upload when you continue.
+          </p>
         )}
         {uploading &&
           (uploadProgress ? (
@@ -478,7 +542,11 @@ export function UploadModalConfirm({
       </div>
       <div className="upload-modal-confirm__footer">
         <ModalActions className="upload-modal-confirm__actions">
-          <Button variant="secondary" onClick={onChooseDifferent} disabled={uploading}>
+          <Button
+            variant="secondary"
+            onClick={onChooseDifferent}
+            disabled={uploading}
+          >
             Different files
           </Button>
           <Button variant="secondary" onClick={onCancel} disabled={uploading}>

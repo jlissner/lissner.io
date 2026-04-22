@@ -11,7 +11,9 @@ export async function getEmbedding(text: string): Promise<number[]> {
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Ollama embedding failed. Run: ollama run nomic-embed-text. ${err}`);
+    throw new Error(
+      `Ollama embedding failed. Run: ollama run nomic-embed-text. ${err}`,
+    );
   }
 
   const data = (await res.json()) as { embedding: number[] };

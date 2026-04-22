@@ -1,16 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { SignJWT } from "jose";
-import { signAccessToken, verifyAccessToken, signRefreshToken, verifyRefreshToken } from "./jwt.js";
+import {
+  signAccessToken,
+  verifyAccessToken,
+  signRefreshToken,
+  verifyRefreshToken,
+} from "./jwt.js";
 
 describe("signAccessToken / verifyAccessToken", () => {
   it("round-trips with correct payload", async () => {
-    const token = await signAccessToken({ sub: 42, email: "a@b.com", isAdmin: true });
+    const token = await signAccessToken({
+      sub: 42,
+      email: "a@b.com",
+      isAdmin: true,
+    });
     const result = await verifyAccessToken(token);
     expect(result).toEqual({ sub: 42, email: "a@b.com", isAdmin: true });
   });
 
   it("returns null for an expired token", async () => {
-    const SECRET = process.env.SESSION_SECRET ?? "family-media-manager-dev-secret";
+    const SECRET =
+      process.env.SESSION_SECRET ?? "family-media-manager-dev-secret";
     const key = new TextEncoder().encode(SECRET + ":access");
     const token = await new SignJWT({ email: "a@b.com", isAdmin: false })
       .setProtectedHeader({ alg: "HS256" })
@@ -49,7 +59,11 @@ describe("signRefreshToken / verifyRefreshToken", () => {
 
 describe("cross-verification", () => {
   it("access token is rejected by verifyRefreshToken", async () => {
-    const token = await signAccessToken({ sub: 1, email: "a@b.com", isAdmin: false });
+    const token = await signAccessToken({
+      sub: 1,
+      email: "a@b.com",
+      isAdmin: false,
+    });
     const result = await verifyRefreshToken(token);
     expect(result).toBeNull();
   });

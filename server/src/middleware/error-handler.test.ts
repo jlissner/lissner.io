@@ -24,15 +24,23 @@ describe("errorHandler", () => {
       new HttpError(404, "missing", "person_not_found"),
       {} as never,
       res as never,
-      vi.fn()
+      vi.fn(),
     );
     expect(status).toHaveBeenCalledWith(404);
-    expect(json).toHaveBeenCalledWith({ error: "missing", code: "person_not_found" });
+    expect(json).toHaveBeenCalledWith({
+      error: "missing",
+      code: "person_not_found",
+    });
   });
 
   it("falls back to apiErrorCodeForHttpStatus when HttpError omits code", () => {
     const { res, json } = mockRes();
-    errorHandler(new HttpError(409, "busy"), {} as never, res as never, vi.fn());
+    errorHandler(
+      new HttpError(409, "busy"),
+      {} as never,
+      res as never,
+      vi.fn(),
+    );
     expect(json).toHaveBeenCalledWith({ error: "busy", code: "conflict" });
   });
 
@@ -41,6 +49,8 @@ describe("errorHandler", () => {
     const zod = new ZodError([{ code: "custom", message: "bad", path: [] }]);
     errorHandler(zod, {} as never, res as never, vi.fn());
     expect(status).toHaveBeenCalledWith(400);
-    expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "validation_error" }));
+    expect(json).toHaveBeenCalledWith(
+      expect.objectContaining({ code: "validation_error" }),
+    );
   });
 });

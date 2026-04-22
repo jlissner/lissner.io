@@ -69,7 +69,9 @@ export function GlobalActivityOverlay() {
             <div className="activity-overlay__title">S3 sync</div>
             <div className="activity-overlay__meta">
               {syncLast?.message ? (
-                <span className="activity-overlay__msg">{syncLast.message}</span>
+                <span className="activity-overlay__msg">
+                  {syncLast.message}
+                </span>
               ) : syncLast && syncLast.total > 0 ? (
                 <span>
                   {syncLast.current}/{syncLast.total}

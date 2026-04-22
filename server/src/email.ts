@@ -1,42 +1,36 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import { logger } from "./logger.js";
+import {
+  AWS_ACCESS_KEY_ID,
+  AWS_REGION,
+  AWS_SECRET_ACCESS_KEY,
+  SES_FROM_EMAIL,
+} from "./config/env.js";
 
-const sesVars = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION"] as const;
+const sesClient = new SESClient({
+  region: AWS_REGION,
+  credentials: {
+    accessKeyId: AWS_ACCESS_KEY_ID,
+    secretAccessKey: AWS_SECRET_ACCESS_KEY,
+  },
+});
 
-function isSESConfigured(): boolean {
-  return sesVars.every((v) => process.env[v]?.trim());
-}
+export async function sendMagicLink(
+  email: string,
+  link: string,
+  code: string,
+): Promise<void> {
+  const from = SES_FROM_EMAIL;
 
-const sesHolder = { client: null as SESClient | null };
-
-function getSESClient(): SESClient | null {
-  if (!isSESConfigured()) return null;
-  if (!sesHolder.client) {
-    sesHolder.client = new SESClient({
-      region: process.env.AWS_REGION!,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
-      },
-    });
-  }
-  return sesHolder.client;
-}
-
-export function isEmailConfigured(): boolean {
-  return isSESConfigured() && !!process.env.SES_FROM_EMAIL?.trim();
-}
-
-export async function sendMagicLink(email: string, link: string, code: string): Promise<void> {
-  const ses = getSESClient();
-  const from = process.env.SES_FROM_EMAIL?.trim();
-
-  if (!ses || !from) {
-    logger.warn({ email, link, code }, "SES not configured; magic link emitted to logs");
+  if (!sesClient || !from) {
+    logger.warn(
+      { email, link, code },
+      "SES not configured; magic link emitted to logs",
+    );
     return;
   }
 
-  await ses.send(
+  await sesClient.send(
     new SendEmailCommand({
       Source: from,
       Destination: { ToAddresses: [email] },
@@ -51,6 +45,6 @@ export async function sendMagicLink(email: string, link: string, code: string): 
           },
         },
       },
-    })
+    }),
   );
 }

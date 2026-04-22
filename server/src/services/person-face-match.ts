@@ -71,7 +71,13 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResult> {
     const src = placeholderDescriptors.get(id) ?? [];
     analysesById.set(
       id,
-      mergeSuggestionsFromDescriptors(src, namedIds, names, namedDescriptors, sim)
+      mergeSuggestionsFromDescriptors(
+        src,
+        namedIds,
+        names,
+        namedDescriptors,
+        sim,
+      ),
     );
   }
 
@@ -112,7 +118,13 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResult> {
     const placeholderName = namesAfter.get(id) ?? `Person ${id}`;
     const hasFaceDescriptors = src.length > 0;
     const suggestions = hasFaceDescriptors
-      ? mergeSuggestionsFromDescriptors(src, namedIdsAfter, namesAfter, namedDescriptorsAfter, sim)
+      ? mergeSuggestionsFromDescriptors(
+          src,
+          namedIdsAfter,
+          namesAfter,
+          namedDescriptorsAfter,
+          sim,
+        )
       : [];
     const topMatch = suggestions[0] ?? null;
     const otherMatches = suggestions.slice(1);

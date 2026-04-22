@@ -14,23 +14,35 @@ export function ensureServerDirectories(paths: {
 
 export async function runStartupMaintenance(): Promise<void> {
   try {
-    const [authDb, db] = await Promise.all([import("../db/auth.js"), import("../db/media.js")]);
+    const [authDb, db] = await Promise.all([
+      import("../db/auth.js"),
+      import("../db/media.js"),
+    ]);
     db.migrateNullOwnersToDefault(authDb.getDefaultOwnerId);
   } catch (err) {
-    logger.error({ err }, "[db] migrateNullOwnersToDefault failed (continuing startup)");
+    logger.error(
+      { err },
+      "[db] migrateNullOwnersToDefault failed (continuing startup)",
+    );
   }
   try {
     const db = await import("../db/media.js");
     db.relinkAllMotionPairs();
   } catch (err) {
-    logger.error({ err }, "[db] relinkAllMotionPairs failed (continuing startup)");
+    logger.error(
+      { err },
+      "[db] relinkAllMotionPairs failed (continuing startup)",
+    );
   }
 }
 
 export function runServerStartedTasks(): void {
   void deleteOrphanedLocalThumbnailFiles().then((removed) => {
     if (removed > 0) {
-      logger.info({ removed }, "[thumbnails] Removed orphaned local thumbnail files");
+      logger.info(
+        { removed },
+        "[thumbnails] Removed orphaned local thumbnail files",
+      );
     }
   });
 }

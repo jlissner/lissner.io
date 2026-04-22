@@ -24,7 +24,10 @@ import {
 export const mediaReadRouter = Router();
 
 mediaReadRouter.get("/", (req, res) => {
-  const { limit, offset, personId, sortBy } = parseWithSchema(mediaListQuerySchema, req.query);
+  const { limit, offset, personId, sortBy } = parseWithSchema(
+    mediaListQuerySchema,
+    req.query,
+  );
   const { items, total } = listMediaEnriched({
     limit,
     offset,
@@ -69,7 +72,8 @@ mediaReadRouter.get("/:id", async (req, res) => {
   }
   const filePath = path.join(mediaDir, item.filename);
   res.download(filePath, item.originalName, (err) => {
-    if (err && !res.headersSent) sendApiError(res, 500, "Download failed", "download_failed");
+    if (err && !res.headersSent)
+      sendApiError(res, 500, "Download failed", "download_failed");
   });
 });
 
@@ -92,7 +96,10 @@ mediaReadRouter.get("/:id/faces", async (req, res) => {
 });
 
 mediaReadRouter.get("/:id/face/:personId", async (req, res) => {
-  const { id, personId } = parseWithSchema(mediaIdPersonIdParamSchema, req.params);
+  const { id, personId } = parseWithSchema(
+    mediaIdPersonIdParamSchema,
+    req.params,
+  );
   const out = await getFaceCropOrFullImage(id, personId);
   if (!out.ok) {
     if (out.reason === "not_found") {
@@ -130,9 +137,14 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
     return;
   }
   if (out.kind === "file") {
-    res.sendFile(out.path, { headers: { "Content-Type": out.mimeType } }, (err) => {
-      if (err && !res.headersSent) sendApiError(res, 500, "Send failed", "internal_error");
-    });
+    res.sendFile(
+      out.path,
+      { headers: { "Content-Type": out.mimeType } },
+      (err) => {
+        if (err && !res.headersSent)
+          sendApiError(res, 500, "Send failed", "internal_error");
+      },
+    );
     return;
   }
   res.setHeader("Content-Type", out.mimeType);
@@ -162,7 +174,7 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
         res,
         400,
         "Thumbnail only supported for images and videos",
-        "thumbnail_bad_type"
+        "thumbnail_bad_type",
       );
       return;
     }
@@ -175,11 +187,16 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
         res,
         503,
         "ffmpeg not found. Install ffmpeg to generate video thumbnails (e.g. apt install ffmpeg).",
-        "thumbnail_ffmpeg_missing"
+        "thumbnail_ffmpeg_missing",
       );
       return;
     }
-    sendApiError(res, 500, "Failed to generate video thumbnail", "thumbnail_failed");
+    sendApiError(
+      res,
+      500,
+      "Failed to generate video thumbnail",
+      "thumbnail_failed",
+    );
     return;
   }
   res.setHeader("Content-Type", out.contentType);
@@ -196,7 +213,12 @@ mediaReadRouter.get("/:id/content", async (req, res) => {
       return;
     }
     if (out.reason === "not_text") {
-      sendApiError(res, 400, "Content endpoint only supports text files", "content_not_text");
+      sendApiError(
+        res,
+        400,
+        "Content endpoint only supports text files",
+        "content_not_text",
+      );
       return;
     }
     if (out.reason === "file_missing") {

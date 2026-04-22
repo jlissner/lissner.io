@@ -42,7 +42,7 @@ function formatPersonLabel(personId: number): string {
 
 async function getTextForItem(
   item: MediaItem,
-  imagePersonIds?: Map<string, number[]>
+  imagePersonIds?: Map<string, number[]>,
 ): Promise<string> {
   if (isTextMime(item.mimeType)) {
     const filePath = path.join(mediaDir, item.filename);
@@ -60,7 +60,10 @@ async function getTextForItem(
           : "";
       return `${base}${suffix}`.trim();
     } catch (err) {
-      logger.error({ err, originalName: item.originalName }, "Image description failed");
+      logger.error(
+        { err, originalName: item.originalName },
+        "Image description failed",
+      );
       return `Image: ${item.originalName}`;
     }
   }
@@ -76,7 +79,13 @@ interface ExifData {
 async function extractExifData(filePath: string): Promise<ExifData> {
   try {
     const tags = await exifr.parse(filePath, {
-      pick: ["DateTimeOriginal", "CreateDate", "ModifyDate", "latitude", "longitude"],
+      pick: [
+        "DateTimeOriginal",
+        "CreateDate",
+        "ModifyDate",
+        "latitude",
+        "longitude",
+      ],
     });
     const date = tags?.DateTimeOriginal ?? tags?.CreateDate ?? tags?.ModifyDate;
     const dateTaken =
@@ -98,7 +107,7 @@ async function extractExifData(filePath: string): Promise<ExifData> {
  * cluster to a new `person_id` via `createNewPerson()` so we never collide with existing people.
  */
 function remapClusterPersonIdsToNewDbPeople(
-  entriesMap: Map<string, ImagePersonEntry[]>
+  entriesMap: Map<string, ImagePersonEntry[]>,
 ): Map<string, ImagePersonEntry[]> {
   const localIds = new Set<number>();
   for (const entries of entriesMap.values()) {
@@ -116,7 +125,7 @@ function remapClusterPersonIdsToNewDbPeople(
       entries.map((e) => ({
         ...e,
         personId: localToGlobal.get(e.personId)!,
-      }))
+      })),
     );
   }
   return out;
@@ -125,7 +134,9 @@ function remapClusterPersonIdsToNewDbPeople(
 const FFPROBE_NOT_FOUND =
   "ffprobe not found. Install ffmpeg to extract video metadata (e.g. apt install ffmpeg).";
 
-async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: string | null }> {
+async function extractVideoMetadata(
+  filePath: string,
+): Promise<{ dateTaken: string | null }> {
   const stdout: string = await (async () => {
     try {
       const result = await execFileAsync("ffprobe", [
@@ -143,9 +154,12 @@ async function extractVideoMetadata(filePath: string): Promise<{ dateTaken: stri
       if (code === "ENOENT") {
         throw new Error(FFPROBE_NOT_FOUND, { cause: err });
       }
-      throw new Error(`ffprobe failed: ${err instanceof Error ? err.message : String(err)}`, {
-        cause: err,
-      });
+      throw new Error(
+        `ffprobe failed: ${err instanceof Error ? err.message : String(err)}`,
+        {
+          cause: err,
+        },
+      );
     }
   })();
   const data = JSON.parse(stdout) as {
@@ -172,7 +186,10 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           const [exif, faces] = await Promise.all([
             extractExifData(filePath),
             extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
-              logger.error({ err, originalName: item.originalName }, "Face extraction failed");
+              logger.error(
+                { err, originalName: item.originalName },
+                "Face extraction failed",
+              );
               return [] as FaceInImage[];
             }),
           ]);
@@ -187,18 +204,24 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
             db.setImagePeople(item.id, entriesForItem);
             imagePersonIds.set(
               item.id,
-              entriesForItem.map((e) => e.personId)
+              entriesForItem.map((e) => e.personId),
             );
           }
         } catch (err) {
-          logger.error({ err, originalName: item.originalName }, "Image indexing prep failed");
+          logger.error(
+            { err, originalName: item.originalName },
+            "Image indexing prep failed",
+          );
         }
       } else if (isVideoMime(item.mimeType)) {
         try {
           const meta = await extractVideoMetadata(filePath);
           if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
         } catch (err) {
-          logger.error({ err, originalName: item.originalName }, "Video metadata failed");
+          logger.error(
+            { err, originalName: item.originalName },
+            "Video metadata failed",
+          );
         }
       }
       const text = await getTextForItem(item, imagePersonIds);
@@ -210,7 +233,10 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
       }
       return true;
     } catch (err) {
-      logger.error({ err, originalName: item.originalName }, "Auto-index failed");
+      logger.error(
+        { err, originalName: item.originalName },
+        "Auto-index failed",
+      );
       return false;
     }
   } finally {
@@ -220,7 +246,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
 
 export async function indexMediaItems(
   items: MediaItem[],
-  options: { skipIndexed?: boolean; signal?: AbortSignal } = {}
+  options: { skipIndexed?: boolean; signal?: AbortSignal } = {},
 ): Promise<{ indexed: number; skipped: number; cancelled?: boolean }> {
   const signal = options.signal;
   const skipIndexed = options.skipIndexed ?? true;
@@ -230,7 +256,9 @@ export async function indexMediaItems(
   setIndexProgress(0, toIndex.length);
 
   const imageItems = toIndex.filter((i) => isEffectiveImageItem(i));
-  const videoItems = toIndex.filter((i) => isVideoMime(i.mimeType) && !isEffectiveImageItem(i));
+  const videoItems = toIndex.filter(
+    (i) => isVideoMime(i.mimeType) && !isEffectiveImageItem(i),
+  );
   const imageIds = [...new Set(imageItems.map((i) => i.id))];
   const imageItemsById = new Map(imageItems.map((i) => [i.id, i]));
 
@@ -248,7 +276,10 @@ export async function indexMediaItems(
   const imagePersonIds = new Map<string, number[]>();
   const imagePersonEntries = new Map<
     string,
-    Array<{ personId: number; box?: { x: number; y: number; width: number; height: number } }>
+    Array<{
+      personId: number;
+      box?: { x: number; y: number; width: number; height: number };
+    }>
   >();
 
   if (imageIds.length > 0) {
@@ -268,7 +299,10 @@ export async function indexMediaItems(
         }
         allFaces.push(...faces);
       } catch (err) {
-        logger.error({ err, originalName: item.originalName }, "Face extraction failed");
+        logger.error(
+          { err, originalName: item.originalName },
+          "Face extraction failed",
+        );
       }
     }
     if (allFaces.length > 0) {
@@ -287,7 +321,7 @@ export async function indexMediaItems(
         imagePersonEntries.set(mediaId, entries);
         imagePersonIds.set(
           mediaId,
-          entries.map((e) => e.personId)
+          entries.map((e) => e.personId),
         );
       }
     }
@@ -311,7 +345,10 @@ export async function indexMediaItems(
       db.upsertEmbedding(item.id, embedding);
       progress.indexed++;
     } catch (err) {
-      logger.error({ err, originalName: item.originalName }, "Failed to index item");
+      logger.error(
+        { err, originalName: item.originalName },
+        "Failed to index item",
+      );
     }
     progress.processed++;
     setIndexProgress(progress.processed, toIndex.length);

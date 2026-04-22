@@ -36,7 +36,10 @@ describe("searchMediaByQuery", () => {
   });
 
   it("returns missing_query for blank input", async () => {
-    expect(await searchMediaByQuery("   ")).toEqual({ ok: false, reason: "missing_query" });
+    expect(await searchMediaByQuery("   ")).toEqual({
+      ok: false,
+      reason: "missing_query",
+    });
   });
 
   it("legacy path runs embedding over full string and merges substring people", async () => {
@@ -44,7 +47,7 @@ describe("searchMediaByQuery", () => {
       new Map([
         [1, "Joe Holiday"],
         [2, "Other"],
-      ])
+      ]),
     );
     vi.mocked(db.getMediaForPerson).mockImplementation((pid: number) => {
       if (pid === 1) {
@@ -66,10 +69,12 @@ describe("searchMediaByQuery", () => {
         size: 1,
         uploadedAt: "t",
         hideFromGallery: 0,
-      }))
+      })),
     );
     vi.mocked(db.getImagePeople).mockReturnValue([]);
-    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set(["m-person", "m-emb"]));
+    vi.mocked(db.getIndexedMediaIds).mockReturnValue(
+      new Set(["m-person", "m-emb"]),
+    );
 
     const r = await searchMediaByQuery("holiday");
     expect(r.ok).toBe(true);
@@ -94,7 +99,7 @@ describe("searchMediaByQuery", () => {
         size: 1,
         uploadedAt: "t",
         hideFromGallery: 0,
-      }))
+      })),
     );
     vi.mocked(db.getImagePeople).mockReturnValue([]);
     vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
@@ -115,12 +120,16 @@ describe("searchMediaByQuery", () => {
   });
 
   it("AND NOT excludes second person from first within visible universe", async () => {
-    vi.mocked(db.listVisibleGalleryMediaIds).mockReturnValue(["m1", "m2", "m3"]);
+    vi.mocked(db.listVisibleGalleryMediaIds).mockReturnValue([
+      "m1",
+      "m2",
+      "m3",
+    ]);
     vi.mocked(db.getPersonNames).mockReturnValue(
       new Map([
         [1, "Alpha"],
         [2, "Beta"],
-      ])
+      ]),
     );
     vi.mocked(db.getMediaForPerson).mockImplementation((pid: number) => {
       if (pid === 1) {
@@ -140,7 +149,7 @@ describe("searchMediaByQuery", () => {
         size: 1,
         uploadedAt: "t",
         hideFromGallery: 0,
-      }))
+      })),
     );
     vi.mocked(db.getImagePeople).mockReturnValue([]);
     vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());

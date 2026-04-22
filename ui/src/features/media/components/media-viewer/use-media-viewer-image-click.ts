@@ -18,7 +18,7 @@ export function useMediaViewerImageClick(
   taggingMode: boolean,
   useDetectedFaces: boolean,
   setAssigningFace: (f: FaceBox | null) => void,
-  setReassigningFace: (f: TaggedFace | null) => void
+  setReassigningFace: (f: TaggedFace | null) => void,
 ) {
   const getImageCoords = useCallback(
     (e: React.MouseEvent) => {
@@ -33,7 +33,7 @@ export function useMediaViewerImageClick(
       const y = (e.clientY - rect.top) * scaleY;
       return { x, y, imgWidth: naturalWidth, imgHeight: naturalHeight };
     },
-    [imgRef]
+    [imgRef],
   );
 
   return useCallback(
@@ -48,7 +48,7 @@ export function useMediaViewerImageClick(
             coords.x >= t.x &&
             coords.x <= t.x + t.width &&
             coords.y >= t.y &&
-            coords.y <= t.y + t.height
+            coords.y <= t.y + t.height,
         );
         if (tagged) {
           setReassigningFace(tagged);
@@ -72,7 +72,10 @@ export function useMediaViewerImageClick(
         }
       }
 
-      const size = Math.max(60, Math.min(150, Math.min(coords.imgWidth, coords.imgHeight) * 0.12));
+      const size = Math.max(
+        60,
+        Math.min(150, Math.min(coords.imgWidth, coords.imgHeight) * 0.12),
+      );
       const half = size / 2;
       const manualBox: FaceBox = {
         x: Math.max(0, Math.min(coords.imgWidth - size, coords.x - half)),
@@ -82,6 +85,13 @@ export function useMediaViewerImageClick(
       };
       setAssigningFace(manualBox);
     },
-    [taggingMode, faces, useDetectedFaces, getImageCoords, setAssigningFace, setReassigningFace]
+    [
+      taggingMode,
+      faces,
+      useDetectedFaces,
+      getImageCoords,
+      setAssigningFace,
+      setReassigningFace,
+    ],
   );
 }

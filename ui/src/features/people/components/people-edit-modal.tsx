@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ModalActions, ModalBody, ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
+import {
+  ModalActions,
+  ModalBody,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+} from "@/components/ui/modal";
 
 interface Person {
   id: number;
@@ -27,7 +33,9 @@ export function PeopleEditModal({
         <ModalTitle as="h3" id="edit-person-title">
           Edit name
         </ModalTitle>
-        <ModalBody className="u-text-muted u-text-sm u-mb-3">{person.name}</ModalBody>
+        <ModalBody className="u-text-muted u-text-sm u-mb-3">
+          {person.name}
+        </ModalBody>
         <label htmlFor="edit-person-name" className="u-sr-only">
           New name
         </label>

@@ -38,14 +38,18 @@ export function jwtMiddleware() {
     }
     const payload = await verifyAccessToken(token);
     if (payload) {
-      req.jwtUser = { id: payload.sub, email: payload.email, isAdmin: payload.isAdmin };
+      req.jwtUser = {
+        id: payload.sub,
+        email: payload.email,
+        isAdmin: payload.isAdmin,
+      };
     }
     next();
   };
 }
 
 export async function validateSessionFromCookie(
-  cookieHeader: string | undefined
+  cookieHeader: string | undefined,
 ): Promise<AuthUser | null> {
   if (process.env.AUTH_ENABLED !== "true") {
     return null;
@@ -67,7 +71,7 @@ export async function validateSessionFromCookie(
 export function impersonateFirstAdminWhenAuthDisabled(
   req: Request,
   _res: Response,
-  next: NextFunction
+  next: NextFunction,
 ): void {
   if (process.env.AUTH_ENABLED === "true") {
     next();
@@ -81,7 +85,11 @@ export function impersonateFirstAdminWhenAuthDisabled(
   next();
 }
 
-export function requireAuth(req: Request, res: Response, next: NextFunction): void {
+export function requireAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   if (process.env.AUTH_ENABLED !== "true") {
     next();
     return;
@@ -93,7 +101,11 @@ export function requireAuth(req: Request, res: Response, next: NextFunction): vo
   }
 }
 
-export function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   if (process.env.AUTH_ENABLED !== "true") {
     next();
     return;

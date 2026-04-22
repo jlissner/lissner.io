@@ -8,7 +8,13 @@ interface InlineAssignBarProps {
   onCancel: () => void;
 }
 
-export function InlineAssignBar({ box, imgRef, people, onAssign, onCancel }: InlineAssignBarProps) {
+export function InlineAssignBar({
+  box,
+  imgRef,
+  people,
+  onAssign,
+  onCancel,
+}: InlineAssignBarProps) {
   const img = imgRef.current;
   if (!img) return null;
 
@@ -43,7 +49,13 @@ export function InlineAssignBar({ box, imgRef, people, onAssign, onCancel }: Inl
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <span style={{ color: "var(--color-text)", fontSize: "0.875rem", whiteSpace: "nowrap" }}>
+      <span
+        style={{
+          color: "var(--color-text)",
+          fontSize: "0.875rem",
+          whiteSpace: "nowrap",
+        }}
+      >
         Who is this?
       </span>
       <select

@@ -56,14 +56,16 @@ export function TimelineScrubber({
     for (const key of months) {
       const y = key.split("-")[0];
       if (y !== acc.year) {
-        if (acc.items.length > 0) groups.push({ year: acc.year, months: acc.items });
+        if (acc.items.length > 0)
+          groups.push({ year: acc.year, months: acc.items });
         acc.year = y;
         acc.items = [key];
       } else {
         acc.items.push(key);
       }
     }
-    if (acc.items.length > 0) groups.push({ year: acc.year, months: acc.items });
+    if (acc.items.length > 0)
+      groups.push({ year: acc.year, months: acc.items });
     return groups;
   }, [months]);
 
@@ -72,7 +74,8 @@ export function TimelineScrubber({
       const container = scrollContainerRef.current;
       if (!container) return;
 
-      const sections = container.querySelectorAll<HTMLElement>("[data-date-key]");
+      const sections =
+        container.querySelectorAll<HTMLElement>("[data-date-key]");
       const [targetYear, targetMonth] = monthKey.split("-");
       const prefix = `${targetYear}-${targetMonth}`;
 
@@ -89,7 +92,7 @@ export function TimelineScrubber({
         .then(({ offset }) => onJumpToMonth(offset))
         .catch(() => {});
     },
-    [scrollContainerRef, sortBy, onJumpToMonth]
+    [scrollContainerRef, sortBy, onJumpToMonth],
   );
 
   if (months.length === 0) return null;

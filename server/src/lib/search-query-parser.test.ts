@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { normalizePersonHandle, normalizeTagToken } from "./search-query-normalize.js";
-import { parseSearchQuery, parseStructuredSearchQuery } from "./search-query-parser.js";
+import {
+  normalizePersonHandle,
+  normalizeTagToken,
+} from "./search-query-normalize.js";
+import {
+  parseSearchQuery,
+  parseStructuredSearchQuery,
+} from "./search-query-parser.js";
 
 describe("normalizeTagToken", () => {
   it("canonicalizes tags like storage", () => {
@@ -17,7 +23,9 @@ describe("normalizePersonHandle", () => {
 
 describe("parseStructuredSearchQuery", () => {
   it("parses (#summer2025 OR #summer2024) AND @joelissner AND water", () => {
-    const r = parseStructuredSearchQuery("(#summer2025 OR #summer2024) AND @joelissner AND water");
+    const r = parseStructuredSearchQuery(
+      "(#summer2025 OR #summer2024) AND @joelissner AND water",
+    );
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.ast).toEqual({

@@ -1,5 +1,11 @@
 import { Button } from "@/components/ui/button";
-import { ModalActions, ModalBody, ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
+import {
+  ModalActions,
+  ModalBody,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+} from "@/components/ui/modal";
 import { Stack } from "@/components/ui/stack";
 import { PersonSelect } from "./PersonSelect";
 
@@ -33,7 +39,8 @@ export function PeopleMergeModal({
             Merge &quot;{person.name}&quot; into
           </ModalTitle>
           <ModalBody className="u-text-muted u-text-sm u-mb-0">
-            All photos of {person.name} will be reassigned to the selected person.
+            All photos of {person.name} will be reassigned to the selected
+            person.
           </ModalBody>
           <PersonSelect
             people={people}

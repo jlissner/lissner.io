@@ -34,7 +34,12 @@ searchRouter.post("/index/cancel", (req, res) => {
   const body = parseWithSchema(cancelIndexBodySchema, req.body);
   const ok = cancelBulkIndexJob(body.jobId);
   if (!ok) {
-    sendApiError(res, 400, "Job not found or not cancelable", "index_job_not_cancelable");
+    sendApiError(
+      res,
+      400,
+      "Job not found or not cancelable",
+      "index_job_not_cancelable",
+    );
     return;
   }
   res.json({ ok: true });
@@ -67,5 +72,5 @@ searchRouter.get(
       return;
     }
     res.json(searchResult.items);
-  })
+  }),
 );

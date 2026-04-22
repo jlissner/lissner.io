@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ModalActions, ModalBody, ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
+import {
+  ModalActions,
+  ModalBody,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+} from "@/components/ui/modal";
 import { Text } from "@/components/ui/text";
 
 interface PeopleAddModalProps {

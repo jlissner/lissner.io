@@ -18,14 +18,20 @@ function getSyncAlertVariant(phase: string): "danger" | "success" | "info" {
   return "info";
 }
 
-export function BackupPage({ onSyncComplete, showTitle = true }: BackupPageProps) {
+export function BackupPage({
+  onSyncComplete,
+  showTitle = true,
+}: BackupPageProps) {
   const activity = useActivity();
   const wasInProgress = useRef(false);
   const [running, setRunning] = useState(false);
 
   const config =
     activity != null
-      ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
+      ? {
+          configured: activity.sync.configured,
+          missingVars: activity.sync.missingVars,
+        }
       : null;
 
   const status =
@@ -85,8 +91,8 @@ export function BackupPage({ onSyncComplete, showTitle = true }: BackupPageProps
       ) : (
         <Card padding="lg">
           <p className="backup-page__desc">
-            Sync your media with AWS S3. Uploads only new files, downloads missing files from S3,
-            and merges media from other devices.
+            Sync your media with AWS S3. Uploads only new files, downloads
+            missing files from S3, and merges media from other devices.
           </p>
           <Button onClick={handleRun} disabled={status.inProgress || running}>
             {status.inProgress ? "Syncing…" : "Sync now"}

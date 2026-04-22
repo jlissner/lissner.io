@@ -24,14 +24,25 @@ export function UploadProgressPanel({
 }) {
   const filePct =
     progress.fileTotal > 0
-      ? Math.min(100, Math.round((100 * progress.fileLoaded) / progress.fileTotal))
+      ? Math.min(
+          100,
+          Math.round((100 * progress.fileLoaded) / progress.fileTotal),
+        )
       : null;
   const showOverall = progress.totalFiles > 1 && progress.overallTotal > 0;
   const overallPct = showOverall
-    ? Math.min(100, Math.round((100 * progress.overallLoaded) / progress.overallTotal))
+    ? Math.min(
+        100,
+        Math.round((100 * progress.overallLoaded) / progress.overallTotal),
+      )
     : null;
   return (
-    <div className={rootClassName} role="status" aria-live="polite" aria-busy="true">
+    <div
+      className={rootClassName}
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
       <p className="u-text-sm u-font-medium u-mb-1" style={{ marginTop: 0 }}>
         {progress.totalFiles > 1
           ? `Uploading file ${progress.currentFile} of ${progress.totalFiles}`
@@ -61,7 +72,8 @@ export function UploadProgressPanel({
       {showOverall && (
         <>
           <p className="u-text-xs u-text-muted u-mt-3 u-mb-1">
-            Overall: {formatBytes(progress.overallLoaded)} / {formatBytes(progress.overallTotal)}
+            Overall: {formatBytes(progress.overallLoaded)} /{" "}
+            {formatBytes(progress.overallTotal)}
             {overallPct != null ? ` (${overallPct}%)` : ""}
           </p>
           <progress

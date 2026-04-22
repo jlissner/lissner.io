@@ -1,4 +1,7 @@
-import { normalizePersonHandle, normalizeTagToken } from "./search-query-normalize.js";
+import {
+  normalizePersonHandle,
+  normalizeTagToken,
+} from "./search-query-normalize.js";
 
 export type SearchQueryAst =
   | { kind: "legacy"; text: string }
@@ -47,7 +50,8 @@ function readWord(s: string, start: number): { word: string; end: number } {
   let out = "";
   while (i < s.length) {
     const c = s[i];
-    if (isWhitespace(c) || c === "(" || c === ")" || c === "#" || c === "@") break;
+    if (isWhitespace(c) || c === "(" || c === ")" || c === "#" || c === "@")
+      break;
     out += c;
     i += 1;
   }

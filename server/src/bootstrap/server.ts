@@ -38,7 +38,11 @@ export function createConfiguredApp(uiDistDir: string) {
   app.use("/api/auth", authRouter);
   app.use("/api/admin", adminRouter);
 
-  const requireAuthUnlessDisabled = (req: Request, res: Response, next: NextFunction) => {
+  const requireAuthUnlessDisabled = (
+    req: Request,
+    res: Response,
+    next: NextFunction,
+  ) => {
     if (process.env.AUTH_ENABLED !== "true") return next();
     requireAuth(req, res, next);
   };
@@ -51,7 +55,9 @@ export function createConfiguredApp(uiDistDir: string) {
 
   if (existsSync(uiDistDir)) {
     app.use(express.static(uiDistDir));
-    app.get("/{*any}", (_req, res) => res.sendFile(path.join(uiDistDir, "index.html")));
+    app.get("/{*any}", (_req, res) =>
+      res.sendFile(path.join(uiDistDir, "index.html")),
+    );
   } else {
     app.get("/", (_req, res) => res.send("Hello world"));
   }
@@ -60,7 +66,9 @@ export function createConfiguredApp(uiDistDir: string) {
   return app;
 }
 
-export function createConfiguredHttpServer(app: ReturnType<typeof createConfiguredApp>) {
+export function createConfiguredHttpServer(
+  app: ReturnType<typeof createConfiguredApp>,
+) {
   const server = createServer(app);
   server.requestTimeout = 0;
   server.headersTimeout = 0;

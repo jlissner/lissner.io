@@ -2,9 +2,24 @@ import { useCallback, useMemo, useState } from "react";
 import { ApiError } from "@/api/client";
 import { Button } from "@/components/ui/button";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
-import { ModalBody, ModalPanel, ModalRoot, ModalTitle, ModalActions } from "@/components/ui/modal";
-import { deletePerson, mergePeople, removeTagFromMedia, updatePerson } from "../api";
-import type { FaceMatchAutoMerged, FaceMatchReviewItem, Person } from "./people-types";
+import {
+  ModalBody,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+  ModalActions,
+} from "@/components/ui/modal";
+import {
+  deletePerson,
+  mergePeople,
+  removeTagFromMedia,
+  updatePerson,
+} from "../api";
+import type {
+  FaceMatchAutoMerged,
+  FaceMatchReviewItem,
+  Person,
+} from "./people-types";
 import { PersonSelect } from "./PersonSelect";
 
 function pluralize(base: string, count: number): string {
@@ -18,7 +33,10 @@ function deletePersonButtonLabel(faceTagCount: number | undefined): string {
   return `Delete person (${faceTagCount} face ${pluralize("tag", faceTagCount)})`;
 }
 
-function deletePersonConfirmMessage(placeholderName: string, count: number | undefined): string {
+function deletePersonConfirmMessage(
+  placeholderName: string,
+  count: number | undefined,
+): string {
   if (count == null) {
     return `Delete "${placeholderName}"? All face tags for this person will be removed.`;
   }
@@ -60,7 +78,7 @@ function MatchFaceReviewCard({
 }) {
   const namedOptions = useMemo(
     () => namedPeople.filter((p) => !p.name.trim().startsWith("Person")),
-    [namedPeople]
+    [namedPeople],
   );
 
   const defaultOtherId = useMemo(() => {
@@ -102,7 +120,9 @@ function MatchFaceReviewCard({
                 />
               )
             ) : (
-              <div className="match-faces-modal__preview-placeholder">No preview</div>
+              <div className="match-faces-modal__preview-placeholder">
+                No preview
+              </div>
             )}
           </div>
           {current.previewMediaId && (
@@ -117,26 +137,38 @@ function MatchFaceReviewCard({
           <h3 className="match-faces-modal__name">{current.placeholderName}</h3>
           {!current.hasFaceDescriptors && (
             <p className="match-faces-modal__warn">
-              No usable face samples were extracted for this person — merge or name with care.
+              No usable face samples were extracted for this person — merge or
+              name with care.
             </p>
           )}
           {current.topMatch ? (
             <p className="match-faces-modal__top">
               Top match: <strong>{current.topMatch.name}</strong>{" "}
-              <span className="u-text-muted">({Math.round(current.topMatch.score * 100)}%)</span>
+              <span className="u-text-muted">
+                ({Math.round(current.topMatch.score * 100)}%)
+              </span>
             </p>
           ) : (
-            <p className="u-text-muted u-text-sm">No strong match to a named person.</p>
+            <p className="u-text-muted u-text-sm">
+              No strong match to a named person.
+            </p>
           )}
         </div>
       </div>
 
       <div className="match-faces-modal__actions-grid">
-        <Button type="button" disabled={busy || !current.topMatch} onClick={onAcceptTop}>
+        <Button
+          type="button"
+          disabled={busy || !current.topMatch}
+          onClick={onAcceptTop}
+        >
           Merge into top match
         </Button>
         <div className="match-faces-modal__merge-other">
-          <label className="match-faces-modal__label" htmlFor="match-faces-merge-into">
+          <label
+            className="match-faces-modal__label"
+            htmlFor="match-faces-merge-into"
+          >
             Merge into someone else
           </label>
           <div className="match-faces-modal__row">
@@ -166,7 +198,10 @@ function MatchFaceReviewCard({
           </div>
         </div>
         <div className="match-faces-modal__rename">
-          <label className="match-faces-modal__label" htmlFor="match-faces-rename">
+          <label
+            className="match-faces-modal__label"
+            htmlFor="match-faces-rename"
+          >
             Name as a new person
           </label>
           <div className="match-faces-modal__row">
@@ -189,11 +224,21 @@ function MatchFaceReviewCard({
             </Button>
           </div>
         </div>
-        <Button type="button" variant="ghost" disabled={busy} onClick={onDiscard}>
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={busy}
+          onClick={onDiscard}
+        >
           Skip for now
         </Button>
-        <div className="match-faces-modal__bad-match" aria-label="Wrong or not a face">
-          <p className="match-faces-modal__bad-match-title">Wrong tag or not a face?</p>
+        <div
+          className="match-faces-modal__bad-match"
+          aria-label="Wrong or not a face"
+        >
+          <p className="match-faces-modal__bad-match-title">
+            Wrong tag or not a face?
+          </p>
           {current.previewMediaId ? (
             <Button
               type="button"
@@ -205,10 +250,16 @@ function MatchFaceReviewCard({
             </Button>
           ) : (
             <p className="match-faces-modal__bad-match-hint u-text-muted u-text-sm">
-              No preview image — use delete below if this person should be removed entirely.
+              No preview image — use delete below if this person should be
+              removed entirely.
             </p>
           )}
-          <Button type="button" variant="danger" disabled={busy} onClick={onDeletePerson}>
+          <Button
+            type="button"
+            variant="danger"
+            disabled={busy}
+            onClick={onDeletePerson}
+          >
             {deletePersonButtonLabel(faceTagCount)}
           </Button>
         </div>
@@ -270,7 +321,7 @@ export function PeopleMatchFacesWizard({
         setBusy(false);
       }
     },
-    [current, popQueue]
+    [current, popQueue],
   );
 
   const handleRename = useCallback(
@@ -291,7 +342,7 @@ export function PeopleMatchFacesWizard({
         setBusy(false);
       }
     },
-    [current, popQueue]
+    [current, popQueue],
   );
 
   const handleDiscard = useCallback(() => {
@@ -302,10 +353,14 @@ export function PeopleMatchFacesWizard({
     if (!current?.previewMediaId) return;
     setBusy(true);
     try {
-      await removeTagFromMedia(current.previewMediaId, current.placeholderPersonId);
+      await removeTagFromMedia(
+        current.previewMediaId,
+        current.placeholderPersonId,
+      );
       popQueue();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Could not remove tag";
+      const message =
+        err instanceof ApiError ? err.message : "Could not remove tag";
       alert(message);
     } finally {
       setBusy(false);
@@ -314,10 +369,16 @@ export function PeopleMatchFacesWizard({
 
   const handleDeletePerson = useCallback(async () => {
     if (!current) return;
-    const count = namedPeople.find((p) => p.id === current.placeholderPersonId)?.photoCount;
-    const skipConfirm = count === 1 && current.topMatch != null && current.topMatch.score < 0.5;
+    const count = namedPeople.find(
+      (p) => p.id === current.placeholderPersonId,
+    )?.photoCount;
+    const skipConfirm =
+      count === 1 && current.topMatch != null && current.topMatch.score < 0.5;
     if (!skipConfirm) {
-      const confirmMsg = deletePersonConfirmMessage(current.placeholderName, count);
+      const confirmMsg = deletePersonConfirmMessage(
+        current.placeholderName,
+        count,
+      );
       if (!confirm(confirmMsg)) return;
     }
     setBusy(true);
@@ -325,7 +386,8 @@ export function PeopleMatchFacesWizard({
       await deletePerson(current.placeholderPersonId);
       popQueue();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Could not delete person";
+      const message =
+        err instanceof ApiError ? err.message : "Could not delete person";
       alert(message);
     } finally {
       setBusy(false);
@@ -334,20 +396,27 @@ export function PeopleMatchFacesWizard({
 
   return (
     <ModalRoot onBackdropClick={busy ? () => {} : onClose}>
-      <ModalPanel className="match-faces-modal" onEscape={busy ? undefined : onClose}>
+      <ModalPanel
+        className="match-faces-modal"
+        onEscape={busy ? undefined : onClose}
+      >
         <ModalTitle id="match-faces-title">Match faces</ModalTitle>
         <ModalBody>
           {autoMerged.length > 0 && (
-            <section className="match-faces-modal__section" aria-label="Auto-merged">
+            <section
+              className="match-faces-modal__section"
+              aria-label="Auto-merged"
+            >
               <p className="match-faces-modal__lead">
                 Auto-merged {autoMerged.length}{" "}
-                {autoMerged.length === 1 ? "placeholder" : "placeholders"} (≈100% match to an
-                existing name).
+                {autoMerged.length === 1 ? "placeholder" : "placeholders"}{" "}
+                (≈100% match to an existing name).
               </p>
               <ul className="match-faces-modal__list">
                 {autoMerged.map((m) => (
                   <li key={m.merged}>
-                    <span className="u-text-muted">{m.merged}</span> → <strong>{m.intoName}</strong>
+                    <span className="u-text-muted">{m.merged}</span> →{" "}
+                    <strong>{m.intoName}</strong>
                   </li>
                 ))}
               </ul>
@@ -380,7 +449,12 @@ export function PeopleMatchFacesWizard({
           )}
         </ModalBody>
         <ModalActions>
-          <Button type="button" variant="secondary" disabled={busy} onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={busy}
+            onClick={onClose}
+          >
             Close
           </Button>
         </ModalActions>

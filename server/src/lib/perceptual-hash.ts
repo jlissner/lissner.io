@@ -1,7 +1,11 @@
 import sharp from "sharp";
 
 export async function computePerceptualHash(filePath: string): Promise<Buffer> {
-  const resized = await sharp(filePath).resize(8, 8, { fit: "fill" }).greyscale().raw().toBuffer();
+  const resized = await sharp(filePath)
+    .resize(8, 8, { fit: "fill" })
+    .greyscale()
+    .raw()
+    .toBuffer();
   return resized;
 }
 

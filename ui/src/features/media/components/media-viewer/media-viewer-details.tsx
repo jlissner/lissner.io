@@ -21,7 +21,10 @@ function formatLocation(lat: number, lng: number): string {
   return `${Math.abs(lat).toFixed(5)}° ${latDir}, ${Math.abs(lng).toFixed(5)}° ${lngDir}`;
 }
 
-function isoToDateAndTimeInputs(iso: string | null | undefined): { date: string; time: string } {
+function isoToDateAndTimeInputs(iso: string | null | undefined): {
+  date: string;
+  time: string;
+} {
   if (!iso) return { date: "", time: "" };
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return { date: "", time: "" };
@@ -38,7 +41,10 @@ type DateTakenParseResult =
   | { kind: "error"; message: string };
 
 /** Empty date clears. Missing time defaults to 12:00 in the local timezone. */
-function parseDateTakenForm(datePart: string, timePart: string): DateTakenParseResult {
+function parseDateTakenForm(
+  datePart: string,
+  timePart: string,
+): DateTakenParseResult {
   const dTrim = datePart.trim();
   const tTrim = timePart.trim();
   if (dTrim === "") {
@@ -51,14 +57,20 @@ function parseDateTakenForm(datePart: string, timePart: string): DateTakenParseR
     return { kind: "clear" };
   }
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dTrim)) {
-    return { kind: "error", message: "Enter a valid date (year, month, and day)." };
+    return {
+      kind: "error",
+      message: "Enter a valid date (year, month, and day).",
+    };
   }
   const parts = dTrim.split("-").map((s) => Number(s));
   const y = parts[0];
   const mo = parts[1];
   const day = parts[2];
   if (parts.some((n) => Number.isNaN(n))) {
-    return { kind: "error", message: "Enter a valid date (year, month, and day)." };
+    return {
+      kind: "error",
+      message: "Enter a valid date (year, month, and day).",
+    };
   }
   const clock =
     tTrim === ""
@@ -69,7 +81,12 @@ function parseDateTakenForm(datePart: string, timePart: string): DateTakenParseR
           const hh = Number(m[1]);
           const mm = Number(m[2]);
           const ss = m[3] != null ? Number(m[3]) : 0;
-          if ([hh, mm, ss].some((n) => Number.isNaN(n)) || hh > 23 || mm > 59 || ss > 59) {
+          if (
+            [hh, mm, ss].some((n) => Number.isNaN(n)) ||
+            hh > 23 ||
+            mm > 59 ||
+            ss > 59
+          ) {
             return null;
           }
           return { hh, mm, ss } as const;
@@ -82,10 +99,15 @@ function parseDateTakenForm(datePart: string, timePart: string): DateTakenParseR
     };
   }
   const at = new Date(y, mo - 1, day, clock.hh, clock.mm, clock.ss, 0);
-  if (at.getFullYear() !== y || at.getMonth() !== mo - 1 || at.getDate() !== day) {
+  if (
+    at.getFullYear() !== y ||
+    at.getMonth() !== mo - 1 ||
+    at.getDate() !== day
+  ) {
     return {
       kind: "error",
-      message: "That calendar date is not valid (for example, there is no February 30).",
+      message:
+        "That calendar date is not valid (for example, there is no February 30).",
     };
   }
   return { kind: "ok", at };
@@ -102,7 +124,11 @@ function errorMessageFromPatchResponse(raw: string, status: number): string {
       return null;
     }
   })();
-  if (parsed && typeof parsed.error === "string" && parsed.error.trim() !== "") {
+  if (
+    parsed &&
+    typeof parsed.error === "string" &&
+    parsed.error.trim() !== ""
+  ) {
     return parsed.error;
   }
   return `Could not save the date (${status}). ${raw.trim().slice(0, 240)}`;
@@ -127,7 +153,9 @@ export function MediaViewerDetails({
   const [dateTakenDate, setDateTakenDate] = useState("");
   const [dateTakenTime, setDateTakenTime] = useState("");
   const [dateTakenSaving, setDateTakenSaving] = useState(false);
-  const [dateTakenEditError, setDateTakenEditError] = useState<string | null>(null);
+  const [dateTakenEditError, setDateTakenEditError] = useState<string | null>(
+    null,
+  );
   const [workingTags, setWorkingTags] = useState<string[]>([]);
   const [tagDraft, setTagDraft] = useState("");
   const [tagsSaving, setTagsSaving] = useState(false);
@@ -227,7 +255,9 @@ export function MediaViewerDetails({
       const rawBody = await res.text();
       setDateTakenSaving(false);
       if (!res.ok) {
-        setDateTakenEditError(errorMessageFromPatchResponse(rawBody, res.status));
+        setDateTakenEditError(
+          errorMessageFromPatchResponse(rawBody, res.status),
+        );
         return;
       }
       const data = (() => {
@@ -245,16 +275,18 @@ export function MediaViewerDetails({
           (data as MediaPatchResponse).dateTaken !== null)
       ) {
         setDateTakenEditError(
-          "The date may have saved, but the server response was not valid. Refresh the page to confirm."
+          "The date may have saved, but the server response was not valid. Refresh the page to confirm.",
         );
         return;
       }
       const patch = data as MediaPatchResponse;
-      setDetails((prev) => (prev ? { ...prev, dateTaken: patch.dateTaken } : prev));
+      setDetails((prev) =>
+        prev ? { ...prev, dateTaken: patch.dateTaken } : prev,
+      );
       setEditingDateTaken(false);
       onMetadataUpdated?.();
     },
-    [dateTakenDate, dateTakenTime, item.id, onMetadataUpdated]
+    [dateTakenDate, dateTakenTime, item.id, onMetadataUpdated],
   );
 
   if (loading) {
@@ -270,7 +302,9 @@ export function MediaViewerDetails({
     return (
       <div className="viewer-details">
         <h3 className="viewer-details__title">Details</h3>
-        <p className="viewer-details__muted">{error ?? "No details available"}</p>
+        <p className="viewer-details__muted">
+          {error ?? "No details available"}
+        </p>
       </div>
     );
   }
@@ -284,7 +318,9 @@ export function MediaViewerDetails({
         {details.people && details.people.length > 0 && (
           <>
             <dt className="viewer-details__term">People</dt>
-            <dd className="viewer-details__value">{details.people.join(", ")}</dd>
+            <dd className="viewer-details__value">
+              {details.people.join(", ")}
+            </dd>
           </>
         )}
         <dt className="viewer-details__term">Tags</dt>
@@ -340,9 +376,12 @@ export function MediaViewerDetails({
               {tagsSaving ? "Saving…" : "Save tags"}
             </button>
           </div>
-          {tagsError && <p className="viewer-details__muted u-text-danger">{tagsError}</p>}
+          {tagsError && (
+            <p className="viewer-details__muted u-text-danger">{tagsError}</p>
+          )}
           <p className="viewer-details__muted viewer-details__hint">
-            Use #tag, @person, AND, OR, NOT in search (example: @someone AND NOT @other).
+            Use #tag, @person, AND, OR, NOT in search (example: @someone AND NOT
+            @other).
           </p>
         </dd>
         <dt className="viewer-details__term">Uploaded</dt>
@@ -372,14 +411,19 @@ export function MediaViewerDetails({
                 />
               </div>
               <p className="viewer-details__muted viewer-details__hint">
-                Time is optional; if you leave it blank, 12:00 noon on that day is used. Clear the
-                date and save to remove date taken.
+                Time is optional; if you leave it blank, 12:00 noon on that day
+                is used. Clear the date and save to remove date taken.
               </p>
               {dateTakenEditError && (
-                <p className="viewer-details__muted u-text-danger">{dateTakenEditError}</p>
+                <p className="viewer-details__muted u-text-danger">
+                  {dateTakenEditError}
+                </p>
               )}
               <div className="viewer-details__actions">
-                <button className="btn btn--primary btn--sm" disabled={dateTakenSaving}>
+                <button
+                  className="btn btn--primary btn--sm"
+                  disabled={dateTakenSaving}
+                >
                   {dateTakenSaving ? "Saving…" : "Save"}
                 </button>
                 <button
@@ -399,14 +443,20 @@ export function MediaViewerDetails({
               ) : (
                 <span className="viewer-details__muted">Not set</span>
               )}{" "}
-              <button type="button" className="btn btn--ghost btn--sm" onClick={beginEditDateTaken}>
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                onClick={beginEditDateTaken}
+              >
                 {details.dateTaken ? "Edit" : "Set"}
               </button>
             </>
           )}
         </dd>
         <dt className="viewer-details__term">File size</dt>
-        <dd className="viewer-details__value">{formatFileSize(details.size)}</dd>
+        <dd className="viewer-details__value">
+          {formatFileSize(details.size)}
+        </dd>
         <dt className="viewer-details__term">Type</dt>
         <dd className="viewer-details__value">{details.mimeType}</dd>
         <dt className="viewer-details__term">Download</dt>

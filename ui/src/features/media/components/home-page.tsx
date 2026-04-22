@@ -93,7 +93,9 @@ export function HomePage({ title: titleProp }: HomePageProps) {
               aria-hidden
             />
           )}
-          {loadingPrevious && !isSearchMode && <p className="empty">Loading earlier…</p>}
+          {loadingPrevious && !isSearchMode && (
+            <p className="empty">Loading earlier…</p>
+          )}
           <MediaList
             items={displayItems}
             loading={loading && !isSearchMode}
@@ -107,9 +109,16 @@ export function HomePage({ title: titleProp }: HomePageProps) {
             onUpdate={undefined}
           />
           {!isSearchMode && items.length < total && total > 0 && (
-            <div ref={sentinelRef} className="u-flex-shrink-0" style={{ height: 20 }} aria-hidden />
+            <div
+              ref={sentinelRef}
+              className="u-flex-shrink-0"
+              style={{ height: 20 }}
+              aria-hidden
+            />
           )}
-          {loadingMore && !isSearchMode && <p className="empty">Loading more…</p>}
+          {loadingMore && !isSearchMode && (
+            <p className="empty">Loading more…</p>
+          )}
         </div>
         <TimelineScrubber
           sortBy={sortBy}

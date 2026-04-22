@@ -2,7 +2,10 @@ import { unlink } from "fs/promises";
 import path from "path";
 import * as db from "../db/media.js";
 import { indexMediaItem } from "../indexing/media.js";
-import { deleteMediaFromS3, scheduleBackupSyncAfterUpload } from "../s3/sync.js";
+import {
+  deleteMediaFromS3,
+  scheduleBackupSyncAfterUpload,
+} from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { logger } from "../logger.js";
 import type { ServiceFailure } from "./service-result.js";
@@ -21,7 +24,7 @@ export function persistUploadedMedia(params: {
     params.originalName,
     params.mimeType,
     params.size,
-    params.ownerId
+    params.ownerId,
   );
   scheduleBackupSyncAfterUpload();
   const item = {
@@ -41,7 +44,7 @@ export type DeleteMediaResult =
 
 export async function deleteMediaItem(
   mediaId: string,
-  ctx: { userId: number | undefined; isAdmin: boolean | undefined }
+  ctx: { userId: number | undefined; isAdmin: boolean | undefined },
 ): Promise<DeleteMediaResult> {
   const item = db.getMediaById(mediaId);
   if (!item) {
@@ -73,7 +76,9 @@ export async function deleteMediaItem(
   }
 }
 
-function parseBodyDateTaken(raw: unknown): string | null | "invalid" | "bad_type" {
+function parseBodyDateTaken(
+  raw: unknown,
+): string | null | "invalid" | "bad_type" {
   if (raw === null) return null;
   if (typeof raw !== "string") return "bad_type";
   const trimmed = raw.trim();
@@ -91,7 +96,7 @@ export type UpdateMediaDateTakenResult =
 export function updateMediaDateTaken(
   mediaId: string,
   body: unknown,
-  ctx: { userId: number | undefined; isAdmin: boolean | undefined }
+  ctx: { userId: number | undefined; isAdmin: boolean | undefined },
 ): UpdateMediaDateTakenResult {
   const item = db.getMediaById(mediaId);
   if (!item) {

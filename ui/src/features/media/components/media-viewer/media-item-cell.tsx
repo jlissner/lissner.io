@@ -18,7 +18,9 @@ function FallbackImage({
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
-      <span className={className.replace("media-cell__img", "media-cell__icon")}>
+      <span
+        className={className.replace("media-cell__img", "media-cell__icon")}
+      >
         {fallbackIcon}
       </span>
     );
@@ -34,7 +36,11 @@ function FallbackImage({
   );
 }
 
-function VideoThumbnail({ item }: { item: { id: string; originalName: string } }) {
+function VideoThumbnail({
+  item,
+}: {
+  item: { id: string; originalName: string };
+}) {
   const [thumbLoaded, setThumbLoaded] = useState(false);
   return (
     <div className="media-cell__video-wrap">
@@ -47,7 +53,11 @@ function VideoThumbnail({ item }: { item: { id: string; originalName: string } }
       />
       {thumbLoaded && (
         <span className="media-cell__play-overlay" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="currentColor" className="media-cell__play-icon">
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="media-cell__play-icon"
+          >
             <path d="M8 5v14l11-7z" />
           </svg>
         </span>
@@ -57,7 +67,11 @@ function VideoThumbnail({ item }: { item: { id: string; originalName: string } }
 }
 
 /** Still thumbnail with motion clip: show the still as the image and a play affordance. */
-function MotionPairThumbnail({ item }: { item: { id: string; originalName: string } }) {
+function MotionPairThumbnail({
+  item,
+}: {
+  item: { id: string; originalName: string };
+}) {
   const [loaded, setLoaded] = useState(false);
   return (
     <div className="media-cell__video-wrap">
@@ -70,7 +84,11 @@ function MotionPairThumbnail({ item }: { item: { id: string; originalName: strin
       />
       {loaded && (
         <span className="media-cell__play-overlay" aria-hidden>
-          <svg viewBox="0 0 24 24" fill="currentColor" className="media-cell__play-icon">
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="media-cell__play-icon"
+          >
             <path d="M8 5v14l11-7z" />
           </svg>
         </span>
@@ -157,7 +175,8 @@ export function MediaItemCell({
           )}
           {item.motionCompanionId ? (
             <MotionPairThumbnail item={item} />
-          ) : isVideo(item.mimeType) || isPixelMotionPhotoBasename(item.originalName) ? (
+          ) : isVideo(item.mimeType) ||
+            isPixelMotionPhotoBasename(item.originalName) ? (
             <VideoThumbnail item={item} />
           ) : isImage(item.mimeType, item.originalName) ? (
             <FallbackImage

@@ -16,48 +16,36 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 /** Repository root (parent of `server/`). */
 export const PROJECT_ROOT = path.join(__dirname, "..", "..", "..");
 
-const envPath = path.join(PROJECT_ROOT, ".env");
-if (existsSync(envPath)) {
-  config({ path: envPath });
-}
-
 if (process.env.NODE_ENV === "production") {
   const prodEnvPath = path.join(PROJECT_ROOT, ".env.prod");
-  if (existsSync(prodEnvPath)) {
-    config({ path: prodEnvPath, override: true });
-  }
+
+  invariant(existsSync(prodEnvPath), "No .env.prod file found");
+
+  config({ path: prodEnvPath, override: true });
 } else {
   const envLocalPath = path.join(PROJECT_ROOT, ".env.local");
-  if (existsSync(envLocalPath)) {
-    config({ path: envLocalPath, override: true });
-  }
+
+  invariant(existsSync(envLocalPath), "No .env.local file found");
+
+  config({ path: envLocalPath, override: true });
 }
 
-function resolveDataDir(): string {
-  const raw = process.env.DATA_DIR?.trim();
-  if (!raw) {
-    return path.join(PROJECT_ROOT, "data");
-  }
-  return path.isAbsolute(raw) ? raw : path.join(PROJECT_ROOT, raw);
+function getEnvVar(name: string) {
+  const val = process.env[name];
+
+  invariant(val, `${name} not set`);
+
+  return val;
 }
 
-/** Resolved absolute data directory (honours `DATA_DIR`). */
-export const DATA_DIR = resolveDataDir();
-
-export const NODE_ENV = process.env.NODE_ENV ?? "development";
-
-/** HTTP listen port (honours `SERVER_PORT`). */
-export const SERVER_PORT = Number(process.env.SERVER_PORT);
-/** Vite dev server port (magic-link redirects when the browser uses the UI origin). */
-export const UI_PORT = Number(process.env.UI_PORT);
-/** Base URL for Ollama (embeddings + vision). */
-export const OLLAMA_HOST = process.env.OLLAMA_HOST?.trim() || "http://127.0.0.1:11434";
-/** API host for dev tooling (Vite proxy, `clear-index`) when `API_PROXY_TARGET` is unset. */
-export const SERVER_HOST = process.env.SERVER_HOST;
-export const SERVER_PROTOCOL = process.env.SERVER_PROTOCOL;
-
-invariant(SERVER_PORT, "SERVER_PORT not set");
-invariant(UI_PORT, "UI_PORT not set");
-invariant(OLLAMA_HOST, "OLLAMA_HOST not set");
-invariant(SERVER_HOST, "SERVER_HOST not set");
-invariant(SERVER_PROTOCOL, "SERVER_PROTOCOL not set");
+export const DATA_DIR = getEnvVar("DATA_DIR");
+export const NODE_ENV = getEnvVar("NODE_ENV");
+export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
+export const UI_PORT = Number(getEnvVar("UI_PORT"));
+export const OLLAMA_HOST = getEnvVar("OLLAMA_HOST");
+export const SERVER_HOST = getEnvVar("SERVER_HOST");
+export const SERVER_PROTOCOL = getEnvVar("SERVER_PROTOCOL");
+export const AWS_ACCESS_KEY_ID = getEnvVar("AWS_ACCESS_KEY_ID");
+export const AWS_SECRET_ACCESS_KEY = getEnvVar("AWS_SECRET_ACCESS_KEY");
+export const AWS_REGION = getEnvVar("AWS_REGION");
+export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");

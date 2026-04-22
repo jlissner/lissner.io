@@ -1,4 +1,9 @@
-import { useCallback, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { ApiError } from "@/api/client";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
 import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
@@ -22,15 +27,20 @@ export function useMediaBulkActions({
   setSearchResults,
   setToolbarError,
 }: UseMediaBulkActionsOptions) {
-  const [bulkAction, setBulkAction] = useState<"idle" | "deleting" | "indexing">("idle");
+  const [bulkAction, setBulkAction] = useState<
+    "idle" | "deleting" | "indexing"
+  >("idle");
 
   const handleDelete = useCallback(
     async (id: string) => {
       await deleteMediaById(id);
       fetchItems();
-      if (searchResults) setSearchResults((prev) => prev?.filter((item) => item.id !== id) ?? null);
+      if (searchResults)
+        setSearchResults(
+          (prev) => prev?.filter((item) => item.id !== id) ?? null,
+        );
     },
-    [fetchItems, searchResults, setSearchResults]
+    [fetchItems, searchResults, setSearchResults],
   );
 
   const handleBulkDelete = useCallback(
@@ -40,10 +50,12 @@ export function useMediaBulkActions({
       }
       fetchItems();
       if (searchResults) {
-        setSearchResults((prev) => prev?.filter((item) => !ids.includes(item.id)) ?? null);
+        setSearchResults(
+          (prev) => prev?.filter((item) => !ids.includes(item.id)) ?? null,
+        );
       }
     },
-    [fetchItems, searchResults, setSearchResults]
+    [fetchItems, searchResults, setSearchResults],
   );
 
   const handleBulkIndex = useCallback(
@@ -56,7 +68,7 @@ export function useMediaBulkActions({
         setToolbarError(msg);
       }
     },
-    [setToolbarError]
+    [setToolbarError],
   );
 
   const handleIndex = useCallback(
@@ -64,13 +76,14 @@ export function useMediaBulkActions({
       setToolbarError(null);
       try {
         const data = await triggerIndex(force);
-        if (data.started !== true) setToolbarError(data.error ?? "Indexing failed");
+        if (data.started !== true)
+          setToolbarError(data.error ?? "Indexing failed");
       } catch (err) {
         const msg = err instanceof ApiError ? err.message : "Indexing failed";
         setToolbarError(msg);
       }
     },
-    [setToolbarError]
+    [setToolbarError],
   );
 
   const handleBulkDownload = useCallback(() => {

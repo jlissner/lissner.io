@@ -1,5 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { ModalActions, ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
+import {
+  ModalActions,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+} from "@/components/ui/modal";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import type { ActivitySnapshot } from "./activity-types";
 
@@ -55,7 +60,8 @@ export function ActivityDetailModal({
           className="activity-detail-modal__intro u-text-muted u-text-sm u-mb-4"
           style={{ marginTop: 0 }}
         >
-          Live updates from the server. This window stays in sync while work is running.
+          Live updates from the server. This window stays in sync while work is
+          running.
         </p>
 
         {indexing && (
@@ -63,7 +69,10 @@ export function ActivityDetailModal({
             className="activity-detail-modal__section"
             aria-labelledby="activity-detail-index"
           >
-            <h3 id="activity-detail-index" className="activity-detail-modal__heading">
+            <h3
+              id="activity-detail-index"
+              className="activity-detail-modal__heading"
+            >
               AI indexing
             </h3>
             <dl className="activity-detail-modal__dl">
@@ -96,10 +105,15 @@ export function ActivityDetailModal({
                 />
               </>
             ) : (
-              <p className="u-text-muted u-text-sm u-mb-0">Preparing or processing…</p>
+              <p className="u-text-muted u-text-sm u-mb-0">
+                Preparing or processing…
+              </p>
             )}
             {idx.lastError && (
-              <p className="activity-detail-modal__error u-text-sm u-mb-0" role="alert">
+              <p
+                className="activity-detail-modal__error u-text-sm u-mb-0"
+                role="alert"
+              >
                 {idx.lastError}
               </p>
             )}
@@ -111,7 +125,10 @@ export function ActivityDetailModal({
             className="activity-detail-modal__section"
             aria-labelledby="activity-detail-sync"
           >
-            <h3 id="activity-detail-sync" className="activity-detail-modal__heading">
+            <h3
+              id="activity-detail-sync"
+              className="activity-detail-modal__heading"
+            >
               S3 sync
             </h3>
             {!syn.configured ? (
@@ -136,7 +153,9 @@ export function ActivityDetailModal({
                   )}
                 </dl>
                 {syncMsg?.message && (
-                  <p className="activity-detail-modal__message u-text-sm">{syncMsg.message}</p>
+                  <p className="activity-detail-modal__message u-text-sm">
+                    {syncMsg.message}
+                  </p>
                 )}
                 {syncMsg && syncMsg.total > 0 && (
                   <>
@@ -151,7 +170,10 @@ export function ActivityDetailModal({
                   </>
                 )}
                 {(syn.lastError || syncMsg?.error) && (
-                  <p className="activity-detail-modal__error u-text-sm u-mb-0" role="alert">
+                  <p
+                    className="activity-detail-modal__error u-text-sm u-mb-0"
+                    role="alert"
+                  >
                     {syn.lastError ?? syncMsg?.error}
                   </p>
                 )}
@@ -162,7 +184,8 @@ export function ActivityDetailModal({
 
         {!indexing && !syncing && (
           <p className="activity-detail-modal__idle u-text-muted u-text-sm u-mb-4">
-            No background indexing or sync is running right now. You can close this dialog.
+            No background indexing or sync is running right now. You can close
+            this dialog.
           </p>
         )}
 

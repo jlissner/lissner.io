@@ -15,10 +15,15 @@ interface UsePeoplePreviewOptions {
   selectedName: string;
 }
 
-export function usePeoplePreview({ selectedId, selectedName }: UsePeoplePreviewOptions) {
+export function usePeoplePreview({
+  selectedId,
+  selectedName,
+}: UsePeoplePreviewOptions) {
   const [previewMedia, setPreviewMedia] = useState<PersonMediaItem[]>([]);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [mergeSuggestions, setMergeSuggestions] = useState<MergeSuggestion[]>([]);
+  const [mergeSuggestions, setMergeSuggestions] = useState<MergeSuggestion[]>(
+    [],
+  );
   const [mergeSuggestionsLoading, setMergeSuggestionsLoading] = useState(false);
 
   useEffect(() => {

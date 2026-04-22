@@ -1,6 +1,11 @@
 import { S3Client } from "@aws-sdk/client-s3";
 
-const S3_VARS = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET"] as const;
+const S3_VARS = [
+  "AWS_ACCESS_KEY_ID",
+  "AWS_SECRET_ACCESS_KEY",
+  "AWS_REGION",
+  "S3_BUCKET",
+] as const;
 
 export function getS3Config(): {
   configured: boolean;

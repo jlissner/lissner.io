@@ -31,7 +31,12 @@ const HANDLE_STYLES: Array<{
   { handle: "w", top: "calc(50% - 6px)", left: "-6px", cursor: "ew-resize" },
 ];
 
-export function ResizableFaceBox({ box, imgRef, onBoxChange, children }: ResizableFaceBoxProps) {
+export function ResizableFaceBox({
+  box,
+  imgRef,
+  onBoxChange,
+  children,
+}: ResizableFaceBoxProps) {
   const [dragging, setDragging] = useState<Handle | null>(null);
   const startRef = useRef<{
     x: number;
@@ -98,7 +103,7 @@ export function ResizableFaceBox({ box, imgRef, onBoxChange, children }: Resizab
         height: Math.max(MIN_SIZE * imgScaleY, h * imgScaleY),
       });
     },
-    [dragging, imgRef, onBoxChange]
+    [dragging, imgRef, onBoxChange],
   );
 
   const handleMouseUp = useCallback(() => {
@@ -131,7 +136,7 @@ export function ResizableFaceBox({ box, imgRef, onBoxChange, children }: Resizab
         boxH: scaled.height,
       };
     },
-    [scaled]
+    [scaled],
   );
 
   return (

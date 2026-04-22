@@ -44,9 +44,14 @@ export function AuthenticatedApp() {
   const canLogOut = authEnabled === true && user != null;
   const activity = useActivity();
   const s3Config = activity
-    ? { configured: activity.sync.configured, missingVars: activity.sync.missingVars }
+    ? {
+        configured: activity.sync.configured,
+        missingVars: activity.sync.missingVars,
+      }
     : null;
-  const [page, setPage] = useState<PageId>(() => pathToPage(window.location.pathname));
+  const [page, setPage] = useState<PageId>(() =>
+    pathToPage(window.location.pathname),
+  );
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [s3AlertDismissed, setS3AlertDismissed] = useState(false);
 
@@ -72,7 +77,10 @@ export function AuthenticatedApp() {
   }, []);
 
   const handleOpenUploadModal = useCallback(() => setUploadModalOpen(true), []);
-  const handleCloseUploadModal = useCallback(() => setUploadModalOpen(false), []);
+  const handleCloseUploadModal = useCallback(
+    () => setUploadModalOpen(false),
+    [],
+  );
   const handleDismissS3Alert = useCallback(() => setS3AlertDismissed(true), []);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
@@ -80,12 +88,16 @@ export function AuthenticatedApp() {
   useEffect(() => {
     if (!showUserMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+      if (
+        userMenuRef.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
         setShowUserMenu(false);
       }
     };
     document.addEventListener("click", handleClickOutside as never);
-    return () => document.removeEventListener("click", handleClickOutside as never);
+    return () =>
+      document.removeEventListener("click", handleClickOutside as never);
   }, [showUserMenu]);
 
   const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
@@ -194,11 +206,16 @@ export function AuthenticatedApp() {
           </NavMenu>
         </nav>
         <main className="main">
-          <Suspense fallback={<div className="u-pad">Loading…</div>}>{mainPage}</Suspense>
+          <Suspense fallback={<div className="u-pad">Loading…</div>}>
+            {mainPage}
+          </Suspense>
         </main>
       </div>
       {uploadModalOpen && (
-        <UploadModal onClose={handleCloseUploadModal} onUploadComplete={fetchItems} />
+        <UploadModal
+          onClose={handleCloseUploadModal}
+          onUploadComplete={fetchItems}
+        />
       )}
       <GlobalActivityOverlay />
     </div>

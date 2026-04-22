@@ -19,7 +19,8 @@ export default defineConfig(({ mode }) => {
   }
   const apiPort = env.SERVER_PORT;
   const apiProxyTarget =
-    env.API_PROXY_TARGET?.trim() || `http://${env.SERVER_HOST?.trim() || "127.0.0.1"}:${apiPort}`;
+    env.API_PROXY_TARGET?.trim() ||
+    `http://${env.SERVER_HOST?.trim() || "127.0.0.1"}:${apiPort}`;
   const uiPortRaw = env.UI_PORT ?? env.VITE_DEV_SERVER_PORT ?? "8042";
   const devPortParsed = parseInt(uiPortRaw, 10);
   const devPort =

@@ -43,10 +43,13 @@ export function PeopleDetail({
 
   const images = useMemo(
     () => previewMedia.filter((m) => isImage(m.mimeType, m.originalName)),
-    [previewMedia]
+    [previewMedia],
   );
 
-  const visibleImages = useMemo(() => images.slice(0, visibleCount), [images, visibleCount]);
+  const visibleImages = useMemo(
+    () => images.slice(0, visibleCount),
+    [images, visibleCount],
+  );
   const hasMore = images.length > visibleCount;
 
   const handleLoadMore = useCallback(() => {
@@ -106,10 +109,15 @@ export function PeopleDetail({
         )}
       </div>
       {showMergeHints && (
-        <section className="detail__merge-hints" aria-label="Possible duplicate people">
+        <section
+          className="detail__merge-hints"
+          aria-label="Possible duplicate people"
+        >
           <h3 className="detail__merge-hints-title">Possible same person as</h3>
           {mergeSuggestionsLoading ? (
-            <p className="u-text-muted u-text-sm">Comparing faces to named people…</p>
+            <p className="u-text-muted u-text-sm">
+              Comparing faces to named people…
+            </p>
           ) : (
             <ul className="detail__merge-hints-list">
               {mergeSuggestions.map((s) => (
@@ -141,18 +149,22 @@ export function PeopleDetail({
           <div className="detail__grid">
             {visibleImages.map((m) => {
               const pm = m as PersonMediaItem;
-              const hasBox = selectedId && pm.x != null && pm.width != null && pm.width > 0;
+              const hasBox =
+                selectedId && pm.x != null && pm.width != null && pm.width > 0;
               const thumbSrc = hasBox
                 ? `/api/media/${m.id}/face/${selectedId}`
                 : `/api/media/${m.id}/thumbnail`;
-              const usePixelHybrid = !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
+              const usePixelHybrid =
+                !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
               return (
                 <button
                   key={m.id}
                   type="button"
                   className={`detail__thumb ${m.backedUp ? "detail__thumb--backed-up" : ""}`}
                   onClick={() => onPhotoClick(m)}
-                  title={m.backedUp ? "Backed up to cloud" : "Not backed up yet"}
+                  title={
+                    m.backedUp ? "Backed up to cloud" : "Not backed up yet"
+                  }
                 >
                   {usePixelHybrid ? (
                     <PixelMpOrImageVideoPreview
@@ -175,7 +187,10 @@ export function PeopleDetail({
               );
             })}
             {images.length === 0 && (
-              <p className="u-text-muted u-text-sm" style={{ gridColumn: "1 / -1" }}>
+              <p
+                className="u-text-muted u-text-sm"
+                style={{ gridColumn: "1 / -1" }}
+              >
                 No photos
               </p>
             )}

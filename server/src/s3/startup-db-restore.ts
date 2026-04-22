@@ -12,7 +12,12 @@ import { downloadS3ObjectToFile, listAllS3Keys } from "./sync-transfer.js";
 export type StartupDbRestoreResult =
   | {
       restored: false;
-      reason: "local_exists" | "not_configured" | "no_backups" | "download_failed" | "invalid_db";
+      reason:
+        | "local_exists"
+        | "not_configured"
+        | "no_backups"
+        | "download_failed"
+        | "invalid_db";
     }
   | { restored: true; key: string };
 
@@ -30,7 +35,9 @@ export function validateSqliteDbFile(dbFilePath: string): boolean {
 }
 
 function pickNewestDbKey(keys: Iterable<string>): string | null {
-  const dbKeys = [...keys].filter((k) => k.startsWith(`${S3_PREFIX}/db/`) && k.endsWith(".db"));
+  const dbKeys = [...keys].filter(
+    (k) => k.startsWith(`${S3_PREFIX}/db/`) && k.endsWith(".db"),
+  );
   if (dbKeys.length === 0) return null;
   // Keys are `backup/db/media_<iso-with-:-. replaced>.db`; lexicographic sort matches chronological.
   return dbKeys.sort().at(-1) ?? null;
@@ -55,7 +62,9 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
     await mkdir(dbDir, { recursive: true });
     const tempPath = path.join(dbDir, ".startup_restore.db");
 
-    const getRes = await client.send(new GetObjectCommand({ Bucket: bucket, Key: newestKey }));
+    const getRes = await client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: newestKey }),
+    );
     const body = getRes.Body;
     if (!body) return { restored: false, reason: "download_failed" };
 
@@ -65,16 +74,22 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
       await unlink(tempPath).catch(() => {});
       logger.warn(
         { key: newestKey },
-        "[startup-restore] Downloaded DB failed integrity_check; skipping restore"
+        "[startup-restore] Downloaded DB failed integrity_check; skipping restore",
       );
       return { restored: false, reason: "invalid_db" };
     }
 
     await rename(tempPath, dbPath);
-    logger.info({ key: newestKey }, "[startup-restore] Restored DB from S3 backup");
+    logger.info(
+      { key: newestKey },
+      "[startup-restore] Restored DB from S3 backup",
+    );
     return { restored: true, key: newestKey };
   } catch (err) {
-    logger.warn({ err }, "[startup-restore] Failed to restore DB from S3 (continuing startup)");
+    logger.warn(
+      { err },
+      "[startup-restore] Failed to restore DB from S3 (continuing startup)",
+    );
     return { restored: false, reason: "download_failed" };
   }
 }

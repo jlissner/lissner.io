@@ -52,7 +52,10 @@ export function PeopleImageViewer({
             />
           )}
         </div>
-        <div className="viewer-overlay__actions" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="viewer-overlay__actions"
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant="secondary" onClick={onClose}>
             Close
           </Button>

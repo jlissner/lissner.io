@@ -6,7 +6,10 @@ import { PeopleEditModal } from "./people-edit-modal";
 import { PeopleMergeModal } from "./people-merge-modal";
 import { PeopleAddModal } from "./people-add-modal";
 import { PeopleMatchFacesWizard } from "./people-match-faces-wizard";
-import { isImage, type MediaItem } from "@/features/media/components/media-viewer/media-utils";
+import {
+  isImage,
+  type MediaItem,
+} from "@/features/media/components/media-viewer/media-utils";
 import { MediaViewer } from "@/features/media/components/media-viewer";
 import { usePeoplePage } from "./use-people-page";
 import { runMatchFaces as runMatchFacesApi } from "../api";
@@ -33,7 +36,9 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const isMobile = useIsMobile();
   const [matchFacesOpen, setMatchFacesOpen] = useState(false);
   const [matchFacesBusy, setMatchFacesBusy] = useState(false);
-  const [matchFacesQueue, setMatchFacesQueue] = useState<FaceMatchRunResponse["reviewQueue"]>([]);
+  const [matchFacesQueue, setMatchFacesQueue] = useState<
+    FaceMatchRunResponse["reviewQueue"]
+  >([]);
   const [matchFacesAutoMerged, setMatchFacesAutoMerged] = useState<
     FaceMatchRunResponse["autoMerged"]
   >([]);
@@ -80,7 +85,8 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
       await fetchPeople({ silent: true });
       onUpdate?.();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Match faces failed";
+      const message =
+        err instanceof ApiError ? err.message : "Match faces failed";
       alert(message);
     } finally {
       setMatchFacesBusy(false);
@@ -91,7 +97,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     (id: number | null) => {
       setSelectedId(id);
     },
-    [setSelectedId]
+    [setSelectedId],
   );
 
   const handleBack = useCallback(() => {
@@ -99,7 +105,9 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   }, [setSelectedId]);
 
   const selectedPerson = people.find((p) => p.id === selectedId);
-  const hasPlaceholders = people.some((p) => p.name.trim().startsWith("Person"));
+  const hasPlaceholders = people.some((p) =>
+    p.name.trim().startsWith("Person"),
+  );
   const photoCount =
     selectedPerson?.photoCount ??
     previewMedia.filter((m) => isImage(m.mimeType, m.originalName)).length;
@@ -148,7 +156,10 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
         />
       )}
       {addModalOpen && (
-        <PeopleAddModal onAdd={handleAddPerson} onClose={() => setAddModalOpen(false)} />
+        <PeopleAddModal
+          onAdd={handleAddPerson}
+          onClose={() => setAddModalOpen(false)}
+        />
       )}
       {editModal && (
         <PeopleEditModal

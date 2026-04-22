@@ -12,7 +12,10 @@ import {
   updateDataExplorerRow,
 } from "../api";
 
-function parseColumnValueForWrite(col: Column, raw: string | undefined): unknown {
+function parseColumnValueForWrite(
+  col: Column,
+  raw: string | undefined,
+): unknown {
   if (raw === undefined || raw === "") return undefined;
   const isIntColumn = col.type.includes("INT");
   if (!isIntColumn) return raw;
@@ -42,7 +45,9 @@ export function DataExplorer() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editingRow, setEditingRow] = useState<Record<string, unknown> | null>(null);
+  const [editingRow, setEditingRow] = useState<Record<string, unknown> | null>(
+    null,
+  );
   const [addingRow, setAddingRow] = useState(false);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
 
@@ -128,7 +133,8 @@ export function DataExplorer() {
       for (const col of schema.filter((c) => !c.pk)) {
         if (editingRow && col.name in editingRow) {
           const v = editingRow[col.name];
-          data[col.name] = col.type.includes("INT") && v !== "" ? parseInt(String(v), 10) : v;
+          data[col.name] =
+            col.type.includes("INT") && v !== "" ? parseInt(String(v), 10) : v;
         }
       }
       try {
@@ -140,7 +146,7 @@ export function DataExplorer() {
         setError(message);
       }
     },
-    [selectedTable, schema, editingRow, fetchTableData]
+    [selectedTable, schema, editingRow, fetchTableData],
   );
 
   const handleDelete = useCallback(
@@ -157,7 +163,7 @@ export function DataExplorer() {
         setError(message);
       }
     },
-    [selectedTable, schema, fetchTableData]
+    [selectedTable, schema, fetchTableData],
   );
 
   const pkCols = schema?.filter((c) => c.pk).map((c) => c.name) ?? [];
@@ -166,8 +172,8 @@ export function DataExplorer() {
     <div className="data-explorer">
       <h3>Data Explorer</h3>
       <p className="data-explorer__desc">
-        Browse and edit tables. Search matches a substring in any column. Schema is discovered
-        automatically.
+        Browse and edit tables. Search matches a substring in any column. Schema
+        is discovered automatically.
       </p>
 
       <div className="data-explorer__toolbar">
@@ -202,7 +208,12 @@ export function DataExplorer() {
               />
             </label>
             {searchInput.trim() !== "" && (
-              <Button size="sm" variant="ghost" type="button" onClick={() => setSearchInput("")}>
+              <Button
+                size="sm"
+                variant="ghost"
+                type="button"
+                onClick={() => setSearchInput("")}
+              >
                 Clear search
               </Button>
             )}
@@ -241,7 +252,12 @@ export function DataExplorer() {
                   <input
                     type={col.type.includes("INT") ? "number" : "text"}
                     value={newRow[col.name] ?? ""}
-                    onChange={(e) => setNewRow((prev) => ({ ...prev, [col.name]: e.target.value }))}
+                    onChange={(e) =>
+                      setNewRow((prev) => ({
+                        ...prev,
+                        [col.name]: e.target.value,
+                      }))
+                    }
                     className="form__input"
                     placeholder={col.pk ? "(optional for auto)" : ""}
                   />
@@ -281,7 +297,8 @@ export function DataExplorer() {
                           : `row-${i}`
                       }
                     >
-                      {editingRow && pkCols.every((pk) => row[pk] === editingRow[pk]) ? (
+                      {editingRow &&
+                      pkCols.every((pk) => row[pk] === editingRow[pk]) ? (
                         <>
                           {schema.map((col) => (
                             <td key={col.name}>
@@ -289,7 +306,9 @@ export function DataExplorer() {
                                 String(row[col.name] ?? "NULL")
                               ) : (
                                 <input
-                                  type={col.type.includes("INT") ? "number" : "text"}
+                                  type={
+                                    col.type.includes("INT") ? "number" : "text"
+                                  }
                                   value={String(editingRow[col.name] ?? "")}
                                   onChange={(e) =>
                                     setEditingRow((prev) => ({
@@ -306,7 +325,11 @@ export function DataExplorer() {
                             <Button size="sm" onClick={() => handleUpdate(row)}>
                               Save
                             </Button>
-                            <Button variant="ghost" size="sm" onClick={() => setEditingRow(null)}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setEditingRow(null)}
+                            >
                               Cancel
                             </Button>
                           </td>
@@ -314,7 +337,9 @@ export function DataExplorer() {
                       ) : (
                         <>
                           {schema.map((col) => (
-                            <td key={col.name}>{String(row[col.name] ?? "NULL")}</td>
+                            <td key={col.name}>
+                              {String(row[col.name] ?? "NULL")}
+                            </td>
                           ))}
                           <td>
                             <Button
@@ -324,7 +349,11 @@ export function DataExplorer() {
                             >
                               Edit
                             </Button>
-                            <Button variant="danger" size="sm" onClick={() => handleDelete(row)}>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDelete(row)}
+                            >
                               Delete
                             </Button>
                           </td>

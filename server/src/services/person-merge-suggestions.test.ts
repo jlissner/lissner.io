@@ -32,8 +32,8 @@ describe("maxPairwiseSimilarity", () => {
           [3, 0],
           [5, 0],
         ],
-        sim
-      )
+        sim,
+      ),
     ).toBe(10);
   });
 });
@@ -54,7 +54,7 @@ describe("mergeSuggestionsFromDescriptors", () => {
       [10, 11],
       names,
       namedDescriptors,
-      sim
+      sim,
     );
     expect(out.map((x) => x.personId)).toEqual([10, 11]);
     expect(out[0]!.score).toBeGreaterThanOrEqual(out[1]!.score);
@@ -64,8 +64,14 @@ describe("mergeSuggestionsFromDescriptors", () => {
     const names = new Map<number, string>([[20, "Zed"]]);
     const namedDescriptors = new Map<number, number[][]>([[20, [[0.01, 0]]]]);
     const sim = (a: number[], b: number[]) => a[0]! + b[0]!;
-    expect(mergeSuggestionsFromDescriptors([[0.01]], [20], names, namedDescriptors, sim)).toEqual(
-      []
-    );
+    expect(
+      mergeSuggestionsFromDescriptors(
+        [[0.01]],
+        [20],
+        names,
+        namedDescriptors,
+        sim,
+      ),
+    ).toEqual([]);
   });
 });

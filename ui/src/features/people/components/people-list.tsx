@@ -39,7 +39,7 @@ export function PeopleList({ onUpdate }: PeopleListProps) {
         // Keep existing quiet failure behavior in this legacy panel.
       }
     },
-    [draft, fetchPeople, onUpdate]
+    [draft, fetchPeople, onUpdate],
   );
 
   if (people.length === 0) return null;
