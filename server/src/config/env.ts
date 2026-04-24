@@ -25,12 +25,11 @@ export const PROJECT_ROOT = path.join(
 
 const envFileName =
   process.env.NODE_ENV === "production" ? ".env.prod" : ".env.local";
-
 const envPath = path.join(PROJECT_ROOT, envFileName);
 
-invariant(existsSync(envPath), `No ${envFileName} file found`);
-
-config({ path: envPath, override: true });
+if (existsSync(envPath)) {
+  config({ path: envPath, override: true });
+}
 
 export const DATA_DIR = getEnvVar("DATA_DIR");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
