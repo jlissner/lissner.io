@@ -31,17 +31,17 @@ if (existsSync(envPath)) {
   config({ path: envPath, override: true });
 }
 
-export const DATA_DIR = getEnvVar("DATA_DIR");
-export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
-export const UI_PORT = Number(getEnvVar("UI_PORT"));
-export const OLLAMA_HOST = getEnvVar("OLLAMA_HOST");
-export const SERVER_HOST = getEnvVar("SERVER_HOST");
-export const SERVER_PROTOCOL = getEnvVar("SERVER_PROTOCOL");
 export const AWS_ACCESS_KEY_ID = getEnvVar("AWS_ACCESS_KEY_ID");
-export const AWS_SECRET_ACCESS_KEY = getEnvVar("AWS_SECRET_ACCESS_KEY");
 export const AWS_REGION = getEnvVar("AWS_REGION");
-export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
+export const AWS_SECRET_ACCESS_KEY = getEnvVar("AWS_SECRET_ACCESS_KEY");
+export const DATA_DIR = getEnvVar("DATA_DIR");
 export const FIRST_ADMIN_EMAIL = getEnvVar("FIRST_ADMIN_EMAIL");
-export const S3_BUCKET = getEnvVar("S3_BUCKET");
+export const OLLAMA_HOST = getEnvVar("OLLAMA_HOST");
 export const OLLAMA_VISION_MODEL = getEnvVar("OLLAMA_VISION_MODEL");
+export const S3_BUCKET = getEnvVar("S3_BUCKET");
+export const SERVER_HOST = getEnvVar("SERVER_HOST");
+export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
+export const SERVER_PROTOCOL = getEnvVar("SERVER_PROTOCOL");
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
+export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
+export const UI_PORT = Number(getEnvVar("UI_PORT"));
