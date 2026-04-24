@@ -12,7 +12,6 @@ export type {
   AdminDbRestoreRequest,
   AdminDbRestoreResponse,
   ApiErrorBody,
-  AuthConfigResponse,
   BackupConfigResponse,
   BackupRunStartedResponse,
   BackupSyncStatusResponse,

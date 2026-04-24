@@ -4,7 +4,7 @@ set -euo pipefail
 # Family Media Manager - Setup script for Ubuntu 24
 # Installs Node.js, Ollama, nomic-embed-text, and npm dependencies
 
-echo "==> Family Media Manager Setup (Ubuntu 24)"
+echo "==> lissner.io (Ubuntu 24)"
 echo ""
 
 # Node.js 20 LTS

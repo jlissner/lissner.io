@@ -12,18 +12,21 @@ metadata:
 Systematically find, prioritize, and plan tech debt reduction. Combines automated scanning with LLM analysis to produce a prioritized debt register, then feeds approved items into the standard grimoire pipeline (draft → plan → apply).
 
 ## Triggers
+
 - User asks about tech debt, code quality, refactoring opportunities, or simplification
 - User wants to reduce complexity, lines of code, or structural bloat
 - User asks "what should we clean up?" or "where's the tech debt?"
 - Loose match: "refactor", "tech debt", "simplify", "clean up", "reduce complexity", "code smells"
 
 ## Routing
+
 - Behavior change needed (not just code quality) → `grimoire-draft`
 - Removing a feature → `grimoire-remove`
 - Fixing a bug → `grimoire-bug`
 - Documenting existing code → `grimoire-discover`
 
 ## Prerequisites
+
 - A grimoire-initialized project (`.grimoire/` exists)
 - Git history available (hotspot analysis needs `git log`)
 - Ideally: `grimoire map` + `/grimoire:discover` already run (area docs help contextualize findings)
@@ -33,6 +36,7 @@ Systematically find, prioritize, and plan tech debt reduction. Combines automate
 Each debt item in the register follows a structured format influenced by the CodeClimate issue spec (categories, severity, remediation effort, fingerprint) and the SEI/CMU Technical Debt Item classification (consequences, causes, evidence of accumulation).
 
 **Required fields:**
+
 - `id` — unique identifier (debt-NNN, monotonically increasing)
 - `category` — one of: `hotspot`, `structural_bloat`, `data_structure`, `circular_dependency`, `dependency_staleness`, `broken_promise`, `duplication`, `dead_code`, `test_debt`
 - `severity` — `high`, `medium`, or `low`
@@ -43,6 +47,7 @@ Each debt item in the register follows a structured format influenced by the Cod
 - `status` — `open` | `triaged` | `in-progress` | `resolved` | `accepted`
 
 **Optional fields:**
+
 - `metrics` — numeric measurements (churn count, complexity score, line count, field count, age in days, etc.)
 - `suggestion` — recommended refactoring approach
 - `effort` — `small` (<1 hour), `medium` (1-4 hours), `large` (>4 hours)
@@ -60,6 +65,7 @@ The scanner respects `.grimoire/debt-exceptions.yml` — a file where the team e
 **Exception matching (checked before any item is added to the register):**
 
 1. **By item ID** — matches a specific debt register entry:
+
    ```yaml
    - id: debt-003
      reason: "Splitting config types would break the plugin API."
@@ -72,7 +78,7 @@ The scanner respects `.grimoire/debt-exceptions.yml` — a file where the team e
 2. **By pattern + category** — matches any finding in files matching the glob:
    ```yaml
    - pattern: "src/vendor/**"
-     category: "*"              # or a specific category
+     category: "*" # or a specific category
      reason: "Vendored code — we don't own it"
      quadrant: deliberate-prudent
      owner: fred
@@ -80,9 +86,10 @@ The scanner respects `.grimoire/debt-exceptions.yml` — a file where the team e
    ```
 
 **Exception rules:**
+
 - Every exception MUST have `reason`, `quadrant`, `owner`, and `accepted` fields. Exceptions without a reason are rejected — the point is to force articulation of the trade-off.
 - `expires` is optional. If set, the scanner re-flags the item after the expiry date and notes it as "exception expired" in the register.
-- `quadrant` uses Fowler's Technical Debt Quadrant to classify the *intent* behind accepting the debt. This isn't just documentation — it helps the team spot patterns (too many `deliberate-reckless` exceptions = systemic problem).
+- `quadrant` uses Fowler's Technical Debt Quadrant to classify the _intent_ behind accepting the debt. This isn't just documentation — it helps the team spot patterns (too many `deliberate-reckless` exceptions = systemic problem).
 - When the scanner finds a matching exception, the item is still recorded in the register but with `status: accepted` and a reference to the exception. This means the debt is visible and tracked, just not flagged for action.
 - Expired exceptions cause the item's status to revert to `open` with a note: `"Exception expired YYYY-MM-DD — re-evaluate"`.
 - When a user marks an item as "accept" during the triage flow (step 4), the skill writes the exception to `debt-exceptions.yml` automatically — the user provides the reason, quadrant, and optional expiry interactively.
@@ -92,7 +99,9 @@ The scanner respects `.grimoire/debt-exceptions.yml` — a file where the team e
 ## Workflow
 
 ### 1. Determine Scope
+
 Ask the user what to scan:
+
 - **Full scan** — all categories across the whole codebase (default for first run)
 - **Category scan** — specific debt category (e.g., "just hotspots" or "just structural bloat")
 - **Area scan** — specific directory or module (e.g., "just the API layer")
@@ -107,6 +116,7 @@ Run applicable scans in parallel. Each scan produces a list of findings with a c
 Run applicable scans from the categories in `../references/refactor-scan-categories.md`. Each category has specific signals, thresholds, severity levels, and scan commands referencing `config.tools.*` entries.
 
 **Key categories** (details in reference):
+
 - **Hotspots** (churn x complexity) — highest ROI, uses `git log` + `config.tools.complexity`
 - **Structural bloat** — oversized files/functions/classes
 - **Data structure complexity** — over-engineered models, deep nesting
@@ -120,6 +130,7 @@ Run applicable scans from the categories in `../references/refactor-scan-categor
 ### 3. Load Exceptions
 
 Before generating the register, read `.grimoire/debt-exceptions.yml`. Parse all exceptions and build a lookup:
+
 - Index by `id` for direct item matches
 - Index by `pattern` + `category` for glob matches
 - Check `expires` dates — any exception past its expiry date is treated as not matching (the item will be flagged as `open` with a note)
@@ -131,6 +142,7 @@ If the exceptions file doesn't exist, proceed with no exceptions (all findings a
 Produce `.grimoire/docs/debt-register.yml`. This is the persistent record of known debt, what's been triaged, and what's been addressed.
 
 For each finding from the scans:
+
 1. Compute a fingerprint: `sha256(category + normalized_location)` — this is the stable identifier for dedup across scans
 2. Check against exceptions (by id, then by pattern+category)
 3. Check against existing register (by fingerprint) — preserve status and metadata for known items
@@ -139,6 +151,7 @@ For each finding from the scans:
 See `../references/refactor-register-format.md` for the full field specification and example items.
 
 **Register rules:**
+
 - Each item has a unique `id` (debt-NNN, monotonically increasing) and a stable `fingerprint` for dedup
 - `status` tracks lifecycle: `open` → `triaged` → `in-progress` → `resolved` (or `accepted` via exception)
 - `first_detected` and `last_detected` track how long debt has been known — debt that persists across many scans is aging and may need escalation
@@ -156,6 +169,7 @@ See `../references/refactor-register-format.md` for the full field specification
 Present findings to the user grouped by severity, with recommended action order. Only show items with `status: open` — accepted items are tracked but not flagged.
 
 **Prioritization heuristic (automated):**
+
 1. **High-severity hotspots first** — highest ROI, every future change benefits
 2. **High-severity structural bloat** — simplification unlocks everything else
 3. **High-severity data structure complexity** — foundational, affects many layers
@@ -163,6 +177,7 @@ Present findings to the user grouped by severity, with recommended action order.
 5. **Everything else by severity**
 
 **Present in batches** (same pattern as grimoire-audit — don't dump):
+
 - Show top 5 items first with their category, location, suggestion, and consequences
 - For each item, ask the user to choose one of:
   - **fix** — create a grimoire change to address it (status → `in-progress`)
@@ -170,6 +185,7 @@ Present findings to the user grouped by severity, with recommended action order.
   - **accept** — the cost of fixing exceeds the benefit (status → `accepted`)
 
 **When the user chooses "accept"**, collect exception details interactively:
+
 1. Ask for a **reason** (required) — why is this debt acceptable? What's the trade-off?
 2. Ask for the **Fowler quadrant** (required) — present the four options:
    - `deliberate-prudent`: "We know, and it's the right trade-off for now"
@@ -185,10 +201,12 @@ Present findings to the user grouped by severity, with recommended action order.
 After the first batch, ask if the user wants to see more or start working on the approved items.
 
 **Present a summary of existing exceptions** if any exist:
+
 - "You have 5 accepted items in debt-exceptions.yml. 1 expires next month."
 - This keeps the team aware of debt they've acknowledged but not resolved.
 
 **When presenting, frame simplification opportunities concretely:**
+
 - "This 847-line file could become 3 files of ~250 lines each"
 - "This 34-method class has 5 distinct responsibilities — extracting them would make each class testable independently"
 - "This 28-field config type is used in 3 contexts — splitting it eliminates 22 optional fields and makes each usage self-documenting"
@@ -207,6 +225,7 @@ For each item the user approves to fix:
 4. Hand off to `/grimoire:plan` for task generation, then `/grimoire:apply` for implementation
 
 **Refactoring-specific guidance for the plan/apply stages:**
+
 - **All existing tests must keep passing.** A refactoring that breaks tests is not a refactoring.
 - **Prefer incremental moves over big-bang rewrites.** Move one function at a time, run tests after each move.
 - **Add tests before refactoring if test debt is part of the item.** You need a safety net before restructuring.
@@ -216,6 +235,7 @@ For each item the user approves to fix:
 ### 7. Track Progress
 
 After refactoring is complete (grimoire apply finishes):
+
 1. Update the debt register item: set `status: resolved`
 2. Update metrics if a re-scan shows improvement
 3. Present a before/after summary:
@@ -227,6 +247,7 @@ After refactoring is complete (grimoire apply finishes):
 ### 8. Ongoing Maintenance
 
 The debt register is a living document. Recommend:
+
 - **Monthly re-scan** to catch new debt and verify resolved items stay resolved
 - **Per-sprint planning** — pick 1-2 high-severity items each sprint alongside feature work
 - **Gate new debt** — the existing grimoire check pipeline (complexity, duplication, best practices) catches debt at commit time. The refactor skill handles accumulated debt.
@@ -240,6 +261,7 @@ The debt register is a living document. Recommend:
 - **grimoire-check** — the commit-time checks prevent new debt. Refactor addresses existing debt.
 
 ## Important
+
 - **Don't boil the ocean.** Tech debt reduction is incremental. Pick the highest-impact items and make measurable progress. A codebase with zero debt is not the goal — a codebase where debt doesn't slow you down is.
 - **Respect wont-fix.** Some debt is cheaper to live with than to fix. A 500-line file that changes once a year is not worth splitting. Acknowledge this and move on.
 - **Simplification is the primary goal.** Every refactoring should make the codebase smaller, simpler, or more focused. If a refactoring adds complexity (more files, more abstractions, more indirection) without reducing something else, question whether it's actually an improvement.
@@ -248,4 +270,5 @@ The debt register is a living document. Recommend:
 - **Present findings collaboratively** — same interview pattern as grimoire-audit. Batches of 3-5, let the user drive priority. Don't dump a 50-item list.
 
 ## Done
+
 When debt items are triaged (fixed, deferred, or accepted) and grimoire changes are created for approved fixes, the workflow is complete. Each approved fix flows through the standard pipeline: `grimoire-plan` → `grimoire-apply`.

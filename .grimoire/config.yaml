@@ -37,7 +37,10 @@ tools:
     prompt: Review these changed files for best practices violations
   duplicates:
     name: jscpd
-    command: npx jscpd --reporters console
+    command: >-
+      npx jscpd --reporters console
+      --gitignore
+      --ignore "**/package-lock.json"
 checks:
   - lint
   - format

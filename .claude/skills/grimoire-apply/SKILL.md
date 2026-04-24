@@ -28,17 +28,20 @@ If you believe a task is wrong, incomplete, or impossible — flag it to the use
 This applies to all LLMs: Claude, Codex, Cursor, Copilot, etc. The task list is the authority.
 
 ## Triggers
+
 - User wants to implement a planned grimoire change
 - User asks to apply, implement, or build a grimoire change
 - Loose match: "apply", "implement", "build" with a change reference
 
 ## Routing
+
 - No tasks.md exists → `grimoire-plan` first
 - Task seems wrong or impossible → flag to user; do NOT silently re-plan or skip
 - Implementation reveals the spec is wrong → STOP. Go back to `grimoire-draft`.
 - Fix is needed (not a planned change) → `grimoire-bug`
 
 ## Prerequisites
+
 - A change exists in `.grimoire/changes/<change-id>/` with:
   - `manifest.md`
   - `tasks.md` (from plan stage)
@@ -47,6 +50,7 @@ This applies to all LLMs: Claude, Codex, Cursor, Copilot, etc. The task list is 
 ## Workflow
 
 ### 1. Select Change
+
 - List active changes in `.grimoire/changes/` that have `tasks.md`
 - If multiple, ask user which one to apply
 - If only one, confirm it
@@ -54,9 +58,11 @@ This applies to all LLMs: Claude, Codex, Cursor, Copilot, etc. The task list is 
 - Skip any tasks already marked `- [x]` (resume from where a previous session left off)
 
 ### 2. Choose Execution Mode
+
 Ask the user how they want to work through the task list:
 
 **Review mode (default):** Before each task, present what you plan to implement and which files you'll touch. Then for each file change:
+
 1. Show the proposed change (what you plan to write/edit and why)
 2. Wait for user approval before writing to that file
 3. If the user requests modifications, revise and re-present before writing
@@ -64,6 +70,7 @@ Ask the user how they want to work through the task list:
 After all file changes for a task are approved and written, run the tests and show results. Wait for user approval before moving to the next task. The user can request changes, ask questions, reorder, or skip tasks at any point.
 
 **Autonomous mode:** Work through the entire task list without pausing between tasks. Only stop if:
+
 - A test won't go green after reasonable attempts (you're stuck)
 - Implementation reveals the spec is wrong (needs to go back to draft)
 - You hit an external blocker (missing dependency, permissions, etc.)
@@ -77,10 +84,11 @@ If the user doesn't specify, default to review mode.
 **You MUST track failed attempts per task.** If a test won't go green, count your attempts:
 
 - **Attempt 1:** Try the straightforward implementation from the task description.
-- **Attempt 2:** If attempt 1 failed, re-read the error carefully. Try a *different* approach — not the same code with minor tweaks. State what you're doing differently and why.
-- **Attempt 3 (final):** If attempt 2 failed, try one more *fundamentally different* approach. If the same error recurs, the problem is likely not in your implementation.
+- **Attempt 2:** If attempt 1 failed, re-read the error carefully. Try a _different_ approach — not the same code with minor tweaks. State what you're doing differently and why.
+- **Attempt 3 (final):** If attempt 2 failed, try one more _fundamentally different_ approach. If the same error recurs, the problem is likely not in your implementation.
 
 **After 3 failed attempts on a single task, STOP.** Do not continue. Instead:
+
 1. Add a comment to `tasks.md` under the task: `<!-- BLOCKED: <summary of what was tried and what failed> -->`
 2. Present to the user:
    - What the task requires
@@ -90,11 +98,13 @@ If the user doesn't specify, default to review mode.
 3. Wait for the user to decide: fix the task, provide guidance, skip it, or go back to plan.
 
 **What counts as a "different approach":**
+
 - Using a different library/API to achieve the same result
 - Restructuring the code (different function signature, different data flow)
 - Changing the test setup (different fixtures, different mocking strategy)
 
 **What does NOT count:**
+
 - Changing a variable name or adding a print statement
 - Adding a try/catch around the same failing code
 - Re-running the same code hoping for a different result
@@ -155,6 +165,7 @@ This gives the next session critical context (architectural decisions made, file
 #### When to Force a Fresh Context Mid-Section
 
 Even within a section, break early if:
+
 - You needed 3 attempts on a task (stuck detection recovery)
 - You notice degraded output (repeating yourself, forgetting earlier context, making mistakes on things you got right earlier)
 - The section has more than 5 tasks
@@ -164,6 +175,7 @@ Write a handoff note at the break point and start fresh.
 **Check `.grimoire/config.yaml`** for the configured coding agent — use `llm.coding.command` and `llm.coding.model` for implementation work.
 
 ### 3. Create Feature Branch
+
 Before writing any code, ensure you're on a feature branch for this change:
 
 ```
@@ -179,20 +191,24 @@ This links the git history to the grimoire change — `grimoire trace` and `grim
 **Use the context blocks in `tasks.md`.** Each task section has a `<!-- context: ... -->` comment listing the exact files to load for that section. This was computed during planning with full codebase knowledge. Load those files — they include the relevant feature files, area docs, and source files you'll need.
 
 **Loading order:**
+
 1. `tasks.md` — your checklist (load once at start, find the current section)
 2. Read the `<!-- context: ... -->` block for the current section
 3. Load each file listed in the context block
 4. If a listed file doesn't exist, it may need to be created as part of the task — that's fine
 
 **If the context window fills up** (degraded output quality, forgotten context, repeated mistakes):
+
 1. Finish or pause the current task
 2. Summarize progress in `tasks.md` (mark completed tasks, add handoff note)
 3. Tell the user: "Context is getting large. I've updated tasks.md with progress. A fresh session can resume from here."
 
 ### 5. Implement Tasks
+
 Work through `tasks.md` sequentially. **Every task follows the same cycle: code → test → green → next.**
 
 **For each task:**
+
 1. Announce which task you're working on
 2. Write the step definitions FIRST (the test that will verify this task)
 3. Run the step definitions — **they MUST FAIL (red)**
@@ -215,6 +231,7 @@ Work through `tasks.md` sequentially. **Every task follows the same cycle: code 
 **This is strict red-green BDD.** A test that has never been red has never proven it can catch a failure. The red step is NOT a formality — it is the proof that the test works. If you skip it or the test passes immediately, you have a false positive that provides zero safety.
 
 **Step definition rules:**
+
 - Organize by domain concept, not by feature file
 - Shared steps go in the project's common step location (check existing test setup)
 - Step definitions are the translation layer between Gherkin and code
@@ -222,12 +239,15 @@ Work through `tasks.md` sequentially. **Every task follows the same cycle: code 
 - Every Given/When/Then step in a proposed `.feature` file MUST have a corresponding step definition
 
 **Architecture tasks:**
+
 - Follow the decision record's chosen option
 - Implement consequences noted in the ADR
 - If the ADR has a Confirmation section, write a test or check that validates it
 
 ### 6. Verify
+
 When all implementation tasks are complete:
+
 - Run the BDD test suite (command from `config.tools.bdd_test`) — existing behavior must not break
 - All scenarios should pass — new AND existing
 - If new scenarios fail, fix the implementation (not the feature file — the feature is the spec)
@@ -238,7 +258,9 @@ When all implementation tasks are complete:
 **The verify step is not optional. Do not proceed to finalize with failing tests.**
 
 ### 7. Finalize
+
 When all tests are green:
+
 1. Copy proposed `.feature` files from `.grimoire/changes/<change-id>/features/` to `features/` (replacing baseline)
 2. Move new decision records to `.grimoire/decisions/` with proper sequential numbering
 3. Update MADR status from `proposed` to `accepted` and set the date
@@ -247,7 +269,9 @@ When all tests are green:
 6. Remove the change directory from `.grimoire/changes/`
 
 ### 8. Summary
+
 Present a brief summary:
+
 - What was implemented
 - Which features now pass (with test counts if available)
 - Which decisions were accepted
@@ -258,6 +282,7 @@ Present a brief summary:
 **Before writing code**, read `../references/testing-contracts.md` — covers: verify-before-using rules (imports, packages, APIs), mocking strategy (HTTP boundary not client), fixture management, contract tests, and step definition quality checks.
 
 ## Important
+
 - **Tests are not optional.** Every task produces both production code and passing step definitions. No exceptions.
 - **Red-green is mandatory, not aspirational.** A test must fail before it passes. If it doesn't fail, it's not a real test. Fix it before moving on.
 - **A test that always passes is worse than no test.** It gives false confidence. If you can't make a step definition fail, you don't understand what it's testing.
@@ -269,6 +294,8 @@ Present a brief summary:
 - Existing tests must keep passing. A grimoire change that breaks existing behavior is not complete.
 
 ## Done
+
 When all tasks are complete, tests pass, and artifacts are finalized, the workflow is complete. Present the summary and suggest:
+
 - `grimoire-verify` to confirm implementation matches specs
 - `grimoire-commit` to commit the changes

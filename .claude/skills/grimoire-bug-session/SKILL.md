@@ -12,16 +12,19 @@ metadata:
 Guided exploratory testing sessions. Create a charter, track coverage as you work, take notes, file bugs inline, and produce a session debrief when the timebox expires. This is the difference between "I poked around for an hour" and "I systematically explored auth for 45 minutes and here's what I found."
 
 ## Triggers
+
 - User wants to do a focused exploratory testing session
 - User says "start a testing session", "explore [area] for [time]", "session-based testing"
 - Loose match: "testing session", "session charter", "timebox testing", "exploratory session", "let's explore"
 
 ## Routing
+
 - Want AI analysis of specs/code without interactive testing → `grimoire-bug-explore`
 - Want to file a specific bug → `grimoire-bug-report`
 - Want to fix a bug → `grimoire-bug`
 
 ## Prerequisites
+
 - A grimoire project with feature files in `features/`
 - Ideally, a previous `grimoire-bug-explore` run or knowledge of what areas are risky (but not required)
 
@@ -32,25 +35,30 @@ Guided exploratory testing sessions. Create a charter, track coverage as you wor
 A session charter defines the mission before the tester starts clicking. Ask the tester:
 
 **Mission** — What are you trying to learn or find?
+
 - "Find edge cases in the checkout flow"
 - "Explore what happens with large datasets in reporting"
 - "Test the new auth changes for regressions"
 
 If the tester isn't sure, help them pick a mission based on:
+
 - Areas flagged by `grimoire-bug-explore` (if a findings report exists)
 - Recent changes (`git log --since="1 week ago"`)
 - Open bugs in `.grimoire/bugs/` that might indicate broader issues
 - Areas with sparse automation coverage (feature files with few or no step definitions)
 
 **Scope** — What's in bounds and what's out?
+
 - In: specific feature areas, pages, workflows, API endpoints
 - Out: explicitly exclude areas that aren't the focus (reduces scope creep)
 
 **Timebox** — How long?
+
 - Suggest 30-60 minutes for focused sessions. Shorter than 20 minutes is too shallow; longer than 90 minutes leads to fatigue.
 - The timebox is a guide, not a hard stop. But the skill will prompt a wrap-up when time is close.
 
 **Risk areas** — What are you especially watching for?
+
 - Performance under load, data integrity, permission bypasses, error handling, cross-browser issues
 - Pull from `grimoire-bug-explore` findings if available
 
@@ -73,17 +81,22 @@ area: <feature area>
 # Session: <mission summary>
 
 ## Mission
+
 <What are we trying to learn or find?>
 
 ## Scope
+
 - **In**: <what's included>
 - **Out**: <what's excluded>
 
 ## Risk Areas
+
 - <specific risks to watch for>
 
 ## Test Ideas
+
 <!-- Seeded from explore findings, specs, and risk areas -->
+
 - [ ] <test idea 1>
 - [ ] <test idea 2>
 - [ ] <test idea 3>
@@ -114,26 +127,32 @@ Add these as checkable items in the charter. The tester can add their own as the
 As the tester works, they'll report what they're doing and finding. Track this in real time:
 
 **When the tester reports trying something:**
+
 - Check off the test idea if it matches one in the charter
 - Update the coverage map: "you've covered 4 of 7 test ideas in this area"
 - Suggest what's left: "you haven't tried the error cases yet — want to explore those next?"
 
 **When the tester finds something interesting:**
+
 - Capture it as a session note in `.grimoire/sessions/<session-id>/notes.md`:
+
   ```markdown
   ## Notes
 
   ### <HH:MM> — <short description>
+
   <what the tester observed>
   <why it's interesting>
   ```
 
 **When the tester finds a bug:**
+
 - Offer to file it immediately via `grimoire-bug-report` (the session context pre-fills the report: area, environment, what they were doing)
 - Track it in the session: "Bug filed: `bug-<id>` — <title>"
 - Don't interrupt the session flow — file quickly and keep exploring
 
 **When the tester goes off-charter:**
+
 - This is fine — exploratory testing should follow interesting threads. Note the detour but don't block it.
 - If they've strayed far from the mission, gently note it: "You've moved into the reporting area — that's outside the session scope. Want to add it to scope or note it for a separate session?"
 
@@ -167,32 +186,42 @@ bugs-filed: <count>
 # Session Debrief: <mission summary>
 
 ## Coverage
+
 - Test ideas completed: <N> of <total>
 - Test ideas skipped: <list with reasons>
 - Areas explored outside charter: <list>
 
 ## Bugs Filed
+
 - `<bug-id>`: <title> (<severity>)
 - `<bug-id>`: <title> (<severity>)
 
 ## Observations
+
 <!-- Interesting things that aren't bugs but are worth noting -->
+
 - <observation>
 
 ## Risks Identified
+
 <!-- Things that need more investigation or a separate session -->
+
 - <risk>
 
 ## Automation Gaps Discovered
+
 <!-- Scenarios or behaviors that should be automated but aren't -->
+
 - <gap> — suggested scenario: `<Given/When/Then>`
 
 ## Recommendations
+
 - <what to explore next>
 - <what to automate>
 - <what to escalate>
 
 ## Session Quality
+
 - **Charter adherence**: <stayed focused / moderate detours / significant scope change>
 - **Time usage**: <efficient / some idle time / ran long>
 ```
@@ -209,6 +238,7 @@ After the debrief:
 - **Link to explore** — if this session revealed patterns (e.g., "error handling is weak across the board"), suggest a broader `grimoire-bug-explore` run.
 
 ## Important
+
 - **The tester drives the session.** The skill guides and tracks, but doesn't dictate what to test next. Suggest, don't command.
 - **Notes are lightweight.** Don't ask the tester to write essays. A timestamp and a sentence is enough. The skill fills in structure.
 - **File bugs fast.** When the tester finds something, capture it in 30 seconds and get back to exploring. Don't let bug reporting break the flow.
@@ -219,4 +249,5 @@ After the debrief:
 - **Build on previous sessions.** Check `.grimoire/sessions/` for past sessions in the same area. What was covered before? What was flagged for follow-up?
 
 ## Done
+
 When the session debrief is generated and follow-up actions are identified, the workflow is complete. The debrief is saved to `.grimoire/sessions/`. Bugs filed during the session flow through normal triage.

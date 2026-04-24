@@ -12,11 +12,13 @@ metadata:
 Disciplined bug fix workflow: reproduce first, then fix. Every bug gets a failing test before any code changes.
 
 ## Triggers
+
 - User reports a bug, defect, or unexpected behavior
 - User says something is "broken", "wrong", "not working"
 - Loose match: "bug", "fix", "broken", "defect", "issue", "regression"
 
 ## Routing
+
 - Tester/non-developer reporting a bug → `grimoire-bug-report`
 - Feature request disguised as a bug → `grimoire-draft`
 - Performance issue → handle directly (profiling, not repro test)
@@ -25,7 +27,9 @@ Disciplined bug fix workflow: reproduce first, then fix. Every bug gets a failin
 ## Workflow
 
 ### 1. Understand the Bug
+
 Get enough information to reproduce:
+
 - **What happened** — the actual behavior
 - **What should happen** — the expected behavior
 - **How to trigger it** — steps to reproduce
@@ -39,6 +43,7 @@ If the user's report is vague, ask one clarifying question. Don't start fixing u
 **Scenario exists** → The spec is right, the code is wrong. This is a pure implementation bug. Skip to step 3.
 
 **No scenario covers this behavior** → The bug reveals a gap in the specs. This is a missing scenario. Before fixing:
+
 1. Write a new scenario (or add to an existing feature) that describes the correct behavior
 2. Add it directly to `features/` (not through a full grimoire change — this is a gap fill, not new functionality)
 3. Note in a comment or commit message that this scenario was added to cover a discovered bug
@@ -46,6 +51,7 @@ If the user's report is vague, ask one clarifying question. Don't start fixing u
 **Scenario is wrong** → Rare, but possible. The spec itself describes incorrect behavior. Flag this to the user — it may need a grimoire draft to update the feature properly.
 
 ### 3. Write a Reproduction Test
+
 Before touching any production code:
 
 1. Write a step definition (or unit test if no BDD scenario applies) that exercises the exact bug conditions
@@ -55,9 +61,11 @@ Before touching any production code:
 This is non-negotiable. A bug fix without a reproduction test is a guess that might work. A failing test is proof you understand the problem.
 
 ### 4. Document the Bug
+
 Create a brief record in the test or commit. No separate tracking file needed — the test IS the documentation.
 
 The reproduction test should make the bug obvious:
+
 ```gherkin
 # Bug: users with special characters in email can't reset password
 Scenario: Password reset with plus-sign email
@@ -67,6 +75,7 @@ Scenario: Password reset with plus-sign email
 ```
 
 Or as a unit test comment:
+
 ```python
 def test_password_reset_special_chars():
     """Bug: email addresses with + were being URL-encoded in the reset
@@ -74,6 +83,7 @@ def test_password_reset_special_chars():
 ```
 
 The commit message should reference the bug:
+
 ```
 fix(auth): handle special characters in password reset emails
 
@@ -84,13 +94,17 @@ Added scenario: "Password reset with plus-sign email"
 ```
 
 ### 5. Create Fix Branch
+
 Before writing any code, create a branch for the fix:
+
 ```
 fix/<short-description>
 ```
+
 For example: `fix/special-chars-password-reset`, `fix/null-pricing-response`.
 
 ### 6. Fix the Bug
+
 Now — and only now — modify production code:
 
 1. Make the smallest change that fixes the failing test
@@ -101,6 +115,7 @@ Now — and only now — modify production code:
 **Escalation guard:** If the fix requires changes to more than 3 files, introduces new abstractions, modifies data models, or crosses service boundaries — STOP. This is not a bug fix, it's a change that needs design. Tell the user: "This fix is larger than a typical bug fix. I recommend routing to `grimoire-draft` to handle this as a proper change with specs and a plan." The user can override.
 
 ### 7. Verify
+
 - Reproduction test passes (`config.tools.bdd_test`)
 - All existing feature scenarios pass (`config.tools.bdd_test`)
 - All existing unit/integration tests pass (`config.tools.unit_test`)
@@ -118,15 +133,19 @@ After the fix, generate a checklist for testers to verify the fix and check for 
    - Edge cases near the fix — if you fixed a null check, what about empty strings? If you fixed one role, what about other roles?
 
 3. **Generate the checklist:**
+
 ```markdown
 ## Verification Checklist: <bug-id>
+
 Fix branch: `fix/<name>`
 
 ### Original Bug
+
 - [ ] Reproduce the original steps: <steps>
 - [ ] Confirm expected behavior: <what should happen now>
 
 ### Regression Checks
+
 - [ ] <related scenario or area>: <what to verify>
 - [ ] <related scenario or area>: <what to verify>
 - [ ] <related scenario or area>: <what to verify>
@@ -137,7 +156,9 @@ Fix branch: `fix/<name>`
 5. If an external ticket exists, post the checklist as a comment so the tester doesn't need to look at local files.
 
 ### 9. Summary
+
 Report to the user:
+
 - What the bug was (root cause, not symptoms)
 - What was changed (files and what specifically)
 - Whether a new scenario was added to cover the gap
@@ -145,11 +166,13 @@ Report to the user:
 - The verification checklist for testers (from step 8)
 
 ## When NOT to Use This Skill
+
 - **Feature requests disguised as bugs** — "it's broken because it doesn't do X" when X was never specified. Route to `grimoire-draft`.
 - **Performance issues** — these usually need profiling, not a repro test. Handle directly.
 - **Configuration errors** — wrong env vars, missing dependencies, bad setup. Just fix the config.
 
 ## Important
+
 - **Reproduce before you fix.** No exceptions. If you can't reproduce it, you don't understand it, and your fix is a guess.
 - **Small fixes only.** If the bug fix requires significant architectural changes, it's not a bug fix — route to `grimoire-draft` for a proper change.
 - **Don't over-document.** The test is the documentation. A one-line comment in the test explaining the bug is enough. Don't create tracking files, bug reports, or manifests for a bug fix.
@@ -157,4 +180,5 @@ Report to the user:
 - **One bug, one fix.** Don't bundle "while I'm in here" improvements with a bug fix. Fix the bug, nothing more.
 
 ## Done
+
 When the bug is fixed, tests pass (reproduction + regression), and the summary is presented, the workflow is complete. Suggest `grimoire-commit` for the fix commit.

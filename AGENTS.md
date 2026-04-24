@@ -193,6 +193,7 @@ components/, config/, hooks/ → features/ → app/
 ESLint warnings are treated as errors. Run `npm run lint` before committing.
 
 <!-- GRIMOIRE:START -->
+
 # Grimoire — AI Assistant Instructions
 
 Grimoire is a spec-driven development workflow using **Gherkin** for behavioral requirements and **MADR** for architecture decisions. These instructions apply to any AI coding assistant.
@@ -222,12 +223,14 @@ These principles govern all grimoire work — drafting, planning, reviewing, and
 ## When to Use Grimoire
 
 Use grimoire when the user's request involves:
+
 - New user-facing functionality (→ Gherkin feature)
 - Changes to existing behavior (→ Gherkin feature)
 - Technology or architecture decisions (→ MADR decision record)
 - Non-functional requirements like performance targets or security policies (→ MADR decision record)
 
 **Do NOT use grimoire for:**
+
 - Bug fixes — the feature file already describes correct behavior. Just fix the code.
 - Pure refactoring — no behavior change means no scenario change. May warrant an ADR if architectural.
 - Config changes, dependency updates, formatting — no behavioral or architectural impact.
@@ -312,7 +315,7 @@ This is the end-to-end flow for the most common operation — adding or modifyin
 1. **User describes what they want**
 2. **Draft** (`/grimoire:draft`): Qualify the request. Draft `.feature` files and/or ADRs. Write manifest. Collaborate until the user approves. Update manifest status to `approved`.
 3. **Plan** (`/grimoire:plan`): Read approved artifacts. Generate `tasks.md` with red-green test pairs for each scenario. Review with user.
-4. **Review** (`/grimoire:review`): *Optional.* Multi-persona design review — product manager (completeness), senior engineer (simplicity and feasibility), security engineer (vulnerabilities), QA engineer (testability and edge cases). Fix blockers before coding.
+4. **Review** (`/grimoire:review`): _Optional._ Multi-persona design review — product manager (completeness), senior engineer (simplicity and feasibility), security engineer (vulnerabilities), QA engineer (testability and edge cases). Fix blockers before coding.
 5. **Apply** (`/grimoire:apply`): Work through tasks. For each: write test (must fail), write code (must pass), mark done. Update manifest status to `implementing`.
 6. **Verify** (`/grimoire:verify`): Confirm all scenarios pass, no regressions, decisions followed. Generate report.
 7. **Archive** (`grimoire archive <id>`): Sync features/decisions to baseline. Archive manifest. Update manifest status to `complete`.
@@ -326,12 +329,14 @@ When `tasks.md` exists for a change, it IS the plan. **Do not enter plan mode. D
 The plan was created in the plan stage with specific file paths, specific assertions, and specific implementation details. It was reviewed and approved by the user. The apply stage executes it — nothing more.
 
 This matters because:
+
 - The plan was written with full codebase context (real file paths, real patterns)
 - The user already approved the approach
 - Re-planning wastes time and may diverge from what was agreed
 - `tasks.md` supports resume — a new session should pick up where the last one left off, not start over
 
 If a task seems wrong or impossible during apply:
+
 1. Flag it to the user with a specific explanation
 2. Wait for the user to decide: fix the task, skip it, or go back to plan
 3. Do NOT silently rewrite or reorder tasks
@@ -361,7 +366,9 @@ project-root/
 ## Conventions
 
 ### Manifest Status Lifecycle
+
 Every manifest has a `status` field in YAML frontmatter:
+
 - `draft` — being written, not yet reviewed
 - `approved` — reviewed by user, ready for planning/implementation
 - `implementing` — tasks are being worked on
@@ -370,14 +377,18 @@ Every manifest has a `status` field in YAML frontmatter:
 Update the status as the change progresses. The CLI reads this to report change state.
 
 ### Change IDs
+
 - Kebab-case, verb-led: `add-two-factor-auth`, `update-login-flow`, `remove-legacy-api`
 - Must be unique across active changes
 
 ### Branch Naming
+
 Create a feature branch before implementing a change:
+
 ```
 <type>/<change-id>
 ```
+
 - `feat/add-two-factor-auth` — new feature
 - `fix/handle-null-pricing` — bug fix
 - `refactor/migrate-to-sqlalchemy` — refactoring
@@ -386,7 +397,9 @@ Create a feature branch before implementing a change:
 The branch name links the git history to the grimoire change. Update the manifest's `branch:` field when the branch is created.
 
 ### Commit Trailers
+
 Every commit during a grimoire change **MUST** include a `Change:` git trailer:
+
 ```
 feat(auth): add TOTP verification
 
@@ -399,16 +412,19 @@ Scenarios: "Login with valid TOTP code", "Login with expired TOTP code"
 This is what makes `grimoire trace` and `grimoire log` work. Without it, the commit is invisible to the audit trail. `Scenarios:` and `Decisions:` trailers are included when relevant.
 
 ### Feature Organization
+
 - One capability per directory: `features/auth/`, `features/documents/`
 - One feature per file (or closely related features grouped)
 - Tags for cross-cutting concerns: `@smoke`, `@api`, `@slow`
 
 ### Decision Numbering
+
 - Sequential, zero-padded: `0001-`, `0002-`, etc.
 - Never reuse numbers
 - Superseded decisions keep their number, status updated to `superseded by NNNN`
 
 ### Step Definitions
+
 Organize by **domain concept**, NOT by feature file. Check the project's existing test setup and match its BDD framework conventions. See the active skill's testing reference for ecosystem-specific patterns.
 
 <!-- GRIMOIRE:END -->

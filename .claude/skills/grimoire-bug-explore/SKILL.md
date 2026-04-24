@@ -12,18 +12,21 @@ metadata:
 AI-guided exploratory testing. Systematically analyze feature specs and code to find untested edge cases, missing negative scenarios, and potential failure modes — before they become bug reports.
 
 ## Triggers
+
 - User wants to find gaps in test coverage
 - User says "what are we missing?", "explore for bugs", "what could break?"
 - Loose match: "exploratory testing", "edge cases", "negative scenarios", "what's untested", "find gaps"
 - User says "onboard", "where do I start testing?", "what's risky?" → onboard mode
 
 ## Routing
+
 - Want a focused, timeboxed testing session with live tracking → `grimoire-bug-session`
 - Found a specific bug during exploration → `grimoire-bug-report` to file it
 - Want to fix a known bug → `grimoire-bug`
 - Analyzing a filed bug report → `grimoire-bug-triage`
 
 ## Prerequisites
+
 - A grimoire project with feature files in `features/`
 - For developer mode: code exists to analyze (not just specs)
 - For tester/onboard mode: feature files are sufficient
@@ -53,6 +56,7 @@ If the user doesn't specify, default to recent changes — that's where bugs mos
 For each feature file in scope:
 
 **Gap analysis:**
+
 - Read every scenario. What behaviors are specified?
 - What behaviors are conspicuously absent?
   - **Error cases** — what happens when input is invalid, empty, too long, wrong type?
@@ -63,6 +67,7 @@ For each feature file in scope:
 
 **Negative scenario generation:**
 For each scenario that describes a happy path, generate the corresponding negative scenarios:
+
 ```
 Happy: "User logs in with valid credentials"
 Missing negatives:
@@ -79,6 +84,7 @@ Missing negatives:
 Help the tester understand what's already automated and what requires manual testing.
 
 For each feature file in scope:
+
 1. **Find step definitions** — grep the test directory for step text patterns from each scenario (e.g., `grep -rn 'valid credentials' tests/` for a step `Given I have entered valid credentials`)
 2. **Classify each scenario:**
    - **Automated** — has step definitions with real assertions (not `pass` or `assert True`)
@@ -88,21 +94,26 @@ For each feature file in scope:
 4. **Identify manual-only areas** — behaviors that are hard to automate (visual layout, UX feel, accessibility, real-device behavior). Flag these as intentionally manual.
 
 Present this as a coverage map:
+
 ```markdown
 ## Automation Coverage: <area>
 
 ### Automated (N scenarios)
+
 - ✅ "Scenario name" — `test_file.py:42` (strong assertions)
 
 ### Partially Automated (N scenarios)
+
 - ⚠️ "Scenario name" — `test_file.py:58` (weak: only checks `is not None`)
   - Manual check needed: verify the actual values match expected behavior
 
 ### Not Automated (N scenarios)
+
 - ❌ "Scenario name" — needs manual testing
   - Suggested manual test: <brief description of what to check>
 
 ### Intentionally Manual
+
 - 🖐 Visual/UX checks, accessibility, cross-device behavior
 ```
 
@@ -115,6 +126,7 @@ This map tells the tester: "Here's what the robots check for you. Here's what on
 Read the code that implements the features in scope:
 
 **Code-level gap detection:**
+
 - Find error handling paths — are they tested by any scenario?
 - Find conditional branches — is every branch exercised by a scenario?
 - Find input validation — is each validation rule covered by both a passing and failing test?
@@ -122,6 +134,7 @@ Read the code that implements the features in scope:
 - Find configuration-dependent behavior — are different config values tested?
 
 **Anti-pattern detection:**
+
 - Catch blocks that swallow errors silently
 - Default values that mask missing data
 - Type coercion that could hide mismatches
@@ -141,25 +154,31 @@ Present findings organized by risk, not by area:
 
 ```markdown
 # Exploratory Testing: <scope>
+
 Date: <YYYY-MM-DD>
 
 ## Critical Gaps (likely bugs or high-impact missing coverage)
+
 - **<area>**: <description of what's missing and why it matters>
   - Missing scenario: `<suggested Given/When/Then>`
   - Risk: <what could go wrong>
 
 ## Edge Cases (boundary conditions not covered)
+
 - **<area>**: <description>
   - Missing scenario: `<suggested Given/When/Then>`
 
 ## Negative Scenarios (error paths not tested)
+
 - **<area>**: <description>
   - Missing scenario: `<suggested Given/When/Then>`
 
 ## Cross-Feature Risks (interaction effects)
+
 - **<area A> × <area B>**: <description of potential interaction issue>
 
 ## Summary
+
 - <N> critical gaps found
 - <N> edge cases identified
 - <N> negative scenarios missing
@@ -205,32 +224,41 @@ When a tester is new to the project, generate a tester's orientation guide inste
 4. **Highlight recent changes** — list files changed in the last 2 weeks with their feature area. These are where regressions most likely live.
 
 5. **Generate the guide:**
+
 ```markdown
 # Tester's Guide: <project name>
+
 Generated: <YYYY-MM-DD>
 
 ## Feature Areas (ranked by risk)
 
 ### 🔴 High Risk
+
 - **<area>** — <summary>. <N> scenarios (<N> automated, <N> manual). <reason for high risk>.
 
 ### 🟡 Medium Risk
+
 - **<area>** — <summary>. <N> scenarios (<N> automated, <N> manual). <reason>.
 
 ### 🟢 Low Risk
+
 - **<area>** — <summary>. <N> scenarios (<N> automated, <N> manual).
 
 ## Recent Changes (last 2 weeks)
+
 - <area>: <what changed> (<commit date>)
 
 ## Open Bugs
+
 - <bug-id>: <title> (<area>, <severity>)
 
 ## Where to Start
+
 <Recommend the tester start with the highest-risk area that has the least automation — that's where manual testing adds the most value.>
 ```
 
 ## Important
+
 - **This is exploration, not audit.** The goal is to find what's missing, not to grade coverage. Frame findings as opportunities, not failures.
 - **Prioritize by risk.** A missing error scenario on a payment flow matters more than a missing edge case on a settings page. Lead with what could hurt users.
 - **Suggest scenarios, don't just flag gaps.** "Missing negative scenario for login" is less useful than a concrete Given/When/Then that the team can evaluate.
@@ -239,4 +267,5 @@ Generated: <YYYY-MM-DD>
 - **Scope matters.** A full-sweep exploration of a large codebase will produce a lot of findings. Help the user prioritize rather than dumping everything on them.
 
 ## Done
+
 When the findings report is presented and the user has acted on findings (write scenarios, file bugs, defer, or dismiss), the workflow is complete. Suggest follow-up actions based on findings.

@@ -121,13 +121,17 @@ function initAuthDb(): void {
   deleteExpiredRefreshTokens();
 
   const defaultUser = getOrCreateUser(FIRST_ADMIN_EMAIL, true);
-  const defaultUserWhitelisted = db.prepare("SELECT 1 FROM auth_whitelist WHERE email = ?").get(FIRST_ADMIN_EMAIL);
+  const defaultUserWhitelisted = db
+    .prepare("SELECT 1 FROM auth_whitelist WHERE email = ?")
+    .get(FIRST_ADMIN_EMAIL);
 
   if (!defaultUserWhitelisted) {
-    db.prepare(`
+    db.prepare(
+      `
       INSERT INTO auth_whitelist (email, is_admin, person_id)
       VALUES (?, ?, ?)
-    `).run(FIRST_ADMIN_EMAIL, 1, defaultUser.personId);
+    `,
+    ).run(FIRST_ADMIN_EMAIL, 1, defaultUser.personId);
   }
 }
 

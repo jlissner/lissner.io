@@ -12,54 +12,66 @@ metadata:
 Verify that implementation matches the feature specs and decision records. Run after apply, before archive.
 
 ## Triggers
+
 - User wants to verify a grimoire change is correctly implemented
 - User asks to check, verify, or review a change before archiving
 - Loose match: "verify", "check", "review" with a change reference
 
 ## Routing
+
 - Change not yet applied → `grimoire-apply` first
 - Want a pre-implementation design review → `grimoire-review`
 - Found issues that need fixing → user decides: fix directly or route to `grimoire-apply` / `grimoire-draft`
 
 ## Prerequisites
+
 - A change exists in `.grimoire/changes/<change-id>/` with completed tasks
 - Or: user wants to verify baseline features against the codebase (no active change required)
 
 ## Workflow
 
 ### 1. Select Scope
+
 Two modes:
 
 **Change verification** (default when a change exists):
+
 - Select an active change with completed tasks
 - Verify the implementation matches that specific change's features and decisions
 
 **Baseline verification** (when user asks to verify the whole project):
+
 - Verify all features in `features/` against the codebase
 - Check all decisions in `.grimoire/decisions/` are still accurate
 
 ### 2. Load Artifacts
+
 For change verification:
+
 - Read `manifest.md`, proposed `.feature` files, decision records, `tasks.md`
 
 For baseline verification:
+
 - Read all `features/**/*.feature` and `.grimoire/decisions/*.md`
 
 ### 3. Verify in Three Dimensions
 
 **A. Completeness — are all tasks done?**
+
 - Parse `tasks.md` and check all items are `- [x]`
 - If any are `- [ ]`, list them as CRITICAL issues
 - This is objective — checkboxes don't lie
 
 **B. Correctness — does the code match the specs?**
 For each scenario in the feature files:
+
 1. Search the codebase for the production code that implements this behavior
 2. Search for the step definition that tests this scenario
 3. Verify the step definition makes real assertions (not empty, not `assert True`, not `pass`)
 4. If possible, confirm the test actually runs (check test output, CI results)
 
 Flag issues:
+
 - Scenario with no corresponding step definition → CRITICAL
 - Step definition with empty/trivial body → CRITICAL
 - Step definition that doesn't match the scenario's intent → WARNING
@@ -67,11 +79,13 @@ Flag issues:
 
 **C. Coherence — does the implementation follow the decisions?**
 For each decision record:
+
 1. Read the chosen option and consequences
 2. Search the codebase for evidence the decision was followed
 3. Check the Confirmation section — has the criteria been met?
 
 Flag issues:
+
 - Decision says "use PostgreSQL" but code uses SQLite → CRITICAL
 - Decision's Confirmation criteria not verifiable → WARNING
 - Decision consequences not addressed → WARNING
@@ -81,6 +95,7 @@ Flag issues:
 Go beyond "does a step definition exist?" to "would this test catch a real bug?"
 
 For each step definition:
+
 1. **Assertion strength:** Classify each assertion:
    - **Strong:** `assert result == "expected_value"`, `expect(status).toBe(302)`, `assertEqual(user.email, "test@example.com")`
    - **Weak:** `assert result is not None`, `expect(result).toBeDefined()`, `assert len(items) > 0`
@@ -153,8 +168,10 @@ Read `.grimoire/docs/data/schema.yml` and list every entry with `type: external_
    - New endpoints without contract tests → CRITICAL
 
 **Report format:**
+
 ```markdown
 ## Contract Coverage
+
 - [x] `stripe_api` — 3 endpoints, all with contract tests in `tests/integrations/test_stripe.py`
 - [ ] **[critical]** `github_api.get_user` — no contract test found for response shape
 - [ ] **[warning]** `sendgrid_api` — contract documented but `error_response` shape missing
@@ -164,51 +181,63 @@ Read `.grimoire/docs/data/schema.yml` and list every entry with `type: external_
 If no external APIs exist in `schema.yml`, skip this section.
 
 ### 6. Dead Feature Detection
+
 Check for features that exist in specs but may no longer be implemented:
+
 - Feature files with no corresponding step definitions anywhere
 - Step definitions that import modules/functions that no longer exist
 - Step definitions with `pass` or `NotImplementedError` bodies
 - Features tagged `@skip` or `@wip` that have been in that state for a long time
 
 ### 7. Generate Report
+
 Produce a structured report:
 
 ```markdown
 # Verification Report: <change-id or "baseline">
 
 ## Summary
+
 - Scenarios verified: X
 - Decisions verified: X
 - Security checks: X passed, X failed
 - Issues found: X critical, X warnings, X suggestions
 
 ## Critical Issues
+
 - [ ] <issue description> — `file:line`
 
 ## Security Compliance
+
 - [x] Verified: <security pattern confirmed> — `file:line`
 - [ ] **[critical]** [OWASP/CWE tag] <violation> — `file:line`
 - [ ] **[warning]** [OWASP/CWE tag] <concern> — `file:line`
 
 ## Warnings
+
 - [ ] <issue description> — `file:line`
 
 ## Suggestions
+
 - [ ] <suggestion> — `file:line`
 
 ## Verified Scenarios
+
 - [x] "Scenario name" in `feature/file.feature` — step def in `test_file.py:42`
 - [x] ...
 ```
 
 ### 8. Recommend Next Steps
+
 Based on the report:
+
 - **All clear** → recommend archiving the change
 - **Critical issues** → must fix before archiving
 - **Warnings only** → user decides whether to fix or accept
 - **Dead features found** → suggest a removal change or updating the features
 
 ## Important
+
 - Verify is read-only. Do NOT fix issues — only report them. The user decides what to do.
 - Be specific: reference file paths and line numbers for every issue.
 - A scenario without a step definition is always CRITICAL — the spec is not tested.
@@ -217,7 +246,9 @@ Based on the report:
 - For baseline verification, this may take a while on large codebases. Present results incrementally by capability.
 
 ## Done
+
 When the verification report is presented, the workflow is complete. Suggest next steps based on findings:
+
 - **All clear** → `grimoire archive <change-id>` or `grimoire-pr`
 - **Critical issues** → must fix before archiving
 - **Warnings only** → user decides whether to fix or accept
