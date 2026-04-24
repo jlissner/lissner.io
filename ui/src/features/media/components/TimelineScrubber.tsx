@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { apiJson } from "@/api/client";
+import { apiJson } from "@/api";
 
 interface TimelineScrubberProps {
   sortBy: "uploaded" | "taken";

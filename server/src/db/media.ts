@@ -3,7 +3,6 @@
  * Import `../db/media.js` for a stable aggregate API.
  */
 
-export * from "./data-explorer.js";
 export * from "./media-read.js";
 export * from "./media-motion.js";
 export * from "./media-write.js";

@@ -9,7 +9,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { listPeople } from "@/features/people/api";
-import type { PersonSummary } from "../../../../../shared/src/api.js";
+import type { PersonSummary } from "@shared";
 import { listMediaTags } from "../api";
 import {
   filterPeopleSuggestions,

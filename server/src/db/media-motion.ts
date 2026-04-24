@@ -84,7 +84,7 @@ export function linkMotionPairForMedia(mediaId: string): void {
   }
 }
 
-export function setMotionPair(stillId: string, videoId: string): void {
+function setMotionPair(stillId: string, videoId: string): void {
   if (stillId === videoId) return;
   breakMotionPairForMedia(stillId);
   breakMotionPairForMedia(videoId);

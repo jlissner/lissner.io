@@ -171,7 +171,7 @@ export function isEmailAdmin(email: string): boolean {
   return row?.is_admin === 1;
 }
 
-export function getUserByEmail(
+function getUserByEmail(
   email: string,
 ): { id: number; email: string; isAdmin: boolean; personId: number } | null {
   const db = getDb();
@@ -234,7 +234,7 @@ export function getOrCreateUser(
 }
 
 /** The person this user IS (their identity). Required for every user. */
-export function getUserPersonId(userId: number): number | null {
+function getUserPersonId(userId: number): number | null {
   const db = getDb();
   const row = db
     .prepare("SELECT person_id as personId FROM users WHERE id = ?")
@@ -268,85 +268,6 @@ export function createMagicLinkToken(email: string): {
   ).run(normalizedEmail, expiresAt, codeHash);
 
   return { code, expiresAt };
-}
-
-export function consumeMagicLinkToken(token: string): { email: string } | null {
-  deleteExpiredMagicLinkTokens();
-
-  const tokenHash = createHash("sha256").update(token).digest("hex");
-  const db = getDb();
-  const row = db
-    .prepare(
-      "SELECT email FROM magic_link_tokens WHERE token_hash = ? AND used_at IS NULL AND expires_at > datetime('now')",
-    )
-    .get(tokenHash) as { email: string } | undefined;
-
-  if (!row) return null;
-
-  db.prepare(
-    "UPDATE magic_link_tokens SET used_at = datetime('now') WHERE token_hash = ?",
-  ).run(tokenHash);
-  return row;
-}
-
-export function getWhitelist(): Array<{
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  invitedAt: string;
-  personId: number | null;
-}> {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT id, email, is_admin as isAdmin, invited_at as invitedAt, person_id as personId FROM auth_whitelist ORDER BY invited_at DESC",
-    )
-    .all() as Array<{
-    id: number;
-    email: string;
-    isAdmin: number;
-    invitedAt: string;
-    personId: number | null;
-  }>;
-  return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
-}
-
-export function addToWhitelist(
-  email: string,
-  isAdmin: boolean,
-  invitedByUserId?: number,
-  personId?: number | null,
-): number {
-  const normalized = email.trim().toLowerCase();
-  const db = getDb();
-  const result = db
-    .prepare(
-      "INSERT INTO auth_whitelist (email, is_admin, invited_by_user_id, person_id) VALUES (?, ?, ?, ?)",
-    )
-    .run(
-      normalized,
-      isAdmin ? 1 : 0,
-      invitedByUserId ?? null,
-      personId ?? null,
-    );
-  return result.lastInsertRowid as number;
-}
-
-export function updateWhitelistPerson(
-  id: number,
-  personId: number | null,
-): boolean {
-  const db = getDb();
-  const result = db
-    .prepare("UPDATE auth_whitelist SET person_id = ? WHERE id = ?")
-    .run(personId, id);
-  return result.changes > 0;
-}
-
-export function removeFromWhitelist(id: number): boolean {
-  const db = getDb();
-  const result = db.prepare("DELETE FROM auth_whitelist WHERE id = ?").run(id);
-  return result.changes > 0;
 }
 
 export function getUserPeople(userId: number): number[] {
@@ -448,14 +369,6 @@ export function isRefreshTokenRevoked(tokenHash: string): boolean {
   return row != null && row.revoked_at != null;
 }
 
-export function revokeUserRefreshTokens(userId: number): void {
-  const db = getDb();
-
-  db.prepare(
-    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE user_id = ? AND revoked_at IS NULL",
-  ).run(userId);
-}
-
 export function getUserById(
   userId: number,
 ): { id: number; email: string; isAdmin: boolean } | null {
@@ -467,28 +380,6 @@ export function getUserById(
   if (!row) return null;
 
   return { ...row, isAdmin: row.isAdmin === 1 };
-}
-
-export function getUsers(): Array<{
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  createdAt: string;
-  personId: number | null;
-}> {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT id, email, is_admin as isAdmin, created_at as createdAt, person_id as personId FROM users ORDER BY created_at DESC",
-    )
-    .all() as Array<{
-    id: number;
-    email: string;
-    isAdmin: number;
-    createdAt: string;
-    personId: number | null;
-  }>;
-  return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
 }
 
 initAuthDb();

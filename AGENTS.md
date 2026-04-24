@@ -103,7 +103,7 @@ shared/src/        # Types shared between server and UI
 ### Types & Imports
 
 - **No `any`** — narrow `unknown` quickly at boundaries
-- **Use `type` keyword** for type-only imports: `import type { Foo }`
+- **Never use `type` keyword** for type-only imports: `import type { Foo }` should be `import { Foo }`
 - **Prefer inline type imports**: `import { type Foo } from "bar"`
 - **Explicit return types** on public/exported functions
 - **Discriminated unions** for expected failures: `{ ok: true, data: T } | { ok: false, reason: string }`

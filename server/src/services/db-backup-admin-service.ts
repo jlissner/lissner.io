@@ -9,15 +9,15 @@ import { resetMediaWriteStatementCache } from "../db/media-write.js";
 import { dbDir, dbPath } from "../config/paths.js";
 import { validateSqliteDbFile } from "../s3/startup-db-restore.js";
 import { S3_PREFIX } from "../s3/sync-constants.js";
-import { s3Client } from "../s3/sync-client.js";
 import {
   downloadS3ObjectToFile,
   listS3ObjectsWithMetadata,
 } from "../s3/sync-transfer.js";
 import { isSyncInProgress } from "../s3/sync-state.js";
 import { S3_BUCKET } from "../config/env.js";
+import { s3Client } from "../s3/client.js";
 
-export type DbBackupListItem = {
+type DbBackupListItem = {
   key: string;
   size: number;
   lastModified: string;
@@ -47,7 +47,7 @@ function isValidDbBackupKey(key: string): boolean {
   return true;
 }
 
-export type RestoreDbResult =
+type RestoreDbResult =
   | { ok: true }
   | {
       ok: false;

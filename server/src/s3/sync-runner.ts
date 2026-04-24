@@ -12,7 +12,7 @@ import {
 } from "../config/paths.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
-import { s3Client } from "./sync-client.js";
+import { s3Client } from "./client.js";
 import { S3_PREFIX } from "./sync-constants.js";
 import { syncDefer } from "./sync-defer.js";
 import { deleteOrphanS3Thumbnails } from "./sync-gc.js";
@@ -22,7 +22,6 @@ import {
   type SyncCompletionTally,
 } from "./sync-progress.js";
 import { emitSyncChanged, syncState } from "./sync-state.js";
-import type { SyncProgress } from "./sync-types.js";
 import {
   downloadS3ObjectToFile,
   fileExists,
@@ -30,10 +29,11 @@ import {
   uploadLocalFileToS3,
 } from "./sync-transfer.js";
 import { S3_BUCKET } from "../config/env.js";
+import { SyncProgressMessage } from "@shared";
 
 export async function runSync(
-  onProgress?: (p: SyncProgress) => void,
-): Promise<SyncProgress> {
+  onProgress?: (p: SyncProgressMessage) => void,
+): Promise<SyncProgressMessage> {
   if (syncState.inProgress) {
     throw new Error("Sync already in progress");
   }
@@ -45,7 +45,7 @@ export async function runSync(
 
   const bucket = S3_BUCKET;
 
-  const report = (p: SyncProgress) => {
+  const report = (p: SyncProgressMessage) => {
     syncState.lastResult = p;
     onProgress?.(p);
     emitSyncChanged();

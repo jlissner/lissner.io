@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import type { UploadNameConflict } from "../upload-types.js";
-import { apiJson } from "@/api/client";
+import { apiJson } from "@/api";
 import { ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
@@ -10,6 +9,7 @@ import {
   type DuplicateConflictDecision,
   UploadModalConfirm,
 } from "./upload-modal-confirm.js";
+import { UploadNameConflict } from "@shared";
 
 interface UploadModalProps {
   onClose: () => void;

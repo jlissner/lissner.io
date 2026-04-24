@@ -5,6 +5,9 @@
     "moduleResolution": "NodeNext",
     "rootDir": "src",
     "outDir": "dist",
+    "paths": {
+      "@shared": ["../shared/src/index.ts"]
+    },
     "composite": true
   },
   "include": ["src/**/*"],

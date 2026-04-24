@@ -1,9 +1,9 @@
-import type { SyncProgress } from "./sync-types.js";
+import { SyncProgressMessage } from "@shared";
 
 export const syncState = {
   inProgress: false,
   startedAt: null as string | null,
-  lastResult: null as SyncProgress | null,
+  lastResult: null as SyncProgressMessage | null,
   lastError: null as string | null,
 };
 

@@ -4,7 +4,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
 import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
 

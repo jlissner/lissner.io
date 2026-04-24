@@ -1,5 +1,5 @@
-import { apiJson } from "@/api/client";
-import type { BackupRunStartedResponse } from "../../../../shared/src/api.js";
+import { apiJson } from "@/api";
+import type { BackupRunStartedResponse } from "@shared";
 
 export function runBackupSync(): Promise<BackupRunStartedResponse> {
   return apiJson<BackupRunStartedResponse>("backup/run", { method: "POST" });

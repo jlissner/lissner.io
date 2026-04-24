@@ -3,8 +3,6 @@ import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { Person } from "./people-types";
 
-export type { Person };
-
 const PAGE_SIZE = 20;
 
 interface PeopleSidebarProps {

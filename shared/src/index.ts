@@ -1,34 +1,3 @@
 // Shared types, utils, and config. Add exports as needed.
-export type {
-  ActivitySnapshot,
-  IndexActivitySlice,
-  SyncActivitySlice,
-  SyncPhase,
-  SyncProgressMessage,
-} from "./activity.js";
-export type {
-  AdminDbBackupItem,
-  AdminDbBackupsResponse,
-  AdminDbRestoreRequest,
-  AdminDbRestoreResponse,
-  ApiErrorBody,
-  BackupConfigResponse,
-  BackupRunStartedResponse,
-  BackupSyncStatusResponse,
-  CreatePersonResponse,
-  DeletePersonResponse,
-  FaceMatchAutoMerged,
-  FaceMatchReviewItem,
-  FaceMatchRunResponse,
-  MediaListFields,
-  MediaListItem,
-  MediaListQueryResponse,
-  MediaUploadResponse,
-  MergePeopleResponse,
-  PersonMediaPreviewItem,
-  PersonSummary,
-  SearchIndexStatusResponse,
-  SearchMediaResponse,
-  SearchResultItem,
-  UpdatePersonResponse,
-} from "./api.js";
+export * from "./activity.js";
+export * from "./api.js";

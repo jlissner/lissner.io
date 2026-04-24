@@ -4,8 +4,8 @@ import type { WebSocket as WsClient } from "ws";
 import { WebSocketServer } from "ws";
 import { buildActivitySnapshot } from "./snapshot.js";
 import { getIndexJobState } from "../indexing/job-store.js";
-import { getSyncState } from "../s3/sync.js";
 import { validateSessionFromCookie } from "../auth/middleware.js";
+import { getSyncState } from "../s3/sync-state.js";
 
 const clients = new Set<WsClient>();
 

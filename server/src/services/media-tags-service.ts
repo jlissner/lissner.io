@@ -1,7 +1,7 @@
 import * as db from "../db/media.js";
 import type { ServiceFailure } from "./service-result.js";
 
-export type GetMediaTagsResult =
+type GetMediaTagsResult =
   | { ok: true; tags: string[] }
   | ServiceFailure<"not_found">;
 
@@ -13,7 +13,7 @@ export function getMediaTags(mediaId: string): GetMediaTagsResult {
   return { ok: true, tags: db.listTagsForMedia(mediaId) };
 }
 
-export type SetMediaTagsResult =
+type SetMediaTagsResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "forbidden">;
 

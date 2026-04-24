@@ -21,16 +21,3 @@ export function hammingDistance(a: Buffer, b: Buffer): number {
   }
   return distance;
 }
-
-export function hammingDistanceFromHashes(a: string, b: string): number {
-  if (a.length !== b.length) return Infinity;
-  let distance = 0;
-  for (let i = 0; i < a.length; i++) {
-    let x = a.charCodeAt(i) ^ b.charCodeAt(i);
-    while (x > 0) {
-      distance += x & 1;
-      x >>= 1;
-    }
-  }
-  return distance;
-}

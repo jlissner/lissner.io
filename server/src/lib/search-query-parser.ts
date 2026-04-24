@@ -22,7 +22,7 @@ type RawToken =
   | { kind: "AT"; value: string }
   | { kind: "WORD"; value: string };
 
-export type ParseSearchQueryResult =
+type ParseSearchQueryResult =
   | { ok: true; ast: SearchQueryAst }
   | { ok: false; message: string };
 
@@ -59,7 +59,7 @@ function readWord(s: string, start: number): { word: string; end: number } {
 }
 
 /** True when the string should use the legacy embedding path (full query, substring people). */
-export function isLegacyQueryString(q: string): boolean {
+function isLegacyQueryString(q: string): boolean {
   const t = q.trim();
   if (!t) return false;
   if (/[#@]/.test(t)) return false;

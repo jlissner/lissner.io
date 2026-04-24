@@ -13,8 +13,8 @@ import {
   broadcastActivity,
 } from "./activity/broadcast.js";
 import { setIndexJobChangeListener } from "./indexing/job-store.js";
-import { setSyncChangeListener } from "./s3/sync.js";
 import { gray, green, red, yellow } from "yoctocolors";
+import { setSyncChangeListener } from "./s3/sync-state.js";
 
 ensureServerDirectories({ mediaDir, dbDir, thumbnailsDir });
 

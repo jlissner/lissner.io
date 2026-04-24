@@ -105,7 +105,7 @@ async function readFileHead(
   }
 }
 
-export async function sniffMediaMimeFromFile(
+async function sniffMediaMimeFromFile(
   absolutePath: string,
 ): Promise<string | null> {
   const head = await readFileHead(absolutePath, 65536);
@@ -113,7 +113,7 @@ export async function sniffMediaMimeFromFile(
 }
 
 /** Result of sniffing a local media file that might need DB `mime_type` correction. */
-export type SniffMediaMimePersistResult = {
+type SniffMediaMimePersistResult = {
   /** Raw sniff result, or `null` if sniffing was skipped or inconclusive. */
   sniffed: string | null;
   /** `true` when `persist` ran because sniff differed from the row. */

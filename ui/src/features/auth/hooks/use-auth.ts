@@ -1,8 +1,8 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { apiFetch } from "@/api/client";
+import { apiFetch } from "@/api";
 
-export interface AuthUser {
+interface AuthUser {
   id: number;
   email: string;
   isAdmin: boolean;

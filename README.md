@@ -10,7 +10,7 @@ An image and media management solution for family use.
 
 ## Prerequisites
 
-- Ubuntu 24 (or run `./setup.sh` to install Node.js 24, [Ollama](https://ollama.ai), and models: `nomic-embed-text`, `llava` for image search)
+- Ubuntu 24 (or run `./setup.sh` to install Node.js 24, the **`ollama`** system binary ([Ollama](https://ollama.ai)), and models: `nomic-embed-text`, `llava` for image search)
 
 ## Project State
 

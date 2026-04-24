@@ -4,9 +4,9 @@ import { ModalActions } from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import { isImage, isVideo } from "./media-viewer/media-utils.js";
-import type { UploadNameConflict } from "../upload-types.js";
-import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
+import { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
 import { UploadProgressPanel } from "./upload-progress-panel.js";
+import { UploadNameConflict } from "@shared";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -15,7 +15,7 @@ function formatBytes(bytes: number): string {
 }
 
 /** Pair each name conflict with the next matching pending file (same order as the upload check). */
-export function pairConflictsWithFiles(
+function pairConflictsWithFiles(
   pendingFiles: File[],
   conflicts: UploadNameConflict[],
 ): (File | undefined)[] {

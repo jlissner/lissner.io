@@ -1,6 +1,6 @@
 export type PageId = "home" | "people" | "admin";
 
-export interface NavItem {
+interface NavItem {
   id: PageId;
   label: string;
   adminOnly?: boolean;
@@ -35,12 +35,4 @@ export function pathToPage(pathname: string): PageId {
   const normalized = pathname.replace(/\/$/, "") || "/";
   const pathOnly = normalized.split("?")[0];
   return PATH_TO_PAGE[pathOnly] ?? "home";
-}
-
-export function getPersonIdFromSearch(): number | null {
-  const params = new URLSearchParams(window.location.search);
-  const p = params.get("person");
-  if (!p) return null;
-  const id = parseInt(p, 10);
-  return !isNaN(id) && id > 0 ? id : null;
 }

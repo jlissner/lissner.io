@@ -2,7 +2,7 @@ import { GALLERY_VISIBLE_SQL, getDb } from "./media-db.js";
 
 const GALLERY_VISIBLE_M = "COALESCE(m.hide_from_gallery, 0) = 0";
 
-export type MediaSortBy = "uploaded" | "taken";
+type MediaSortBy = "uploaded" | "taken";
 
 function getMediaOrderBy(sortBy: MediaSortBy, prefix = ""): string {
   const p = prefix ? `${prefix}.` : "";

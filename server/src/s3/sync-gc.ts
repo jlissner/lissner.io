@@ -1,5 +1,5 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
-import type { S3Client } from "@aws-sdk/client-s3";
+import { S3Client } from "@aws-sdk/client-s3";
 import { S3_PREFIX } from "./sync-constants.js";
 
 /** Remove `backup/thumbnails/{id}.jpg` from S3 when no media row exists for `id`. */

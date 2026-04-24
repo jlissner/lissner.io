@@ -1,11 +1,11 @@
-import type {
+import {
   CreatePersonResponse,
   PersonMediaPreviewItem,
   PersonSummary,
   UpdatePersonResponse,
-} from "../../../shared/src/api.js";
+} from "@shared";
 import * as db from "../db/media.js";
-import type { ServiceFailure } from "./service-result.js";
+import { ServiceFailure } from "./service-result.js";
 
 export function getPersonMediaPreview(
   personId: number,
@@ -49,7 +49,7 @@ export function createPersonNamed(name: string): CreatePersonResponse {
   return { id, name: name.trim() };
 }
 
-export type DeletePersonResult = { ok: true } | ServiceFailure<"not_found">;
+type DeletePersonResult = { ok: true } | ServiceFailure<"not_found">;
 
 export function deletePersonById(personId: number): DeletePersonResult {
   const allIds = db.getAllPersonIds();
@@ -60,7 +60,7 @@ export function deletePersonById(personId: number): DeletePersonResult {
   return { ok: true };
 }
 
-export type MergePeopleResult =
+type MergePeopleResult =
   | { ok: true; merged: number; into: number }
   | ServiceFailure<"invalid_ids" | "merge_into_self" | "not_found">;
 

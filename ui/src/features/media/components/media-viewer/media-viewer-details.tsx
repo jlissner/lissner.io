@@ -3,10 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import { getMediaDetails, patchMediaDateTaken, putMediaTags } from "../../api";
 import type { MediaItem } from "./media-utils";
-import type {
-  MediaDetailsApiResponse,
-  MediaPatchResponse,
-} from "../../../../../../shared/src/api.js";
+import { MediaDetailsApiResponse, MediaPatchResponse } from "@shared";
 type MediaDetails = MediaDetailsApiResponse;
 
 function formatFileSize(bytes: number): string {
@@ -219,7 +216,7 @@ export function MediaViewerDetails({
       return;
     }
     await queryClient.invalidateQueries({ queryKey: ["mediaTags"] });
-    await loadDetails();
+    loadDetails();
     onMetadataUpdated?.();
   }, [item.id, loadDetails, onMetadataUpdated, queryClient, workingTags]);
 

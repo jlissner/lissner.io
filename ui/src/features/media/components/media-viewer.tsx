@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { isText } from "./media-viewer/media-utils";
 import { MediaViewerContent } from "./media-viewer/media-viewer-content";
 import type { MediaItem } from "./media-viewer/media-utils";
-import { apiFetch } from "@/api/client";
+import { apiFetch } from "@/api";
 import { ModalPanel, ModalRoot } from "@/components/ui/modal";
 
 interface MediaViewerProps {

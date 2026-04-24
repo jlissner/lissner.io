@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api";
 import { PeopleSidebar } from "./people-sidebar";
 import { PeopleDetail } from "./people-detail";
 import { PeopleEditModal } from "./people-edit-modal";
@@ -13,7 +13,7 @@ import {
 import { MediaViewer } from "@/features/media/components/media-viewer";
 import { usePeoplePage } from "./use-people-page";
 import { runMatchFaces as runMatchFacesApi } from "../api";
-import type { FaceMatchRunResponse } from "./people-types";
+import { FaceMatchRunResponse } from "@shared";
 
 function useIsMobile(): boolean {
   const [mobile, setMobile] = useState(() => window.innerWidth < 640);

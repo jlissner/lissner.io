@@ -1,4 +1,4 @@
-export const TEXT_MIME_TYPES = new Set([
+const TEXT_MIME_TYPES = new Set([
   "text/plain",
   "text/html",
   "text/css",
@@ -15,8 +15,4 @@ export function isTextMime(mimeType: string): boolean {
 
 export function isVideoMime(mimeType: string): boolean {
   return mimeType.startsWith("video/");
-}
-
-export function isImageMime(mimeType: string): boolean {
-  return mimeType.startsWith("image/");
 }

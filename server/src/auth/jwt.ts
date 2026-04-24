@@ -10,17 +10,17 @@ const ACCESS_TOKEN_EXPIRY = "1h";
 const REFRESH_TOKEN_EXPIRY = "7d";
 const CLOCK_TOLERANCE_SEC = 30;
 
-export interface AccessTokenPayload {
+type AccessTokenPayload = {
   sub: number;
   email: string;
   isAdmin: boolean;
-}
+};
 
-export interface RefreshTokenPayload {
+type RefreshTokenPayload = {
   sub: number;
   familyId: string;
   jti: string;
-}
+};
 
 export async function signAccessToken(payload: {
   sub: number;

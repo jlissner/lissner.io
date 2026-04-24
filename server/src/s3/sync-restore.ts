@@ -4,7 +4,7 @@ import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
-import { s3Client } from "./sync-client.js";
+import { s3Client } from "./client.js";
 import { S3_PREFIX } from "./sync-constants.js";
 import { downloadS3ObjectToFile, fileExists } from "./sync-transfer.js";
 import { S3_BUCKET } from "../config/env.js";

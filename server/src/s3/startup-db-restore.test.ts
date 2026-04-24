@@ -3,7 +3,7 @@ import { mkdtemp, readFile, unlink, writeFile } from "fs/promises";
 import os from "os";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("./sync-client.js", () => {
+vi.mock("./client.js", () => {
   return {
     s3Client: {
       send: vi.fn(async () => ({ Body: { mocked: true } })),

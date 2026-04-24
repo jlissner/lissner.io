@@ -1,8 +1,8 @@
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { ApiError, apiJson } from "@/api/client";
+import { ApiError, apiJson } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
-import type { SearchMediaResponse } from "../../../../../shared/src/api.js";
+import type { SearchMediaResponse } from "@shared";
 
 export function useMediaSearch() {
   const [searchQuery, setSearchQuery] = useState("");

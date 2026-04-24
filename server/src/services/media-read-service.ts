@@ -1,13 +1,9 @@
 import { access, readFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import type { MediaListQueryResponse } from "../../../shared/src/api.js";
+import { MediaListQueryResponse } from "@shared";
 import * as db from "../db/media.js";
 import { extractFacesFromImage } from "../faces.js";
-import {
-  tryRestoreMediaFromBackup,
-  tryRestoreVideoThumbnailFromBackup,
-} from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { isTextMime, isVideoMime } from "../lib/media-mime.js";
 import {
@@ -20,6 +16,10 @@ import {
   generateVideoThumbnailWithFfmpeg,
   isUsableVideoThumbnailFile,
 } from "../lib/video-thumbnail.js";
+import {
+  tryRestoreMediaFromBackup,
+  tryRestoreVideoThumbnailFromBackup,
+} from "../s3/sync-restore.js";
 
 type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
 
@@ -351,22 +351,3 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     return { ok: false, reason: "thumb_failed" };
   }
 }
-
-export type GetFacesPayloadForMediaResult = Awaited<
-  ReturnType<typeof getFacesPayloadForMedia>
->;
-export type GetFaceCropOrFullImageResult = Awaited<
-  ReturnType<typeof getFaceCropOrFullImage>
->;
-export type GetMediaPreviewFileResult = Awaited<
-  ReturnType<typeof getMediaPreviewFile>
->;
-export type GetMediaDetailsEnrichedResult = ReturnType<
-  typeof getMediaDetailsEnriched
->;
-export type ReadTextMediaContentResult = Awaited<
-  ReturnType<typeof readTextMediaContent>
->;
-export type GetThumbnailResponseResult = Awaited<
-  ReturnType<typeof getThumbnailResponse>
->;

@@ -3,23 +3,10 @@
  * Prefer importing these instead of duplicating inline object types.
  */
 
-import type {
-  IndexActivitySlice,
-  SyncPhase,
-  SyncProgressMessage,
-} from "./activity.js";
-
-export type { IndexActivitySlice, SyncPhase, SyncProgressMessage };
-
-/** Standard error JSON from `errorHandler` and ad-hoc route errors. */
-/** Standard error JSON from `errorHandler` and routes. `code` is a stable machine-readable string (see server `ApiErrorCode`). */
-export type ApiErrorBody = { error: string; code: string };
-
-/** GET /api/search/index/status */
-export type SearchIndexStatusResponse = IndexActivitySlice;
+import { SyncProgressMessage } from "./activity.js";
 
 /** GET /api/search?q= */
-export interface MediaListFields {
+type MediaListFields = {
   id: string;
   filename: string;
   originalName: string;
@@ -32,13 +19,13 @@ export interface MediaListFields {
   backedUpAt?: string | null;
   /** Present when this item is the still (`*.mp.jpg`) in a Pixel motion pair; companion is the `*.mp` clip. */
   motionCompanionId?: string | null;
-}
+};
 
-export interface MediaListItem extends MediaListFields {
+export type MediaListItem = MediaListFields & {
   indexed: boolean;
   backedUp: boolean;
   people?: string[];
-}
+};
 
 export type SearchMediaResponse = SearchResultItem[];
 
@@ -46,7 +33,7 @@ export type SearchMediaResponse = SearchResultItem[];
 export type SearchResultItem = MediaListItem;
 
 /** Other half of a Pixel motion pair (`*.mp.jpg` still ↔ `*.mp` clip). */
-export type MediaMotionCompanionSummary = {
+type MediaMotionCompanionSummary = {
   id: string;
   originalName: string;
   mimeType: string;
@@ -66,70 +53,48 @@ export type MediaTagsListResponse = { tags: string[] };
 /** PUT /api/media/:id/tags */
 export type MediaTagsPutRequest = { tags: string[] };
 
-export type MediaTagsPutResponse = { ok: true };
-
 /** PATCH /api/media/:id */
 export type MediaPatchRequest = { dateTaken: string | null };
 
 export type MediaPatchResponse = { dateTaken: string | null };
 
 /** GET /api/media */
-export interface MediaListQueryResponse {
+export type MediaListQueryResponse = {
   items: MediaListItem[];
   total: number;
-}
-
-/** POST /api/media/upload (201) */
-export interface MediaUploadResponse {
-  id: string;
-  filename: string;
-  originalName: string;
-  mimeType: string;
-  size: number;
-}
-
-/** POST /api/media/upload/check-names */
-export type UploadCheckNamesRequest = { names: string[] };
+};
 
 export type UploadNameConflict = {
   requestedName: string;
   existing: { id: string; originalName: string; uploadedAt: string };
 };
 
-export type UploadCheckNamesResponse = { conflicts: UploadNameConflict[] };
-
-/** GET /api/backup/config */
-export interface BackupConfigResponse {
-  configured: boolean;
-  missingVars: string[];
-}
-
 /** GET /api/backup/status */
-export interface BackupSyncStatusResponse {
+export type BackupSyncStatusResponse = {
   inProgress: boolean;
   startedAt: string | null;
   lastResult: SyncProgressMessage | null;
   lastError: string | null;
-}
+};
 
 /** POST /api/backup/run success */
 export type BackupRunStartedResponse = { started: true };
 
 /** GET /api/people */
-export interface PersonSummary {
+export type PersonSummary = {
   id: number;
   name: string;
   photoCount: number;
   representativeMediaId: string | null;
-}
+};
 
 /** GET /api/people/:id/media */
-export interface PersonMediaPreviewItem extends MediaListItem {
+export type PersonMediaPreviewItem = MediaListItem & {
   x: number | null;
   y: number | null;
   width: number | null;
   height: number | null;
-}
+};
 
 /** POST /api/people */
 export type CreatePersonResponse = { id: number; name: string };
@@ -166,15 +131,12 @@ export type FaceMatchRunResponse = {
 };
 
 /** GET /api/admin/db-backups */
-export type AdminDbBackupItem = {
+type AdminDbBackupItem = {
   key: string;
   size: number;
   lastModified: string;
 };
 
 export type AdminDbBackupsResponse = { backups: AdminDbBackupItem[] };
-
-/** POST /api/admin/db-restore */
-export type AdminDbRestoreRequest = { key: string };
 
 export type AdminDbRestoreResponse = { restored: true };

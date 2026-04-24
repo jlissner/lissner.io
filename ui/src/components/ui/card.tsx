@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type CardPadding = "none" | "md" | "lg";
+type CardPadding = "none" | "md" | "lg";
 
 export function Card({
   children,

@@ -11,7 +11,7 @@ export function DropdownMenu({
   return <div className={cn("dropdown", className)}>{children}</div>;
 }
 
-export type DropdownMenuItemProps = Omit<
+type DropdownMenuItemProps = Omit<
   ComponentPropsWithoutRef<"button">,
   "className"
 > & {

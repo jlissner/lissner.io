@@ -1,15 +1,10 @@
 import { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
-export type ButtonVariant =
-  | "primary"
-  | "secondary"
-  | "danger"
-  | "success"
-  | "ghost";
-export type ButtonSize = "default" | "sm";
+type ButtonVariant = "primary" | "secondary" | "danger" | "success" | "ghost";
+type ButtonSize = "default" | "sm";
 
-export type ButtonProps = Omit<
+type ButtonProps = Omit<
   React.ComponentPropsWithoutRef<"button">,
   "className"
 > & {

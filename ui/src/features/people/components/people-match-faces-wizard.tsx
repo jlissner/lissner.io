@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api";
 import { Button } from "@/components/ui/button";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import {
@@ -15,12 +15,9 @@ import {
   removeTagFromMedia,
   updatePerson,
 } from "../api";
-import type {
-  FaceMatchAutoMerged,
-  FaceMatchReviewItem,
-  Person,
-} from "./people-types";
+import { Person } from "./people-types";
 import { PersonSelect } from "./PersonSelect";
+import { FaceMatchAutoMerged, FaceMatchReviewItem } from "@shared";
 
 function pluralize(base: string, count: number): string {
   return count === 1 ? base : `${base}s`;

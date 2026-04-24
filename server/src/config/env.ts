@@ -32,7 +32,6 @@ invariant(existsSync(envPath), `No ${envFileName} file found`);
 
 config({ path: envPath, override: true });
 
-export const NODE_ENV = getEnvVar("NODE_ENV");
 export const DATA_DIR = getEnvVar("DATA_DIR");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const UI_PORT = Number(getEnvVar("UI_PORT"));

@@ -23,7 +23,7 @@ export function ModalRoot({
   );
 }
 
-export type ModalPanelProps = HTMLAttributes<HTMLDivElement> & {
+type ModalPanelProps = HTMLAttributes<HTMLDivElement> & {
   /** Stop clicks on panel from closing the modal. */
   stopPropagation?: boolean;
   /** Move focus inside the panel and keep Tab cycling (default on). */

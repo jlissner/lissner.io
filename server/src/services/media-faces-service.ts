@@ -2,27 +2,27 @@ import * as db from "../db/media.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import type { ServiceFailure } from "./service-result.js";
 
-export type AddPersonToMediaTagResult =
+type AddPersonToMediaTagResult =
   | { ok: true; personId: number; created: "new" | "existing" }
   | ServiceFailure<
       "not_found" | "box_required" | "person_required" | "person_not_found"
     >;
 
-export type RemovePersonFromMediaTagResult =
+type RemovePersonFromMediaTagResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
 
-export type ReassignPersonInMediaTagResult =
+type ReassignPersonInMediaTagResult =
   | { ok: true; body: { reassigned: number; to: number } }
   | ServiceFailure<
       "not_found" | "bad_ids" | "same_person" | "target_missing" | "not_tagged"
     >;
 
-export type ReassignToNewPersonResult =
+type ReassignToNewPersonResult =
   | { ok: true; body: { newPersonId: number } }
   | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
 
-export type ConfirmFaceTagResult =
+type ConfirmFaceTagResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
 

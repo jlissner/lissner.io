@@ -9,11 +9,11 @@ import { ensureLocalMediaFile } from "../services/media-read-service.js";
 
 const HAMMING_THRESHOLD = 10;
 
-export interface DuplicateMatch {
+type DuplicateMatch = {
   mediaId: string;
   duplicateOfId: string;
   hammingDistance: number;
-}
+};
 
 export async function findDuplicatesForMedia(
   mediaId: string,

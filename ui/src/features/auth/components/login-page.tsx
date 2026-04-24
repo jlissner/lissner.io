@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { sendMagicLink, verifyLoginCode } from "../api";

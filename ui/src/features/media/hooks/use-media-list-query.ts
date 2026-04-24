@@ -1,7 +1,7 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { apiJson } from "@/api/client";
-import type { MediaListQueryResponse } from "../../../../../shared/src/api.js";
+import { apiJson } from "@/api";
+import { MediaListQueryResponse } from "@shared";
 
 interface UseMediaListQueryOptions {
   personFilter: number | null;

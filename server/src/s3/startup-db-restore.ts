@@ -5,12 +5,12 @@ import { mkdir, rename, unlink } from "fs/promises";
 import path from "path";
 import { dbDir, dbPath } from "../config/paths.js";
 import { S3_PREFIX } from "./sync-constants.js";
-import { s3Client } from "./sync-client.js";
+import { s3Client } from "./client.js";
 import { downloadS3ObjectToFile, listAllS3Keys } from "./sync-transfer.js";
 import { S3_BUCKET } from "../config/env.js";
 import { gray, green, red, yellow } from "yoctocolors";
 
-export type StartupDbRestoreResult =
+type StartupDbRestoreResult =
   | {
       restored: false;
       reason:
@@ -86,6 +86,3 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
     throw err;
   }
 }
-
-// exported for unit tests
-export const __private = { pickNewestDbKey, validateSqliteDbFile };

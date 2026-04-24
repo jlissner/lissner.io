@@ -6,7 +6,7 @@ import { access, rename, unlink } from "fs/promises";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
-export type S3ObjectSummary = {
+type S3ObjectSummary = {
   key: string;
   size: number;
   lastModified: string;

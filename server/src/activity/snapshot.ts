@@ -1,4 +1,4 @@
-import type { ActivitySnapshot, SyncProgressMessage } from "./types.js";
+import { ActivitySnapshot, SyncProgressMessage } from "@shared";
 import type { IndexJobState } from "../indexing/job.js";
 
 export function buildActivitySnapshot(

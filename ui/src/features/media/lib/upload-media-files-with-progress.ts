@@ -13,7 +13,7 @@ function resolveFileTotal(
   return fallback;
 }
 
-export interface UploadController {
+interface UploadController {
   abort: () => void;
   isAborted: () => boolean;
 }

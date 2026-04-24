@@ -39,7 +39,7 @@ export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
       return;
     }
     const indexBusy = activity.index.inProgress;
-    const syncBusy = activity.sync.configured && activity.sync.inProgress;
+    const syncBusy = activity.sync.inProgress;
     const busy = indexBusy || syncBusy;
     if (prevActivityBusy.current && !busy) {
       fetchItems();

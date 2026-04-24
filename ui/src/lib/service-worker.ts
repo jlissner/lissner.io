@@ -33,11 +33,3 @@ export function registerServiceWorker(): void {
     });
   }
 }
-
-export function unregisterServiceWorker(): void {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.ready.then((registration) => {
-      registration.unregister();
-    });
-  }
-}

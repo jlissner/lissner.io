@@ -1,7 +1,7 @@
 /** Shared payload for indexing + S3 sync activity (HTTP + WebSocket). */
 
 /** Phases emitted by `runSync` and surfaced on `/api/backup/status` + WebSocket activity. */
-export type SyncPhase =
+type SyncPhase =
   | "listing"
   | "upload-media"
   | "upload-thumbnails"
@@ -12,15 +12,15 @@ export type SyncPhase =
   | "done"
   | "error";
 
-export interface SyncProgressMessage {
+export type SyncProgressMessage = {
   phase: SyncPhase;
   current: number;
   total: number;
   message: string;
   error?: string;
-}
+};
 
-export interface IndexActivitySlice {
+export type IndexActivitySlice = {
   inProgress: boolean;
   /** Set while a bulk index job from POST /api/search/index is running. */
   jobId: string | null;
@@ -36,18 +36,18 @@ export interface IndexActivitySlice {
     cancelled?: boolean;
   } | null;
   lastError: string | null;
-}
+};
 
-export interface SyncActivitySlice {
+type SyncActivitySlice = {
   inProgress: boolean;
   startedAt: string | null;
   lastResult: SyncProgressMessage | null;
   lastError: string | null;
-}
+};
 
 /** Unified activity snapshot (one shape for REST + WebSocket). */
-export interface ActivitySnapshot {
+export type ActivitySnapshot = {
   v: 1;
   index: IndexActivitySlice;
   sync: SyncActivitySlice;
-}
+};

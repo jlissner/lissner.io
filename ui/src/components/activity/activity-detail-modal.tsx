@@ -6,7 +6,7 @@ import {
   ModalTitle,
 } from "@/components/ui/modal";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
-import type { ActivitySnapshot } from "./activity-types";
+import { ActivitySnapshot } from "@shared";
 
 function formatElapsed(seconds: number | null): string {
   if (seconds == null || seconds < 0) return "—";
@@ -44,7 +44,7 @@ export function ActivityDetailModal({
   const idx = activity.index;
   const syn = activity.sync;
   const indexing = idx.inProgress;
-  const syncing = syn.inProgress && syn.configured;
+  const syncing = syn.inProgress;
   const syncMsg = syn.lastResult;
 
   return (
@@ -131,53 +131,44 @@ export function ActivityDetailModal({
             >
               S3 sync
             </h3>
-            {!syn.configured ? (
-              <p className="u-text-muted u-text-sm">
-                Backup is not configured. Missing:{" "}
-                {syn.missingVars.join(", ") || "environment variables"}.
+            <dl className="activity-detail-modal__dl">
+              {syn.startedAt && (
+                <>
+                  <dt>Started</dt>
+                  <dd>{formatLocalDateTimeMediumShort(syn.startedAt)}</dd>
+                </>
+              )}
+              {syncMsg && (
+                <>
+                  <dt>Phase</dt>
+                  <dd>{humanizeSyncPhase(syncMsg.phase)}</dd>
+                </>
+              )}
+            </dl>
+            {syncMsg?.message && (
+              <p className="activity-detail-modal__message u-text-sm">
+                {syncMsg.message}
               </p>
-            ) : (
+            )}
+            {syncMsg && syncMsg.total > 0 && (
               <>
-                <dl className="activity-detail-modal__dl">
-                  {syn.startedAt && (
-                    <>
-                      <dt>Started</dt>
-                      <dd>{formatLocalDateTimeMediumShort(syn.startedAt)}</dd>
-                    </>
-                  )}
-                  {syncMsg && (
-                    <>
-                      <dt>Phase</dt>
-                      <dd>{humanizeSyncPhase(syncMsg.phase)}</dd>
-                    </>
-                  )}
-                </dl>
-                {syncMsg?.message && (
-                  <p className="activity-detail-modal__message u-text-sm">
-                    {syncMsg.message}
-                  </p>
-                )}
-                {syncMsg && syncMsg.total > 0 && (
-                  <>
-                    <p className="activity-detail-modal__progress-label u-text-sm u-mb-1">
-                      {syncMsg.current} / {syncMsg.total}
-                    </p>
-                    <progress
-                      className="activity-detail-modal__progress"
-                      value={syncMsg.current}
-                      max={syncMsg.total}
-                    />
-                  </>
-                )}
-                {(syn.lastError || syncMsg?.error) && (
-                  <p
-                    className="activity-detail-modal__error u-text-sm u-mb-0"
-                    role="alert"
-                  >
-                    {syn.lastError ?? syncMsg?.error}
-                  </p>
-                )}
+                <p className="activity-detail-modal__progress-label u-text-sm u-mb-1">
+                  {syncMsg.current} / {syncMsg.total}
+                </p>
+                <progress
+                  className="activity-detail-modal__progress"
+                  value={syncMsg.current}
+                  max={syncMsg.total}
+                />
               </>
+            )}
+            {(syn.lastError || syncMsg?.error) && (
+              <p
+                className="activity-detail-modal__error u-text-sm u-mb-0"
+                role="alert"
+              >
+                {syn.lastError ?? syncMsg?.error}
+              </p>
             )}
           </section>
         )}

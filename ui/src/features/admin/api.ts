@@ -1,8 +1,5 @@
-import type {
-  AdminDbBackupsResponse,
-  AdminDbRestoreResponse,
-} from "../../../../shared/src/api.js";
-import { apiFetch, apiJson } from "@/api/client";
+import type { AdminDbBackupsResponse, AdminDbRestoreResponse } from "@shared";
+import { apiFetch, apiJson } from "@/api";
 
 export interface AdminWhitelistEntry {
   id: number;
@@ -20,7 +17,7 @@ export interface AdminUser {
   personId: number | null;
 }
 
-export interface AdminPerson {
+interface AdminPerson {
   id: number;
   name: string;
 }
@@ -182,14 +179,6 @@ export function computeAllHashes(): Promise<{
 
 export function getAllDuplicates(): Promise<{ duplicates: DuplicateMatch[] }> {
   return apiJson<{ duplicates: DuplicateMatch[] }>("admin/duplicates");
-}
-
-export function getDuplicatesForMedia(
-  mediaId: string,
-): Promise<{ duplicates: DuplicateMatch[] }> {
-  return apiJson<{ duplicates: DuplicateMatch[] }>(
-    `admin/duplicates/${mediaId}`,
-  );
 }
 
 export async function deleteMediaById(mediaId: string): Promise<void> {

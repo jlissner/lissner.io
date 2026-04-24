@@ -5,8 +5,8 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiFetch } from "@/api/client";
-import type { ActivitySnapshot } from "./activity-types";
+import { apiFetch } from "@/api";
+import { ActivitySnapshot } from "@shared";
 
 const ActivityContext = createContext<ActivitySnapshot | null>(null);
 

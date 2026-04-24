@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 
 const gapPx = { 0: 0, 1: 4, 2: 8, 3: 16, 4: 24 } as const;
 
-export type StackProps = HTMLAttributes<HTMLDivElement> & {
+type StackProps = HTMLAttributes<HTMLDivElement> & {
   gap?: keyof typeof gapPx;
   direction?: "row" | "column";
   align?: "start" | "center" | "end" | "stretch";

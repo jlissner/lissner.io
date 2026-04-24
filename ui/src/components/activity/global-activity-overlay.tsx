@@ -20,8 +20,7 @@ export function GlobalActivityOverlay() {
   if (!activity) return null;
 
   const indexing = activity.index.inProgress;
-  const syncConfigured = activity.sync.configured;
-  const syncing = activity.sync.inProgress && syncConfigured;
+  const syncing = activity.sync.inProgress;
 
   if (!indexing && !syncing) return null;
 

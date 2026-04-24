@@ -1,4 +1,4 @@
-import type { SyncProgressMessage } from "../../../shared/src/activity.js";
+import { SyncProgressMessage } from "@shared";
 
 /** Counters accumulated during `runSync` for the final summary line. */
 export type SyncCompletionTally = {

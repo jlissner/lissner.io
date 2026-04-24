@@ -27,7 +27,7 @@ function stmts() {
   return state.stmts;
 }
 
-export function normalizeTagForStorage(raw: string): string | null {
+function normalizeTagForStorage(raw: string): string | null {
   const t = raw.trim().toLowerCase();
   return t.length > 0 ? t : null;
 }
@@ -65,8 +65,4 @@ export function getMediaIdsForTag(normalizedTag: string): string[] {
     media_id: string;
   }>;
   return rows.map((r) => r.media_id);
-}
-
-export function resetMediaTagsStatementCache(): void {
-  state.stmts = null;
 }

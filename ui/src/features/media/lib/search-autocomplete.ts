@@ -1,13 +1,13 @@
-import type { PersonSummary } from "../../../../../shared/src/api.js";
+import { PersonSummary } from "@shared";
 
-export const SEARCH_AUTOCOMPLETE_LIMIT = 12;
+const SEARCH_AUTOCOMPLETE_LIMIT = 12;
 
 /** Aligns with server `normalizePersonHandle` for @ search tokens. */
 export function personSearchHandle(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-export type ActiveSearchToken =
+type ActiveSearchToken =
   | { kind: "tag"; at: number; end: number; prefix: string }
   | { kind: "person"; at: number; end: number; prefix: string };
 

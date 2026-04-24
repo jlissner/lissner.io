@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type TextVariant =
+type TextVariant =
   | "body"
   | "muted"
   | "subtle"
@@ -18,7 +18,7 @@ const variantClass: Record<TextVariant, string> = {
   primary: "u-text-primary",
 };
 
-export type TextSize = "xs" | "sm" | "base" | "lg" | "xl";
+type TextSize = "xs" | "sm" | "base" | "lg" | "xl";
 
 const sizeClass: Record<TextSize, string> = {
   xs: "u-text-xs",
@@ -28,7 +28,7 @@ const sizeClass: Record<TextSize, string> = {
   xl: "u-text-xl",
 };
 
-export type TextProps = Omit<HTMLAttributes<HTMLElement>, "className"> & {
+type TextProps = Omit<HTMLAttributes<HTMLElement>, "className"> & {
   as?: "p" | "span" | "div" | "label";
   variant?: TextVariant;
   size?: TextSize;

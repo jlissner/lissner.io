@@ -4,7 +4,7 @@ import type { Response } from "express";
  * Stable machine-readable API error codes (JSON body `code` field).
  * Human text stays in `error`; UIs may branch on `code`.
  */
-export type ApiErrorCode =
+type ApiErrorCode =
   | "validation_error"
   | "upload_interrupted"
   | "internal_error"

@@ -25,7 +25,7 @@ export class ApiError extends Error {
 }
 
 /** Path under `/api`, e.g. `"activity"` or `"/activity"` → `/api/activity`. */
-export function apiUrl(path: string): string {
+function apiUrl(path: string): string {
   const trimmed = path.startsWith("/") ? path : `/${path}`;
   return trimmed.startsWith("/api") ? trimmed : `${API_PREFIX}${trimmed}`;
 }

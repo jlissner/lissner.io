@@ -8,11 +8,11 @@ declare module "express-serve-static-core" {
   }
 }
 
-export interface AuthUser {
+type AuthUser = {
   id: number;
   email: string;
   isAdmin: boolean;
-}
+};
 
 function parseCookie(header: string, name: string): string | undefined {
   for (const part of header.split(";")) {

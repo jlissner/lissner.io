@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { ApiError } from "@/api/client";
+import { ApiError } from "@/api";
 import {
   createPerson,
   deletePerson,

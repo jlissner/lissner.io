@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
-export type AlertVariant = "warning" | "danger" | "success" | "info";
+type AlertVariant = "warning" | "danger" | "success" | "info";
 
 export function Alert({
   variant,

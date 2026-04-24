@@ -1,7 +1,4 @@
-import type {
-  SearchIndexStatusResponse,
-  SearchResultItem,
-} from "../../../shared/src/api.js";
+import { IndexActivitySlice, SearchResultItem } from "@shared";
 import * as db from "../db/media.js";
 import { getEmbedding, cosineSimilarity } from "../embeddings.js";
 import { indexMediaItems } from "../indexing/media.js";
@@ -12,15 +9,15 @@ import {
   finishIndexJob,
   failIndexJob,
 } from "../indexing/job-store.js";
-import { getSyncState } from "../s3/sync.js";
-import type { ServiceFailure } from "./service-result.js";
+import { ServiceFailure } from "./service-result.js";
 import { normalizePersonHandle } from "../lib/search-query-normalize.js";
 import {
   parseSearchQuery,
-  type SearchQueryAst,
+  SearchQueryAst,
 } from "../lib/search-query-parser.js";
+import { getSyncState } from "../s3/sync-state.js";
 
-export function getIndexStatusBody(): SearchIndexStatusResponse {
+export function getIndexStatusBody(): IndexActivitySlice {
   const snap = buildActivitySnapshot(getIndexJobState(), getSyncState());
   const s = snap.index;
   return {
@@ -39,7 +36,7 @@ export function clearAllSearchIndexData(): void {
   db.clearAllIndexingData();
 }
 
-export type StartBulkIndexingJobResult =
+type StartBulkIndexingJobResult =
   | { ok: true; jobId: string }
   | ServiceFailure<"index_in_progress">;
 
@@ -192,7 +189,7 @@ async function evalAstOrdered(ast: SearchQueryAst): Promise<string[]> {
   }
 }
 
-export type SearchMediaByQueryResult =
+type SearchMediaByQueryResult =
   | { ok: true; items: SearchResultItem[] }
   | ServiceFailure<"missing_query">
   | { ok: false; reason: "invalid_query"; message: string }

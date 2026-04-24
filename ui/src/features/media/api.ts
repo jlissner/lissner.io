@@ -1,12 +1,11 @@
-import { ApiError, apiFetch, apiJson } from "@/api/client";
-import type {
+import { ApiError, apiFetch, apiJson } from "@/api";
+import {
   MediaDetailsApiResponse,
   MediaPatchRequest,
-  MediaPatchResponse,
   MediaTagsListResponse,
   MediaTagsPutRequest,
-} from "../../../../shared/src/api.js";
-import type {
+} from "@shared";
+import {
   FaceBox,
   TaggedFace,
 } from "./components/media-viewer/media-viewer-types";
@@ -149,5 +148,3 @@ export async function bulkPatchDateTaken(
   }
   return acc;
 }
-
-export type { MediaPatchResponse };

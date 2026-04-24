@@ -1,4 +1,4 @@
-import { apiJson } from "@/api/client";
+import { apiJson } from "@/api";
 
 export function sendMagicLink(email: string): Promise<{ ok: true }> {
   return apiJson<{ ok: true }>("auth/magic-link", {

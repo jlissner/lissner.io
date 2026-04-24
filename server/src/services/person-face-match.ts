@@ -6,7 +6,7 @@ import type {
   FaceMatchAutoMerged,
   FaceMatchReviewItem,
   FaceMatchRunResponse,
-} from "../../../shared/src/api.js";
+} from "@shared";
 import {
   collectDescriptorsForPerson,
   isPlaceholderPersonName,
@@ -18,9 +18,7 @@ import {
  * When similarity rounds to 100% in the UI (`Math.round(score * 100) === 100`),
  * treat as an automatic merge into that named person.
  */
-export const AUTO_MERGE_MATCH_SCORE = 0.995;
-
-export type FaceMatchRunResult = FaceMatchRunResponse;
+const AUTO_MERGE_MATCH_SCORE = 0.995;
 
 function getFirstImagePreviewForPerson(personId: number): {
   mediaId: string | null;
@@ -43,7 +41,7 @@ function getFirstImagePreviewForPerson(personId: number): {
  * Compare every `Person …` placeholder to every named person, auto-merge near-identical
  * matches, then return a FIFO review queue for the rest.
  */
-export async function runFaceMatchBatch(): Promise<FaceMatchRunResult> {
+export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
   const sim = await getFaceSimilarityFn();
   const names = db.getPersonNames();
   const allIds = db.getAllPersonIds();

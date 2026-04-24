@@ -2,12 +2,10 @@ import { unlink } from "fs/promises";
 import path from "path";
 import * as db from "../db/media.js";
 import { indexMediaItem } from "../indexing/media.js";
-import {
-  deleteMediaFromS3,
-  scheduleBackupSyncAfterUpload,
-} from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import type { ServiceFailure } from "./service-result.js";
+import { scheduleBackupSyncAfterUpload } from "../s3/sync-schedule.js";
+import { deleteMediaFromS3 } from "../s3/sync-restore.js";
 
 export function persistUploadedMedia(params: {
   id: string;
@@ -37,7 +35,7 @@ export function persistUploadedMedia(params: {
   void indexMediaItem(item);
 }
 
-export type DeleteMediaResult =
+type DeleteMediaResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "forbidden" | "delete_failed">;
 
@@ -87,7 +85,7 @@ function parseBodyDateTaken(
   return d.toISOString();
 }
 
-export type UpdateMediaDateTakenResult =
+type UpdateMediaDateTakenResult =
   | { ok: true; dateTaken: string | null }
   | ServiceFailure<"not_found" | "forbidden" | "bad_request" | "invalid_date">;
 

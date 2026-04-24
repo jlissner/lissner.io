@@ -1,4 +1,4 @@
-import { ApiError, apiFetch, apiJson } from "@/api/client";
+import { ApiError, apiFetch, apiJson } from "@/api";
 import type {
   CreatePersonResponse,
   DeletePersonResponse,
@@ -7,7 +7,7 @@ import type {
   PersonMediaPreviewItem,
   PersonSummary,
   UpdatePersonResponse,
-} from "../../../../shared/src/api.js";
+} from "@shared";
 import type { MergeSuggestion } from "./components/people-types";
 
 type ErrorBody = { error?: unknown };

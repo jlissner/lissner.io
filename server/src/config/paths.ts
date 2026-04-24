@@ -7,9 +7,7 @@ import { mkdirSync } from "fs";
 import path from "path";
 import { DATA_DIR, PROJECT_ROOT } from "./env.js";
 
-export { PROJECT_ROOT } from "./env.js";
-
-export const dataDir = path.isAbsolute(DATA_DIR)
+const dataDir = path.isAbsolute(DATA_DIR)
   ? DATA_DIR
   : path.join(PROJECT_ROOT, DATA_DIR);
 

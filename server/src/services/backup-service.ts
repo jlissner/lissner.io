@@ -1,7 +1,8 @@
-import type { BackupSyncStatusResponse } from "../../../shared/src/api.js";
+import type { BackupSyncStatusResponse } from "@shared";
 import { buildActivitySnapshot } from "../activity/snapshot.js";
 import { getIndexJobState } from "../indexing/job-store.js";
-import { getSyncState, isSyncInProgress, runSync } from "../s3/sync.js";
+import { runSync } from "../s3/sync-runner.js";
+import { getSyncState, isSyncInProgress } from "../s3/sync-state.js";
 
 export function getSyncStatusBody(): BackupSyncStatusResponse {
   const snap = buildActivitySnapshot(getIndexJobState(), getSyncState());
@@ -14,7 +15,7 @@ export function getSyncStatusBody(): BackupSyncStatusResponse {
   };
 }
 
-export type PrepareSyncResult =
+type PrepareSyncResult =
   | { ok: true; execute: () => Promise<void> }
   | { ok: false; reason: "not_configured"; missingVars: string[] }
   | { ok: false; reason: "already_running" };
