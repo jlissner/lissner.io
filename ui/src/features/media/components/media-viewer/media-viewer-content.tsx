@@ -296,7 +296,7 @@ export function MediaViewerContent({
               playsInline
               style={{ maxWidth: "100%", maxHeight: "85vh" }}
             >
-              <source src={motionVideoUrl} type={item.mimeType} />
+              <source src={motionVideoUrl} />
             </video>
           )}
           {isImage(item.mimeType, item.originalName) &&

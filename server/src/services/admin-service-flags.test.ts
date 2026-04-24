@@ -1,5 +1,24 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+/** `admin-service` → `auth` → `config/env.js` loads dotenv with override and clobbers stubbed env. */
+vi.mock("../config/env.js", () => ({
+  PROJECT_ROOT: "/tmp/family-image-manager-test-root",
+  AWS_ACCESS_KEY_ID: "test-access",
+  AWS_SECRET_ACCESS_KEY: "test-secret",
+  AWS_REGION: "us-east-1",
+  DATA_DIR: "/tmp/family-image-manager-test-data",
+  FIRST_ADMIN_EMAIL: "admin@test.local",
+  OLLAMA_HOST: "http://127.0.0.1:11434",
+  OLLAMA_VISION_MODEL: "llava",
+  S3_BUCKET: "test-bucket",
+  SERVER_HOST: "localhost",
+  SERVER_PORT: 3000,
+  SERVER_PROTOCOL: "http",
+  SESSION_SECRET: "test-session-secret",
+  SES_FROM_EMAIL: "ses@test.local",
+  UI_PORT: 8042,
+}));
+
 describe("admin explorer env flags", () => {
   afterEach(() => {
     vi.unstubAllEnvs();
