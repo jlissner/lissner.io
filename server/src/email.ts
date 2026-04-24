@@ -21,7 +21,7 @@ export async function sendMagicLink(
 ): Promise<void> {
   const from = SES_FROM_EMAIL;
 
-  const res = await sesClient.send(
+  await sesClient.send(
     new SendEmailCommand({
       Source: from,
       Destination: { ToAddresses: [email] },
@@ -38,6 +38,4 @@ export async function sendMagicLink(
       },
     }),
   );
-
-  console.log(res);
 }

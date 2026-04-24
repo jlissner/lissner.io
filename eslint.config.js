@@ -35,10 +35,6 @@ export default tseslint.config(
         },
       ],
       "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/consistent-type-imports": [
-        "warn",
-        { prefer: "type-imports", fixStyle: "inline-type-imports" },
-      ],
       "@typescript-eslint/no-import-type-side-effects": "warn",
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
     },
