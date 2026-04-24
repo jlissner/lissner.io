@@ -1,13 +1,9 @@
-import { logger } from "../logger.js";
 import { getDb } from "./media-db.js";
 import { linkMotionPairForMedia } from "./media-motion.js";
 
 function buildWriteStmts() {
   const db = getDb();
   return {
-    migrateNullOwners: db.prepare(
-      "UPDATE media SET owner_id = ? WHERE owner_id IS NULL",
-    ),
     insertMedia: db.prepare(
       `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at, owner_id)
        VALUES (?, ?, ?, ?, ?, datetime('now'), ?)`,
@@ -55,21 +51,6 @@ function writeStmts() {
   const stmts = buildWriteStmts();
   writeState.stmts = stmts;
   return stmts;
-}
-
-export function migrateNullOwnersToDefault(
-  getDefaultOwnerId: () => number | null,
-): void {
-  const defaultOwnerId = getDefaultOwnerId();
-  if (defaultOwnerId) {
-    const result = writeStmts().migrateNullOwners.run(defaultOwnerId);
-    if (result.changes > 0) {
-      logger.warn(
-        { changes: result.changes, defaultOwnerId },
-        "[db] Assigned null media owners to default owner",
-      );
-    }
-  }
 }
 
 export function insertMedia(

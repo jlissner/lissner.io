@@ -11,18 +11,6 @@ export type SyncCompletionTally = {
   deletedOrphanThumbsLocal: number;
 };
 
-export function buildSyncNotConfiguredProgress(
-  missingVars: string[],
-): SyncProgressMessage {
-  return {
-    phase: "error",
-    current: 0,
-    total: 0,
-    message: "S3 not configured",
-    error: `Missing: ${missingVars.join(", ")}`,
-  };
-}
-
 export function buildSyncFailedProgress(detail: string): SyncProgressMessage {
   return {
     phase: "error",

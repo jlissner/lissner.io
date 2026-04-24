@@ -1,6 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
 import { sendApiError } from "../lib/api-error.js";
-import * as authDb from "../db/auth.js";
 import { verifyAccessToken } from "./jwt.js";
 
 declare module "express-serve-static-core" {
@@ -51,9 +50,6 @@ export function jwtMiddleware() {
 export async function validateSessionFromCookie(
   cookieHeader: string | undefined,
 ): Promise<AuthUser | null> {
-  if (process.env.AUTH_ENABLED !== "true") {
-    return null;
-  }
   if (!cookieHeader) {
     return null;
   }
@@ -68,32 +64,11 @@ export async function validateSessionFromCookie(
   return { id: payload.sub, email: payload.email, isAdmin: payload.isAdmin };
 }
 
-export function impersonateFirstAdminWhenAuthDisabled(
-  req: Request,
-  _res: Response,
-  next: NextFunction,
-): void {
-  if (process.env.AUTH_ENABLED === "true") {
-    next();
-    return;
-  }
-  const email = process.env.FIRST_ADMIN_EMAIL?.trim();
-  if (email) {
-    const user = authDb.getOrCreateUser(email, true);
-    req.jwtUser = { id: user.id, email: user.email, isAdmin: user.isAdmin };
-  }
-  next();
-}
-
 export function requireAuth(
   req: Request,
   res: Response,
   next: NextFunction,
 ): void {
-  if (process.env.AUTH_ENABLED !== "true") {
-    next();
-    return;
-  }
   if (req.jwtUser) {
     next();
   } else {
@@ -106,10 +81,6 @@ export function requireAdmin(
   res: Response,
   next: NextFunction,
 ): void {
-  if (process.env.AUTH_ENABLED !== "true") {
-    next();
-    return;
-  }
   if (req.jwtUser?.isAdmin) {
     next();
   } else {

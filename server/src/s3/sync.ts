@@ -7,7 +7,7 @@ export type {
   SyncProgress,
   SyncProgressMessage,
 } from "./sync-types.js";
-export { getS3Config, createS3Client } from "./sync-client.js";
+export { s3Client } from "./sync-client.js";
 export {
   setSyncChangeListener,
   getSyncState,

@@ -1,46 +1,24 @@
 import path from "path";
-import { createRequire } from "module";
 import { readFile, stat } from "fs/promises";
-import { logger } from "./logger.js";
+import "@tensorflow/tfjs-node";
+import { Human } from "@vladmandic/human";
+import { createRequire } from "module";
+import { blue, gray, red, yellow } from "yoctocolors";
 
 const require = createRequire(import.meta.url);
-
-// Load tfjs-node before Human (required for Node.js backend)
-await import("@tensorflow/tfjs-node");
-
-const Human = require("@vladmandic/human").default as new (config?: object) => {
-  tf: {
-    node: { decodeImage: (buf: Buffer, channels?: number) => unknown };
-    dispose: (t: unknown) => void;
-  };
-  detect: (input: unknown) => Promise<{
-    face: Array<{
-      box: [number, number, number, number];
-      embedding?: number[];
-    }>;
-  }>;
-  match: { similarity: (a: number[], b: number[]) => number };
-};
-
-const humanSingleton = { instance: null as InstanceType<typeof Human> | null };
-
-export async function getHuman() {
-  if (humanSingleton.instance) return humanSingleton.instance;
-  const humanEntry = require.resolve("@vladmandic/human");
-  const humanPackageDir = path.join(path.dirname(humanEntry), "..");
-  const modelPath = `file://${path.join(humanPackageDir, "models")}`;
-  humanSingleton.instance = new Human({
-    backend: "tensorflow",
-    modelBasePath: modelPath,
-    face: {
-      enabled: true,
-      detector: { rotation: true, return: true, maxDetected: 20 },
-      mesh: { enabled: true },
-      description: { enabled: true },
-    },
-  });
-  return humanSingleton.instance;
-}
+const humanEntry = require.resolve("@vladmandic/human");
+const humanPackageDir = path.join(path.dirname(humanEntry), "..");
+const modelPath = `file://${path.join(humanPackageDir, "models")}`;
+const human = new Human({
+  backend: "tensorflow",
+  modelBasePath: modelPath,
+  face: {
+    enabled: true,
+    detector: { rotation: true, return: true, maxDetected: 20 },
+    mesh: { enabled: true },
+    description: { enabled: true },
+  },
+});
 
 const FACE_SIMILARITY_THRESHOLD = 0.5;
 
@@ -87,32 +65,20 @@ async function detectFacesFromBuffer(
   human: HumanInstance,
   buffer: Buffer,
   imageId: string,
-  imagePath: string,
 ): Promise<FaceInImage[]> {
   const tf = human.tf;
-  const tensor = (() => {
-    try {
-      return tf.node.decodeImage(buffer, 3);
-    } catch (err) {
-      logger.error({ err, imageId, imagePath }, "Face extraction failed");
-      return null;
-    }
-  })();
-  if (tensor == null) {
-    return [];
-  }
+  const tensor = tf.node.decodeImage(buffer, 3);
+
   try {
     const result = await human.detect(tensor);
     return facesFromDetectResult(result, imageId);
   } catch (err) {
-    logger.error({ err, imageId, imagePath }, "Face extraction failed");
+    console.info();
+    console.error(red("Face extraction failed"));
+    console.error(red((err as Error).stack ?? "Unknown error"));
     return [];
   } finally {
-    try {
-      tf.dispose(tensor);
-    } catch {
-      /* ignore dispose errors */
-    }
+    tf.dispose(tensor);
   }
 }
 
@@ -121,20 +87,19 @@ export async function extractFacesFromImage(
   imageId: string,
 ): Promise<FaceInImage[]> {
   const work = async (): Promise<FaceInImage[]> => {
-    const human = await getHuman();
     const fileStats = await stat(imagePath).catch(() => null);
     if (fileStats == null || !fileStats.isFile()) {
-      logger.warn(
-        { imageId, imagePath },
-        "Face extraction skipped: missing file",
-      );
+      console.error(red("Face extraction skipped: missing file"));
+      console.error(`${gray("[IMAGE ID]")} ${blue(imageId)}`);
+      console.error(`${gray("[IMAGE PATH]")} ${blue(imagePath)}`);
+
       return [];
     }
     if (fileStats.size < MIN_IMAGE_BYTES) {
       return [];
     }
     if (fileStats.size > MAX_FACE_DETECT_IMAGE_BYTES) {
-      logger.warn(
+      console.warn(
         {
           imageId,
           imagePath,
@@ -143,13 +108,22 @@ export async function extractFacesFromImage(
         },
         "Face extraction skipped: file too large",
       );
+
+      console.warn(yellow("Face extraction skipped: missing file"));
+      console.warn(`${gray("[IMAGE ID]")} ${blue(imageId)}`);
+      console.warn(`${gray("[IMAGE PATH]")} ${blue(imagePath)}`);
+      console.warn(`${gray("[IMAGE SIZE]")} ${blue(String(fileStats.size))}`);
+      console.error(
+        `${gray("[MAX BYTES]")} ${blue(String(MAX_FACE_DETECT_IMAGE_BYTES))}`,
+      );
+
       return [];
     }
     const buffer = await readFile(imagePath);
     if (buffer.length < MIN_IMAGE_BYTES) {
       return [];
     }
-    return detectFacesFromBuffer(human, buffer, imageId, imagePath);
+    return detectFacesFromBuffer(human, buffer, imageId);
   };
 
   const scheduled = faceDetectChain.tail.then(() => work());
@@ -219,14 +193,12 @@ function clusterFacesWithConfidence(
 export async function getFaceSimilarityFn(): Promise<
   (a: number[], b: number[]) => number
 > {
-  const human = await getHuman();
   return (a, b) => human.match.similarity(a, b);
 }
 
 export async function clusterAllFaces(
   faces: FaceInImage[],
 ): Promise<Map<string, ImagePersonEntry[]>> {
-  const human = await getHuman();
   const similarityFn = (a: number[], b: number[]) =>
     human.match.similarity(a, b);
   const clusters = clusterFacesWithConfidence(faces, similarityFn);

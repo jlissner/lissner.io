@@ -12,8 +12,7 @@ import {
   finishIndexJob,
   failIndexJob,
 } from "../indexing/job-store.js";
-import { logger } from "../logger.js";
-import { getSyncState, getS3Config } from "../s3/sync.js";
+import { getSyncState } from "../s3/sync.js";
 import type { ServiceFailure } from "./service-result.js";
 import { normalizePersonHandle } from "../lib/search-query-normalize.js";
 import {
@@ -22,11 +21,7 @@ import {
 } from "../lib/search-query-parser.js";
 
 export function getIndexStatusBody(): SearchIndexStatusResponse {
-  const snap = buildActivitySnapshot(
-    getIndexJobState(),
-    getSyncState(),
-    getS3Config(),
-  );
+  const snap = buildActivitySnapshot(getIndexJobState(), getSyncState());
   const s = snap.index;
   return {
     inProgress: s.inProgress,
@@ -74,7 +69,7 @@ export function startBulkIndexingJob(params: {
       });
     })
     .catch((err: unknown) => {
-      logger.error({ err }, "Index error");
+      console.error({ err }, "Index error");
       failIndexJob(err instanceof Error ? err.message : "Indexing failed");
     });
 
@@ -231,7 +226,7 @@ export async function searchMediaByQuery(
 
     return { ok: true, items: mapSearchItems(items, personNames) };
   } catch (err) {
-    logger.error({ err }, "Search error");
+    console.error({ err }, "Search error");
     const message = err instanceof Error ? err.message : "Search failed";
     return { ok: false, reason: "search_failed", message };
   }

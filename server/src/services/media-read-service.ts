@@ -10,7 +10,6 @@ import {
 } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { isTextMime, isVideoMime } from "../lib/media-mime.js";
-import { logger } from "../logger.js";
 import {
   effectiveImageResponseMimeType,
   isEffectiveImageItem,
@@ -117,7 +116,7 @@ export async function getFacesPayloadForMedia(mediaId: string) {
       },
     };
   } catch (err) {
-    logger.error({ err, mediaId }, "Face detection error");
+    console.error({ err, mediaId }, "Face detection error");
     return { ok: false as const, reason: "detection_failed" as const };
   }
 }
@@ -167,7 +166,7 @@ export async function getFaceCropOrFullImage(
       mimeType: effectiveImageResponseMimeType(item),
     };
   } catch (err) {
-    logger.error({ err, mediaId, personId }, "Face crop error");
+    console.error({ err, mediaId, personId }, "Face crop error");
     return { ok: false as const, reason: "crop_failed" as const };
   }
 }
@@ -312,7 +311,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
         contentType: "image/jpeg",
       };
     } catch (err) {
-      logger.error({ err, mediaId }, "Image thumbnail generation error");
+      console.error({ err, mediaId }, "Image thumbnail generation error");
       return {
         ok: true,
         kind: "file",
@@ -348,7 +347,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     if (code === "ENOENT") {
       return { ok: false, reason: "ffmpeg_missing" };
     }
-    logger.error({ err, mediaId }, "Video thumbnail error");
+    console.error({ err, mediaId }, "Video thumbnail error");
     return { ok: false, reason: "thumb_failed" };
   }
 }

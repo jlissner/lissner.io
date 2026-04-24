@@ -4,10 +4,10 @@ import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
 import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
-import { logger } from "../logger.js";
-import { createS3Client, getS3Config } from "./sync-client.js";
+import { s3Client } from "./sync-client.js";
 import { S3_PREFIX } from "./sync-constants.js";
 import { downloadS3ObjectToFile, fileExists } from "./sync-transfer.js";
+import { S3_BUCKET } from "../config/env.js";
 
 function isS3NoSuchKey(err: unknown): boolean {
   if (typeof err !== "object" || err === null) return false;
@@ -20,19 +20,16 @@ export async function deleteMediaFromS3(item: {
   id: string;
   filename: string;
 }): Promise<void> {
-  if (!getS3Config().configured) return;
-  const client = createS3Client();
-  if (!client) return;
-  const bucket = process.env.S3_BUCKET!;
+  const bucket = S3_BUCKET!;
   const keys = [
     `${S3_PREFIX}/media/${item.filename}`,
     `${S3_PREFIX}/thumbnails/${item.id}.jpg`,
   ];
   for (const Key of keys) {
     try {
-      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
+      await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
     } catch (err) {
-      logger.error({ err, key: Key }, "[s3-sync] DeleteObject failed");
+      console.error({ err, key: Key }, "[s3-sync] DeleteObject failed");
     }
   }
 }
@@ -46,17 +43,9 @@ export async function tryRestoreMediaFromBackup(item: {
   if (!item.backedUpAt) return false;
   const localPath = path.join(mediaDir, item.filename);
   if (await fileExists(localPath)) return true;
-  const client = createS3Client();
-  if (!client) {
-    logger.warn(
-      { mediaId: item.id },
-      "restore: S3 not configured; cannot restore media",
-    );
-    return false;
-  }
-  const bucket = process.env.S3_BUCKET!;
+  const bucket = S3_BUCKET!;
   try {
-    const getRes = await client.send(
+    const getRes = await s3Client.send(
       new GetObjectCommand({
         Bucket: bucket,
         Key: `${S3_PREFIX}/media/${item.filename}`,
@@ -71,7 +60,7 @@ export async function tryRestoreMediaFromBackup(item: {
       db.clearMediaBackedUpAt(item.id);
       return false;
     }
-    logger.error(
+    console.error(
       { err, mediaId: item.id },
       "restore: failed to download media from S3",
     );
@@ -86,11 +75,9 @@ export async function tryRestoreVideoThumbnailFromBackup(
   const thumbPath = path.join(thumbnailsDir, `${mediaId}.jpg`);
   if (await isUsableVideoThumbnailFile(thumbPath)) return true;
   await unlink(thumbPath).catch(() => {});
-  const client = createS3Client();
-  if (!client) return false;
-  const bucket = process.env.S3_BUCKET!;
+  const bucket = S3_BUCKET!;
   try {
-    const getRes = await client.send(
+    const getRes = await s3Client.send(
       new GetObjectCommand({
         Bucket: bucket,
         Key: `${S3_PREFIX}/thumbnails/${mediaId}.jpg`,
@@ -104,7 +91,7 @@ export async function tryRestoreVideoThumbnailFromBackup(
     if (isS3NoSuchKey(err)) {
       return false;
     }
-    logger.error(
+    console.error(
       { err, mediaId },
       "restore: failed to download thumbnail from S3",
     );

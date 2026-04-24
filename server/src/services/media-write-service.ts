@@ -7,7 +7,6 @@ import {
   scheduleBackupSyncAfterUpload,
 } from "../s3/sync.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
-import { logger } from "../logger.js";
 import type { ServiceFailure } from "./service-result.js";
 
 export function persistUploadedMedia(params: {
@@ -71,7 +70,7 @@ export async function deleteMediaItem(
     scheduleBackupSyncAfterUpload();
     return { ok: true };
   } catch (err) {
-    logger.error({ err, mediaId }, "Delete media failed");
+    console.error({ err, mediaId }, "Delete media failed");
     return { ok: false, reason: "delete_failed" };
   }
 }

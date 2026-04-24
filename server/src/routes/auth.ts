@@ -13,7 +13,6 @@ import {
 } from "../services/jwt-auth-service.js";
 import { requireAuth } from "../auth/middleware.js";
 import { checkCodeRateLimit } from "../auth/rate-limit.js";
-import { logger } from "../logger.js";
 import { parseWithSchema } from "../validation/parse.js";
 import {
   magicLinkBodySchema,
@@ -22,10 +21,6 @@ import {
 } from "../validation/auth-schemas.js";
 
 export const authRouter = Router();
-
-authRouter.get("/config", (_req, res) => {
-  res.json({ authEnabled: process.env.AUTH_ENABLED === "true" });
-});
 
 authRouter.post("/magic-link", async (req, res) => {
   const { email } = parseWithSchema(magicLinkBodySchema, req.body);
@@ -41,7 +36,7 @@ authRouter.post("/magic-link", async (req, res) => {
     return;
   }
 
-  const { token, code } = authDb.createMagicLinkToken(normalized);
+  const { code } = authDb.createMagicLinkToken(normalized);
   const baseUrl = getMagicLinkBaseUrl();
   const link = `${baseUrl}/?code=${code}`;
 
@@ -49,7 +44,7 @@ authRouter.post("/magic-link", async (req, res) => {
     await sendMagicLink(normalized, link, code);
     res.json({ sent: true });
   } catch (err) {
-    logger.error({ err, email: normalized }, "Magic link send error");
+    console.error({ err, email: normalized }, "Magic link send error");
     sendApiError(
       res,
       500,
@@ -61,9 +56,9 @@ authRouter.post("/magic-link", async (req, res) => {
 
 authRouter.post("/verify-code", async (req, res) => {
   const { email, code } = parseWithSchema(verifyCodeBodySchema, req.body);
-  const normalized = email.toLowerCase();
+  const normalizedEmail = email.toLowerCase();
 
-  const rateCheck = checkCodeRateLimit(normalized);
+  const rateCheck = checkCodeRateLimit(normalizedEmail);
   if (!rateCheck.allowed) {
     sendApiError(res, 429, "Too many attempts", "rate_limited", {
       retryAfter: rateCheck.retryAfterSec,
@@ -72,7 +67,7 @@ authRouter.post("/verify-code", async (req, res) => {
   }
 
   const codeHash = createHash("sha256").update(code).digest("hex");
-  const result = authDb.consumeLoginCode(normalized, codeHash);
+  const result = authDb.consumeLoginCode(normalizedEmail, codeHash);
   if (!result) {
     sendApiError(res, 401, "Invalid or expired code", "invalid_code");
     return;

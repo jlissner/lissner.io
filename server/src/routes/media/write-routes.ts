@@ -3,7 +3,6 @@ import multer from "multer";
 import { sendApiError } from "../../lib/api-error.js";
 import path from "path";
 import { randomUUID } from "crypto";
-import * as authDb from "../../db/auth.js";
 import * as db from "../../db/media.js";
 import { mediaDir } from "../../config/paths.js";
 import { resolveMimeTypeAfterUpload } from "../../lib/effective-image.js";
@@ -19,6 +18,7 @@ import {
   mediaTagsBodySchema,
   uploadCheckNamesBodySchema,
 } from "../../validation/media-schemas.js";
+import invariant from "tiny-invariant";
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, mediaDir),
@@ -36,20 +36,15 @@ mediaWriteRouter.post(
   "/share-target",
   upload.array("files"),
   async (req, res) => {
-    const ownerId = req.jwtUser?.id ?? authDb.getDefaultOwnerId();
-    if (ownerId == null) {
-      sendApiError(
-        res,
-        500,
-        "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
-        "upload_owner_config",
-      );
-      return;
-    }
     if (!req.files || req.files.length === 0) {
       sendApiError(res, 400, "No files shared", "no_files_shared");
       return;
     }
+
+    const ownerId = req.jwtUser?.id;
+
+    invariant(ownerId, "req.jwtUser is undefined");
+
     const uploaded = [];
     for (const file of req.files as Express.Multer.File[]) {
       const id = path.parse(file.filename).name;
@@ -84,17 +79,12 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
     sendApiError(res, 400, "No file uploaded", "no_file_uploaded");
     return;
   }
+
   const id = path.parse(req.file.filename).name;
-  const ownerId = req.jwtUser?.id ?? authDb.getDefaultOwnerId();
-  if (ownerId == null) {
-    sendApiError(
-      res,
-      500,
-      "FIRST_ADMIN_EMAIL must be set when AUTH_ENABLED is false",
-      "upload_owner_config",
-    );
-    return;
-  }
+  const ownerId = req.jwtUser?.id;
+
+  invariant(ownerId, "req.jwtUser is undefined");
+
   const absolutePath = path.join(mediaDir, req.file.filename);
   const mimeType = await resolveMimeTypeAfterUpload(
     req.file.originalname,

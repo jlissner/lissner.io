@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
-import { logger } from "../logger.js";
 import { apiErrorCodeForHttpStatus } from "../lib/api-error.js";
 import { isHttpError } from "../lib/http-error.js";
+import { red } from "yoctocolors";
 
 /** Multer/busboy when the client disconnects or the socket closes before the body finishes. */
 function isUploadClientDisconnect(err: unknown): boolean {
@@ -15,7 +15,7 @@ function isUploadClientDisconnect(err: unknown): boolean {
 
 export function errorHandler(
   err: unknown,
-  req: Request,
+  _req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
@@ -34,8 +34,7 @@ export function errorHandler(
     return;
   }
   if (isUploadClientDisconnect(err)) {
-    const log = req.log ?? logger;
-    log.warn(
+    console.warn(
       { err },
       "Upload interrupted (client disconnected or connection closed)",
     );
@@ -47,8 +46,11 @@ export function errorHandler(
     }
     return;
   }
-  const log = req.log ?? logger;
-  log.error({ err }, "Unhandled error");
+
+  console.info();
+  console.error(red((err as Error).stack ?? "Unknonw Error"));
+  console.info();
+
   res
     .status(500)
     .json({ error: "Internal server error", code: "internal_error" });

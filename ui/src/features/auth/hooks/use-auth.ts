@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { apiFetch, apiJson } from "@/api/client";
+import { apiFetch } from "@/api/client";
 
 export interface AuthUser {
   id: number;
@@ -15,12 +15,12 @@ export function useAuth() {
     queryKey: ["auth", "session"],
     queryFn: async () => {
       try {
-        const config = await apiJson<{ authEnabled: boolean }>("auth/config");
         const meRes = await apiFetch("auth/me");
         const user = meRes.ok ? ((await meRes.json()) as AuthUser) : null;
-        return { authEnabled: config.authEnabled === true, user };
+
+        return user;
       } catch {
-        return { authEnabled: false, user: null as AuthUser | null };
+        return null;
       }
     },
     retry: false,
@@ -38,10 +38,8 @@ export function useAuth() {
     await queryClient.invalidateQueries({ queryKey: ["auth"] });
   }, [queryClient]);
 
-  const authEnabled = query.data?.authEnabled ?? null;
-  const user = query.data?.user ?? null;
+  const user = query.data ?? null;
   const loading = query.isLoading;
-  const needsLogin = authEnabled === true && !user;
 
-  return { authEnabled, user, loading, needsLogin, logout, refresh };
+  return { user, loading, logout, refresh };
 }

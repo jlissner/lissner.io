@@ -4,13 +4,13 @@ import { AppProvider } from "./provider";
 import { AuthenticatedApp } from "./authenticated-app";
 
 export default function App() {
-  const { loading, needsLogin, refresh } = useAuth();
+  const { loading, user, refresh } = useAuth();
 
   if (loading) {
     return <div className="app app--loading">Loading…</div>;
   }
 
-  if (needsLogin) {
+  if (!user) {
     return <LoginPage onSent={refresh} />;
   }
 

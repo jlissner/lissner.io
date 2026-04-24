@@ -9,26 +9,6 @@ import { config } from "dotenv";
 import { existsSync } from "fs";
 import path from "path";
 import invariant from "tiny-invariant";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
-/** Repository root (parent of `server/`). */
-export const PROJECT_ROOT = path.join(__dirname, "..", "..", "..");
-
-if (process.env.NODE_ENV === "production") {
-  const prodEnvPath = path.join(PROJECT_ROOT, ".env.prod");
-
-  invariant(existsSync(prodEnvPath), "No .env.prod file found");
-
-  config({ path: prodEnvPath, override: true });
-} else {
-  const envLocalPath = path.join(PROJECT_ROOT, ".env.local");
-
-  invariant(existsSync(envLocalPath), "No .env.local file found");
-
-  config({ path: envLocalPath, override: true });
-}
 
 function getEnvVar(name: string) {
   const val = process.env[name];
@@ -38,8 +18,22 @@ function getEnvVar(name: string) {
   return val;
 }
 
-export const DATA_DIR = getEnvVar("DATA_DIR");
+export const PROJECT_ROOT = path.join(
+  import.meta.dirname ?? __dirname,
+  "../../..",
+);
+
+const envFileName =
+  process.env.NODE_ENV === "production" ? ".env.prod" : ".env.local";
+
+const envPath = path.join(PROJECT_ROOT, envFileName);
+
+invariant(existsSync(envPath), `No ${envFileName} file found`);
+
+config({ path: envPath, override: true });
+
 export const NODE_ENV = getEnvVar("NODE_ENV");
+export const DATA_DIR = getEnvVar("DATA_DIR");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const UI_PORT = Number(getEnvVar("UI_PORT"));
 export const OLLAMA_HOST = getEnvVar("OLLAMA_HOST");
@@ -49,3 +43,7 @@ export const AWS_ACCESS_KEY_ID = getEnvVar("AWS_ACCESS_KEY_ID");
 export const AWS_SECRET_ACCESS_KEY = getEnvVar("AWS_SECRET_ACCESS_KEY");
 export const AWS_REGION = getEnvVar("AWS_REGION");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
+export const FIRST_ADMIN_EMAIL = getEnvVar("FIRST_ADMIN_EMAIL");
+export const S3_BUCKET = getEnvVar("S3_BUCKET");
+export const OLLAMA_VISION_MODEL = getEnvVar("OLLAMA_VISION_MODEL");
+export const SESSION_SECRET = getEnvVar("SESSION_SECRET");

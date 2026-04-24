@@ -1,29 +1,12 @@
-import type {
-  BackupConfigResponse,
-  BackupSyncStatusResponse,
-} from "../../../shared/src/api.js";
+import type { BackupSyncStatusResponse } from "../../../shared/src/api.js";
 import { buildActivitySnapshot } from "../activity/snapshot.js";
 import { getIndexJobState } from "../indexing/job-store.js";
-import {
-  getS3Config,
-  getSyncState,
-  isSyncInProgress,
-  runSync,
-} from "../s3/sync.js";
-
-export function getBackupConfig(): BackupConfigResponse {
-  return getS3Config();
-}
+import { getSyncState, isSyncInProgress, runSync } from "../s3/sync.js";
 
 export function getSyncStatusBody(): BackupSyncStatusResponse {
-  const snap = buildActivitySnapshot(
-    getIndexJobState(),
-    getSyncState(),
-    getS3Config(),
-  );
+  const snap = buildActivitySnapshot(getIndexJobState(), getSyncState());
   const s = snap.sync;
   return {
-    configured: s.configured,
     inProgress: s.inProgress,
     startedAt: s.startedAt,
     lastResult: s.lastResult,
@@ -38,10 +21,6 @@ export type PrepareSyncResult =
 
 /** Validates config and exclusivity; caller sends HTTP response then runs `execute()` in the background. */
 export function prepareSync(): PrepareSyncResult {
-  const { configured, missingVars } = getS3Config();
-  if (!configured) {
-    return { ok: false, reason: "not_configured", missingVars };
-  }
   if (isSyncInProgress()) {
     return { ok: false, reason: "already_running" };
   }

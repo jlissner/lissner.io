@@ -6,7 +6,6 @@ import {
   hammingDistance,
 } from "../lib/perceptual-hash.js";
 import { ensureLocalMediaFile } from "../services/media-read-service.js";
-import { logger } from "../logger.js";
 
 const HAMMING_THRESHOLD = 10;
 
@@ -30,7 +29,7 @@ export async function findDuplicatesForMedia(
   try {
     newHash = await computePerceptualHash(filePath);
   } catch (err) {
-    logger.error({ err, mediaId }, "Failed to compute perceptual hash");
+    console.error({ err, mediaId }, "Failed to compute perceptual hash");
     return [];
   }
 
@@ -65,7 +64,7 @@ export async function computeAndStoreHash(mediaId: string): Promise<boolean> {
     db.setMediaPerceptualHash(mediaId, hash);
     return true;
   } catch (err) {
-    logger.error({ err, mediaId }, "Failed to compute perceptual hash");
+    console.error({ err, mediaId }, "Failed to compute perceptual hash");
     return false;
   }
 }

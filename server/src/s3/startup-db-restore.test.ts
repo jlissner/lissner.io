@@ -5,13 +5,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./sync-client.js", () => {
   return {
-    getS3Config: vi.fn(() => ({
-      configured: true,
-      missingVars: [] as string[],
-    })),
-    createS3Client: vi.fn(() => ({
+    s3Client: {
       send: vi.fn(async () => ({ Body: { mocked: true } })),
-    })),
+    },
   };
 });
 
@@ -37,27 +33,17 @@ vi.mock("../config/paths.js", async () => {
   };
 });
 
+vi.mock("../config/env.ts", () => ({
+  S3_BUCKET: "test-bucket",
+  AWS_ACCESS_KEY_ID: "x",
+  AWS_SECRET_ACCESS_KEY: "y",
+  AWS_REGION: "us-test-1",
+}));
+
 describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
-  beforeEach(() => {
-    vi.resetModules();
-    process.env.S3_BUCKET = "test-bucket";
-    process.env.AWS_ACCESS_KEY_ID = "x";
-    process.env.AWS_SECRET_ACCESS_KEY = "y";
-    process.env.AWS_REGION = "us-test-1";
-  });
   beforeEach(async () => {
     const { dbPath } = await import("../config/paths.js");
     await unlink(dbPath).catch(() => {});
-  });
-  beforeEach(async () => {
-    const { createS3Client, getS3Config } = await import("./sync-client.js");
-    (getS3Config as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      configured: true,
-      missingVars: [],
-    });
-    (createS3Client as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      send: vi.fn(async () => ({ Body: { mocked: true } })),
-    });
   });
   beforeEach(async () => {
     const { downloadS3ObjectToFile, listAllS3Keys } =
@@ -108,18 +94,6 @@ describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
     const { dbPath } = await import("../config/paths.js");
     const content = await readFile(dbPath);
     expect(content.length).toBeGreaterThan(0);
-  });
-
-  it("is skipped when S3 backup is not configured", async () => {
-    const { getS3Config } = await import("./sync-client.js");
-    (getS3Config as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-      configured: false,
-      missingVars: ["S3_BUCKET"],
-    });
-
-    const mod = await import("./startup-db-restore.js");
-    const res = await mod.maybeRestoreDbFromLatestS3BackupOnStartup();
-    expect(res).toEqual({ restored: false, reason: "not_configured" });
   });
 
   it("falls back when downloaded DB is invalid", async () => {

@@ -106,7 +106,6 @@ export interface BackupConfigResponse {
 
 /** GET /api/backup/status */
 export interface BackupSyncStatusResponse {
-  configured: boolean;
   inProgress: boolean;
   startedAt: string | null;
   lastResult: SyncProgressMessage | null;
@@ -165,9 +164,6 @@ export type FaceMatchRunResponse = {
   autoMerged: FaceMatchAutoMerged[];
   reviewQueue: FaceMatchReviewItem[];
 };
-
-/** GET /api/auth/config or similar bootstrap */
-export type AuthConfigResponse = { authEnabled: boolean };
 
 /** GET /api/admin/db-backups */
 export type AdminDbBackupItem = {

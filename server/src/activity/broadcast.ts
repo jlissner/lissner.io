@@ -4,7 +4,7 @@ import type { WebSocket as WsClient } from "ws";
 import { WebSocketServer } from "ws";
 import { buildActivitySnapshot } from "./snapshot.js";
 import { getIndexJobState } from "../indexing/job-store.js";
-import { getSyncState, getS3Config } from "../s3/sync.js";
+import { getSyncState } from "../s3/sync.js";
 import { validateSessionFromCookie } from "../auth/middleware.js";
 
 const clients = new Set<WsClient>();
@@ -31,11 +31,7 @@ if (typeof pingInterval.unref === "function") {
 }
 
 export function broadcastActivity(): void {
-  const payload = buildActivitySnapshot(
-    getIndexJobState(),
-    getSyncState(),
-    getS3Config(),
-  );
+  const payload = buildActivitySnapshot(getIndexJobState(), getSyncState());
   const msg = JSON.stringify({ type: "activity", v: 1, payload });
   for (const ws of clients) {
     if (ws.readyState === WS_OPEN) {
@@ -68,11 +64,7 @@ export function attachActivityWebSocket(server: Server): void {
 
     wss.handleUpgrade(request, socket, head, (ws) => {
       clients.add(ws);
-      const payload = buildActivitySnapshot(
-        getIndexJobState(),
-        getSyncState(),
-        getS3Config(),
-      );
+      const payload = buildActivitySnapshot(getIndexJobState(), getSyncState());
       ws.send(JSON.stringify({ type: "activity", v: 1, payload }));
 
       ws.on("pong", () => {

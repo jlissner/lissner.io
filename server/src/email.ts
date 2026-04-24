@@ -1,5 +1,4 @@
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { logger } from "./logger.js";
 import {
   AWS_ACCESS_KEY_ID,
   AWS_REGION,
@@ -22,15 +21,7 @@ export async function sendMagicLink(
 ): Promise<void> {
   const from = SES_FROM_EMAIL;
 
-  if (!sesClient || !from) {
-    logger.warn(
-      { email, link, code },
-      "SES not configured; magic link emitted to logs",
-    );
-    return;
-  }
-
-  await sesClient.send(
+  const res = await sesClient.send(
     new SendEmailCommand({
       Source: from,
       Destination: { ToAddresses: [email] },
@@ -47,4 +38,6 @@ export async function sendMagicLink(
       },
     }),
   );
+
+  console.log(res);
 }

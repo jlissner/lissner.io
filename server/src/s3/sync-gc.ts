@@ -1,6 +1,5 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import type { S3Client } from "@aws-sdk/client-s3";
-import { logger } from "../logger.js";
 import { S3_PREFIX } from "./sync-constants.js";
 
 /** Remove `backup/thumbnails/{id}.jpg` from S3 when no media row exists for `id`. */
@@ -22,7 +21,7 @@ export async function deleteOrphanS3Thumbnails(
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
       acc.removed += 1;
     } catch (err) {
-      logger.error(
+      console.error(
         { err, key },
         "[s3-sync] DeleteObject orphan thumbnail failed",
       );

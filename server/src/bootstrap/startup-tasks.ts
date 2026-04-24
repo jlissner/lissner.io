@@ -1,6 +1,7 @@
 import { mkdirSync } from "fs";
-import { logger } from "../logger.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
+import * as mediaDb from "../db/media.js";
+import { red } from "yoctocolors";
 
 export function ensureServerDirectories(paths: {
   mediaDir: string;
@@ -14,32 +15,19 @@ export function ensureServerDirectories(paths: {
 
 export async function runStartupMaintenance(): Promise<void> {
   try {
-    const [authDb, db] = await Promise.all([
-      import("../db/auth.js"),
-      import("../db/media.js"),
-    ]);
-    db.migrateNullOwnersToDefault(authDb.getDefaultOwnerId);
+    mediaDb.relinkAllMotionPairs();
   } catch (err) {
-    logger.error(
-      { err },
-      "[db] migrateNullOwnersToDefault failed (continuing startup)",
-    );
-  }
-  try {
-    const db = await import("../db/media.js");
-    db.relinkAllMotionPairs();
-  } catch (err) {
-    logger.error(
-      { err },
-      "[db] relinkAllMotionPairs failed (continuing startup)",
-    );
+    console.info();
+    console.error(red("[db] relinkAllMotionPairs failed (continuing startup)"));
+    console.error(red((err as Error).stack ?? "Unknonw Error"));
+    console.info();
   }
 }
 
 export function runServerStartedTasks(): void {
-  void deleteOrphanedLocalThumbnailFiles().then((removed) => {
+  deleteOrphanedLocalThumbnailFiles().then((removed) => {
     if (removed > 0) {
-      logger.info(
+      console.info(
         { removed },
         "[thumbnails] Removed orphaned local thumbnail files",
       );

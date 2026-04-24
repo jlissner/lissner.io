@@ -126,8 +126,7 @@ The UI proxies `/api` to **port 3000**. That error means the **Express API is no
 | `AWS_SECRET_ACCESS_KEY` | —                        | AWS secret key for S3 backup                                                                                                                  |
 | `AWS_REGION`            | —                        | AWS region (e.g. `us-east-1`) for S3 backup                                                                                                   |
 | `S3_BUCKET`             | —                        | S3 bucket name for media sync                                                                                                                 |
-| `AUTH_ENABLED`          | —                        | Set to `true` to require magic link login                                                                                                     |
-| `FIRST_ADMIN_EMAIL`     | —                        | Bootstrap admin email (whitelisted, receives magic links). Required when `AUTH_ENABLED=false` — all uploads are owned by this user.           |
+| `FIRST_ADMIN_EMAIL`     | —                        | Bootstrap admin email (whitelisted, receives magic links).                                                                                    |
 | `SESSION_SECRET`        | (dev default)            | Secret for session cookies                                                                                                                    |
 | `SQL_EXPLORER_ENABLED`  | —                        | Set to `true` to enable SQL explorer for admins. **Only works when NODE_ENV ≠ production** (local dev only).                                  |
 | `DATA_EXPLORER_ENABLED` | —                        | Set to `true` to enable Data Explorer (CRUD UI for all tables). **Only works when NODE_ENV ≠ production**. Auto-discovers tables and columns. |
@@ -143,7 +142,7 @@ If S3 variables are missing, the server logs a warning on startup and the UI sho
 
 **Nuclear reset:** `npm run nuke` permanently removes local media and thumbnails (`data/media/`, `data/thumbnails/`), deletes all rows in the SQLite database (schema kept), clears the S3 `backup/` prefix when AWS env vars are set, and removes `data/.sync_temp_db.db` if present. It prints counts/sizes first and requires typing a **random 6-digit code** to confirm. **Stop the server** before running so the database is not locked.
 
-**Auth (magic link):** Set `AUTH_ENABLED=true` to enable. Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage the whitelist and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
+**Auth (magic link):** Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage the whitelist and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
 
 The server loads environment variables from `.env` and `.env.local` (the latter overrides the former). Create `.env.local` for local development; it is gitignored.
 
@@ -166,7 +165,6 @@ The codebase today assumes a **trusted, single-machine** setup (local disk, opti
 | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **TLS (HTTPS)**                  | Session cookies use `secure` when `NODE_ENV=production`; users must reach the app over HTTPS. Terminate TLS at a reverse proxy or load balancer with valid certificates.                                                                                                                                                                                |
 | **`NODE_ENV=production`**        | Required for secure cookies and to keep dev-only features (SQL/Data explorer) disabled.                                                                                                                                                                                                                                                                 |
-| **`AUTH_ENABLED=true`**          | Do not run a shared host with auth off (`FIRST_ADMIN_EMAIL` impersonation). Everyone would share one logical user.                                                                                                                                                                                                                                      |
 | **`SESSION_SECRET`**             | Must be a long, random secret in production. The dev default in `server/src/auth/middleware.ts` is not acceptable for a public or shared deployment.                                                                                                                                                                                                    |
 | **Reverse proxy: `trust proxy`** | Behind nginx, Caddy, ALB, etc., Express must trust `X-Forwarded-*` so `req.protocol` and client IP are correct (magic links, logging). **Not implemented** in `server/src/index.ts` today — add `app.set("trust proxy", …)` appropriately.                                                                                                              |
 | **CORS**                         | `cors({ origin: true })` reflects any `Origin` with credentials — unsafe for a hosted app. Restrict to your real UI origin(s).                                                                                                                                                                                                                          |
@@ -196,7 +194,7 @@ The codebase today assumes a **trusted, single-machine** setup (local disk, opti
 Use this as a practical gate before pointing ~100 people at a URL.
 
 1. **Build** — `npm run build`; run `npm run start` (or your process manager) with `server/dist` + `ui/dist` as documented.
-2. **Environment** — Set `NODE_ENV=production`, `AUTH_ENABLED=true`, `SESSION_SECRET`, `FIRST_ADMIN_EMAIL`, Ollama (or replacement) URLs/models, AWS vars for S3 and SES, `SES_FROM_EMAIL`.
+2. **Environment** — Set `NODE_ENV=production`, `SESSION_SECRET`, `FIRST_ADMIN_EMAIL`, Ollama (or replacement) URLs/models, AWS vars for S3 and SES, `SES_FROM_EMAIL`.
 3. **DNS & TLS** — Domain points to your host; HTTPS certificates installed and auto-renewed.
 4. **Proxy** — Configure reverse proxy to the Node port; enable **`trust proxy`** in Express when appropriate.
 5. **CORS** — Allowlist your real UI origin; remove wide-open origin behavior.

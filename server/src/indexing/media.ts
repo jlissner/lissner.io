@@ -24,7 +24,6 @@ import { mediaDir } from "../config/paths.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { isTextMime, isVideoMime } from "../lib/media-mime.js";
 import { computeAndStoreHash } from "../services/duplicate-detection.js";
-import { logger } from "../logger.js";
 
 interface MediaItem {
   id: string;
@@ -60,7 +59,7 @@ async function getTextForItem(
           : "";
       return `${base}${suffix}`.trim();
     } catch (err) {
-      logger.error(
+      console.error(
         { err, originalName: item.originalName },
         "Image description failed",
       );
@@ -186,7 +185,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           const [exif, faces] = await Promise.all([
             extractExifData(filePath),
             extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
-              logger.error(
+              console.error(
                 { err, originalName: item.originalName },
                 "Face extraction failed",
               );
@@ -208,7 +207,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
             );
           }
         } catch (err) {
-          logger.error(
+          console.error(
             { err, originalName: item.originalName },
             "Image indexing prep failed",
           );
@@ -218,7 +217,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           const meta = await extractVideoMetadata(filePath);
           if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
         } catch (err) {
-          logger.error(
+          console.error(
             { err, originalName: item.originalName },
             "Video metadata failed",
           );
@@ -233,7 +232,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
       }
       return true;
     } catch (err) {
-      logger.error(
+      console.error(
         { err, originalName: item.originalName },
         "Auto-index failed",
       );
@@ -299,7 +298,7 @@ export async function indexMediaItems(
         }
         allFaces.push(...faces);
       } catch (err) {
-        logger.error(
+        console.error(
           { err, originalName: item.originalName },
           "Face extraction failed",
         );
@@ -345,7 +344,7 @@ export async function indexMediaItems(
       db.upsertEmbedding(item.id, embedding);
       progress.indexed++;
     } catch (err) {
-      logger.error(
+      console.error(
         { err, originalName: item.originalName },
         "Failed to index item",
       );

@@ -39,8 +39,6 @@ export interface IndexActivitySlice {
 }
 
 export interface SyncActivitySlice {
-  configured: boolean;
-  missingVars: string[];
   inProgress: boolean;
   startedAt: string | null;
   lastResult: SyncProgressMessage | null;

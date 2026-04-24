@@ -8,10 +8,8 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
-import { Banner } from "@/components/ui/banner";
 import { Button } from "@/components/ui/button";
 import { NavMenu, NavMenuItem } from "@/components/ui/nav-menu";
-import { useActivity } from "@/components/activity/activity-provider";
 import { GlobalActivityOverlay } from "@/components/activity/global-activity-overlay";
 import { UploadModal } from "@/features/media/components/upload-modal";
 import { useAuth } from "@/features/auth/hooks/use-auth";
@@ -35,25 +33,13 @@ function buildPathWithSearch(path: string, search?: string): string {
   return `${path}?${search}`;
 }
 
-function s3AlertMessage(missingVars: string[]): string {
-  return `S3 sync not configured. Missing: ${missingVars.join(", ")}.`;
-}
-
 export function AuthenticatedApp() {
-  const { authEnabled, user, logout } = useAuth();
-  const canLogOut = authEnabled === true && user != null;
-  const activity = useActivity();
-  const s3Config = activity
-    ? {
-        configured: activity.sync.configured,
-        missingVars: activity.sync.missingVars,
-      }
-    : null;
+  const { user, logout } = useAuth();
+  const canLogOut = user != null;
   const [page, setPage] = useState<PageId>(() =>
     pathToPage(window.location.pathname),
   );
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [s3AlertDismissed, setS3AlertDismissed] = useState(false);
 
   useEffect(() => {
     const onPopState = () => {
@@ -81,7 +67,6 @@ export function AuthenticatedApp() {
     () => setUploadModalOpen(false),
     [],
   );
-  const handleDismissS3Alert = useCallback(() => setS3AlertDismissed(true), []);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -99,8 +84,6 @@ export function AuthenticatedApp() {
     return () =>
       document.removeEventListener("click", handleClickOutside as never);
   }, [showUserMenu]);
-
-  const showS3Alert = s3Config && !s3Config.configured && !s3AlertDismissed;
 
   const navItems = NAV_ITEMS.filter((item) => !item.adminOnly || user?.isAdmin);
   const showAccount = user != null;
@@ -125,27 +108,6 @@ export function AuthenticatedApp() {
 
   return (
     <div className="app">
-      {showS3Alert && (
-        <Banner onDismiss={handleDismissS3Alert}>
-          {s3AlertMessage(s3Config.missingVars)}
-          {user?.isAdmin ? (
-            <>
-              {" "}
-              <a
-                href="/admin"
-                onClick={(e: MouseEvent<HTMLAnchorElement>) => {
-                  e.preventDefault();
-                  navigateTo("admin");
-                }}
-              >
-                Open Admin
-              </a>
-            </>
-          ) : (
-            " Set these on the server to enable sync."
-          )}
-        </Banner>
-      )}
       <header className="header">
         <div className="header__top">
           <h1 className="header__title">Family Media</h1>

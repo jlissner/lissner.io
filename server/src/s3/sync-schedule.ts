@@ -1,5 +1,3 @@
-import { logger } from "../logger.js";
-import { getS3Config } from "./sync-client.js";
 import { syncDefer } from "./sync-defer.js";
 import { isSyncInProgress } from "./sync-state.js";
 import { runSync } from "./sync-runner.js";
@@ -13,8 +11,6 @@ const AUTO_BACKUP_DEBOUNCE_MS = 3500;
  * scheduled when it completes.
  */
 export function scheduleBackupSyncAfterUpload(): void {
-  if (!getS3Config().configured) return;
-
   if (syncDefer.debounceTimer) {
     clearTimeout(syncDefer.debounceTimer);
     syncDefer.debounceTimer = null;
@@ -27,7 +23,7 @@ export function scheduleBackupSyncAfterUpload(): void {
       return;
     }
     void runSync().catch((err) => {
-      logger.error({ err }, "[s3-sync] Auto backup after upload failed");
+      console.error({ err }, "[s3-sync] Auto backup after upload failed");
     });
   }, AUTO_BACKUP_DEBOUNCE_MS);
 }

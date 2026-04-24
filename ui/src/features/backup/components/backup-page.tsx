@@ -25,19 +25,9 @@ export function BackupPage({
   const activity = useActivity();
   const wasInProgress = useRef(false);
   const [running, setRunning] = useState(false);
-
-  const config =
-    activity != null
-      ? {
-          configured: activity.sync.configured,
-          missingVars: activity.sync.missingVars,
-        }
-      : null;
-
   const status =
     activity != null
       ? {
-          configured: activity.sync.configured,
           inProgress: activity.sync.inProgress,
           startedAt: activity.sync.startedAt,
           lastResult: activity.sync.lastResult,
@@ -66,7 +56,7 @@ export function BackupPage({
     }
   }, []);
 
-  if (config === null || status === null) {
+  if (status === null) {
     return <p className="empty">Loading…</p>;
   }
 
@@ -76,53 +66,39 @@ export function BackupPage({
     <div className="backup-page">
       {showTitle && <h2 className="backup-page__title">Sync with S3</h2>}
 
-      {!config.configured ? (
-        <Alert variant="warning">
-          <strong>S3 sync is not configured.</strong>
-          <p>Set these environment variables on the server to enable sync:</p>
-          <ul>
-            {config.missingVars.map((v) => (
-              <li key={v}>
-                <code>{v}</code>
-              </li>
-            ))}
-          </ul>
-        </Alert>
-      ) : (
-        <Card padding="lg">
-          <p className="backup-page__desc">
-            Sync your media with AWS S3. Uploads only new files, downloads
-            missing files from S3, and merges media from other devices.
-          </p>
-          <Button onClick={handleRun} disabled={status.inProgress || running}>
-            {status.inProgress ? "Syncing…" : "Sync now"}
-          </Button>
+      <Card padding="lg">
+        <p className="backup-page__desc">
+          Sync your media with AWS S3. Uploads only new files, downloads missing
+          files from S3, and merges media from other devices.
+        </p>
+        <Button onClick={handleRun} disabled={status.inProgress || running}>
+          {status.inProgress ? "Syncing…" : "Sync now"}
+        </Button>
 
-          {status.inProgress && lastResult && (
-            <div className="backup-page__progress">
-              <p>{lastResult.message}</p>
-              {lastResult.total > 0 && (
-                <progress
-                  value={lastResult.current}
-                  max={lastResult.total}
-                  className="backup-page__progress-bar"
-                />
-              )}
-            </div>
-          )}
+        {status.inProgress && lastResult && (
+          <div className="backup-page__progress">
+            <p>{lastResult.message}</p>
+            {lastResult.total > 0 && (
+              <progress
+                value={lastResult.current}
+                max={lastResult.total}
+                className="backup-page__progress-bar"
+              />
+            )}
+          </div>
+        )}
 
-          {!status.inProgress && lastResult && (
-            <Alert variant={getSyncAlertVariant(lastResult.phase)}>
-              {lastResult.phase === "error" && lastResult.error && (
-                <p>
-                  <strong>Error:</strong> {lastResult.error}
-                </p>
-              )}
-              {lastResult.phase === "done" && <p>{lastResult.message}</p>}
-            </Alert>
-          )}
-        </Card>
-      )}
+        {!status.inProgress && lastResult && (
+          <Alert variant={getSyncAlertVariant(lastResult.phase)}>
+            {lastResult.phase === "error" && lastResult.error && (
+              <p>
+                <strong>Error:</strong> {lastResult.error}
+              </p>
+            )}
+            {lastResult.phase === "done" && <p>{lastResult.message}</p>}
+          </Alert>
+        )}
+      </Card>
     </div>
   );
 }

@@ -4,10 +4,11 @@ import { existsSync } from "fs";
 import { mkdir, rename, unlink } from "fs/promises";
 import path from "path";
 import { dbDir, dbPath } from "../config/paths.js";
-import { logger } from "../logger.js";
 import { S3_PREFIX } from "./sync-constants.js";
-import { createS3Client, getS3Config } from "./sync-client.js";
+import { s3Client } from "./sync-client.js";
 import { downloadS3ObjectToFile, listAllS3Keys } from "./sync-transfer.js";
+import { S3_BUCKET } from "../config/env.js";
+import { gray, green, red, yellow } from "yoctocolors";
 
 export type StartupDbRestoreResult =
   | {
@@ -46,24 +47,16 @@ function pickNewestDbKey(keys: Iterable<string>): string | null {
 export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<StartupDbRestoreResult> {
   if (existsSync(dbPath)) return { restored: false, reason: "local_exists" };
 
-  const s3 = getS3Config();
-  if (!s3.configured) return { restored: false, reason: "not_configured" };
-
-  const client = createS3Client();
-  if (!client) return { restored: false, reason: "not_configured" };
-
-  const bucket = process.env.S3_BUCKET!;
-
   try {
-    const keys = await listAllS3Keys(client, bucket, `${S3_PREFIX}/db/`);
+    const keys = await listAllS3Keys(s3Client, S3_BUCKET, `${S3_PREFIX}/db/`);
     const newestKey = pickNewestDbKey(keys);
     if (!newestKey) return { restored: false, reason: "no_backups" };
 
     await mkdir(dbDir, { recursive: true });
     const tempPath = path.join(dbDir, ".startup_restore.db");
 
-    const getRes = await client.send(
-      new GetObjectCommand({ Bucket: bucket, Key: newestKey }),
+    const getRes = await s3Client.send(
+      new GetObjectCommand({ Bucket: S3_BUCKET, Key: newestKey }),
     );
     const body = getRes.Body;
     if (!body) return { restored: false, reason: "download_failed" };
@@ -72,7 +65,7 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
 
     if (!validateSqliteDbFile(tempPath)) {
       await unlink(tempPath).catch(() => {});
-      logger.warn(
+      console.warn(
         { key: newestKey },
         "[startup-restore] Downloaded DB failed integrity_check; skipping restore",
       );
@@ -80,17 +73,17 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
     }
 
     await rename(tempPath, dbPath);
-    logger.info(
-      { key: newestKey },
-      "[startup-restore] Restored DB from S3 backup",
-    );
+
+    console.info(green("Restored DB from S3 backup"));
+    console.info(`${gray("[KEY]")} ${yellow(newestKey)}`);
+
     return { restored: true, key: newestKey };
   } catch (err) {
-    logger.warn(
-      { err },
-      "[startup-restore] Failed to restore DB from S3 (continuing startup)",
-    );
-    return { restored: false, reason: "download_failed" };
+    console.info();
+    console.error(red("Failed to restore DB from S3"));
+    console.error(red((err as Error).stack ?? "Unknown error"));
+
+    throw err;
   }
 }
 

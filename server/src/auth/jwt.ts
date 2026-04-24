@@ -1,7 +1,8 @@
 import { SignJWT, jwtVerify } from "jose";
 import { randomUUID } from "crypto";
+import { SESSION_SECRET } from "../config/env.js";
 
-const SECRET = process.env.SESSION_SECRET ?? "family-media-manager-dev-secret";
+const SECRET = SESSION_SECRET;
 const ACCESS_KEY = new TextEncoder().encode(SECRET + ":access");
 const REFRESH_KEY = new TextEncoder().encode(SECRET + ":refresh");
 

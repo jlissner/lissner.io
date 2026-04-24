@@ -9,7 +9,6 @@ export function buildActivitySnapshot(
     lastResult: SyncProgressMessage | null;
     lastError: string | null;
   },
-  s3: { configured: boolean; missingVars: string[] },
 ): ActivitySnapshot {
   const elapsedSeconds =
     index.inProgress && index.startedAt
@@ -29,8 +28,6 @@ export function buildActivitySnapshot(
       lastError: index.lastError,
     },
     sync: {
-      configured: s3.configured,
-      missingVars: [...s3.missingVars],
       inProgress: sync.inProgress,
       startedAt: sync.startedAt,
       lastResult: sync.lastResult ? { ...sync.lastResult } : null,

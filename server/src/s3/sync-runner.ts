@@ -12,15 +12,13 @@ import {
 } from "../config/paths.js";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
-import { logger } from "../logger.js";
-import { createS3Client, getS3Config } from "./sync-client.js";
+import { s3Client } from "./sync-client.js";
 import { S3_PREFIX } from "./sync-constants.js";
 import { syncDefer } from "./sync-defer.js";
 import { deleteOrphanS3Thumbnails } from "./sync-gc.js";
 import {
   buildSyncDoneProgress,
   buildSyncFailedProgress,
-  buildSyncNotConfiguredProgress,
   type SyncCompletionTally,
 } from "./sync-progress.js";
 import { emitSyncChanged, syncState } from "./sync-state.js";
@@ -31,20 +29,11 @@ import {
   listAllS3Keys,
   uploadLocalFileToS3,
 } from "./sync-transfer.js";
+import { S3_BUCKET } from "../config/env.js";
 
 export async function runSync(
   onProgress?: (p: SyncProgress) => void,
 ): Promise<SyncProgress> {
-  const client = createS3Client();
-  if (!client) {
-    const { missingVars } = getS3Config();
-    const err = buildSyncNotConfiguredProgress(missingVars);
-    syncState.lastResult = err;
-    syncState.lastError = err.error ?? null;
-    emitSyncChanged();
-    throw new Error(err.error);
-  }
-
   if (syncState.inProgress) {
     throw new Error("Sync already in progress");
   }
@@ -54,7 +43,7 @@ export async function runSync(
   syncState.lastError = null;
   emitSyncChanged();
 
-  const bucket = process.env.S3_BUCKET!;
+  const bucket = S3_BUCKET;
 
   const report = (p: SyncProgress) => {
     syncState.lastResult = p;
@@ -82,8 +71,8 @@ export async function runSync(
     });
 
     const [s3MediaKeys, s3ThumbKeys] = await Promise.all([
-      listAllS3Keys(client, bucket, `${S3_PREFIX}/media/`),
-      listAllS3Keys(client, bucket, `${S3_PREFIX}/thumbnails/`),
+      listAllS3Keys(s3Client, bucket, `${S3_PREFIX}/media/`),
+      listAllS3Keys(s3Client, bucket, `${S3_PREFIX}/thumbnails/`),
     ]);
 
     const s3MediaFilenames = new Set(
@@ -115,7 +104,7 @@ export async function runSync(
     for (const [i, m] of toUploadMedia.entries()) {
       const filePath = path.join(mediaDir, m.filename);
       await uploadLocalFileToS3(
-        client,
+        s3Client,
         bucket,
         `${S3_PREFIX}/media/${m.filename}`,
         filePath,
@@ -154,7 +143,7 @@ export async function runSync(
     for (const [i, filename] of toUploadThumbs.entries()) {
       const filePath = path.join(thumbnailsDir, filename);
       await uploadLocalFileToS3(
-        client,
+        s3Client,
         bucket,
         `${S3_PREFIX}/thumbnails/${filename}`,
         filePath,
@@ -177,7 +166,7 @@ export async function runSync(
     });
 
     const dbBackupKey = `${S3_PREFIX}/db/media_${new Date().toISOString().replace(/[:.]/g, "-")}.db`;
-    await uploadLocalFileToS3(client, bucket, dbBackupKey, dbPath);
+    await uploadLocalFileToS3(s3Client, bucket, dbBackupKey, dbPath);
 
     // 5. Download missing media from S3
     // Download: media in our DB but file missing, and exists in S3
@@ -199,7 +188,7 @@ export async function runSync(
     });
 
     for (const [i, m] of toDownloadMedia.entries()) {
-      const getRes = await client.send(
+      const getRes = await s3Client.send(
         new GetObjectCommand({
           Bucket: bucket,
           Key: `${S3_PREFIX}/media/${m.filename}`,
@@ -245,7 +234,7 @@ export async function runSync(
 
     for (const [i, id] of toDownloadThumbs.entries()) {
       const key = `${S3_PREFIX}/thumbnails/${id}.jpg`;
-      const getRes = await client.send(
+      const getRes = await s3Client.send(
         new GetObjectCommand({ Bucket: bucket, Key: key }),
       );
       const body = getRes.Body;
@@ -270,7 +259,7 @@ export async function runSync(
     // incorrectly re-inserted them here.
     const defaultOwnerId = authDb.getDefaultOwnerId();
     const s3DbKeysAfterUpload = await listAllS3Keys(
-      client,
+      s3Client,
       bucket,
       `${S3_PREFIX}/db/`,
     );
@@ -286,7 +275,7 @@ export async function runSync(
     const backupDbPath: string | null =
       mergeDbKey != null
         ? await (async (): Promise<string | null> => {
-            const getRes = await client.send(
+            const getRes = await s3Client.send(
               new GetObjectCommand({ Bucket: bucket, Key: mergeDbKey }),
             );
             const body = getRes.Body;
@@ -296,7 +285,7 @@ export async function runSync(
           })()
         : null;
 
-    if (backupDbPath && defaultOwnerId) {
+    if (backupDbPath) {
       const backupDb = new Database(backupDbPath, { readonly: true });
       const localIds = new Set(db.listMedia().map((m) => m.id));
       const backupRows = backupDb
@@ -344,7 +333,7 @@ export async function runSync(
         if (s3MediaFilenames.has(r.filename)) {
           const localPath = path.join(mediaDir, r.filename);
           if (!(await fileExists(localPath))) {
-            const getRes = await client.send(
+            const getRes = await s3Client.send(
               new GetObjectCommand({
                 Bucket: bucket,
                 Key: `${S3_PREFIX}/media/${r.filename}`,
@@ -372,7 +361,7 @@ export async function runSync(
 
     const mediaIds = new Set(db.listMedia().map((m) => m.id));
     tally.deletedOrphanThumbsS3 = await deleteOrphanS3Thumbnails(
-      client,
+      s3Client,
       bucket,
       s3ThumbKeys,
       mediaIds,
@@ -396,7 +385,7 @@ export async function runSync(
       syncDefer.pendingAfterCurrent = false;
       setImmediate(() => {
         void runSync().catch((err) => {
-          logger.error({ err }, "[s3-sync] Queued backup sync failed");
+          console.error({ err }, "[s3-sync] Queued backup sync failed");
         });
       });
     }

@@ -9,7 +9,10 @@ import { DATA_DIR, PROJECT_ROOT } from "./env.js";
 
 export { PROJECT_ROOT } from "./env.js";
 
-export const dataDir = DATA_DIR;
+export const dataDir = path.isAbsolute(DATA_DIR)
+  ? DATA_DIR
+  : path.join(PROJECT_ROOT, DATA_DIR);
+
 export const mediaDir = path.join(dataDir, "media");
 export const thumbnailsDir = path.join(dataDir, "thumbnails");
 export const dbDir = path.join(dataDir, "db");

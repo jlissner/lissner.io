@@ -5,6 +5,7 @@ import {
   computeAndStoreHash,
 } from "../../services/duplicate-detection.js";
 import * as db from "../../db/media.js";
+import { hammingDistance } from "../../lib/perceptual-hash.js";
 
 export const adminDuplicatesRouter = Router();
 
@@ -39,7 +40,6 @@ adminDuplicatesRouter.get("/duplicates", async (_req, res) => {
     for (let j = i + 1; j < allWithHashes.length; j++) {
       const a = allWithHashes[i];
       const b = allWithHashes[j];
-      const { hammingDistance } = await import("../../lib/perceptual-hash.js");
       const dist = hammingDistance(a.perceptualHash, b.perceptualHash);
       if (dist <= 10) {
         matches.push({

@@ -1,13 +1,26 @@
+---
+name: grimoire-discover
+description: Generate area docs and data schema from a codebase snapshot. Use when initializing grimoire on an existing project or when codebase structure has changed significantly.
+compatibility: Designed for Claude Code (or similar products)
+metadata:
+  author: kiwi-data
+  version: "0.1"
+---
+
 # grimoire-discover
 
 Generate a structured project map in `.grimoire/docs/` from a codebase snapshot. This map helps LLMs understand the codebase layout, find reusable code, and follow existing patterns — preventing duplicate code and misplaced files.
 
 ## Triggers
-
 - User wants to document or map the codebase structure
 - User asks about coding standards, patterns, or conventions
 - User wants to prevent duplicate code or find existing utilities
 - Loose match: "discover", "map", "standards", "conventions", "DRY", "utilities", "codebase layout"
+
+## Routing
+- Want to document existing behavior as Gherkin features → `grimoire-audit`
+- Want to find undocumented features and decisions → `grimoire-audit` (run discover first, then audit)
+- Want to draft new functionality → `grimoire-draft`
 
 ## Prerequisites
 
@@ -22,7 +35,6 @@ If `codebase-memory-mcp` is not available, fall back to reading source files dir
 ## What It Produces
 
 `.grimoire/docs/` with:
-
 - **`index.yml`** — master index of all documented areas with descriptions and directory mappings
 - **Area docs** — one markdown file per area of the codebase, each covering:
   - Purpose and boundaries of the module/area
@@ -35,9 +47,7 @@ If `codebase-memory-mcp` is not available, fall back to reading source files dir
 ## Workflow
 
 ### 1. Load Snapshot and Graph
-
 Read `.grimoire/docs/.snapshot.json`. This gives you:
-
 - **directories** — every directory with file counts, extensions, key files, and subdirectories
 - **keyFiles** — significant files (entry points, configs, route files, etc.) with their detected type
 - **undocumented** — directories not yet covered by existing docs (only present on `--refresh`)
@@ -48,7 +58,6 @@ Use this as your roadmap. The snapshot tells you WHERE to look; you add WHAT it 
 If the snapshot includes a `duplicates` section (from `grimoire map --duplicates`), use it to populate "Known Duplicates" sections in area docs. This tells the plan skill where code is already duplicated so it can consolidate rather than add more.
 
 **If `codebase-memory-mcp` is available**, also query the graph for each area:
-
 - `search_graph` — find all symbols (functions, classes, types) in a directory
 - `trace_call_path` — understand how modules connect (inbound/outbound calls)
 - `get_architecture` — get a high-level module/dependency overview
@@ -57,9 +66,7 @@ If the snapshot includes a `duplicates` section (from `grimoire map --duplicates
 This replaces the need to manually read every source file to extract symbols. The graph gives you AST-accurate function signatures, call relationships, and dead code detection across 66 languages.
 
 ### 2. Determine Scope
-
 Ask the user what to document:
-
 - **Full scan** — document all areas from the snapshot (default for first run)
 - **Area scan** — document specific directories (e.g., "just the API layer")
 - **Gap fill** — only document areas flagged as `undocumented` in the snapshot
@@ -67,24 +74,20 @@ Ask the user what to document:
 Check `.grimoire/docs/index.yml` if it exists — don't redo work unless refreshing.
 
 ### 3. Analyze Each Area
-
 For each directory cluster in the snapshot, read the actual code to understand:
 
 **From the snapshot (already known):**
-
 - Directory path and file counts
 - File extensions (tells you the language/type mix)
 - Key files (tells you what framework patterns are in use)
 
 **From `codebase-memory-mcp` graph (if available):**
-
 - All symbols in the area: functions, classes, types, constants with signatures
 - Call graph: what calls what, both inbound and outbound
 - Dead code: functions with zero callers
 - Cross-service HTTP links: REST routes and their callers
 
 **From reading the code (your job — or to supplement the graph):**
-
 - What the module/area is responsible for
 - Reusable functions, classes, utilities that other code should import
 - Naming conventions and structural patterns
@@ -93,7 +96,6 @@ For each directory cluster in the snapshot, read the actual code to understand:
 - **Data models and schemas** in or owned by this area (see Data Layer below)
 
 ### 4. Generate Area Docs
-
 For each significant area, create a doc file in `.grimoire/docs/`.
 
 **Area doc format:**
@@ -102,53 +104,44 @@ For each significant area, create a doc file in `.grimoire/docs/`.
 # <Area Name>
 
 ## Purpose
-
 <1-2 sentences: what this area of the codebase is responsible for>
 
 ## Boundaries
-
 <What belongs here and what doesn't. Where related code lives instead.>
 
 ## Key Files
-
-| File               | Responsibility |
-| ------------------ | -------------- |
-| `path/to/file.py`  | <what it does> |
+| File | Responsibility |
+|------|---------------|
+| `path/to/file.py` | <what it does> |
 | `path/to/other.py` | <what it does> |
 
 ## Reusable Code
-
 Utilities and helpers in this area that MUST be reused (not re-implemented):
 
-| Function/Class      | Location                 | What It Does                                    |
-| ------------------- | ------------------------ | ----------------------------------------------- |
-| `format_currency()` | `utils/formatters.py:42` | Formats decimal as currency string              |
-| `BaseAPIView`       | `api/base.py:15`         | Base view with auth, pagination, error handling |
+| Function/Class | Location | What It Does |
+|----------------|----------|-------------|
+| `format_currency()` | `utils/formatters.py:42` | Formats decimal as currency string |
+| `BaseAPIView` | `api/base.py:15` | Base view with auth, pagination, error handling |
 
 ## Patterns
-
 <How things are done in this area. Reference specific files as exemplars.>
 
 ### Naming
-
 - <naming convention with example>
 
 ### Structure
-
 - <structural pattern with example file>
 
 ## Where New Code Goes
-
 - New <type> → `path/to/directory/`
 - New <type> → `path/to/other/`
 
 ## Known Duplicates
-
 <Only if duplicates data exists in snapshot. List clones that touch this area.>
 
-| Files                                   | Lines | What's Duplicated        |
-| --------------------------------------- | ----- | ------------------------ |
-| `views.py:42-68` ↔ `api/views.py:15-41` | 26    | Request validation logic |
+| Files | Lines | What's Duplicated |
+|-------|-------|------------------|
+| `views.py:42-68` ↔ `api/views.py:15-41` | 26 | Request validation logic |
 ```
 
 ### 5. Generate Data Schema
@@ -156,7 +149,6 @@ Utilities and helpers in this area that MUST be reused (not re-implemented):
 Scan the codebase for data models, ORM definitions, migration files, and schema declarations. Produce `.grimoire/docs/data/schema.yml` documenting the current data layer.
 
 **Where to look:**
-
 - ORM models: Django `models.py`, SQLAlchemy models, Prisma `schema.prisma`, TypeORM entities, Mongoose schemas
 - Migrations: `migrations/`, `alembic/versions/`, `prisma/migrations/`
 - Raw SQL: `*.sql` files, schema definitions
@@ -165,110 +157,9 @@ Scan the codebase for data models, ORM definitions, migration files, and schema 
 - External APIs: OpenAPI/Swagger specs, Postman collections, API client wrappers, SDK config files
 - Message formats: Avro `.avsc`, protobuf `.proto`, JSON Schema for events/messages
 
-**Schema format** (`.grimoire/docs/data/schema.yml`):
-
-```yaml
-# Grimoire Data Schema
-# Auto-generated by /grimoire:discover
-# Last updated: YYYY-MM-DD
-#
-# Source: <what was scanned — e.g., "Django models in src/models/">
-
-users:
-  type: table # table, collection, document, etc.
-  source: src/models/user.py:12 # where this is defined in code
-  note: "Core user identity" # optional context
-  fields:
-    id:
-      type: integer
-      pk: true
-    email:
-      type: varchar
-      unique: true
-      not_null: true
-      note: "lowercase, validated on write"
-    role:
-      type: enum
-      values: [admin, member, guest]
-      default: member
-    preferences: # nested object (Mongo, JSON column, etc.)
-      type: object
-      fields:
-        theme: { type: string, default: "light" }
-        notifications:
-          type: array
-          items:
-            channel: { type: string, enum: [email, sms, push] }
-            enabled: { type: boolean, default: true }
-    created_at:
-      type: timestamp
-      default: now()
-  indexes:
-    - fields: [email]
-      unique: true
-    - fields: [role, created_at]
-  relationships:
-    - type: has_many
-      target: posts
-      foreign_key: author_id
-
-posts:
-  type: table
-  source: src/models/post.py:8
-  fields:
-    id: { type: integer, pk: true }
-    author_id: { type: integer, not_null: true, ref: users.id }
-    title: { type: varchar, not_null: true }
-    status: { type: enum, values: [draft, published, archived], default: draft }
-  indexes:
-    - fields: [author_id, status]
-
-# --- External APIs ---
-# These are data contracts we consume or produce but don't own.
-# The schema_ref points to where the full spec lives.
-
-stripe_payments:
-  type: external_api
-  provider: Stripe
-  schema_ref: https://stripe.com/docs/api/charges
-  client: src/integrations/stripe.py # where we call it
-  auth: api_key # how we authenticate
-  note: "Payment processing — charges, refunds, webhooks"
-  endpoints:
-    create_charge:
-      method: POST
-      path: /v1/charges
-      fields:
-        amount: { type: integer, note: "in cents" }
-        currency: { type: string }
-        source: { type: string, note: "payment token" }
-    webhook_charge_succeeded:
-      type: webhook
-      fields:
-        id: { type: string }
-        amount: { type: integer }
-        status: { type: string, enum: [succeeded, failed] }
-
-weather_api:
-  type: external_api
-  provider: OpenWeatherMap
-  schema_ref: docs/api-specs/openweather.json # local OpenAPI spec
-  client: src/services/weather.py
-  auth: api_key
-  endpoints:
-    get_current:
-      method: GET
-      path: /data/2.5/weather
-      fields:
-        lat: { type: float }
-        lon: { type: float }
-      response:
-        temp: { type: float, note: "Kelvin by default" }
-        humidity: { type: integer }
-```
+**Schema format:** See `../references/schema-format.md` for the full YAML format with examples covering tables, nested objects, relationships, and external APIs.
 
 **Rules:**
-
 - Document what exists in the code, not what the database actually contains
 - Use `source:` to point back to the ORM model or migration file — the schema.yml is a summary, the code is the truth
 - Use `type: table` for SQL, `type: collection` for Mongo/document stores, `type: document` for nested sub-documents
@@ -289,20 +180,19 @@ Scan the codebase for deployment and infrastructure artifacts, then populate `.g
 
 **Where to look:**
 
-| Artifact                                                            | What it tells you                                                                         |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `Dockerfile`, `docker-compose.yml`                                  | Containerized deployment; compose reveals linked services, databases, caches              |
-| `k8s/`, `kubernetes/`, `Chart.yaml`, `helmfile.yaml`                | Kubernetes deployment; manifests reveal services, ingresses, config maps                  |
-| `*.tf`, `terraform/`, `cdk.json`, `serverless.yml`                  | Infrastructure-as-code; reveals cloud provider, services, and architecture                |
-| `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/` | CI/CD platform and deploy triggers                                                        |
-| `Procfile`, `app.json`, `vercel.json`, `netlify.toml`               | PaaS deployment target                                                                    |
-| `fly.toml`, `render.yaml`, `railway.json`                           | PaaS deployment target                                                                    |
-| `.env.example`, `.env.template`                                     | Environment variables reveal infrastructure dependencies (DB hosts, cache URLs, API keys) |
-| `docker-compose.yml` services                                       | Related services, databases, caches, queues running locally                               |
-| API client wrappers, SDK config                                     | Internal service dependencies                                                             |
+| Artifact | What it tells you |
+|----------|------------------|
+| `Dockerfile`, `docker-compose.yml` | Containerized deployment; compose reveals linked services, databases, caches |
+| `k8s/`, `kubernetes/`, `Chart.yaml`, `helmfile.yaml` | Kubernetes deployment; manifests reveal services, ingresses, config maps |
+| `*.tf`, `terraform/`, `cdk.json`, `serverless.yml` | Infrastructure-as-code; reveals cloud provider, services, and architecture |
+| `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `.circleci/` | CI/CD platform and deploy triggers |
+| `Procfile`, `app.json`, `vercel.json`, `netlify.toml` | PaaS deployment target |
+| `fly.toml`, `render.yaml`, `railway.json` | PaaS deployment target |
+| `.env.example`, `.env.template` | Environment variables reveal infrastructure dependencies (DB hosts, cache URLs, API keys) |
+| `docker-compose.yml` services | Related services, databases, caches, queues running locally |
+| API client wrappers, SDK config | Internal service dependencies |
 
 **Workflow:**
-
 1. Scan for the artifacts above — note what exists
 2. Read `docker-compose.yml` (if present) — it's the richest source of service and infrastructure dependencies
 3. Read `.env.example` (if present) — environment variables reveal what the project connects to
@@ -312,7 +202,6 @@ Scan the codebase for deployment and infrastructure artifacts, then populate `.g
 7. Present findings to the user for confirmation — they'll know about services and infrastructure that aren't discoverable from code alone (e.g., a shared auth service, a data warehouse they push to)
 
 **Rules:**
-
 - Only populate sections where you found evidence. Leave sections empty (with comments) rather than guessing.
 - Use environment variable references (`${DATABASE_HOST}`) for hostnames and credentials — never hardcode real values.
 - The `services` section is for **internal/sibling services** your org owns. Third-party APIs (Stripe, Twilio, etc.) belong in `schema.yml` under `external_api`.
@@ -320,7 +209,6 @@ Scan the codebase for deployment and infrastructure artifacts, then populate `.g
 - Ask the user about anything you can't determine from code: "I see a Redis connection in docker-compose but I'm not sure if it's just cache or also used for sessions — which is it?"
 
 ### 7. Generate Index
-
 Create or update `.grimoire/docs/index.yml`:
 
 ```yaml
@@ -350,7 +238,6 @@ The `directory` field links each doc back to the source directory — this is wh
 Every area doc and the data schema must include a `Last updated` date in a comment or header. This lets other skills (plan, apply) judge whether the docs are trustworthy or stale.
 
 **In `index.yml`**, track freshness per area:
-
 ```yaml
 areas:
   - name: api
@@ -361,10 +248,8 @@ areas:
 ```
 
 **In each area doc**, include a last-updated line at the top:
-
 ```markdown
 # API Layer
-
 > Last updated: 2026-04-05
 ```
 
@@ -374,10 +259,8 @@ areas:
 
 **Why this matters:** Area docs are the primary mechanism for reducing context window usage and preventing hallucinations. Stale docs are worse than no docs — they give the agent confident but wrong information about file paths, function names, and patterns. Freshness tracking lets other skills know when to trust the docs vs. when to fall back to reading source files.
 
-### 6. Present Summary
-
+### 8. Present Summary
 After generating, show the user:
-
 - How many areas documented
 - How many reusable utilities inventoried
 - Any areas that seem under-organized or have pattern inconsistencies
@@ -400,7 +283,6 @@ These are read by `grimoire map` and affect the snapshot this skill consumes.
 - Run `grimoire map --refresh` periodically to detect new undocumented areas, then `/grimoire:discover` to fill the gaps
 
 ## Important
-
 - **Start from the snapshot.** Don't scan the filesystem yourself — `grimoire map` already did that. Read `.snapshot.json` for structure, then use `codebase-memory-mcp` graph queries for symbols and call graphs (if available), and read actual code files for meaning.
 - **Prefer graph queries over file reads.** If `codebase-memory-mcp` is available, use `search_graph` and `query_graph` to find symbols, call paths, and architecture rather than reading every source file. This is faster, more accurate (AST-parsed), and uses fewer tokens.
 - **Document what IS, not what should be.** This is a map of the actual codebase, not aspirational standards. If the code is inconsistent, note it — don't paper over it.
@@ -410,3 +292,6 @@ These are read by `grimoire map` and affect the snapshot this skill consumes.
 - **The reuse inventory is the most valuable output.** An LLM that knows `format_currency()` exists in `utils/formatters.py` won't write a new one.
 - **Don't document the obvious.** Skip areas that are self-explanatory from file names alone. Focus on areas where an LLM would make mistakes.
 - **Update, don't accumulate.** When refreshing, replace stale docs rather than appending. The docs should reflect the current codebase, not its history.
+
+## Done
+When area docs, schema, context, and index are generated, the workflow is complete. Suggest `grimoire-audit` to document existing features and decisions as Gherkin specs and ADRs.
