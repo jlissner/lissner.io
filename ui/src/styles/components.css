@@ -843,6 +843,17 @@
   font-size: var(--text-sm);
 }
 
+.login-page__sent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-page__secondary-action {
+  margin-top: var(--space-3);
+  align-self: flex-start;
+}
+
 /* ========== Admin page ========== */
 .admin-page {
   width: 100%;

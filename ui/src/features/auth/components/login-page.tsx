@@ -13,6 +13,7 @@ const EMAIL_KEY = "pending_login_email";
 
 export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
   const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
   const [status, setStatus] = useState<"idle" | "sent" | "verifying" | "error">(
     "idle",
   );
@@ -48,17 +49,44 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus("sent");
     setError("");
+    setCode("");
+    setCodeError("");
 
     try {
       localStorage.setItem(EMAIL_KEY, email);
       await sendMagicLink(email);
+      setStatus("sent");
       onSent?.();
     } catch (err) {
       localStorage.removeItem(EMAIL_KEY);
       setStatus("error");
       setError(err instanceof ApiError ? err.message : "Network error");
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const pendingEmail = localStorage.getItem(EMAIL_KEY) ?? email;
+    if (!pendingEmail) {
+      setCodeError("Missing email. Request a new magic link.");
+      return;
+    }
+    const trimmed = code.trim();
+    if (!/^\d{6}$/.test(trimmed)) {
+      setCodeError("Enter the 6-digit code from your email or server console.");
+      return;
+    }
+    setCodeError("");
+    setStatus("verifying");
+    try {
+      await verifyLoginCode(pendingEmail, trimmed);
+      localStorage.removeItem(EMAIL_KEY);
+      onAuthenticated?.();
+      window.location.reload();
+    } catch {
+      setStatus("sent");
+      setCodeError("Invalid or expired code");
     }
   };
 
@@ -69,8 +97,12 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
         Sign in with a magic link sent to your email
       </p>
 
-      {status === "sent" ? (
-        <div>
+      {status === "verifying" ? (
+        <p className="login-page__hint" role="status" aria-live="polite">
+          Signing in…
+        </p>
+      ) : status === "sent" ? (
+        <div className="login-page__sent">
           <Alert variant="success">
             <p>
               Check your email for the magic link. The link expires in 15
@@ -80,12 +112,47 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
               No email configured? Check the server console for the code.
             </p>
           </Alert>
+          <form onSubmit={handleVerifyCode} className="login-page__form">
+            <label htmlFor="login-code" className="login-page__hint">
+              Or enter the 6-digit code manually
+            </label>
+            <input
+              id="login-code"
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              autoComplete="one-time-code"
+              value={code}
+              onChange={(e) => {
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                setCodeError("");
+              }}
+              className="form__input"
+              placeholder="000000"
+              aria-invalid={codeError !== ""}
+              aria-describedby={
+                codeError !== "" ? "login-code-error" : undefined
+              }
+            />
+            <Button type="submit" disabled={code.length !== 6}>
+              Sign in with code
+            </Button>
+            {codeError !== "" && (
+              <p id="login-code-error" className="login-page__error">
+                {codeError}
+              </p>
+            )}
+          </form>
           <Button
             variant="ghost"
+            type="button"
+            className="login-page__secondary-action"
             onClick={() => {
+              localStorage.removeItem(EMAIL_KEY);
               setStatus("idle");
+              setCode("");
+              setCodeError("");
             }}
-            style={{ marginTop: "var(--space-3)" }}
           >
             Use a different email
           </Button>
