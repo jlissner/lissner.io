@@ -3,6 +3,8 @@ import type {
   AdminDbRestoreResponse,
   AdminDuplicatesBulkDeleteRequest,
   AdminDuplicatesBulkDeleteResponse,
+  AdminThumbnailRepairRequest,
+  AdminThumbnailRepairResponse,
 } from "@shared";
 import { apiJson } from "@/api";
 
@@ -198,6 +200,17 @@ export function bulkDeleteMediaByIds(
       body: JSON.stringify(body),
     },
   );
+}
+
+export function repairAdminThumbnails(
+  body: AdminThumbnailRepairRequest = {},
+): Promise<AdminThumbnailRepairResponse> {
+  const payload: AdminThumbnailRepairRequest = { ...body };
+  return apiJson<AdminThumbnailRepairResponse>("admin/thumbnails/repair", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 }
 
 export function listDbBackups(): Promise<AdminDbBackupsResponse> {

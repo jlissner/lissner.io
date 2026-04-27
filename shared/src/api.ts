@@ -155,3 +155,27 @@ type AdminDuplicatesBulkDeleteItemResult =
 export type AdminDuplicatesBulkDeleteResponse = {
   results: AdminDuplicatesBulkDeleteItemResult[];
 };
+
+/** POST /api/admin/thumbnails/repair */
+export type AdminThumbnailRepairRequest = {
+  maxGenerations?: number;
+};
+
+type AdminThumbnailRepairFailureReason =
+  | "not_found"
+  | "bad_type"
+  | "file_missing"
+  | "ffmpeg_missing"
+  | "thumb_failed";
+
+export type AdminThumbnailRepairResponse = {
+  scanned: number;
+  missingFound: number;
+  generated: number;
+  skippedAlreadyOk: number;
+  skippedNoLocalFile: number;
+  skippedIneligible: number;
+  skippedDueToCap: number;
+  maxGenerations: number;
+  failed: Array<{ mediaId: string; reason: AdminThumbnailRepairFailureReason }>;
+};

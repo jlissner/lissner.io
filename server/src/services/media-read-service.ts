@@ -1,7 +1,10 @@
 import { access, readFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
-import { MediaListQueryResponse } from "@shared";
+import {
+  type AdminThumbnailRepairResponse,
+  MediaListQueryResponse,
+} from "@shared";
 import * as db from "../db/media.js";
 import { extractFacesFromImage } from "../faces.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
@@ -23,9 +26,14 @@ import {
 
 type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
 
+type MediaLocalFileSource = Pick<
+  MediaItemRow,
+  "id" | "filename" | "backedUpAt"
+>;
+
 /** If the file is missing locally but the row says it was backed up, pull it from S3. */
 export async function ensureLocalMediaFile(
-  item: MediaItemRow,
+  item: MediaLocalFileSource,
 ): Promise<boolean> {
   const filePath = path.join(mediaDir, item.filename);
   try {
@@ -350,4 +358,88 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     console.error({ err, mediaId }, "Video thumbnail error");
     return { ok: false, reason: "thumb_failed" };
   }
+}
+
+function expectedThumbnailPathForMime(params: {
+  mediaId: string;
+  mimeTypeForKind: string;
+  originalName: string;
+}): string | null {
+  if (params.mimeTypeForKind.startsWith("video/")) {
+    return path.join(thumbnailsDir, `${params.mediaId}.jpg`);
+  }
+  const isImageKind =
+    params.mimeTypeForKind.startsWith("image/") ||
+    isPixelMotionPhotoExtension(params.originalName);
+  if (isImageKind) {
+    return path.join(thumbnailsDir, `${params.mediaId}_thumb.jpg`);
+  }
+  return null;
+}
+
+export async function repairMissingThumbnails(params: {
+  maxGenerations: number;
+}): Promise<AdminThumbnailRepairResponse> {
+  const items = db.listMedia();
+  const scanned = items.length;
+  let missingFound = 0;
+  let generated = 0;
+  let skippedAlreadyOk = 0;
+  let skippedNoLocalFile = 0;
+  let skippedIneligible = 0;
+  let skippedDueToCap = 0;
+  let repairAttempts = 0;
+  const failed: AdminThumbnailRepairResponse["failed"] = [];
+
+  for (const item of items) {
+    const mediaOk = await ensureLocalMediaFile(item);
+    if (!mediaOk) {
+      skippedNoLocalFile++;
+      continue;
+    }
+    const filePath = path.join(mediaDir, item.filename);
+    const { mimeTypeForKind } = await sniffAndPersistMediaMime(
+      item,
+      filePath,
+      db.updateMediaMimeType,
+    );
+    const expectedPath = expectedThumbnailPathForMime({
+      mediaId: item.id,
+      mimeTypeForKind,
+      originalName: item.originalName,
+    });
+    if (expectedPath == null) {
+      skippedIneligible++;
+      continue;
+    }
+    const usable = await isUsableVideoThumbnailFile(expectedPath);
+    if (usable) {
+      skippedAlreadyOk++;
+      continue;
+    }
+    missingFound++;
+    if (repairAttempts >= params.maxGenerations) {
+      skippedDueToCap++;
+      continue;
+    }
+    repairAttempts++;
+    const out = await getThumbnailResponse(item.id);
+    if (out.ok) {
+      generated++;
+    } else {
+      failed.push({ mediaId: item.id, reason: out.reason });
+    }
+  }
+
+  return {
+    scanned,
+    missingFound,
+    generated,
+    skippedAlreadyOk,
+    skippedNoLocalFile,
+    skippedIneligible,
+    skippedDueToCap,
+    maxGenerations: params.maxGenerations,
+    failed,
+  };
 }

@@ -1,8 +1,9 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
 import { S3Client } from "@aws-sdk/client-s3";
+import { thumbnailFilenameToMediaId } from "../lib/orphan-thumbnails.js";
 import { S3_PREFIX } from "./sync-constants.js";
 
-/** Remove `backup/thumbnails/{id}.jpg` from S3 when no media row exists for `id`. */
+/** Remove orphan thumbnail objects under `backup/thumbnails/` (video `{id}.jpg`, image `{id}_thumb.jpg`). */
 export async function deleteOrphanS3Thumbnails(
   client: S3Client,
   bucket: string,
@@ -14,8 +15,8 @@ export async function deleteOrphanS3Thumbnails(
   for (const key of thumbKeys) {
     if (!key.startsWith(prefix)) continue;
     const name = key.slice(prefix.length);
-    if (!name.endsWith(".jpg")) continue;
-    const id = name.slice(0, -".jpg".length);
+    const id = thumbnailFilenameToMediaId(name);
+    if (id == null) continue;
     if (validMediaIds.has(id)) continue;
     try {
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));

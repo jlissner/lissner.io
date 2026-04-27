@@ -6,10 +6,12 @@ import { adminSqlRouter } from "./admin/sql-routes.js";
 import { adminUsersRouter } from "./admin/users-routes.js";
 import { adminWhitelistRouter } from "./admin/whitelist-routes.js";
 import { adminDbBackupRouter } from "./admin/db-backup-routes.js";
+import { adminThumbnailsRouter } from "./admin/thumbnails-routes.js";
 
 export const adminRouter = Router();
 
 adminRouter.use(requireAdmin);
+adminRouter.use(adminThumbnailsRouter);
 adminRouter.use(adminDuplicatesRouter);
 adminRouter.use(adminSqlRouter);
 adminRouter.use(adminDataExplorerRouter);

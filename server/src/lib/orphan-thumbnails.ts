@@ -4,15 +4,27 @@ import * as db from "../db/media.js";
 import { thumbnailsDir } from "../config/paths.js";
 
 /**
- * Remove `thumbnails/{id}.jpg` when no `media` row exists for `id`.
+ * Map a thumbnails-dir filename to its `media.id`.
+ * Videos use `{id}.jpg`; images use `{id}_thumb.jpg`.
+ */
+export function thumbnailFilenameToMediaId(filename: string): string | null {
+  if (!filename.endsWith(".jpg")) return null;
+  if (filename.endsWith("_thumb.jpg")) {
+    return path.basename(filename, "_thumb.jpg");
+  }
+  return path.basename(filename, ".jpg");
+}
+
+/**
+ * Remove thumbnail JPEGs when no `media` row exists for the derived id.
  */
 export async function deleteOrphanedLocalThumbnailFiles(): Promise<number> {
   const ids = db.getAllMediaIds();
   const acc = { removed: 0 };
   const entries = await readdir(thumbnailsDir).catch(() => [] as string[]);
   for (const name of entries) {
-    if (!name.endsWith(".jpg")) continue;
-    const id = path.basename(name, ".jpg");
+    const id = thumbnailFilenameToMediaId(name);
+    if (id == null) continue;
     if (ids.has(id)) continue;
     try {
       await unlink(path.join(thumbnailsDir, name));
