@@ -16,6 +16,8 @@ import { useSwipeNav } from "./use-swipe-nav";
 import { useTapNav } from "./use-tap-nav";
 import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
+import { ApiError } from "@/api";
+import { postRotateMedia90 } from "@/features/media/api";
 import { Button } from "@/components/ui/button";
 
 interface MediaViewerContentProps {
@@ -57,7 +59,6 @@ export function MediaViewerContent({
   onUpdate,
 }: MediaViewerContentProps) {
   const imgRef = useRef<HTMLImageElement>(null);
-  const previewUrl = `/api/media/${item.id}/preview`;
   const pixelMp = isPixelMotionPhotoBasename(item.originalName);
   const hasMotionPair =
     item.motionCompanionId != null && item.motionCompanionId !== "";
@@ -72,8 +73,16 @@ export function MediaViewerContent({
   const [showDetectedFaces, setShowDetectedFaces] = useState(true);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [previewRev, setPreviewRev] = useState(0);
+  const [rotating, setRotating] = useState(false);
+  const [rotateError, setRotateError] = useState<string | null>(null);
 
   const isMobile = useIsMobile();
+
+  const previewUrl =
+    previewRev > 0
+      ? `/api/media/${item.id}/preview?r=${previewRev}`
+      : `/api/media/${item.id}/preview`;
 
   useEffect(() => {
     setPixelIsVideo(false);
@@ -81,12 +90,15 @@ export function MediaViewerContent({
     setShowDetectedFaces(true);
     setDetailsOpen(false);
     setFullscreen(false);
+    setPreviewRev(0);
+    setRotateError(null);
   }, [item.id]);
 
   const handleTagChange = useCallback(
     () => setDetailsRefreshKey((k) => k + 1),
     [],
   );
+
   const {
     faces,
     facesLoading,
@@ -103,6 +115,24 @@ export function MediaViewerContent({
     onUpdate,
     onTagChange: handleTagChange,
   });
+
+  const handleRotate90 = useCallback(async () => {
+    setRotateError(null);
+    setRotating(true);
+    try {
+      await postRotateMedia90(item.id);
+      setPreviewRev((n) => n + 1);
+      setDetailsRefreshKey((k) => k + 1);
+      onUpdate?.();
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Could not rotate image";
+      setRotateError(msg);
+    } finally {
+      setRotating(false);
+    }
+  }, [item.id, onUpdate]);
+
   const handleImageClick = useMediaViewerImageClick(
     imgRef,
     faces,
@@ -170,6 +200,16 @@ export function MediaViewerContent({
     isImage(item.mimeType, item.originalName) &&
     !pixelIsVideo &&
     (!hasMotionPair || motionPairView === "still");
+
+  const motionPairBlocksRotate =
+    item.motionCompanionId != null && item.motionCompanionId !== "";
+
+  const canRotateImage =
+    isItemImage &&
+    !motionPairBlocksRotate &&
+    !taggingMode &&
+    !assigningFace &&
+    !reassigningFace;
 
   const tapNav = useTapNav(
     isMobile && prevItem && !taggingMode && !fullscreen ? goPrev : null,
@@ -265,6 +305,19 @@ export function MediaViewerContent({
               {taggingMode ? "Exit tagging" : "Tag faces"}
             </Button>
           )}
+        {canRotateImage && (
+          <Button
+            type="button"
+            onClick={() => {
+              void handleRotate90();
+            }}
+            variant="secondary"
+            size="sm"
+            disabled={rotating}
+          >
+            {rotating ? "Rotating…" : "Rotate 90°"}
+          </Button>
+        )}
         {taggingMode &&
           isImage(item.mimeType, item.originalName) &&
           (!pixelMp || !pixelIsVideo) &&
@@ -281,6 +334,14 @@ export function MediaViewerContent({
         <Button onClick={onClose} variant="secondary" size="sm">
           Close
         </Button>
+        {rotateError != null && (
+          <p
+            role="alert"
+            className="viewer-content__rotate-error u-text-danger"
+          >
+            {rotateError}
+          </p>
+        )}
       </div>
       <div
         className="viewer-content__body"

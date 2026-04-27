@@ -173,9 +173,7 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
             autoComplete="email"
             aria-describedby={status === "error" ? "login-error" : undefined}
           />
-          <Button type="submit" disabled={status === "verifying"}>
-            Send magic link
-          </Button>
+          <Button type="submit">Send magic link</Button>
           {status === "error" && (
             <p id="login-error" className="login-page__error">
               {error || codeError}

@@ -59,6 +59,15 @@ function buildPeopleStmts() {
     listTaggedFaces: db.prepare(
       "SELECT person_id as personId, x, y, width, height, confidence FROM image_people WHERE media_id = ? AND x IS NOT NULL AND y IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL",
     ),
+    listManualFaceRowsForMedia: db.prepare(
+      `SELECT person_id as personId, x, y, width, height, confidence, COALESCE(source, 'auto') as source
+       FROM image_people
+       WHERE media_id = ? AND x IS NOT NULL AND y IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL
+         AND COALESCE(source, 'auto') = 'manual'`,
+    ),
+    updateFaceGeometry: db.prepare(
+      "UPDATE image_people SET x = ?, y = ?, width = ?, height = ? WHERE media_id = ? AND person_id = ?",
+    ),
     getMediaForPerson: db.prepare(
       `SELECT m.id, m.filename, m.original_name as originalName, m.mime_type as mimeType, m.size, m.uploaded_at as uploadedAt, m.date_taken as dateTaken, m.latitude, m.longitude, m.backed_up_at as backedUpAt, m.motion_companion_id as motionCompanionId, m.hide_from_gallery as hideFromGallery, (SELECT 1 FROM embeddings e WHERE e.media_id = m.id LIMIT 1) as indexed, ip.x, ip.y, ip.width, ip.height
        FROM image_people ip
@@ -402,6 +411,41 @@ export function getMediaForPerson(
     width?: number;
     height?: number;
   }>;
+}
+
+export function listManualFaceRowsForMedia(mediaId: string): Array<{
+  personId: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  confidence: number | null;
+  source: string;
+}> {
+  return peopleStmts().listManualFaceRowsForMedia.all(mediaId) as Array<{
+    personId: number;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    confidence: number | null;
+    source: string;
+  }>;
+}
+
+export function updateFaceGeometryForMediaPerson(
+  mediaId: string,
+  personId: number,
+  box: { x: number; y: number; width: number; height: number },
+): void {
+  peopleStmts().updateFaceGeometry.run(
+    box.x,
+    box.y,
+    box.width,
+    box.height,
+    mediaId,
+    personId,
+  );
 }
 
 export function getRepresentativeMediaId(personId: number): string | null {

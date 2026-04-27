@@ -2050,6 +2050,12 @@
   }
 }
 
+.viewer-content__rotate-error {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
 .viewer-content__actions {
   position: absolute;
   top: env(safe-area-inset-top, 0px);

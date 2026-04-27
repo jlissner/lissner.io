@@ -57,6 +57,14 @@ export async function deleteMediaById(id: string): Promise<void> {
   if (!res.ok) throw await toApiError(res, "Delete failed");
 }
 
+export async function postRotateMedia90(
+  mediaId: string,
+): Promise<{ ok: true; size: number }> {
+  const res = await apiFetch(`media/${mediaId}/rotate`, { method: "POST" });
+  if (!res.ok) throw await toApiError(res, "Could not rotate image");
+  return (await res.json()) as { ok: true; size: number };
+}
+
 export async function runBulkIndex(mediaIds: string[]): Promise<void> {
   await apiJson("search/index?force=true", {
     method: "POST",

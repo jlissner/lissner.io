@@ -14,6 +14,7 @@ function buildWriteStmts() {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`,
     ),
     setDateTaken: db.prepare("UPDATE media SET date_taken = ? WHERE id = ?"),
+    setFileSize: db.prepare("UPDATE media SET size = ? WHERE id = ?"),
     markBackedUp: db.prepare(
       "UPDATE media SET backed_up_at = datetime('now') WHERE id = ?",
     ),
@@ -117,6 +118,10 @@ export function setMediaDateTaken(
   writeStmts().setDateTaken.run(dateTaken, mediaId);
 }
 
+export function setMediaFileSize(mediaId: string, size: number): void {
+  writeStmts().setFileSize.run(size, mediaId);
+}
+
 export function markMediaBackedUp(mediaId: string): void {
   writeStmts().markBackedUp.run(mediaId);
 }
@@ -153,6 +158,10 @@ export function clearAllIndexingData(): void {
   writeStmts().deleteEmbeddingsAll.run();
   writeStmts().deleteImagePeopleAll.run();
   writeStmts().deletePersonNamesAll.run();
+}
+
+export function deleteEmbeddingsForMedia(mediaId: string): void {
+  writeStmts().deleteEmbeddingsForMedia.run(mediaId);
 }
 
 export function deleteMedia(id: string) {

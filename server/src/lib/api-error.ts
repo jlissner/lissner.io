@@ -67,7 +67,10 @@ type ApiErrorCode =
   | "code_already_used"
   | "token_reused"
   | "refresh_failed"
-  | "rate_limited";
+  | "rate_limited"
+  | "rotate_bad_type"
+  | "rotate_motion_pair"
+  | "rotate_failed";
 
 export function sendApiError(
   res: Response,

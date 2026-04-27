@@ -11,6 +11,7 @@ import {
   persistUploadedMedia,
   updateMediaDateTaken,
 } from "../../services/media-service.js";
+import { rotateMediaImage90Clockwise } from "../../services/media-rotate-service.js";
 import { setMediaTags } from "../../services/media-tags-service.js";
 import { parseWithSchema } from "../../validation/parse.js";
 import {
@@ -170,6 +171,54 @@ mediaWriteRouter.delete("/:id", async (req, res) => {
     return;
   }
   sendApiError(res, 500, "Failed to delete file", "delete_failed");
+});
+
+mediaWriteRouter.post("/:id/rotate", async (req, res) => {
+  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const result = await rotateMediaImage90Clockwise(id, {
+    userId: req.jwtUser?.id,
+    isAdmin: req.jwtUser?.isAdmin,
+  });
+  if (result.ok) {
+    res.json({ ok: true as const, size: result.size });
+    return;
+  }
+  if (result.reason === "not_found") {
+    sendApiError(res, 404, "Not found", "not_found");
+    return;
+  }
+  if (result.reason === "forbidden") {
+    sendApiError(
+      res,
+      403,
+      "Only the owner or an admin can rotate this file",
+      "patch_forbidden",
+    );
+    return;
+  }
+  if (result.reason === "bad_type") {
+    sendApiError(
+      res,
+      400,
+      "Rotation is only supported for still images",
+      "rotate_bad_type",
+    );
+    return;
+  }
+  if (result.reason === "motion_pair") {
+    sendApiError(
+      res,
+      400,
+      "Rotation is not supported for motion-photo pairs",
+      "rotate_motion_pair",
+    );
+    return;
+  }
+  if (result.reason === "file_missing") {
+    sendApiError(res, 404, "File not found", "file_missing");
+    return;
+  }
+  sendApiError(res, 500, "Could not rotate this image", "rotate_failed");
 });
 
 mediaWriteRouter.patch("/:id", (req, res) => {
