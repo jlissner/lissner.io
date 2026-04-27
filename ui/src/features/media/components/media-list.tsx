@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useMediaViewerUrlSync } from "../hooks/use-media-viewer-url-sync";
 import { MediaViewer } from "./media-viewer";
 import { MediaItemCell } from "./media-viewer/media-item-cell";
 import { groupItemsByDay, type MediaItem } from "./media-viewer/media-utils";
@@ -29,6 +30,7 @@ export function MediaList({
   onUpdate,
 }: MediaListProps) {
   const [viewing, setViewing] = useState<MediaItem | null>(null);
+  useMediaViewerUrlSync({ viewing, setViewing, items });
 
   if (loading && !viewing) {
     return <p className="empty">Loading…</p>;
