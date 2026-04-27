@@ -4,7 +4,7 @@ import type {
   AdminDuplicatesBulkDeleteRequest,
   AdminDuplicatesBulkDeleteResponse,
 } from "@shared";
-import { apiFetch, apiJson } from "@/api";
+import { apiJson } from "@/api";
 
 export interface AdminWhitelistEntry {
   id: number;

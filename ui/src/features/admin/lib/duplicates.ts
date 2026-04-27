@@ -1,4 +1,4 @@
-import { type DuplicateMatch } from "../api";
+import { DuplicateMatch } from "../api";
 
 export type DuplicateDecision = "keep_left" | "keep_right" | "skip";
 

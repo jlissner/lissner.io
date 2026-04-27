@@ -17,14 +17,9 @@ function logMethod(method: string) {
 
 /** Wrap async route handlers so rejections become `next(err)` for the error middleware. */
 export function logRequests(req: Request, _res: Response, next: NextFunction) {
-  const referer = req.headers.referer;
-
   console.info(`
 ${gray(`Request recieved at ${new Date().toLocaleTimeString()}:`)}
-${gray("[TARGET]")} ${logMethod(req.method)} ${green(req.url)}
-${gray("[SOURCE]")} ${yellow(referer ?? "unset")}`);
-
-  invariant(referer, "Referer header not set");
+${gray("[TARGET]")} ${logMethod(req.method)} ${green(req.url)}`);
 
   next();
 }
