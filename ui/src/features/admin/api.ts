@@ -1,4 +1,9 @@
-import type { AdminDbBackupsResponse, AdminDbRestoreResponse } from "@shared";
+import type {
+  AdminDbBackupsResponse,
+  AdminDbRestoreResponse,
+  AdminDuplicatesBulkDeleteRequest,
+  AdminDuplicatesBulkDeleteResponse,
+} from "@shared";
 import { apiFetch, apiJson } from "@/api";
 
 export interface AdminWhitelistEntry {
@@ -181,9 +186,18 @@ export function getAllDuplicates(): Promise<{ duplicates: DuplicateMatch[] }> {
   return apiJson<{ duplicates: DuplicateMatch[] }>("admin/duplicates");
 }
 
-export async function deleteMediaById(mediaId: string): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Delete failed");
+export function bulkDeleteMediaByIds(
+  mediaIds: string[],
+): Promise<AdminDuplicatesBulkDeleteResponse> {
+  const body: AdminDuplicatesBulkDeleteRequest = { mediaIds };
+  return apiJson<AdminDuplicatesBulkDeleteResponse>(
+    "admin/duplicates/bulk-delete",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+  );
 }
 
 export function listDbBackups(): Promise<AdminDbBackupsResponse> {

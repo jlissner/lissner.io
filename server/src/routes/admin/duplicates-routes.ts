@@ -1,13 +1,58 @@
-import { Router } from "express";
+import { Router, type RequestHandler } from "express";
 import { sendApiError } from "../../lib/api-error.js";
 import {
   findDuplicatesForMedia,
   computeAndStoreHash,
 } from "../../services/duplicate-detection.js";
+import { deleteMediaItem } from "../../services/media-write-service.js";
 import * as db from "../../db/media.js";
 import { hammingDistance } from "../../lib/perceptual-hash.js";
+import { parseWithSchema } from "../../validation/parse.js";
+import { adminDuplicatesBulkDeleteBodySchema } from "../../validation/admin-duplicates-schemas.js";
 
 export const adminDuplicatesRouter = Router();
+
+function chunkArray<T>(items: T[], size: number): T[][] {
+  const chunkCount = Math.ceil(items.length / size);
+  return Array.from({ length: chunkCount }, (_, i) =>
+    items.slice(i * size, (i + 1) * size),
+  );
+}
+
+async function mapInBatches<T, R>(
+  items: T[],
+  batchSize: number,
+  fn: (item: T) => Promise<R>,
+): Promise<R[]> {
+  const batches = chunkArray(items, batchSize);
+  return await batches.reduce<Promise<R[]>>(async (prev, batch) => {
+    const acc = await prev;
+    const next = await Promise.all(batch.map(fn));
+    return [...acc, ...next];
+  }, Promise.resolve([]));
+}
+
+export function createAdminDuplicatesBulkDeleteHandler(deps?: {
+  deleteMediaItem?: typeof deleteMediaItem;
+}): RequestHandler {
+  const deleteFn = deps?.deleteMediaItem ?? deleteMediaItem;
+
+  return async (req, res) => {
+    const { mediaIds } = parseWithSchema(
+      adminDuplicatesBulkDeleteBodySchema,
+      req.body,
+    );
+
+    const ctx = { userId: req.jwtUser?.id, isAdmin: req.jwtUser?.isAdmin };
+    const results = await mapInBatches(mediaIds, 8, async (mediaId) => {
+      const result = await deleteFn(mediaId, ctx);
+      if (result.ok) return { mediaId, ok: true } as const;
+      return { mediaId, ok: false, reason: result.reason } as const;
+    });
+
+    res.json({ results });
+  };
+}
 
 adminDuplicatesRouter.get("/duplicates/:mediaId", async (req, res) => {
   const { mediaId } = req.params;
@@ -55,6 +100,11 @@ adminDuplicatesRouter.get("/duplicates", async (_req, res) => {
     duplicates: matches.sort((a, b) => a.hammingDistance - b.hammingDistance),
   });
 });
+
+adminDuplicatesRouter.post(
+  "/duplicates/bulk-delete",
+  createAdminDuplicatesBulkDeleteHandler(),
+);
 
 adminDuplicatesRouter.post(
   "/duplicates/compute-all-hashes",

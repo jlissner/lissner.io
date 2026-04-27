@@ -140,3 +140,18 @@ type AdminDbBackupItem = {
 export type AdminDbBackupsResponse = { backups: AdminDbBackupItem[] };
 
 export type AdminDbRestoreResponse = { restored: true };
+
+/** POST /api/admin/duplicates/bulk-delete */
+export type AdminDuplicatesBulkDeleteRequest = { mediaIds: string[] };
+
+type AdminDuplicatesBulkDeleteItemResult =
+  | { mediaId: string; ok: true }
+  | {
+      mediaId: string;
+      ok: false;
+      reason: "not_found" | "forbidden" | "delete_failed";
+    };
+
+export type AdminDuplicatesBulkDeleteResponse = {
+  results: AdminDuplicatesBulkDeleteItemResult[];
+};

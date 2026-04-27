@@ -6,8 +6,6 @@ import { BackupPage } from "@/features/backup/components/backup-page";
 import {
   addWhitelistEntry,
   computeAllHashes,
-  deleteMediaById,
-  getAllDuplicates,
   getDataExplorerAvailable,
   getSqlExplorerAvailable,
   getUserPeople,
@@ -21,9 +19,9 @@ import {
   setUserPeople as setUserPeopleApi,
   type AdminUser,
   type AdminWhitelistEntry,
-  type DuplicateMatch,
 } from "../api";
 import { DataExplorer } from "./data-explorer";
+import { DuplicateReviewer } from "./duplicate-reviewer";
 
 export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [whitelist, setWhitelist] = useState<AdminWhitelistEntry[]>([]);
@@ -50,11 +48,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     failed: number;
     total: number;
   } | null>(null);
-  const [duplicates, setDuplicates] = useState<DuplicateMatch[]>([]);
-  const [findingDuplicates, setFindingDuplicates] = useState(false);
-  const [viewingDuplicate, setViewingDuplicate] =
-    useState<DuplicateMatch | null>(null);
-  const [deletingMedia, setDeletingMedia] = useState<string | null>(null);
   const [dbBackups, setDbBackups] = useState<Array<{
     key: string;
     size: number;
@@ -210,44 +203,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     }
   };
 
-  const handleFindDuplicates = async () => {
-    setFindingDuplicates(true);
-    setDuplicates([]);
-    try {
-      const result = await getAllDuplicates();
-      setDuplicates(result.duplicates);
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to find duplicates";
-      alert(message);
-    } finally {
-      setFindingDuplicates(false);
-    }
-  };
-
-  const handleDeleteDuplicate = async (mediaId: string) => {
-    if (!confirm(`Delete media ${mediaId}? This cannot be undone.`)) return;
-    setDeletingMedia(mediaId);
-    try {
-      await deleteMediaById(mediaId);
-      setDuplicates((prev) =>
-        prev.filter(
-          (d) => d.mediaId !== mediaId && d.duplicateOfId !== mediaId,
-        ),
-      );
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to delete";
-      alert(message);
-    } finally {
-      setDeletingMedia(null);
-    }
-  };
-
-  const handleCloseDuplicateView = () => {
-    setViewingDuplicate(null);
-  };
-
   const handleRestoreDbBackup = async (key: string) => {
     if (
       !confirm(
@@ -377,92 +332,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
             </p>
           )}
         </div>
-        <div className="admin-page__form" style={{ marginTop: "1rem" }}>
-          <Button onClick={handleFindDuplicates} disabled={findingDuplicates}>
-            {findingDuplicates ? "Finding..." : "Find Duplicates"}
-          </Button>
-          {duplicates.length > 0 && (
-            <ul className="admin-page__list">
-              {duplicates.map((dup, i) => (
-                <li key={i} className="admin-page__list-item">
-                  <button
-                    type="button"
-                    onClick={() => setViewingDuplicate(dup)}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      textDecoration: "underline",
-                      color: "inherit",
-                    }}
-                  >
-                    {dup.mediaId} ↔ {dup.duplicateOfId} (distance:{" "}
-                    {dup.hammingDistance})
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+        <DuplicateReviewer />
       </section>
-
-      {viewingDuplicate && (
-        <section className="admin-page__section">
-          <h3>Duplicate Review</h3>
-          <p className="admin-page__desc">
-            Comparing: {viewingDuplicate.mediaId} ↔{" "}
-            {viewingDuplicate.duplicateOfId} (Hamming distance:{" "}
-            {viewingDuplicate.hammingDistance})
-          </p>
-          <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
-            <div style={{ flex: "1 1 300px" }}>
-              <img
-                src={`/api/media/${viewingDuplicate.mediaId}/preview`}
-                alt={viewingDuplicate.mediaId}
-                style={{ maxWidth: "100%", height: "auto" }}
-              />
-              <p>{viewingDuplicate.mediaId}</p>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => handleDeleteDuplicate(viewingDuplicate.mediaId)}
-                disabled={deletingMedia === viewingDuplicate.mediaId}
-              >
-                {deletingMedia === viewingDuplicate.mediaId
-                  ? "Deleting..."
-                  : "Delete"}
-              </Button>
-            </div>
-            <div style={{ flex: "1 1 300px" }}>
-              <img
-                src={`/api/media/${viewingDuplicate.duplicateOfId}/preview`}
-                alt={viewingDuplicate.duplicateOfId}
-                style={{ maxWidth: "100%", height: "auto" }}
-              />
-              <p>{viewingDuplicate.duplicateOfId}</p>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() =>
-                  handleDeleteDuplicate(viewingDuplicate.duplicateOfId)
-                }
-                disabled={deletingMedia === viewingDuplicate.duplicateOfId}
-              >
-                {deletingMedia === viewingDuplicate.duplicateOfId
-                  ? "Deleting..."
-                  : "Delete"}
-              </Button>
-            </div>
-          </div>
-          <Button
-            variant="secondary"
-            onClick={handleCloseDuplicateView}
-            style={{ marginTop: "1rem" }}
-          >
-            Close
-          </Button>
-        </section>
-      )}
 
       <section className="admin-page__section">
         <h3>Whitelist</h3>
