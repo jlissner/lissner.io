@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from "express";
-import invariant from "tiny-invariant";
 import { bgMagenta, blue, gray, green, red, white, yellow } from "yoctocolors";
 
 function logMethod(method: string) {
