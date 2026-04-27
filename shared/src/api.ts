@@ -166,7 +166,8 @@ type AdminThumbnailRepairFailureReason =
   | "bad_type"
   | "file_missing"
   | "ffmpeg_missing"
-  | "thumb_failed";
+  | "thumb_failed"
+  | "thumb_verify_failed";
 
 export type AdminThumbnailRepairResponse = {
   scanned: number;
@@ -177,5 +178,10 @@ export type AdminThumbnailRepairResponse = {
   skippedIneligible: number;
   skippedDueToCap: number;
   maxGenerations: number;
-  failed: Array<{ mediaId: string; reason: AdminThumbnailRepairFailureReason }>;
+  failed: Array<{
+    mediaId: string;
+    reason: AdminThumbnailRepairFailureReason;
+    /** Present when extra context helps explain the failure (not swallowed). */
+    detail?: string;
+  }>;
 };

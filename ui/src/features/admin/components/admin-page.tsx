@@ -559,12 +559,22 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                       </p>
                       <ul className="admin-page__list">
                         {thumbRepairResult.failed.map((f) => (
-                          <li key={f.mediaId} className="admin-page__list-item">
-                            <code>{f.mediaId}</code>
-                            <span className="admin-page__meta">
-                              {" "}
-                              — {f.reason}
-                            </span>
+                          <li
+                            key={f.mediaId}
+                            className="admin-page__list-item admin-page__list-item--stacked"
+                          >
+                            <div>
+                              <code>{f.mediaId}</code>
+                              <span className="admin-page__meta">
+                                {" "}
+                                — {f.reason}
+                              </span>
+                            </div>
+                            {f.detail != null && f.detail !== "" && (
+                              <p className="admin-page__meta u-mb-0">
+                                {f.detail}
+                              </p>
+                            )}
                           </li>
                         ))}
                       </ul>

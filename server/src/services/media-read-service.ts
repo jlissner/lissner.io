@@ -312,6 +312,13 @@ export async function getThumbnailResponse(mediaId: string): Promise<
           .jpeg({ quality: 70 })
           .toFile(imgThumbPath);
       }
+      if (!(await isUsableVideoThumbnailFile(imgThumbPath))) {
+        console.error(
+          { mediaId },
+          "Image thumbnail file missing or too small after Sharp write",
+        );
+        return { ok: false, reason: "thumb_failed" };
+      }
       return {
         ok: true,
         kind: "file",
@@ -320,14 +327,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
       };
     } catch (err) {
       console.error({ err, mediaId }, "Image thumbnail generation error");
-      return {
-        ok: true,
-        kind: "file",
-        path: filePath,
-        contentType: mimeTypeForKind.startsWith("image/")
-          ? mimeTypeForKind
-          : effectiveImageResponseMimeType(item),
-      };
+      return { ok: false, reason: "thumb_failed" };
     }
   }
   if (!isVideoKind) {
@@ -343,6 +343,13 @@ export async function getThumbnailResponse(mediaId: string): Promise<
       if (!(await isUsableVideoThumbnailFile(thumbPath))) {
         await generateVideoThumbnailWithFfmpeg(srcPath, thumbPath);
       }
+    }
+    if (!(await isUsableVideoThumbnailFile(thumbPath))) {
+      console.error(
+        { mediaId },
+        "Video thumbnail file missing or too small after restore/ffmpeg",
+      );
+      return { ok: false, reason: "thumb_failed" };
     }
     return {
       ok: true,
@@ -424,11 +431,25 @@ export async function repairMissingThumbnails(params: {
     }
     repairAttempts++;
     const out = await getThumbnailResponse(item.id);
-    if (out.ok) {
-      generated++;
-    } else {
+    if (!out.ok) {
       failed.push({ mediaId: item.id, reason: out.reason });
+      continue;
     }
+    const verified = await isUsableVideoThumbnailFile(expectedPath);
+    if (!verified) {
+      console.error(
+        { mediaId: item.id, expectedPath },
+        "Thumbnail repair: generation reported ok but expected JPEG is still missing or under minimum size",
+      );
+      failed.push({
+        mediaId: item.id,
+        reason: "thumb_verify_failed",
+        detail:
+          "Expected thumbnail file is still missing or too small after repair (see server logs).",
+      });
+      continue;
+    }
+    generated++;
   }
 
   return {
