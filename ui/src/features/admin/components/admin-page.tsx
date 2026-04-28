@@ -27,6 +27,7 @@ import {
   type PeopleDirectoryEntry,
 } from "../api";
 import { DataExplorer } from "./data-explorer";
+import { canDeleteDirectoryPerson } from "./directory-delete";
 import { DuplicateReviewer } from "./duplicate-reviewer";
 
 type AdminTabId =
@@ -283,10 +284,10 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
 
   const handleDeleteDirectoryPerson = useCallback(
     async (row: PeopleDirectoryEntry) => {
-      if (row.isIdentity) return;
+      if (!canDeleteDirectoryPerson(row)) return;
       if (
         !confirm(
-          `Delete "${row.name}" from the directory? This will remove their tags from media.`,
+          `Delete "${row.name}" from the directory? This will remove their tags from media and revoke login eligibility if present.`,
         )
       ) {
         return;
