@@ -29,6 +29,15 @@ function buildPeopleStmts() {
     deletePersonNameByPerson: db.prepare(
       "DELETE FROM person_names WHERE person_id = ?",
     ),
+    countUsersWithPersonId: db.prepare(
+      "SELECT COUNT(*) as count FROM users WHERE person_id = ?",
+    ),
+    deleteUserPeopleByPersonId: db.prepare(
+      "DELETE FROM user_people WHERE person_id = ?",
+    ),
+    clearWhitelistPersonId: db.prepare(
+      "UPDATE auth_whitelist SET person_id = NULL WHERE person_id = ?",
+    ),
     listPersonIdsForMedia: db.prepare(
       "SELECT person_id FROM image_people WHERE media_id = ? ORDER BY person_id",
     ),
@@ -246,10 +255,33 @@ export function mergePeople(keepId: number, mergeFromId: number): void {
   peopleStmts().deletePersonNameByPerson.run(mergeFromId);
 }
 
-/** Delete a person entirely (all face tags and name). */
-export function deletePerson(personId: number): void {
-  peopleStmts().deleteImagePeopleByPerson.run(personId);
-  peopleStmts().deletePersonNameByPerson.run(personId);
+type DeletePersonSafeResult =
+  | { ok: true }
+  | { ok: false; reason: "linked_to_user" };
+
+/**
+ * Delete a person when safe.
+ *
+ * Note: `users.person_id` is the user's identity. We do not delete those people.
+ * We do remove `user_people` rows (permissions) and clear `auth_whitelist.person_id`.
+ */
+export function deletePersonSafe(personId: number): DeletePersonSafeResult {
+  const row = peopleStmts().countUsersWithPersonId.get(personId) as
+    | { count: number }
+    | undefined;
+  if ((row?.count ?? 0) > 0) {
+    return { ok: false, reason: "linked_to_user" };
+  }
+
+  const db = getDb();
+  db.transaction(() => {
+    peopleStmts().deleteUserPeopleByPersonId.run(personId);
+    peopleStmts().clearWhitelistPersonId.run(personId);
+    peopleStmts().deleteImagePeopleByPerson.run(personId);
+    peopleStmts().deletePersonNameByPerson.run(personId);
+  })();
+
+  return { ok: true };
 }
 
 export function getImagePeople(mediaId: string): number[] {
@@ -338,6 +370,19 @@ export function addPersonToMedia(
     box.width,
     box.height,
     confidence ?? 1,
+    "manual",
+  );
+}
+
+export function addPersonToMediaNoBox(mediaId: string, personId: number): void {
+  peopleStmts().replaceFace.run(
+    mediaId,
+    personId,
+    null,
+    null,
+    null,
+    null,
+    1,
     "manual",
   );
 }

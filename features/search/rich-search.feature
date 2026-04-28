@@ -32,6 +32,12 @@ Feature: Rich media search with tags and people
     When I search for "(#summer2025 OR #summer2024) AND @joelissner AND water"
     Then results include media M
 
+  Scenario: Search by person handle includes videos where that person is tagged
+    Given person "Joe Lissner" has handle "joelissner"
+    And video V includes person "Joe Lissner"
+    When I search for "@joelissner"
+    Then results include video V
+
   Scenario: Invalid query returns a clear error
     When I search for "(#incomplete"
     Then I receive an error explaining the query could not be parsed

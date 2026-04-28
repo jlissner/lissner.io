@@ -119,6 +119,32 @@ describe("searchMediaByQuery", () => {
     expect(r.reason).toBe("invalid_query");
   });
 
+  it("person handle leaf returns video ids from getMediaForPerson", async () => {
+    vi.mocked(db.getPersonNames).mockReturnValue(new Map([[7, "Joe Lissner"]]));
+    vi.mocked(db.getMediaForPerson).mockReturnValue([
+      { id: "v1", mimeType: "video/mp4", hideFromGallery: 0 } as never,
+    ]);
+    vi.mocked(db.getMediaByIds).mockReturnValue([
+      {
+        id: "v1",
+        filename: "v1.mp4",
+        originalName: "v1.mp4",
+        mimeType: "video/mp4",
+        size: 1,
+        uploadedAt: "t",
+        hideFromGallery: 0,
+      },
+    ]);
+    vi.mocked(db.getImagePeople).mockReturnValue([7]);
+    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+
+    const r = await searchMediaByQuery("@joelissner");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.items.map((i) => i.id)).toContain("v1");
+    expect(r.items.map((i) => i.mimeType)).toContain("video/mp4");
+  });
+
   it("AND NOT excludes second person from first within visible universe", async () => {
     vi.mocked(db.listVisibleGalleryMediaIds).mockReturnValue([
       "m1",

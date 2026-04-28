@@ -17,7 +17,12 @@ import { useTapNav } from "./use-tap-nav";
 import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
 import { ApiError } from "@/api";
-import { postRotateMedia90 } from "@/features/media/api";
+import {
+  addPersonToMedia,
+  getMediaDetails,
+  postRotateMedia90,
+  removePersonFromMedia,
+} from "@/features/media/api";
 import { Button } from "@/components/ui/button";
 
 interface MediaViewerContentProps {
@@ -76,6 +81,12 @@ export function MediaViewerContent({
   const [previewRev, setPreviewRev] = useState(0);
   const [rotating, setRotating] = useState(false);
   const [rotateError, setRotateError] = useState<string | null>(null);
+  const [videoTaggingOpen, setVideoTaggingOpen] = useState(false);
+  const [videoTaggingLoading, setVideoTaggingLoading] = useState(false);
+  const [videoTaggingError, setVideoTaggingError] = useState<string | null>(
+    null,
+  );
+  const [taggedVideoPeople, setTaggedVideoPeople] = useState<string[]>([]);
 
   const isMobile = useIsMobile();
 
@@ -92,6 +103,10 @@ export function MediaViewerContent({
     setFullscreen(false);
     setPreviewRev(0);
     setRotateError(null);
+    setVideoTaggingOpen(false);
+    setVideoTaggingLoading(false);
+    setVideoTaggingError(null);
+    setTaggedVideoPeople([]);
   }, [item.id]);
 
   const handleTagChange = useCallback(
@@ -112,9 +127,29 @@ export function MediaViewerContent({
   } = useMediaViewerFaces({
     mediaId: item.id,
     taggingMode,
+    mimeType: item.mimeType,
     onUpdate,
     onTagChange: handleTagChange,
   });
+
+  const loadVideoTaggedPeople = useCallback(async () => {
+    setVideoTaggingLoading(true);
+    setVideoTaggingError(null);
+    try {
+      const details = await getMediaDetails(item.id);
+      setTaggedVideoPeople(details.people ?? []);
+    } catch {
+      setVideoTaggingError("Could not load tagged people");
+      setTaggedVideoPeople([]);
+    } finally {
+      setVideoTaggingLoading(false);
+    }
+  }, [item.id]);
+
+  useEffect(() => {
+    if (!videoTaggingOpen) return;
+    void loadVideoTaggedPeople();
+  }, [videoTaggingOpen, loadVideoTaggedPeople]);
 
   const handleRotate90 = useCallback(async () => {
     setRotateError(null);
@@ -220,6 +255,12 @@ export function MediaViewerContent({
   );
 
   const showDetails = !isMobile || detailsOpen;
+
+  const videoTaggedPeopleWithIds = taggedVideoPeople.map((name) => {
+    const matches = people.filter((p) => p.name === name);
+    if (matches.length === 1) return { name, personId: matches[0].id };
+    return { name, personId: null };
+  });
 
   return (
     <div
@@ -331,6 +372,15 @@ export function MediaViewerContent({
               <span>Detections</span>
             </label>
           )}
+        {isVideo(item.mimeType) && (
+          <Button
+            onClick={() => setVideoTaggingOpen(true)}
+            variant="secondary"
+            size="sm"
+          >
+            Tag people
+          </Button>
+        )}
         <Button onClick={onClose} variant="secondary" size="sm">
           Close
         </Button>
@@ -343,6 +393,192 @@ export function MediaViewerContent({
           </p>
         )}
       </div>
+      {videoTaggingOpen && (
+        <div
+          role="dialog"
+          aria-label="Tag people"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.55)",
+            zIndex: 2500,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              width: "min(520px, 95vw)",
+              background: "var(--color-bg-elevated)",
+              border: "1px solid var(--color-border)",
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 12,
+              }}
+            >
+              <h3 style={{ margin: 0, fontSize: "1rem" }}>Tag people</h3>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setVideoTaggingOpen(false)}
+              >
+                Close
+              </Button>
+            </div>
+
+            <div style={{ display: "grid", gap: 12 }}>
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "var(--color-text-muted)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Currently tagged
+                </div>
+                {videoTaggingLoading && (
+                  <div style={{ fontSize: "0.875rem" }}>Loading…</div>
+                )}
+                {videoTaggingError != null && (
+                  <div
+                    role="alert"
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--color-danger)",
+                    }}
+                  >
+                    {videoTaggingError}
+                  </div>
+                )}
+                {!videoTaggingLoading &&
+                  videoTaggedPeopleWithIds.length === 0 && (
+                    <div style={{ fontSize: "0.875rem" }}>
+                      No one tagged yet.
+                    </div>
+                  )}
+                {!videoTaggingLoading &&
+                  videoTaggedPeopleWithIds.length > 0 && (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {videoTaggedPeopleWithIds.map((p) => (
+                        <li
+                          key={p.name}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: "4px 0",
+                          }}
+                        >
+                          <span>{p.name}</span>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={p.personId == null}
+                            onClick={async () => {
+                              if (p.personId == null) return;
+                              try {
+                                await removePersonFromMedia(
+                                  item.id,
+                                  p.personId,
+                                );
+                                await loadVideoTaggedPeople();
+                                setDetailsRefreshKey((k) => k + 1);
+                                onUpdate?.();
+                              } catch (err) {
+                                const msg =
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Failed to remove tag";
+                                setVideoTaggingError(msg);
+                              }
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                <div
+                  style={{
+                    fontSize: "0.75rem",
+                    color: "var(--color-text-muted)",
+                    marginTop: 6,
+                  }}
+                >
+                  If a name can’t be matched to a unique person, removal is
+                  disabled.
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.875rem",
+                    color: "var(--color-text-muted)",
+                    marginBottom: 6,
+                  }}
+                >
+                  Add person
+                </div>
+                <select
+                  value=""
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v) return;
+                    const personId = Number(v);
+                    void (async () => {
+                      try {
+                        await addPersonToMedia(item.id, { personId });
+                        await loadVideoTaggedPeople();
+                        setDetailsRefreshKey((k) => k + 1);
+                        onUpdate?.();
+                      } catch (err) {
+                        const msg =
+                          err instanceof ApiError
+                            ? err.message
+                            : "Failed to add tag";
+                        setVideoTaggingError(msg);
+                      }
+                    })();
+                  }}
+                  style={{
+                    padding: "6px 10px",
+                    fontSize: "0.875rem",
+                    borderRadius: 6,
+                    border: "1px solid var(--color-border)",
+                    background: "var(--color-bg)",
+                    color: "var(--color-text)",
+                    minWidth: 220,
+                    maxWidth: "100%",
+                  }}
+                >
+                  <option value="">Select…</option>
+                  {people.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div
         className="viewer-content__body"
         {...(isMobile && !taggingMode ? tapNav : {})}

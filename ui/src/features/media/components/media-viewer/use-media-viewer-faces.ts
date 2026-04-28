@@ -9,10 +9,12 @@ import {
   removePersonFromMedia,
 } from "../../api";
 import type { FaceBox, TaggedFace } from "./media-viewer-types";
+import { isVideo } from "./media-utils";
 
 interface UseMediaViewerFacesOptions {
   mediaId: string | undefined;
   taggingMode: boolean;
+  mimeType?: string;
   onUpdate?: () => void;
   onTagChange?: () => void;
 }
@@ -34,6 +36,7 @@ function getAssignFaceBody(
 export function useMediaViewerFaces({
   mediaId,
   taggingMode,
+  mimeType,
   onUpdate,
   onTagChange,
 }: UseMediaViewerFacesOptions) {
@@ -48,19 +51,24 @@ export function useMediaViewerFaces({
   );
   const [people, setPeople] = useState<Array<{ id: number; name: string }>>([]);
 
+  const loadPeople = useCallback(async () => {
+    try {
+      const peopleData = await listPeopleForTagging();
+      setPeople(peopleData);
+    } catch {
+      setPeople([]);
+    }
+  }, []);
+
   const loadFaces = useCallback(async () => {
     if (!mediaId) return;
     setFacesLoading(true);
     try {
-      const [facesData, peopleData] = await Promise.all([
-        listMediaFaces(mediaId),
-        listPeopleForTagging(),
-      ]);
+      const facesData = await listMediaFaces(mediaId);
       setFaces({
         detected: facesData.detected ?? [],
         tagged: facesData.tagged ?? [],
       });
-      setPeople(peopleData);
     } catch {
       setFaces({ detected: [], tagged: [] });
     } finally {
@@ -69,9 +77,15 @@ export function useMediaViewerFaces({
   }, [mediaId]);
 
   useEffect(() => {
-    if (taggingMode && mediaId) loadFaces();
+    if (!mediaId) return;
+    void loadPeople();
+  }, [mediaId, loadPeople]);
+
+  useEffect(() => {
+    if (!mediaId) return;
+    if (taggingMode && !isVideo(mimeType ?? "")) void loadFaces();
     else setFaces(null);
-  }, [taggingMode, mediaId, loadFaces]);
+  }, [taggingMode, mediaId, mimeType, loadFaces]);
 
   const handleAssignFace = useCallback(
     async (personId: number | "new") => {
@@ -149,6 +163,7 @@ export function useMediaViewerFaces({
     setReassigningFace,
     people,
     loadFaces,
+    loadPeople,
     handleAssignFace,
     handleReassignFace,
   };
