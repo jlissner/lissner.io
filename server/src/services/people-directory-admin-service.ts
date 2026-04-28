@@ -240,7 +240,6 @@ export function deleteDirectoryPerson(input: {
     actorUserId: input.actorUserId ?? null,
     personId: input.personId,
     email: null,
-    deletedUserIds: userIds,
   });
 
   return ok({ deleted: input.personId });
