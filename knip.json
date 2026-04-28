@@ -1,4 +1,12 @@
 {
-  "ignore": ["ui/src/vite-env.d.ts"],
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignore": [
+    "features/step-definitions/**/*.ts",
+    "features/support/**/*.ts",
+    "features/testing/**/*.feature",
+    ".grimoire/changes/**/*.feature",
+    ".grimoire/changes/**/*.md",
+    "ui/src/vite-env.d.ts"
+  ],
   "ignoreBinaries": ["ollama"]
 }
