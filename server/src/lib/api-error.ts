@@ -60,6 +60,8 @@ type ApiErrorCode =
   | "face_person_required"
   | "face_person_unknown"
   | "person_linked_to_user"
+  | "person_directory_invalid_email"
+  | "person_directory_email_in_use"
   | "invalid_backup_key"
   | "invalid_db_backup"
   | "db_restore_failed"

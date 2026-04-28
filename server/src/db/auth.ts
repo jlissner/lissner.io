@@ -313,6 +313,93 @@ export function addToWhitelist(
   return result.lastInsertRowid as number;
 }
 
+export function getWhitelistByEmail(email: string): {
+  id: number;
+  email: string;
+  isAdmin: boolean;
+  invitedAt: string;
+  invitedByUserId: number | null;
+  personId: number | null;
+} | null {
+  const normalized = email.trim().toLowerCase();
+  const db = getDb();
+  const row = db
+    .prepare(
+      "SELECT id, email, is_admin as isAdmin, invited_at as invitedAt, invited_by_user_id as invitedByUserId, person_id as personId FROM auth_whitelist WHERE LOWER(email) = ?",
+    )
+    .get(normalized) as
+    | {
+        id: number;
+        email: string;
+        isAdmin: number;
+        invitedAt: string;
+        invitedByUserId: number | null;
+        personId: number | null;
+      }
+    | undefined;
+  if (!row) return null;
+  return { ...row, isAdmin: row.isAdmin === 1 };
+}
+
+export function updateWhitelistEntry(
+  id: number,
+  input: { isAdmin?: boolean; personId?: number | null },
+): boolean {
+  const hasIsAdmin = Object.prototype.hasOwnProperty.call(input, "isAdmin");
+  const hasPersonId = Object.prototype.hasOwnProperty.call(input, "personId");
+  if (!hasIsAdmin && !hasPersonId) return false;
+
+  const db = getDb();
+
+  if (hasIsAdmin && hasPersonId) {
+    const result = db
+      .prepare(
+        "UPDATE auth_whitelist SET is_admin = ?, person_id = ? WHERE id = ?",
+      )
+      .run(input.isAdmin ? 1 : 0, input.personId ?? null, id);
+    return result.changes > 0;
+  }
+  if (hasIsAdmin) {
+    const result = db
+      .prepare("UPDATE auth_whitelist SET is_admin = ? WHERE id = ?")
+      .run(input.isAdmin ? 1 : 0, id);
+    return result.changes > 0;
+  }
+  const result = db
+    .prepare("UPDATE auth_whitelist SET person_id = ? WHERE id = ?")
+    .run(input.personId ?? null, id);
+  return result.changes > 0;
+}
+
+export function upsertWhitelistEntryByEmail(input: {
+  email: string;
+  isAdmin: boolean;
+  personId: number | null;
+  invitedByUserId?: number;
+}): number {
+  const normalized = input.email.trim().toLowerCase();
+  const db = getDb();
+  db.prepare(
+    `
+      INSERT INTO auth_whitelist (email, is_admin, invited_by_user_id, person_id)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(email) DO UPDATE SET
+        is_admin = excluded.is_admin,
+        person_id = excluded.person_id,
+        invited_by_user_id = COALESCE(excluded.invited_by_user_id, auth_whitelist.invited_by_user_id)
+    `,
+  ).run(
+    normalized,
+    input.isAdmin ? 1 : 0,
+    input.invitedByUserId ?? null,
+    input.personId,
+  );
+  const row = db
+    .prepare("SELECT id FROM auth_whitelist WHERE LOWER(email) = ?")
+    .get(normalized) as { id: number } | undefined;
+  return row?.id ?? 0;
+}
+
 export function removeFromWhitelist(id: number): boolean {
   const db = getDb();
   const result = db.prepare("DELETE FROM auth_whitelist WHERE id = ?").run(id);
@@ -451,6 +538,47 @@ export function getUsers(): Array<{
     personId: number | null;
   }>;
   return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
+}
+
+export function getUserIdsByPersonId(personId: number): number[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id FROM users WHERE person_id = ?")
+    .all(personId) as Array<{ id: number }>;
+  return rows.map((r) => r.id);
+}
+
+export function deleteRefreshTokensByUserIds(userIds: number[]): void {
+  if (userIds.length === 0) return;
+  const db = getDb();
+  const placeholders = userIds.map(() => "?").join(", ");
+  db.prepare(
+    `DELETE FROM refresh_tokens WHERE user_id IN (${placeholders})`,
+  ).run(...userIds);
+}
+
+export function deleteUsersByPersonId(personId: number): number {
+  const db = getDb();
+  return db.transaction(() => {
+    const userIds = getUserIdsByPersonId(personId);
+    if (userIds.length === 0) return 0;
+    const placeholders = userIds.map(() => "?").join(", ");
+    db.prepare(
+      `DELETE FROM user_people WHERE user_id IN (${placeholders})`,
+    ).run(...userIds);
+    const result = db
+      .prepare(`DELETE FROM users WHERE id IN (${placeholders})`)
+      .run(...userIds);
+    return result.changes;
+  })();
+}
+
+export function deleteWhitelistByPersonId(personId: number): number {
+  const db = getDb();
+  const result = db
+    .prepare("DELETE FROM auth_whitelist WHERE person_id = ?")
+    .run(personId);
+  return result.changes;
 }
 
 initAuthDb();

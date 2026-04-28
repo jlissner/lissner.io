@@ -7,6 +7,7 @@ import { adminUsersRouter } from "./admin/users-routes.js";
 import { adminWhitelistRouter } from "./admin/whitelist-routes.js";
 import { adminDbBackupRouter } from "./admin/db-backup-routes.js";
 import { adminThumbnailsRouter } from "./admin/thumbnails-routes.js";
+import { adminPeopleDirectoryRouter } from "./admin/people-directory-routes.js";
 
 export const adminRouter = Router();
 
@@ -18,3 +19,4 @@ adminRouter.use(adminDataExplorerRouter);
 adminRouter.use(adminWhitelistRouter);
 adminRouter.use(adminUsersRouter);
 adminRouter.use(adminDbBackupRouter);
+adminRouter.use(adminPeopleDirectoryRouter);

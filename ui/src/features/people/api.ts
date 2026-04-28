@@ -76,6 +76,14 @@ export function deletePerson(id: number): Promise<DeletePersonResponse> {
   return apiJson<DeletePersonResponse>(`people/${id}`, { method: "DELETE" });
 }
 
+export function deletePersonViaDirectory(
+  id: number,
+): Promise<{ deleted: number }> {
+  return apiJson<{ deleted: number }>(`admin/people-directory/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export function runMatchFaces(): Promise<FaceMatchRunResponse> {
   return apiJson<FaceMatchRunResponse>("people/match-faces", {
     method: "POST",

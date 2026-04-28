@@ -8,9 +8,11 @@ import { cn } from "@/lib/utils";
 import {
   addWhitelistEntry,
   computeAllHashes,
+  createDirectoryPerson,
+  deleteDirectoryPerson,
   getDataExplorerAvailable,
   getSqlExplorerAvailable,
-  getUserPeople,
+  listPeopleDirectory,
   listPeopleForAdmin,
   listUsers,
   listDbBackups,
@@ -19,11 +21,13 @@ import {
   repairAdminThumbnails,
   restoreDbFromBackup,
   runSql,
-  setUserPeople as setUserPeopleApi,
+  updateDirectoryPerson,
   type AdminUser,
   type AdminWhitelistEntry,
+  type PeopleDirectoryEntry,
 } from "../api";
 import { DataExplorer } from "./data-explorer";
+import { canDeleteDirectoryPerson } from "./directory-delete";
 import { DuplicateReviewer } from "./duplicate-reviewer";
 
 type AdminTabId =
@@ -40,11 +44,21 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [whitelist, setWhitelist] = useState<AdminWhitelistEntry[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [people, setPeople] = useState<Array<{ id: number; name: string }>>([]);
+  const [directory, setDirectory] = useState<PeopleDirectoryEntry[]>([]);
+  const [directoryError, setDirectoryError] = useState<string | null>(null);
+  const [directorySaving, setDirectorySaving] = useState(false);
+  const [directoryNewName, setDirectoryNewName] = useState("");
+  const [directoryNewEmail, setDirectoryNewEmail] = useState("");
+  const [directoryNewIsAdmin, setDirectoryNewIsAdmin] = useState(false);
+  const [directoryEditingPersonId, setDirectoryEditingPersonId] = useState<
+    number | null
+  >(null);
+  const [directoryEditName, setDirectoryEditName] = useState("");
+  const [directoryEditEmail, setDirectoryEditEmail] = useState("");
+  const [directoryEditIsAdmin, setDirectoryEditIsAdmin] = useState(false);
   const [newEmail, setNewEmail] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [newPersonId, setNewPersonId] = useState<number | "">("");
-  const [linkingUser, setLinkingUser] = useState<number | null>(null);
-  const [userPeople, setUserPeople] = useState<Record<number, number[]>>({});
   const [sqlExplorerAvailable, setSqlExplorerAvailable] = useState(false);
   const [dataExplorerAvailable, setDataExplorerAvailable] = useState(false);
   const [sqlQuery, setSqlQuery] = useState("SELECT * FROM media LIMIT 10");
@@ -86,7 +100,7 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       { id: "duplicates", label: "Duplicates" },
       { id: "thumbnails", label: "Thumbnails" },
       { id: "whitelist", label: "Whitelist" },
-      { id: "users", label: "Users & people" },
+      { id: "users", label: "Directory" },
     ];
     if (dataExplorerAvailable) {
       rows.push({ id: "data-explorer", label: "Data explorer" });
@@ -136,27 +150,169 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   }, []);
 
   const fetchData = useCallback(async () => {
-    const [wl, usersData, peopleData, sqlAvailable, dataAvailable] =
-      await Promise.all([
-        listWhitelist(),
-        listUsers(),
-        listPeopleForAdmin(),
-        getSqlExplorerAvailable(),
-        getDataExplorerAvailable(),
-      ]);
+    const [
+      wl,
+      usersData,
+      peopleData,
+      directoryData,
+      sqlAvailable,
+      dataAvailable,
+    ] = await Promise.all([
+      listWhitelist(),
+      listUsers(),
+      listPeopleForAdmin(),
+      listPeopleDirectory(),
+      getSqlExplorerAvailable(),
+      getDataExplorerAvailable(),
+    ]);
     setWhitelist(wl);
     setUsers(usersData);
     setPeople(peopleData);
+    setDirectory(directoryData);
     setSqlExplorerAvailable(sqlAvailable.available);
     setDataExplorerAvailable(dataAvailable.available);
-    const peopleByUserEntries = await Promise.all(
-      usersData.map(
-        async (user) =>
-          [user.id, (await getUserPeople(user.id)).personIds] as const,
-      ),
-    );
-    setUserPeople(Object.fromEntries(peopleByUserEntries));
   }, []);
+
+  const fetchDirectory = useCallback(async () => {
+    setDirectoryError(null);
+    try {
+      setDirectory(await listPeopleDirectory());
+    } catch (err) {
+      const message =
+        err instanceof ApiError ? err.message : "Failed to load the directory";
+      setDirectoryError(message);
+    }
+  }, []);
+
+  const startEditDirectoryPerson = useCallback((row: PeopleDirectoryEntry) => {
+    setDirectoryEditingPersonId(row.personId);
+    setDirectoryEditName(row.name);
+    setDirectoryEditEmail(row.email ?? "");
+    setDirectoryEditIsAdmin(row.email != null ? row.isAdmin : false);
+    setDirectoryError(null);
+  }, []);
+
+  const cancelEditDirectoryPerson = useCallback(() => {
+    setDirectoryEditingPersonId(null);
+    setDirectoryEditName("");
+    setDirectoryEditEmail("");
+    setDirectoryEditIsAdmin(false);
+    setDirectoryError(null);
+  }, []);
+
+  const friendlyDirectoryError = useCallback((err: unknown): string => {
+    if (!(err instanceof ApiError)) return "Request failed";
+    const body =
+      err.body !== null && typeof err.body === "object"
+        ? (err.body as Record<string, unknown>)
+        : null;
+    const code = body && typeof body.code === "string" ? body.code : null;
+
+    if (err.status === 400 && code === "person_directory_invalid_email") {
+      return "That email address is invalid.";
+    }
+    if (err.status === 409 && code === "person_directory_email_in_use") {
+      return "That email address is already in use.";
+    }
+    return err.message || "Request failed";
+  }, []);
+
+  const handleCreateDirectoryPerson = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      const name = directoryNewName.trim();
+      const email = directoryNewEmail.trim();
+      if (name === "") return;
+
+      setDirectorySaving(true);
+      setDirectoryError(null);
+      try {
+        await createDirectoryPerson({
+          name,
+          email: email === "" ? undefined : email,
+          isAdmin: email === "" ? undefined : directoryNewIsAdmin,
+        });
+        setDirectoryNewName("");
+        setDirectoryNewEmail("");
+        setDirectoryNewIsAdmin(false);
+        await fetchDirectory();
+      } catch (err) {
+        setDirectoryError(friendlyDirectoryError(err));
+      } finally {
+        setDirectorySaving(false);
+      }
+    },
+    [
+      directoryNewEmail,
+      directoryNewIsAdmin,
+      directoryNewName,
+      fetchDirectory,
+      friendlyDirectoryError,
+    ],
+  );
+
+  const handleUpdateDirectoryPerson = useCallback(async () => {
+    if (directoryEditingPersonId == null) return;
+    const name = directoryEditName.trim();
+    const email = directoryEditEmail.trim();
+    if (name === "") return;
+
+    setDirectorySaving(true);
+    setDirectoryError(null);
+    try {
+      await updateDirectoryPerson(directoryEditingPersonId, {
+        name,
+        email: email === "" ? undefined : email,
+        isAdmin: email === "" ? undefined : directoryEditIsAdmin,
+      });
+      cancelEditDirectoryPerson();
+      await fetchDirectory();
+    } catch (err) {
+      setDirectoryError(friendlyDirectoryError(err));
+    } finally {
+      setDirectorySaving(false);
+    }
+  }, [
+    cancelEditDirectoryPerson,
+    directoryEditEmail,
+    directoryEditIsAdmin,
+    directoryEditName,
+    directoryEditingPersonId,
+    fetchDirectory,
+    friendlyDirectoryError,
+  ]);
+
+  const handleDeleteDirectoryPerson = useCallback(
+    async (row: PeopleDirectoryEntry) => {
+      if (!canDeleteDirectoryPerson(row)) return;
+      if (
+        !confirm(
+          `Delete "${row.name}" from the directory? This will remove their tags from media and revoke login eligibility if present.`,
+        )
+      ) {
+        return;
+      }
+      setDirectorySaving(true);
+      setDirectoryError(null);
+      try {
+        await deleteDirectoryPerson(row.personId);
+        if (directoryEditingPersonId === row.personId) {
+          cancelEditDirectoryPerson();
+        }
+        await fetchDirectory();
+      } catch (err) {
+        setDirectoryError(friendlyDirectoryError(err));
+      } finally {
+        setDirectorySaving(false);
+      }
+    },
+    [
+      cancelEditDirectoryPerson,
+      directoryEditingPersonId,
+      fetchDirectory,
+      friendlyDirectoryError,
+    ],
+  );
 
   const handleRunSql = useCallback(async () => {
     setSqlRunning(true);
@@ -210,26 +366,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         err instanceof ApiError ? err.message : "Failed to remove";
       alert(message);
     }
-  };
-
-  const handleSetUserPeople = async (userId: number, personIds: number[]) => {
-    try {
-      await setUserPeopleApi(userId, personIds);
-      setUserPeople((prev) => ({ ...prev, [userId]: personIds }));
-      setLinkingUser(null);
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to update user people";
-      alert(message);
-    }
-  };
-
-  const togglePersonForUser = (userId: number, personId: number) => {
-    const current = userPeople[userId] ?? [];
-    const next = current.includes(personId)
-      ? current.filter((p) => p !== personId)
-      : [...current, personId];
-    handleSetUserPeople(userId, next);
   };
 
   const handleComputeAllHashes = async () => {
@@ -678,82 +814,196 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
             className="admin-page__panel"
           >
             <section className="admin-page__section">
-              <h3>Users & People</h3>
+              <h3>Directory</h3>
               <p className="admin-page__desc">
-                Each user is one person (identity). Users can act on behalf of
-                additional people to filter photos. The identity person is
-                always included.
+                Manage people in your family directory. People can exist without
+                accounts; adding an email enables login invites. Identity people
+                (linked to a user) cannot be deleted.
               </p>
-              <ul className="admin-page__list">
-                {users.map((u) => {
-                  const identityPerson =
-                    u.personId != null
-                      ? people.find((p) => p.id === u.personId)
-                      : null;
-                  return (
-                    <li
-                      key={u.id}
-                      className="admin-page__list-item admin-page__list-item--stacked"
-                    >
-                      <div>
-                        <span>{u.email}</span>
-                        {u.isAdmin && (
-                          <span className="admin-page__badge">admin</span>
-                        )}
-                        {identityPerson && (
-                          <span className="admin-page__meta">
-                            is {identityPerson.name}
-                          </span>
-                        )}
-                      </div>
-                      <div className="admin-page__people">
-                        {linkingUser === u.id ? (
-                          <div className="admin-page__people-picker">
-                            {people.map((p) => {
-                              const isIdentity = p.id === u.personId;
-                              return (
-                                <label
-                                  key={p.id}
-                                  className={`admin-page__people-option ${isIdentity ? "admin-page__people-option--identity" : ""}`}
-                                >
-                                  <input
-                                    type="checkbox"
-                                    checked={(userPeople[u.id] ?? []).includes(
-                                      p.id,
-                                    )}
-                                    onChange={() =>
-                                      !isIdentity &&
-                                      togglePersonForUser(u.id, p.id)
-                                    }
-                                    disabled={isIdentity}
-                                  />
-                                  {p.name}
-                                  {isIdentity && " (identity)"}
-                                </label>
-                              );
-                            })}
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setLinkingUser(null)}
-                            >
-                              Done
-                            </Button>
-                          </div>
-                        ) : (
+              <form
+                onSubmit={handleCreateDirectoryPerson}
+                className="admin-page__form"
+              >
+                <input
+                  type="text"
+                  placeholder="Name"
+                  value={directoryNewName}
+                  onChange={(e) => setDirectoryNewName(e.target.value)}
+                  className="form__input"
+                  disabled={directorySaving}
+                />
+                <input
+                  type="email"
+                  placeholder="email@example.com (optional)"
+                  value={directoryNewEmail}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setDirectoryNewEmail(next);
+                    if (next.trim() === "") setDirectoryNewIsAdmin(false);
+                  }}
+                  className="form__input"
+                  disabled={directorySaving}
+                />
+                <label className="admin-page__checkbox">
+                  <input
+                    type="checkbox"
+                    checked={directoryNewIsAdmin}
+                    onChange={(e) => setDirectoryNewIsAdmin(e.target.checked)}
+                    disabled={
+                      directorySaving || directoryNewEmail.trim() === ""
+                    }
+                  />
+                  Admin
+                </label>
+                <Button type="submit" size="sm" disabled={directorySaving}>
+                  {directorySaving ? "Saving…" : "Create"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => void fetchDirectory()}
+                  disabled={directorySaving}
+                >
+                  Refresh
+                </Button>
+              </form>
+
+              {directoryError && (
+                <Alert variant="danger" role="alert">
+                  <p>{directoryError}</p>
+                </Alert>
+              )}
+
+              {directoryEditingPersonId != null && (
+                <div className="admin-page__form" style={{ marginTop: 8 }}>
+                  <input
+                    type="text"
+                    placeholder="Name"
+                    value={directoryEditName}
+                    onChange={(e) => setDirectoryEditName(e.target.value)}
+                    className="form__input"
+                    disabled={directorySaving}
+                  />
+                  <input
+                    type="email"
+                    placeholder="email@example.com (optional)"
+                    value={directoryEditEmail}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setDirectoryEditEmail(next);
+                      if (next.trim() === "") setDirectoryEditIsAdmin(false);
+                    }}
+                    className="form__input"
+                    disabled={directorySaving}
+                  />
+                  <label className="admin-page__checkbox">
+                    <input
+                      type="checkbox"
+                      checked={directoryEditIsAdmin}
+                      onChange={(e) =>
+                        setDirectoryEditIsAdmin(e.target.checked)
+                      }
+                      disabled={
+                        directorySaving || directoryEditEmail.trim() === ""
+                      }
+                    />
+                    Admin
+                  </label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => void handleUpdateDirectoryPerson()}
+                    disabled={directorySaving}
+                  >
+                    {directorySaving ? "Saving…" : "Save"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => cancelEditDirectoryPerson()}
+                    disabled={directorySaving}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              )}
+
+              <div
+                className="admin-page__sql-table-wrap"
+                style={{ marginTop: "var(--space-2)" }}
+              >
+                <table className="admin-page__sql-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Login</th>
+                      <th>Admin</th>
+                      <th>Identity</th>
+                      <th />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {directory.map((row) => (
+                      <tr key={row.personId}>
+                        <td>{row.name}</td>
+                        <td>{row.email ?? "—"}</td>
+                        <td>
+                          {row.canLogin ? (
+                            <span className="admin-page__badge">
+                              can log in
+                            </span>
+                          ) : (
+                            <span className="admin-page__meta">no</span>
+                          )}
+                        </td>
+                        <td>
+                          {row.isAdmin ? (
+                            <span className="admin-page__badge">admin</span>
+                          ) : (
+                            <span className="admin-page__meta">no</span>
+                          )}
+                        </td>
+                        <td>
+                          {row.isIdentity ? (
+                            <span className="admin-page__badge">identity</span>
+                          ) : (
+                            <span className="admin-page__meta">—</span>
+                          )}
+                        </td>
+                        <td style={{ whiteSpace: "nowrap" }}>
                           <Button
+                            type="button"
                             variant="secondary"
                             size="sm"
-                            onClick={() => setLinkingUser(u.id)}
+                            onClick={() => startEditDirectoryPerson(row)}
+                            disabled={directorySaving}
                           >
-                            {(userPeople[u.id] ?? []).length} people
+                            Edit
                           </Button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            onClick={() =>
+                              void handleDeleteDirectoryPerson(row)
+                            }
+                            disabled={directorySaving}
+                            title="Delete person"
+                          >
+                            Delete
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <p className="admin-page__sql-meta">
+                  {directory.length} entr{directory.length === 1 ? "y" : "ies"}
+                </p>
+              </div>
             </section>
           </div>
         )}
