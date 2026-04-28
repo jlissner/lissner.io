@@ -28,7 +28,11 @@ export function MediaList({
   onUpdate,
 }: MediaListProps) {
   const [viewing, setViewing] = useState<MediaItem | null>(null);
-  useMediaViewerUrlSync({ viewing, setViewing, items });
+  const { dismissViewing } = useMediaViewerUrlSync({
+    viewing,
+    setViewing,
+    items,
+  });
 
   if (loading && !viewing) {
     return <p className="empty">Loading…</p>;
@@ -46,7 +50,7 @@ export function MediaList({
         item={viewing}
         items={items}
         onSelectItem={setViewing}
-        onClose={() => setViewing(null)}
+        onClose={dismissViewing}
         onUpdate={onUpdate}
       />
       {groups.map(({ dateKey, dateLabel, items: groupItems }) => {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useMemo } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import { getMediaDetails } from "../api";
 import {
@@ -35,9 +35,10 @@ export function useMediaViewerUrlSync({
   viewing,
   setViewing,
   items,
-}: UseMediaViewerUrlSyncArgs): void {
+}: UseMediaViewerUrlSyncArgs): { dismissViewing: () => void } {
   const skipNextUrlWrite = useRef(false);
   const viewingIdRef = useRef<string | null>(null);
+  const viewerExplicitDismissRef = useRef(false);
 
   useEffect(() => {
     viewingIdRef.current = viewing?.id ?? null;
@@ -60,8 +61,13 @@ export function useMediaViewerUrlSync({
     }
 
     if (nextId != null) {
+      viewerExplicitDismissRef.current = false;
       params.set(MEDIA_URL_QUERY_KEY, nextId);
     } else {
+      if (!viewerExplicitDismissRef.current) {
+        return;
+      }
+      viewerExplicitDismissRef.current = false;
       params.delete(MEDIA_URL_QUERY_KEY);
     }
     const path = window.location.pathname;
@@ -120,4 +126,11 @@ export function useMediaViewerUrlSync({
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, [syncFromUrl]);
+
+  const dismissViewing = useCallback(() => {
+    viewerExplicitDismissRef.current = true;
+    setViewing(null);
+  }, [setViewing]);
+
+  return useMemo(() => ({ dismissViewing }), [dismissViewing]);
 }
