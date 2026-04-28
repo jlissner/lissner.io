@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import { useAuth } from "@/features/auth/hooks/use-auth";
 import { usePeopleList } from "./use-people-list";
 import { usePeopleMutations } from "./use-people-mutations";
 import { usePeoplePreview } from "./use-people-preview";
 import { usePeopleUiState } from "./use-people-ui-state";
 
 export function usePeoplePage(onUpdate?: () => void) {
+  const { user } = useAuth();
   const listState = usePeopleList();
   const uiState = usePeopleUiState();
   const previewState = usePeoplePreview({
@@ -20,6 +22,7 @@ export function usePeoplePage(onUpdate?: () => void) {
   } = uiState;
   const mutations = usePeopleMutations({
     selectedId: listState.selectedId,
+    isAdmin: user?.isAdmin ?? false,
     fetchPeople: listState.fetchPeople,
     onUpdate,
     setSelectedId: listState.setSelectedId,

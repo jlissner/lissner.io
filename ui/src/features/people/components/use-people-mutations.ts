@@ -3,6 +3,7 @@ import { ApiError } from "@/api";
 import {
   createPerson,
   deletePerson,
+  deletePersonViaDirectory,
   mergePeople,
   reassignTagToNewPerson,
   reassignTagToPerson,
@@ -25,6 +26,7 @@ function deletePersonMessage(person: Person): string {
 
 interface UsePeopleMutationsOptions {
   selectedId: number | null;
+  isAdmin: boolean;
   fetchPeople: (options?: { silent?: boolean }) => Promise<void>;
   onUpdate?: () => void;
   setSelectedId: (id: number | null) => void;
@@ -42,6 +44,7 @@ interface UsePeopleMutationsOptions {
 
 export function usePeopleMutations({
   selectedId,
+  isAdmin,
   fetchPeople,
   onUpdate,
   setSelectedId,
@@ -146,7 +149,11 @@ export function usePeopleMutations({
       const msg = deletePersonMessage(person);
       if (!confirm(msg)) return;
       try {
-        await deletePerson(person.id);
+        if (isAdmin) {
+          await deletePersonViaDirectory(person.id);
+        } else {
+          await deletePerson(person.id);
+        }
         if (selectedId === person.id) setSelectedId(null);
         setEditModal((m) => (m?.id === person.id ? null : m));
         setMergeModal((m) => (m?.id === person.id ? null : m));
@@ -159,6 +166,7 @@ export function usePeopleMutations({
       }
     },
     [
+      isAdmin,
       selectedId,
       fetchPeople,
       onUpdate,
