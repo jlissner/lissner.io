@@ -150,13 +150,6 @@ export function createDirectoryPerson(input: {
     });
   }
 
-  console.info({
-    action: "create",
-    actorUserId: input.actorUserId ?? null,
-    personId: createdPersonId,
-    email: normalizedEmail,
-  });
-
   const row = getDirectoryRowByPersonId(createdPersonId);
   if (row == null) return fail(500, "Failed to load created directory row");
   return ok(row);
@@ -213,13 +206,6 @@ export function updateDirectoryPerson(input: {
     });
   }
 
-  console.info({
-    action: "update",
-    actorUserId: input.actorUserId ?? null,
-    personId: input.personId,
-    email: emailForAdminToggle,
-  });
-
   const updated = getDirectoryRowByPersonId(input.personId);
   if (updated == null) return fail(500, "Failed to load updated directory row");
   return ok(updated);
@@ -234,13 +220,6 @@ export function deleteDirectoryPerson(input: {
   authDb.deleteUsersByPersonId(input.personId);
   authDb.deleteWhitelistByPersonId(input.personId);
   mediaDb.deletePersonSafe(input.personId);
-
-  console.info({
-    action: "delete",
-    actorUserId: input.actorUserId ?? null,
-    personId: input.personId,
-    email: null,
-  });
 
   return ok({ deleted: input.personId });
 }

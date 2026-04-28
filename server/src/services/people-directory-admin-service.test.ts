@@ -25,7 +25,6 @@ import {
   createDirectoryPerson,
   deleteDirectoryPerson,
   listDirectory,
-  updateDirectoryPerson,
 } from "./people-directory-admin-service.js";
 import { HttpError } from "../lib/http-error.js";
 
@@ -44,57 +43,6 @@ describe("people-directory-admin-service", () => {
     vi.mocked(authDb.deleteRefreshTokensByUserIds).mockReset();
     vi.mocked(authDb.deleteUsersByPersonId).mockReset();
     vi.mocked(authDb.deleteWhitelistByPersonId).mockReset();
-    vi.spyOn(console, "info").mockImplementation(() => undefined);
-  });
-
-  it("logs create/update/delete mutations with actorUserId and personId", () => {
-    vi.mocked(mediaDb.getAllPersonIds).mockReturnValue([5]);
-    vi.mocked(mediaDb.getPersonNames).mockReturnValue(new Map([[5, "New"]]));
-    vi.mocked(authDb.getUsers).mockReturnValue([]);
-    vi.mocked(authDb.getWhitelist).mockReturnValue([]);
-    vi.mocked(authDb.getWhitelistByEmail).mockReturnValue(null);
-    vi.mocked(mediaDb.createPerson).mockReturnValue(5);
-    vi.mocked(mediaDb.deletePersonSafe).mockReturnValue({ ok: true });
-    vi.mocked(authDb.getUserIdsByPersonId).mockReturnValue([]);
-
-    const created = createDirectoryPerson({
-      name: "New",
-      actorUserId: 123,
-    });
-    expect(created.ok).toBe(true);
-
-    const updated = updateDirectoryPerson({
-      personId: 5,
-      name: "New",
-      isAdmin: false,
-      actorUserId: 123,
-    });
-    expect(updated.ok).toBe(true);
-
-    const deleted = deleteDirectoryPerson({ personId: 5, actorUserId: 123 });
-    expect(deleted).toEqual({ ok: true, value: { deleted: 5 } });
-
-    expect(console.info).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "create",
-        actorUserId: 123,
-        personId: 5,
-      }),
-    );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "update",
-        actorUserId: 123,
-        personId: 5,
-      }),
-    );
-    expect(console.info).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: "delete",
-        actorUserId: 123,
-        personId: 5,
-      }),
-    );
   });
 
   it("deletes a directory person linked to a user (auth cleanup then media delete)", () => {
