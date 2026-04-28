@@ -33,10 +33,11 @@ Feature: Unified people directory (accounts + tagging identities)
     When I toggle admin status for that person
     Then the directory reflects the updated admin status
 
-  Scenario: Delete is blocked for a person that is an account identity
-    Given a person exists in the directory and is linked to a user account identity
+  Scenario: Delete a person that can log in is allowed
+    Given a person exists in the directory and can log in
     When I delete that person
-    Then I receive an error explaining identity people cannot be deleted
+    Then that person is removed from the directory
+    And that person can no longer receive a login link
 
   Scenario: Delete a person with tagged media removes their tags
     Given a person exists in the directory and has media tagged to them

@@ -5,6 +5,10 @@ vi.mock("../db/auth.js", () => ({
   getWhitelist: vi.fn(),
   getWhitelistByEmail: vi.fn(),
   upsertWhitelistEntryByEmail: vi.fn(),
+  getUserIdsByPersonId: vi.fn(),
+  deleteRefreshTokensByUserIds: vi.fn(),
+  deleteUsersByPersonId: vi.fn(),
+  deleteWhitelistByPersonId: vi.fn(),
 }));
 
 vi.mock("../db/media.js", () => ({
@@ -36,6 +40,10 @@ describe("people-directory-admin-service", () => {
     vi.mocked(authDb.getWhitelist).mockReset();
     vi.mocked(authDb.getWhitelistByEmail).mockReset();
     vi.mocked(authDb.upsertWhitelistEntryByEmail).mockReset();
+    vi.mocked(authDb.getUserIdsByPersonId).mockReset();
+    vi.mocked(authDb.deleteRefreshTokensByUserIds).mockReset();
+    vi.mocked(authDb.deleteUsersByPersonId).mockReset();
+    vi.mocked(authDb.deleteWhitelistByPersonId).mockReset();
     vi.spyOn(console, "info").mockImplementation(() => undefined);
   });
 
@@ -47,6 +55,7 @@ describe("people-directory-admin-service", () => {
     vi.mocked(authDb.getWhitelistByEmail).mockReturnValue(null);
     vi.mocked(mediaDb.createPerson).mockReturnValue(5);
     vi.mocked(mediaDb.deletePersonSafe).mockReturnValue({ ok: true });
+    vi.mocked(authDb.getUserIdsByPersonId).mockReturnValue([]);
 
     const created = createDirectoryPerson({
       name: "New",
@@ -85,6 +94,26 @@ describe("people-directory-admin-service", () => {
         actorUserId: 123,
         personId: 5,
       }),
+    );
+  });
+
+  it("deletes a directory person linked to a user (auth cleanup then media delete)", () => {
+    vi.mocked(authDb.getUserIdsByPersonId).mockReturnValue([10, 11]);
+    vi.mocked(mediaDb.deletePersonSafe).mockReturnValue({ ok: true });
+
+    const deleted = deleteDirectoryPerson({ personId: 555, actorUserId: 123 });
+    expect(deleted).toEqual({ ok: true, value: { deleted: 555 } });
+
+    expect(authDb.getUserIdsByPersonId).toHaveBeenCalledWith(555);
+    expect(authDb.deleteRefreshTokensByUserIds).toHaveBeenCalledWith([10, 11]);
+    expect(authDb.deleteUsersByPersonId).toHaveBeenCalledWith(555);
+    expect(authDb.deleteWhitelistByPersonId).toHaveBeenCalledWith(555);
+    expect(mediaDb.deletePersonSafe).toHaveBeenCalledWith(555);
+
+    const callOrder = (fn: unknown) =>
+      vi.mocked(fn as () => unknown).mock.invocationCallOrder[0] ?? 0;
+    expect(callOrder(authDb.deleteWhitelistByPersonId)).toBeLessThan(
+      callOrder(mediaDb.deletePersonSafe),
     );
   });
 

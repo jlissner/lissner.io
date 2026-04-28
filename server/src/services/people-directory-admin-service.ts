@@ -229,20 +229,18 @@ export function deleteDirectoryPerson(input: {
   personId: number;
   actorUserId?: number;
 }): AdminServiceResult<{ deleted: number }> {
-  const deleted = mediaDb.deletePersonSafe(input.personId);
-  if (!deleted.ok) {
-    throw new HttpError(
-      409,
-      "Cannot delete a person linked to a user account",
-      "person_linked_to_user",
-    );
-  }
+  const userIds = authDb.getUserIdsByPersonId(input.personId);
+  authDb.deleteRefreshTokensByUserIds(userIds);
+  authDb.deleteUsersByPersonId(input.personId);
+  authDb.deleteWhitelistByPersonId(input.personId);
+  mediaDb.deletePersonSafe(input.personId);
 
   console.info({
     action: "delete",
     actorUserId: input.actorUserId ?? null,
     personId: input.personId,
     email: null,
+    deletedUserIds: userIds,
   });
 
   return ok({ deleted: input.personId });

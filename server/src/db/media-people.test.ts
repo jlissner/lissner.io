@@ -68,7 +68,7 @@ describe("media-people delete semantics", () => {
     expect(person).toBeUndefined();
   });
 
-  it("blocks delete for identity people (linked to a user)", () => {
+  it("allows delete for people linked to a user (keeps person_names while referenced)", () => {
     const db = getDb();
     db.prepare("INSERT INTO person_names (person_id, name) VALUES (?, ?)").run(
       1002,
@@ -78,10 +78,7 @@ describe("media-people delete semantics", () => {
       "INSERT INTO users (email, is_admin, person_id) VALUES (?, ?, ?)",
     ).run("bob@example.com", 0, 1002);
 
-    expect(deletePersonSafe(1002)).toEqual({
-      ok: false,
-      reason: "linked_to_user",
-    });
+    expect(deletePersonSafe(1002)).toEqual({ ok: true });
 
     const person = db
       .prepare("SELECT name FROM person_names WHERE person_id = ?")

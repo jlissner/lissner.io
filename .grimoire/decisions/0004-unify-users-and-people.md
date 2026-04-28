@@ -52,5 +52,5 @@ This ADR explicitly keeps the door open to Option 3 later if the current split b
 ### Confirmation
 
 - Admin can create/update/delete a person from one screen, including account-related fields (email/whitelist/admin) when applicable.
-- Deleting an identity person is blocked with a stable error code; deleting a tagged (non-identity) person is allowed and removes their `image_people` tags.
+- Deleting any person from the directory is allowed; it removes directory entries, removes media tags, and revokes login eligibility where applicable.
 - Existing login flows continue to work without change.

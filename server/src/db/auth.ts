@@ -540,4 +540,45 @@ export function getUsers(): Array<{
   return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
 }
 
+export function getUserIdsByPersonId(personId: number): number[] {
+  const db = getDb();
+  const rows = db
+    .prepare("SELECT id FROM users WHERE person_id = ?")
+    .all(personId) as Array<{ id: number }>;
+  return rows.map((r) => r.id);
+}
+
+export function deleteRefreshTokensByUserIds(userIds: number[]): void {
+  if (userIds.length === 0) return;
+  const db = getDb();
+  const placeholders = userIds.map(() => "?").join(", ");
+  db.prepare(
+    `DELETE FROM refresh_tokens WHERE user_id IN (${placeholders})`,
+  ).run(...userIds);
+}
+
+export function deleteUsersByPersonId(personId: number): number {
+  const db = getDb();
+  return db.transaction(() => {
+    const userIds = getUserIdsByPersonId(personId);
+    if (userIds.length === 0) return 0;
+    const placeholders = userIds.map(() => "?").join(", ");
+    db.prepare(
+      `DELETE FROM user_people WHERE user_id IN (${placeholders})`,
+    ).run(...userIds);
+    const result = db
+      .prepare(`DELETE FROM users WHERE id IN (${placeholders})`)
+      .run(...userIds);
+    return result.changes;
+  })();
+}
+
+export function deleteWhitelistByPersonId(personId: number): number {
+  const db = getDb();
+  const result = db
+    .prepare("DELETE FROM auth_whitelist WHERE person_id = ?")
+    .run(personId);
+  return result.changes;
+}
+
 initAuthDb();

@@ -196,6 +196,17 @@ Given("a person exists in the directory", function () {
   assert.ok(existsSync("server/src/routes/admin/people-directory-routes.ts"));
 });
 
+Given("a person exists in the directory and can log in", function () {
+  assert.ok(
+    existsSync("server/src/db/auth.ts"),
+    "Expected auth persistence module to exist for login eligibility",
+  );
+  assert.ok(
+    existsSync("server/src/services/people-directory-admin-service.ts"),
+    "Expected directory admin service to exist for admin deletion behavior",
+  );
+});
+
 When("I update their name and email", function () {
   assert.ok(existsSync("server/src/routes/admin.ts"));
 });
@@ -212,13 +223,6 @@ Then("the directory reflects the updated admin status", function () {
   assert.ok(existsSync("server/src/routes/admin.ts"));
 });
 
-Given(
-  "a person exists in the directory and is linked to a user account identity",
-  function () {
-    assert.ok(existsSync("server/src/db/auth.ts"));
-  },
-);
-
 When("I delete that person", function () {
   assert.ok(existsSync("server/src/db/media-people.ts"));
 });
@@ -227,16 +231,16 @@ Then("that person is removed from the directory", function () {
   assert.ok(existsSync("server/src/db/media-people.ts"));
 });
 
+Then("that person can no longer receive a login link", function () {
+  assert.ok(
+    existsSync("server/src/db/auth.ts"),
+    "Expected auth module to exist for login-link eligibility changes",
+  );
+});
+
 Then("the system removes that person's tags from media", function () {
   assert.ok(existsSync("server/src/db/media-people.ts"));
 });
-
-Then(
-  "I receive an error explaining identity people cannot be deleted",
-  function () {
-    assert.ok(existsSync("server/src/lib/api-error.ts"));
-  },
-);
 
 Then("I receive an error explaining the email is invalid", function () {
   assert.ok(existsSync("server/src/validation/admin-schemas.ts"));

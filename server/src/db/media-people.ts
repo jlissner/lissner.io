@@ -32,11 +32,11 @@ function buildPeopleStmts() {
     countUsersWithPersonId: db.prepare(
       "SELECT COUNT(*) as count FROM users WHERE person_id = ?",
     ),
+    countWhitelistWithPersonId: db.prepare(
+      "SELECT COUNT(*) as count FROM auth_whitelist WHERE person_id = ?",
+    ),
     deleteUserPeopleByPersonId: db.prepare(
       "DELETE FROM user_people WHERE person_id = ?",
-    ),
-    clearWhitelistPersonId: db.prepare(
-      "UPDATE auth_whitelist SET person_id = NULL WHERE person_id = ?",
     ),
     listPersonIdsForMedia: db.prepare(
       "SELECT person_id FROM image_people WHERE media_id = ? ORDER BY person_id",
@@ -255,30 +255,28 @@ export function mergePeople(keepId: number, mergeFromId: number): void {
   peopleStmts().deletePersonNameByPerson.run(mergeFromId);
 }
 
-type DeletePersonSafeResult =
-  | { ok: true }
-  | { ok: false; reason: "linked_to_user" };
+type DeletePersonSafeResult = { ok: true };
 
 /**
  * Delete a person when safe.
- *
- * Note: `users.person_id` is the user's identity. We do not delete those people.
- * We do remove `user_people` rows (permissions) and clear `auth_whitelist.person_id`.
  */
 export function deletePersonSafe(personId: number): DeletePersonSafeResult {
-  const row = peopleStmts().countUsersWithPersonId.get(personId) as
-    | { count: number }
-    | undefined;
-  if ((row?.count ?? 0) > 0) {
-    return { ok: false, reason: "linked_to_user" };
-  }
-
   const db = getDb();
   db.transaction(() => {
+    const usersRow = peopleStmts().countUsersWithPersonId.get(personId) as
+      | { count: number }
+      | undefined;
+    const whitelistRow = peopleStmts().countWhitelistWithPersonId.get(
+      personId,
+    ) as { count: number } | undefined;
+    const isReferenced =
+      (usersRow?.count ?? 0) > 0 || (whitelistRow?.count ?? 0) > 0;
+
     peopleStmts().deleteUserPeopleByPersonId.run(personId);
-    peopleStmts().clearWhitelistPersonId.run(personId);
     peopleStmts().deleteImagePeopleByPerson.run(personId);
-    peopleStmts().deletePersonNameByPerson.run(personId);
+    if (!isReferenced) {
+      peopleStmts().deletePersonNameByPerson.run(personId);
+    }
   })();
 
   return { ok: true };
