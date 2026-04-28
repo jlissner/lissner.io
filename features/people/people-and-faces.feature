@@ -34,6 +34,12 @@ Feature: People and face assignment
     When I assign a face region to a person
     Then that assignment is saved and reflected when I reload faces for the item
 
+  Scenario: Tag a person as appearing in a video
+    Given I have a video open in the media viewer
+    And a person exists
+    When I tag that person as appearing in the video
+    Then that person appears in the video's tagged people list
+
   Scenario: Remove or reassign a face link
     Given a face on media is linked to a person
     When I remove or reassign that link

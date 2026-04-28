@@ -59,6 +59,7 @@ type ApiErrorCode =
   | "face_box_required"
   | "face_person_required"
   | "face_person_unknown"
+  | "person_linked_to_user"
   | "invalid_backup_key"
   | "invalid_db_backup"
   | "db_restore_failed"

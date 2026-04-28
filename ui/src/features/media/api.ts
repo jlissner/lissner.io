@@ -95,7 +95,7 @@ export function listMediaFaces(
 
 export function addPersonToMedia(
   mediaId: string,
-  body: { createNew?: true; personId?: number; box: FaceBox },
+  body: { createNew?: true; personId?: number; box?: FaceBox },
 ): Promise<unknown> {
   return apiJson(`media/${mediaId}/people`, {
     method: "POST",

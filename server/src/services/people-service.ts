@@ -49,15 +49,18 @@ export function createPersonNamed(name: string): CreatePersonResponse {
   return { id, name: name.trim() };
 }
 
-type DeletePersonResult = { ok: true } | ServiceFailure<"not_found">;
+type DeletePersonResult =
+  | { ok: true }
+  | ServiceFailure<"not_found" | "linked_to_user">;
 
 export function deletePersonById(personId: number): DeletePersonResult {
   const allIds = db.getAllPersonIds();
   if (!allIds.includes(personId)) {
     return { ok: false, reason: "not_found" };
   }
-  db.deletePerson(personId);
-  return { ok: true };
+  const deleted = db.deletePersonSafe(personId);
+  if (!deleted.ok) return deleted;
+  return { ok: true as const };
 }
 
 type MergePeopleResult =

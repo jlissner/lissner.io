@@ -60,6 +60,15 @@ peopleRouter.delete("/:id", (req, res) => {
   const { id } = parseWithSchema(personIdParamsSchema, req.params);
   const result = deletePersonById(id);
   if (!result.ok) {
+    if (result.reason === "linked_to_user") {
+      sendApiError(
+        res,
+        409,
+        "Cannot delete a person linked to a user account",
+        "person_linked_to_user",
+      );
+      return;
+    }
     sendApiError(res, 404, "Person not found", "person_not_found");
     return;
   }

@@ -1,5 +1,6 @@
 import * as db from "../db/media.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
+import { isVideoMime } from "../lib/media-mime.js";
 import type { ServiceFailure } from "./service-result.js";
 
 type AddPersonToMediaTagResult =
@@ -33,7 +34,29 @@ export function addPersonToMediaTag(params: {
   createNew: boolean;
 }): AddPersonToMediaTagResult {
   const item = db.getMediaById(params.mediaId);
-  if (!item || !isEffectiveImageItem(item)) {
+  if (!item) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  if (isVideoMime(item.mimeType)) {
+    if (params.createNew) {
+      const targetPersonId = db.createNewPerson();
+      db.addPersonToMediaNoBox(item.id, targetPersonId);
+      return { ok: true, personId: targetPersonId, created: "new" };
+    }
+    const id = parseInt(String(params.personId ?? ""), 10);
+    if (isNaN(id) || id < 1) {
+      return { ok: false, reason: "person_required" };
+    }
+    const allIds = db.getAllPersonIds();
+    if (!allIds.includes(id)) {
+      return { ok: false, reason: "person_not_found" };
+    }
+    db.addPersonToMediaNoBox(item.id, id);
+    return { ok: true, personId: id, created: "existing" };
+  }
+
+  if (!isEffectiveImageItem(item)) {
     return { ok: false, reason: "not_found" };
   }
   const box = params.box;
