@@ -7,7 +7,6 @@ import { groupItemsByDay, type MediaItem } from "./media-viewer/media-utils";
 interface MediaListProps {
   items: MediaItem[];
   loading: boolean;
-  columnsPerRow?: number;
   sortBy?: "uploaded" | "taken";
   selected: Set<string>;
   setSelected: React.Dispatch<React.SetStateAction<Set<string>>>;
@@ -20,7 +19,6 @@ interface MediaListProps {
 export function MediaList({
   items,
   loading,
-  columnsPerRow = 8,
   sortBy = "taken",
   selected,
   setSelected,
@@ -41,7 +39,6 @@ export function MediaList({
   }
 
   const groups = groupItemsByDay(items, sortBy);
-  const gridClass = `media-grid media-grid--cols-${columnsPerRow}`;
 
   return (
     <>
@@ -73,7 +70,7 @@ export function MediaList({
               />
             </label>
             <ul
-              className={gridClass}
+              className="media-grid"
               style={{ listStyle: "none", padding: 0, margin: 0 }}
             >
               {groupItems.map((item) => (

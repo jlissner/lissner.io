@@ -1,5 +1,4 @@
 import { HomePageToolbar } from "./home-page-toolbar";
-import { HomePageFilters } from "./home-page-filters";
 import { MediaListBulkActions } from "./media-viewer/media-list-bulk-actions";
 
 interface HomePageHeaderBarProps {
@@ -11,11 +10,6 @@ interface HomePageHeaderBarProps {
   indexPolling: boolean;
   toolbarError: string | null;
   hasUnindexed: boolean;
-  title: string;
-  sortBy: "uploaded" | "taken";
-  setSortBy: (v: "uploaded" | "taken") => void;
-  columnsPerRow: number;
-  setColumnsPerRow: (v: number) => void;
   selectedCount: number;
   onBulkDownload: () => void;
   onBulkDelete?: () => void;
@@ -35,11 +29,6 @@ export function HomePageHeaderBar({
   indexPolling,
   toolbarError,
   hasUnindexed,
-  title,
-  sortBy,
-  setSortBy,
-  columnsPerRow,
-  setColumnsPerRow,
   selectedCount,
   onBulkDownload,
   onBulkDelete,
@@ -76,13 +65,6 @@ export function HomePageHeaderBar({
           />
         )}
       </div>
-      <HomePageFilters
-        title={title}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        columnsPerRow={columnsPerRow}
-        setColumnsPerRow={setColumnsPerRow}
-      />
     </div>
   );
 }

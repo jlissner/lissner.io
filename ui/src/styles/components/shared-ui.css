@@ -296,6 +296,28 @@
   }
 }
 
+/* Home: horizontal padding lives on header + scroll; timeline column is edge-to-edge */
+.main.main--home {
+  padding-inline: 0;
+  padding-top: var(--space-2);
+  padding-bottom: calc(
+    var(--space-3) + 56px + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+@media (min-width: 640px) {
+  .main.main--home {
+    padding-top: var(--space-3);
+    padding-bottom: var(--space-4);
+  }
+}
+
+@media (min-width: 768px) {
+  .main.main--home {
+    padding-bottom: var(--space-6);
+  }
+}
+
 /* ========== Buttons ========== */
 .btn {
   display: inline-flex;

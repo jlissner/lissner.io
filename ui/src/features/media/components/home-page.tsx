@@ -5,11 +5,7 @@ import { TimelineScrubber } from "./TimelineScrubber";
 import { BulkDateModal } from "./BulkDateModal";
 import { useHomePage } from "../hooks/use-home-page";
 
-interface HomePageProps {
-  title?: string;
-}
-
-export function HomePage({ title: titleProp }: HomePageProps) {
+export function HomePage() {
   const [bulkDateOpen, setBulkDateOpen] = useState(false);
 
   const {
@@ -31,8 +27,6 @@ export function HomePage({ title: titleProp }: HomePageProps) {
     handleIndex,
     indexPolling,
     toolbarError,
-    columnsPerRow,
-    setColumnsPerRow,
     sortBy,
     setSortBy,
     selected,
@@ -50,8 +44,6 @@ export function HomePage({ title: titleProp }: HomePageProps) {
     jumpToOffset,
   } = useHomePage();
 
-  const title = titleProp ?? (isSearchMode ? "Search results" : "Your files");
-
   const handleBulkDateDone = useCallback(() => {
     setBulkDateOpen(false);
     clearSelection();
@@ -59,7 +51,7 @@ export function HomePage({ title: titleProp }: HomePageProps) {
   }, [clearSelection, fetchItems]);
 
   return (
-    <>
+    <div className="home-page">
       <HomePageHeaderBar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -69,11 +61,6 @@ export function HomePage({ title: titleProp }: HomePageProps) {
         indexPolling={indexPolling}
         toolbarError={toolbarError}
         hasUnindexed={hasUnindexed}
-        title={title}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        columnsPerRow={columnsPerRow}
-        setColumnsPerRow={setColumnsPerRow}
         selectedCount={selected.size}
         onBulkDownload={handleBulkDownload}
         onBulkDelete={handleBulkDeleteWrapped}
@@ -99,7 +86,6 @@ export function HomePage({ title: titleProp }: HomePageProps) {
           <MediaList
             items={displayItems}
             loading={loading && !isSearchMode}
-            columnsPerRow={columnsPerRow}
             sortBy={sortBy}
             selected={selected}
             setSelected={setSelected}
@@ -134,6 +120,6 @@ export function HomePage({ title: titleProp }: HomePageProps) {
           onDone={handleBulkDateDone}
         />
       )}
-    </>
+    </div>
   );
 }

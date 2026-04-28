@@ -45,6 +45,29 @@ function suggestionKey(s: SearchSuggestionItem): string {
   return `person:${s.person.id}`;
 }
 
+function SearchQueryHelpIcon() {
+  return (
+    <svg
+      className="toolbar__search-hint-icon"
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="2" />
+      <path
+        d="M12 16v-5"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="8" r="1.25" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function HomePageToolbar({
   searchQuery,
   setSearchQuery,
@@ -159,131 +182,190 @@ export function HomePageToolbar({
   return (
     <>
       <div className="toolbar">
-        <div className="toolbar__search-wrap">
-          <input
-            ref={inputRef}
-            type="search"
-            placeholder="Search… (#tag @person words — adjacent terms combine with AND)"
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              syncCursor(e.currentTarget);
-            }}
-            onKeyDown={(e) => {
-              if (!open) {
-                if (e.key === "Enter") {
-                  onSearch();
-                }
-                return;
-              }
-              if (e.key === "Escape") {
-                e.preventDefault();
-                setHighlight(0);
-                return;
-              }
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setHighlight((h) =>
-                  suggestionItems.length === 0
-                    ? 0
-                    : (h + 1) % suggestionItems.length,
-                );
-                return;
-              }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setHighlight((h) =>
-                  suggestionItems.length === 0
-                    ? 0
-                    : (h - 1 + suggestionItems.length) % suggestionItems.length,
-                );
-                return;
-              }
-              if (e.key === "Enter" || e.key === "Tab") {
-                e.preventDefault();
-                const item = suggestionItems[highlight];
-                if (item != null) {
-                  applySuggestion(item);
-                }
-                return;
-              }
-            }}
-            onKeyUp={(e) => syncCursor(e.currentTarget)}
-            onClick={(e) => syncCursor(e.currentTarget)}
-            onSelect={(e) => syncCursor(e.currentTarget)}
-            onFocus={() => {
-              clearBlurTimer();
-              setFocused(true);
-              syncCursor(inputRef.current);
-            }}
-            onBlur={() => {
-              blurHideRef.current = setTimeout(() => {
-                setFocused(false);
-              }, 120);
-            }}
-            className="form__input toolbar__search"
-            enterKeyHint="search"
-            role="combobox"
-            aria-expanded={open}
-            aria-autocomplete="list"
-            aria-controls={open ? "search-autocomplete-list" : undefined}
-            aria-activedescendant={
-              open ? `search-autocomplete-option-${highlight}` : undefined
-            }
-          />
-          {open && (
-            <ul
-              id="search-autocomplete-list"
-              className="toolbar__autocomplete"
-              role="listbox"
-              onMouseDown={(ev) => ev.preventDefault()}
-            >
-              {suggestionItems.map((item, index) => {
-                const id = `search-autocomplete-option-${index}`;
-                const selected = index === highlight;
-                return (
-                  <li
-                    key={suggestionKey(item)}
-                    id={id}
-                    role="option"
-                    aria-selected={selected}
-                    className={
-                      selected
-                        ? "toolbar__autocomplete-item toolbar__autocomplete-item--active"
-                        : "toolbar__autocomplete-item"
+        <div className="toolbar__search-inline">
+          <Button
+            className="toolbar__search-submit"
+            onClick={onSearch}
+            disabled={searching}
+            size="sm"
+          >
+            {searching ? "Searching…" : "Search"}
+          </Button>
+          <div className="toolbar__search-wrap">
+            <div className="toolbar__search-field">
+              <input
+                ref={inputRef}
+                type="search"
+                placeholder="@joeLissner AND @ellieLissner AND NOT water"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  syncCursor(e.currentTarget);
+                }}
+                onKeyDown={(e) => {
+                  if (!open) {
+                    if (e.key === "Enter") {
+                      onSearch();
                     }
-                    onMouseEnter={() => setHighlight(index)}
-                    onMouseDown={(ev) => {
-                      ev.preventDefault();
+                    return;
+                  }
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setHighlight(0);
+                    return;
+                  }
+                  if (e.key === "ArrowDown") {
+                    e.preventDefault();
+                    setHighlight((h) =>
+                      suggestionItems.length === 0
+                        ? 0
+                        : (h + 1) % suggestionItems.length,
+                    );
+                    return;
+                  }
+                  if (e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setHighlight((h) =>
+                      suggestionItems.length === 0
+                        ? 0
+                        : (h - 1 + suggestionItems.length) %
+                          suggestionItems.length,
+                    );
+                    return;
+                  }
+                  if (e.key === "Enter" || e.key === "Tab") {
+                    e.preventDefault();
+                    const item = suggestionItems[highlight];
+                    if (item != null) {
                       applySuggestion(item);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    {item.type === "tag" ? (
-                      <>
-                        <span className="toolbar__autocomplete-kind">#</span>
-                        {item.label}
-                      </>
-                    ) : (
-                      <>
-                        <span className="toolbar__autocomplete-kind">@</span>
-                        <span className="toolbar__autocomplete-label">
+                    }
+                    return;
+                  }
+                }}
+                onKeyUp={(e) => syncCursor(e.currentTarget)}
+                onClick={(e) => syncCursor(e.currentTarget)}
+                onSelect={(e) => syncCursor(e.currentTarget)}
+                onFocus={() => {
+                  clearBlurTimer();
+                  setFocused(true);
+                  syncCursor(inputRef.current);
+                }}
+                onBlur={() => {
+                  blurHideRef.current = setTimeout(() => {
+                    setFocused(false);
+                  }, 120);
+                }}
+                className="form__input toolbar__search"
+                enterKeyHint="search"
+                role="combobox"
+                aria-expanded={open}
+                aria-autocomplete="list"
+                aria-controls={open ? "search-autocomplete-list" : undefined}
+                aria-activedescendant={
+                  open ? `search-autocomplete-option-${highlight}` : undefined
+                }
+              />
+              <div
+                className="toolbar__search-hint-wrap"
+                onMouseDown={(e) => e.preventDefault()}
+              >
+                <button
+                  type="button"
+                  className="toolbar__search-hint"
+                  aria-label="How search works"
+                  aria-describedby="toolbar-search-query-help"
+                >
+                  <SearchQueryHelpIcon />
+                </button>
+                <span className="toolbar__search-hint-bridge" aria-hidden />
+                <div
+                  id="toolbar-search-query-help"
+                  className="toolbar__search-hint-popover"
+                  role="tooltip"
+                >
+                  <p className="toolbar__search-hint-lead">
+                    Combine tags, people, and words. Press Search or Enter to
+                    run the query.
+                  </p>
+                  <ul className="toolbar__search-hint-list">
+                    <li>
+                      <strong>#tag</strong> — filter by tag (e.g.{" "}
+                      <code>#vacation</code>).
+                    </li>
+                    <li>
+                      <strong>@handle</strong> — filter by person; the handle is
+                      letters and numbers from their name (e.g.{" "}
+                      <code>@joelissner</code>). Suggestions appear while you
+                      type after <code>#</code> or <code>@</code>.
+                    </li>
+                    <li>
+                      Other words match the AI description of each photo
+                      (semantic search).
+                    </li>
+                    <li>
+                      Use <strong>AND</strong>, <strong>OR</strong>, and{" "}
+                      <strong>NOT</strong> (case-insensitive). Use parentheses
+                      to group.
+                    </li>
+                    <li>
+                      Terms next to each other must all match (implicit{" "}
+                      <strong>AND</strong>), e.g. <code>@person beach</code>.
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+            {open && (
+              <ul
+                id="search-autocomplete-list"
+                className="toolbar__autocomplete"
+                role="listbox"
+                onMouseDown={(ev) => ev.preventDefault()}
+              >
+                {suggestionItems.map((item, index) => {
+                  const id = `search-autocomplete-option-${index}`;
+                  const selected = index === highlight;
+                  return (
+                    <li
+                      key={suggestionKey(item)}
+                      id={id}
+                      role="option"
+                      aria-selected={selected}
+                      className={
+                        selected
+                          ? "toolbar__autocomplete-item toolbar__autocomplete-item--active"
+                          : "toolbar__autocomplete-item"
+                      }
+                      onMouseEnter={() => setHighlight(index)}
+                      onMouseDown={(ev) => {
+                        ev.preventDefault();
+                        applySuggestion(item);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      {item.type === "tag" ? (
+                        <>
+                          <span className="toolbar__autocomplete-kind">#</span>
                           {item.label}
-                        </span>
-                        <span className="toolbar__autocomplete-meta">
-                          @{item.handle}
-                        </span>
-                      </>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+                        </>
+                      ) : (
+                        <>
+                          <span className="toolbar__autocomplete-kind">@</span>
+                          <span className="toolbar__autocomplete-label">
+                            {item.label}
+                          </span>
+                          <span className="toolbar__autocomplete-meta">
+                            @{item.handle}
+                          </span>
+                        </>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </div>
         </div>
-        <Button onClick={onSearch} disabled={searching} size="sm">
-          {searching ? "Searching…" : "Search"}
-        </Button>
         {(hasUnindexed || indexPolling) && (
           <Button
             variant="secondary"

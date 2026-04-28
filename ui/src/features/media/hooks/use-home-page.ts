@@ -65,8 +65,6 @@ export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
     handleIndex: bulkActions.handleIndex,
     indexPolling,
     toolbarError: mediaSearch.toolbarError,
-    columnsPerRow: mediaList.columnsPerRow,
-    setColumnsPerRow: mediaList.setColumnsPerRow,
     sortBy: mediaList.sortBy,
     setSortBy: mediaList.setSortBy,
     handleDelete: bulkActions.handleDelete,

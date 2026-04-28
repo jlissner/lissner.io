@@ -17,7 +17,6 @@ export function useMediaListQuery({
   isSearchMode,
 }: UseMediaListQueryOptions) {
   const queryClient = useQueryClient();
-  const [columnsPerRow, setColumnsPerRow] = useState(8);
   const [sortBy, setSortBy] = useState<"uploaded" | "taken">("uploaded");
   const [startOffset, setStartOffset] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -176,8 +175,6 @@ export function useMediaListQuery({
     sentinelRef,
     topSentinelRef,
     scrollContainerRef,
-    columnsPerRow,
-    setColumnsPerRow,
     sortBy,
     setSortBy,
     jumpToOffset,

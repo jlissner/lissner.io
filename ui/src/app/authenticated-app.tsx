@@ -167,7 +167,7 @@ export function AuthenticatedApp() {
             ))}
           </NavMenu>
         </nav>
-        <main className="main">
+        <main className={page === "home" ? "main main--home" : "main"}>
           <Suspense fallback={<div className="u-pad">Loading…</div>}>
             {mainPage}
           </Suspense>
