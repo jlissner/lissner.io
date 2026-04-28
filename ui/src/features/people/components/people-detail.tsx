@@ -152,8 +152,8 @@ export function PeopleDetail({
               const hasBox =
                 selectedId && pm.x != null && pm.width != null && pm.width > 0;
               const thumbSrc = hasBox
-                ? `/api/media/${m.id}/face/${selectedId}`
-                : `/api/media/${m.id}/thumbnail`;
+                ? `/api/media/${m.id}/face/${selectedId}?v=${encodeURIComponent(String(m.size))}`
+                : `/api/media/${m.id}/thumbnail?v=${encodeURIComponent(String(m.size))}`;
               const usePixelHybrid =
                 !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
               return (

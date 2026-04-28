@@ -1,5 +1,10 @@
 import { useState } from "react";
-import { isImage, isPixelMotionPhotoBasename, isVideo } from "./media-utils";
+import {
+  isImage,
+  isPixelMotionPhotoBasename,
+  isVideo,
+  mediaThumbnailUrl,
+} from "./media-utils";
 import type { MediaItem } from "./media-utils";
 
 function FallbackImage({
@@ -39,13 +44,13 @@ function FallbackImage({
 function VideoThumbnail({
   item,
 }: {
-  item: { id: string; originalName: string };
+  item: { id: string; originalName: string; size: number };
 }) {
   const [thumbLoaded, setThumbLoaded] = useState(false);
   return (
     <div className="media-cell__video-wrap">
       <FallbackImage
-        src={`/api/media/${item.id}/thumbnail`}
+        src={mediaThumbnailUrl(item)}
         alt={item.originalName}
         fallbackIcon="🎬"
         className="media-cell__img"
@@ -70,13 +75,13 @@ function VideoThumbnail({
 function MotionPairThumbnail({
   item,
 }: {
-  item: { id: string; originalName: string };
+  item: { id: string; originalName: string; size: number };
 }) {
   const [loaded, setLoaded] = useState(false);
   return (
     <div className="media-cell__video-wrap">
       <FallbackImage
-        src={`/api/media/${item.id}/thumbnail`}
+        src={mediaThumbnailUrl(item)}
         alt={item.originalName}
         fallbackIcon="📷"
         className="media-cell__img"
@@ -180,7 +185,7 @@ export function MediaItemCell({
             <VideoThumbnail item={item} />
           ) : isImage(item.mimeType, item.originalName) ? (
             <FallbackImage
-              src={`/api/media/${item.id}/thumbnail`}
+              src={mediaThumbnailUrl(item)}
               alt={item.originalName}
               fallbackIcon="📷"
               className="media-cell__img"

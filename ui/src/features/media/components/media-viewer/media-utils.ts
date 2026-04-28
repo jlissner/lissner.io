@@ -4,6 +4,10 @@ import { MediaListItem } from "@shared";
 
 export type MediaItem = MediaListItem;
 
+export function mediaThumbnailUrl(item: { id: string; size: number }): string {
+  return `/api/media/${item.id}/thumbnail?v=${encodeURIComponent(String(item.size))}`;
+}
+
 function getItemDateKeyForSort(
   item: MediaItem,
   sortBy: "uploaded" | "taken",

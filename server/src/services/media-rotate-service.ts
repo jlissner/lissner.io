@@ -92,8 +92,8 @@ export async function rotateMediaImage90Clockwise(
 
     db.setMediaFileSize(mediaId, rotatedBuf.length);
     db.clearMediaBackedUpAt(mediaId);
-    const thumbPath = path.join(thumbnailsDir, `${mediaId}_thumb.jpg`);
-    await unlink(thumbPath).catch(() => {});
+    const imageThumbPath = path.join(thumbnailsDir, `${mediaId}_thumb.jpg`);
+    await unlink(imageThumbPath).catch(() => {});
 
     db.deleteEmbeddingsForMedia(mediaId);
     const updated = db.getMediaById(mediaId);
@@ -108,6 +108,8 @@ export async function rotateMediaImage90Clockwise(
       size: updated.size,
       uploadedAt: updated.uploadedAt,
     });
+    await unlink(imageThumbPath).catch(() => {});
+
     scheduleBackupSyncAfterUpload();
     return { ok: true, size: rotatedBuf.length };
   } catch (err) {

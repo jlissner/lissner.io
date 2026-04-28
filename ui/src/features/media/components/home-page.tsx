@@ -92,7 +92,7 @@ export function HomePage() {
             selectionMode={selectionMode}
             onCheckboxToggle={handleCheckboxToggle}
             onToggleSelectAllForDay={toggleSelectAllForDay}
-            onUpdate={undefined}
+            onUpdate={fetchItems}
           />
           {!isSearchMode && items.length < total && total > 0 && (
             <div
