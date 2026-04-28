@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { parseMediaIdFromSearchString } from "./media-viewer-url";
+import {
+  MEDIA_URL_QUERY_KEY,
+  parseMediaIdFromSearchString,
+} from "./media-viewer-url";
+
+// Gherkin trace: features/media/home-gallery.feature — scenario "Deep link opens the viewer".
+// URL sync and clearing `media=` on dismiss live in use-media-viewer-url-sync.ts (browser history).
+describe("features/media/home-gallery.feature — Scenario: Deep link opens the viewer", () => {
+  it("uses MEDIA_URL_QUERY_KEY and parses ?media= for deep links", () => {
+    expect(MEDIA_URL_QUERY_KEY).toBe("media");
+    expect(parseMediaIdFromSearchString("?media=test-id")).toBe("test-id");
+  });
+});
 
 describe("parseMediaIdFromSearchString", () => {
   it("returns null for empty or missing media param", () => {
