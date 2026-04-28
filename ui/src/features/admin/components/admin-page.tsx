@@ -207,9 +207,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         : null;
     const code = body && typeof body.code === "string" ? body.code : null;
 
-    if (err.status === 409 && code === "person_linked_to_user") {
-      return "This person is linked to a login identity and cannot be deleted.";
-    }
     if (err.status === 400 && code === "person_directory_invalid_email") {
       return "That email address is invalid.";
     }
@@ -992,12 +989,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
                             onClick={() =>
                               void handleDeleteDirectoryPerson(row)
                             }
-                            disabled={directorySaving || row.isIdentity}
-                            title={
-                              row.isIdentity
-                                ? "Identity people cannot be deleted"
-                                : "Delete person"
-                            }
+                            disabled={directorySaving}
+                            title="Delete person"
                           >
                             Delete
                           </Button>
