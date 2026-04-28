@@ -20,6 +20,9 @@ tools:
   unit_test:
     name: vitest
     command: npx vitest run
+  bdd_test:
+    name: cucumber
+    command: npm run test:bdd
   security:
     name: npm audit
     command: echo "not running audits"
