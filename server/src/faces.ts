@@ -87,7 +87,18 @@ export async function extractFacesFromImage(
   imageId: string,
 ): Promise<FaceInImage[]> {
   const work = async (): Promise<FaceInImage[]> => {
-    const fileStats = await stat(imagePath).catch(() => null);
+    let fileStats: Awaited<ReturnType<typeof stat>> | null = null;
+    try {
+      fileStats = await stat(imagePath);
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (code !== "ENOENT") {
+        console.error(
+          { err, imagePath, imageId },
+          "Face extraction: stat failed",
+        );
+      }
+    }
     if (fileStats == null || !fileStats.isFile()) {
       console.error(red("Face extraction skipped: missing file"));
       console.error(`${gray("[IMAGE ID]")} ${blue(imageId)}`);
@@ -127,7 +138,12 @@ export async function extractFacesFromImage(
   };
 
   const scheduled = faceDetectChain.tail.then(() => work());
-  faceDetectChain.tail = scheduled.catch(() => {});
+  faceDetectChain.tail = scheduled.catch((err) => {
+    console.error(
+      { err, imageId, imagePath },
+      "Face extraction chain step failed",
+    );
+  });
   return scheduled;
 }
 

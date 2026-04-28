@@ -34,7 +34,8 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
             onAuthenticated?.();
             window.location.reload();
           })
-          .catch(() => {
+          .catch((err) => {
+            console.error({ err }, "Magic link verify failed");
             localStorage.removeItem(EMAIL_KEY);
             setStatus("error");
             setCodeError("Invalid or expired code");

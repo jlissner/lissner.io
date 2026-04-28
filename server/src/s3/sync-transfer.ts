@@ -2,7 +2,8 @@ import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 import type { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { createReadStream, createWriteStream } from "fs";
-import { access, rename, unlink } from "fs/promises";
+import { access, rename } from "fs/promises";
+import { unlinkBestEffort } from "../lib/fs-best-effort.js";
 import type { Readable } from "stream";
 import { pipeline } from "stream/promises";
 
@@ -70,7 +71,15 @@ export async function listS3ObjectsWithMetadata(
 export function fileExists(filePath: string): Promise<boolean> {
   return access(filePath)
     .then(() => true)
-    .catch(() => false);
+    .catch((err: unknown) => {
+      const code = (err as NodeJS.ErrnoException)?.code;
+      if (code === "ENOENT") return false;
+      console.error(
+        { err, path: filePath },
+        "fileExists: unexpected access error",
+      );
+      return false;
+    });
 }
 
 function isNodeReadableStream(body: unknown): body is Readable {
@@ -87,7 +96,10 @@ export async function downloadS3ObjectToFile(
   const tmpPath = `${targetPath}.tmp-${Date.now()}`;
   await pipeline(body, createWriteStream(tmpPath));
   // Atomic replace on same filesystem.
-  await unlink(targetPath).catch(() => {});
+  await unlinkBestEffort(
+    targetPath,
+    "[s3-transfer] remove existing file before atomic replace",
+  );
   await rename(tmpPath, targetPath);
 }
 

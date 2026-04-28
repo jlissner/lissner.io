@@ -1,9 +1,12 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import Database from "better-sqlite3";
-import { readdir, unlink } from "fs/promises";
 import path from "path";
 import * as authDb from "../db/auth.js";
 import * as db from "../db/media.js";
+import {
+  readdirOrEmptyWithWarn,
+  unlinkBestEffort,
+} from "../lib/fs-best-effort.js";
 import {
   dbPath,
   mediaDir,
@@ -123,7 +126,10 @@ export async function runSync(
     db.markMediaBackedUpByFilenames([...s3MediaFilenames]);
 
     // 3. Upload thumbnails (only if not already in S3; skip empty/corrupt local files)
-    const localThumbs = await readdir(thumbnailsDir).catch(() => []);
+    const localThumbs = await readdirOrEmptyWithWarn(
+      thumbnailsDir,
+      "[s3-sync] readdir thumbnails for upload",
+    );
     const toUploadThumbs: string[] = [];
     for (const f of localThumbs) {
       if (s3ThumbFilenames.has(f)) continue;
@@ -356,7 +362,7 @@ export async function runSync(
       }
 
       backupDb.close();
-      await unlink(backupDbPath).catch(() => {});
+      await unlinkBestEffort(backupDbPath, "[s3-sync] remove merge temp db");
     }
 
     const mediaIds = new Set(db.listMedia().map((m) => m.id));

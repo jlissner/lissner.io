@@ -1,7 +1,8 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { mkdir, rename, unlink } from "fs/promises";
+import { mkdir, rename } from "fs/promises";
 import path from "path";
 import { closeMediaDb, getDb } from "../db/media-db.js";
+import { unlinkBestEffort } from "../lib/fs-best-effort.js";
 import { resetMediaMotionStatementCache } from "../db/media-motion.js";
 import { resetMediaPeopleStatementCache } from "../db/media-people.js";
 import { resetMediaReadStatementCache } from "../db/media-read.js";
@@ -86,15 +87,21 @@ export async function restoreDbFromS3BackupKey(
       }
       await downloadS3ObjectToFile(body, tempPath);
       if (!validateSqliteDbFile(tempPath)) {
-        await unlink(tempPath).catch(() => {});
+        await unlinkBestEffort(
+          tempPath,
+          "[admin-db-restore] remove invalid temp db",
+        );
         return { ok: false, reason: "invalid_db" };
       }
-      await unlink(dbPath).catch(() => {});
+      await unlinkBestEffort(dbPath, "[admin-db-restore] replace live db");
       await rename(tempPath, dbPath);
       return { ok: true };
     } catch (err) {
       console.error({ err, key }, "[admin-db-restore] restore failed");
-      await unlink(tempPath).catch(() => {});
+      await unlinkBestEffort(
+        tempPath,
+        "[admin-db-restore] cleanup temp db after failure",
+      );
       return { ok: false, reason: "download_failed" };
     }
   })();

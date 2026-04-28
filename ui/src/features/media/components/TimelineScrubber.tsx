@@ -72,7 +72,10 @@ export function TimelineScrubber({
     const params = new URLSearchParams({ sortBy });
     apiJson<{ months: string[] }>(`media/timeline?${params}`)
       .then((data) => setMonths(data.months))
-      .catch(() => setMonths([]));
+      .catch((err) => {
+        console.error({ err, sortBy }, "Timeline months fetch failed");
+        setMonths([]);
+      });
   }, [sortBy]);
 
   useEffect(() => {
@@ -202,7 +205,12 @@ export function TimelineScrubber({
           onJumpToMonth(offset);
           closeDrawerIfNarrow();
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.error(
+            { err, sortBy, monthKey },
+            "Timeline offset fetch failed",
+          );
+        });
     },
     [scrollContainerRef, sortBy, onJumpToMonth, closeDrawerIfNarrow],
   );

@@ -99,7 +99,8 @@ export function useMediaViewerUrlSync({
           skipNextUrlWrite.current = true;
           setViewing(details);
         })
-        .catch(() => {
+        .catch((err) => {
+          console.error({ err, urlId }, "Deep-link media details fetch failed");
           if (mediaIdFromWindowLocation() !== urlId) return;
           removeMediaParamFromUrl();
           setViewing(null);

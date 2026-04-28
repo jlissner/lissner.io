@@ -3,6 +3,7 @@ import path from "path";
 import * as db from "../db/media.js";
 import { indexMediaItem } from "../indexing/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import { unlinkBestEffort } from "../lib/fs-best-effort.js";
 import type { ServiceFailure } from "./service-result.js";
 import { scheduleBackupSyncAfterUpload } from "../s3/sync-schedule.js";
 import { deleteMediaFromS3 } from "../s3/sync-restore.js";
@@ -59,7 +60,10 @@ export async function deleteMediaItem(
     });
     if (item.mimeType.startsWith("video/")) {
       const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
-      await unlink(thumbPath).catch(() => {});
+      await unlinkBestEffort(
+        thumbPath,
+        "[delete-media] remove video thumbnail",
+      );
     }
     const s3Target = { id: item.id, filename: item.filename };
     db.clearMotionPairForPeer(item.id);

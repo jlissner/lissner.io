@@ -39,8 +39,10 @@ export function usePeoplePreview({
         if (cancelled.value) return;
         setMergeSuggestions(suggestions);
       })
-      .catch(() => {
-        if (!cancelled.value) setMergeSuggestions([]);
+      .catch((err) => {
+        if (cancelled.value) return;
+        console.error({ err, selectedId }, "Merge suggestions fetch failed");
+        setMergeSuggestions([]);
       })
       .finally(() => {
         if (!cancelled.value) setMergeSuggestionsLoading(false);
@@ -59,7 +61,10 @@ export function usePeoplePreview({
     setPreviewLoading(true);
     listPersonMediaPreviews(selectedId)
       .then((data) => setPreviewMedia(data as PersonMediaItem[]))
-      .catch(() => setPreviewMedia([]))
+      .catch((err) => {
+        console.error({ err, selectedId }, "Person media preview fetch failed");
+        setPreviewMedia([]);
+      })
       .finally(() => setPreviewLoading(false));
   }, [selectedId]);
 

@@ -39,7 +39,10 @@ function attemptRefresh(): Promise<boolean> {
     credentials: "include",
   })
     .then((res) => res.ok)
-    .catch(() => false)
+    .catch((err) => {
+      console.error({ err }, "auth refresh request failed");
+      return false;
+    })
     .finally(() => {
       refreshState.promise = null;
     });

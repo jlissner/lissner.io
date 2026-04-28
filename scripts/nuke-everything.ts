@@ -22,6 +22,7 @@ import {
   syncTempDbPath,
   thumbnailsDir,
 } from "../server/src/config/paths.js";
+import { unlinkBestEffort } from "../server/src/lib/fs-best-effort.js";
 
 const S3_PREFIX = "backup";
 
@@ -269,7 +270,7 @@ async function main(): Promise<void> {
   );
 
   if (syncTempExists) {
-    await unlink(syncTempDbPath).catch(() => {});
+    await unlinkBestEffort(syncTempDbPath, "[nuke] remove sync temp db");
     console.log("  Removed sync temp DB.");
   }
 

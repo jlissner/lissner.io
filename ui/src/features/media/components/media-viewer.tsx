@@ -51,7 +51,13 @@ export function MediaViewer({
           res.ok ? res.text() : Promise.reject(new Error("Failed to load")),
         )
         .then(setTextContent)
-        .catch(() => setTextError("Could not load content"));
+        .catch((err) => {
+          console.error(
+            { err, mediaId: item.id },
+            "Media viewer text content load failed",
+          );
+          setTextError("Could not load content");
+        });
     } else {
       setTextContent(null);
       setTextError(null);

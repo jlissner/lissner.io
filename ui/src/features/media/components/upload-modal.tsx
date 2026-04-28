@@ -57,8 +57,10 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
       .then((data) => {
         setNameConflicts(Array.isArray(data.conflicts) ? data.conflicts : []);
       })
-      .catch(() => {
-        if (!ac.signal.aborted) setNameConflicts([]);
+      .catch((err) => {
+        if (ac.signal.aborted) return;
+        console.error({ err }, "Upload name conflict check failed");
+        setNameConflicts([]);
       })
       .finally(() => {
         if (!ac.signal.aborted) setCheckLoading(false);

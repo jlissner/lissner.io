@@ -163,7 +163,10 @@ export function MediaViewerDetails({
     setError(null);
     getMediaDetails(item.id)
       .then(setDetails)
-      .catch(() => setError("Could not load details"))
+      .catch((err) => {
+        console.error({ err, mediaId: item.id }, "Media details load failed");
+        setError("Could not load details");
+      })
       .finally(() => setLoading(false));
   }, [item.id]);
 

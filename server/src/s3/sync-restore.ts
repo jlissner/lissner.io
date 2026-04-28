@@ -1,8 +1,8 @@
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
-import { unlink } from "fs/promises";
 import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import { unlinkBestEffort } from "../lib/fs-best-effort.js";
 import { isUsableVideoThumbnailFile } from "../lib/video-thumbnail.js";
 import { s3Client } from "./client.js";
 import { S3_PREFIX } from "./sync-constants.js";
@@ -74,7 +74,10 @@ export async function tryRestoreVideoThumbnailFromBackup(
 ): Promise<boolean> {
   const thumbPath = path.join(thumbnailsDir, `${mediaId}.jpg`);
   if (await isUsableVideoThumbnailFile(thumbPath)) return true;
-  await unlink(thumbPath).catch(() => {});
+  await unlinkBestEffort(
+    thumbPath,
+    "[restore] remove unusable video thumbnail before S3 download",
+  );
   const bucket = S3_BUCKET!;
   try {
     const getRes = await s3Client.send(

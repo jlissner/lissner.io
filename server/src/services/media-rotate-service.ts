@@ -1,8 +1,9 @@
-import { rename, unlink, writeFile } from "fs/promises";
+import { rename, writeFile } from "fs/promises";
 import path from "path";
 import sharp from "sharp";
 import * as db from "../db/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import { unlinkBestEffort } from "../lib/fs-best-effort.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { isVideoMime } from "../lib/media-mime.js";
 import { indexMediaItem } from "../indexing/media.js";
@@ -93,7 +94,10 @@ export async function rotateMediaImage90Clockwise(
     db.setMediaFileSize(mediaId, rotatedBuf.length);
     db.clearMediaBackedUpAt(mediaId);
     const imageThumbPath = path.join(thumbnailsDir, `${mediaId}_thumb.jpg`);
-    await unlink(imageThumbPath).catch(() => {});
+    await unlinkBestEffort(
+      imageThumbPath,
+      "[rotate] remove image thumbnail before reindex",
+    );
 
     db.deleteEmbeddingsForMedia(mediaId);
     const updated = db.getMediaById(mediaId);
@@ -108,7 +112,10 @@ export async function rotateMediaImage90Clockwise(
       size: updated.size,
       uploadedAt: updated.uploadedAt,
     });
-    await unlink(imageThumbPath).catch(() => {});
+    await unlinkBestEffort(
+      imageThumbPath,
+      "[rotate] remove image thumbnail after reindex",
+    );
 
     scheduleBackupSyncAfterUpload();
     return { ok: true, size: rotatedBuf.length };

@@ -14,7 +14,10 @@ import type { Person } from "../people/components/people-types";
 type ErrorBody = { error?: unknown };
 
 async function toApiError(res: Response, fallback: string): Promise<ApiError> {
-  const body = (await res.json().catch(() => null)) as ErrorBody | null;
+  const body = (await res.json().catch((err) => {
+    console.error({ err }, "Failed to parse API error JSON (media)");
+    return null;
+  })) as ErrorBody | null;
   const message = typeof body?.error === "string" ? body.error : fallback;
   return new ApiError(res.status, message, body);
 }

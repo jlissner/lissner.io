@@ -43,7 +43,11 @@ vi.mock("../config/env.ts", () => ({
 describe("maybeRestoreDbFromLatestS3BackupOnStartup", () => {
   beforeEach(async () => {
     const { dbPath } = await import("../config/paths.js");
-    await unlink(dbPath).catch(() => {});
+    try {
+      await unlink(dbPath);
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+    }
   });
   beforeEach(async () => {
     const { downloadS3ObjectToFile, listAllS3Keys } =

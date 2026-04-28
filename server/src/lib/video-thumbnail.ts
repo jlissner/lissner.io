@@ -1,5 +1,6 @@
 import { execFile } from "child_process";
-import { stat, unlink } from "fs/promises";
+import { stat } from "fs/promises";
+import { unlinkBestEffort } from "./fs-best-effort.js";
 import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
@@ -95,7 +96,10 @@ export async function generateVideoThumbnailWithFfmpeg(
 
   let lastErr: unknown;
   for (const [i, args] of attempts.entries()) {
-    await unlink(destPath).catch(() => {});
+    await unlinkBestEffort(
+      destPath,
+      "[video-thumbnail] clear dest before ffmpeg attempt",
+    );
     try {
       await execFileAsync("ffmpeg", [...args], {
         maxBuffer: 10 * 1024 * 1024,

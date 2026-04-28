@@ -1,9 +1,10 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import Database from "better-sqlite3";
 import { existsSync } from "fs";
-import { mkdir, rename, unlink } from "fs/promises";
+import { mkdir, rename } from "fs/promises";
 import path from "path";
 import { dbDir, dbPath } from "../config/paths.js";
+import { unlinkBestEffort } from "../lib/fs-best-effort.js";
 import { S3_PREFIX } from "./sync-constants.js";
 import { s3Client } from "./client.js";
 import { downloadS3ObjectToFile, listAllS3Keys } from "./sync-transfer.js";
@@ -64,7 +65,10 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
     await downloadS3ObjectToFile(body, tempPath);
 
     if (!validateSqliteDbFile(tempPath)) {
-      await unlink(tempPath).catch(() => {});
+      await unlinkBestEffort(
+        tempPath,
+        "[startup-restore] remove invalid downloaded db",
+      );
       console.warn(
         { key: newestKey },
         "[startup-restore] Downloaded DB failed integrity_check; skipping restore",
