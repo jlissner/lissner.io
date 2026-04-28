@@ -24,6 +24,15 @@ export interface AdminUser {
   personId: number | null;
 }
 
+export interface PeopleDirectoryEntry {
+  personId: number;
+  name: string;
+  email: string | null;
+  canLogin: boolean;
+  isAdmin: boolean;
+  isIdentity: boolean;
+}
+
 interface AdminPerson {
   id: number;
   name: string;
@@ -44,6 +53,41 @@ export function listUsers(): Promise<AdminUser[]> {
   return apiJson<AdminUser[]>("admin/users");
 }
 
+export function listPeopleDirectory(): Promise<PeopleDirectoryEntry[]> {
+  return apiJson<PeopleDirectoryEntry[]>("admin/people-directory");
+}
+
+export function createDirectoryPerson(input: {
+  name: string;
+  email?: string;
+  isAdmin?: boolean;
+}): Promise<PeopleDirectoryEntry> {
+  return apiJson<PeopleDirectoryEntry>("admin/people-directory", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function updateDirectoryPerson(
+  personId: number,
+  input: { name: string; email?: string; isAdmin?: boolean },
+): Promise<PeopleDirectoryEntry> {
+  return apiJson<PeopleDirectoryEntry>(`admin/people-directory/${personId}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+}
+
+export function deleteDirectoryPerson(personId: number): Promise<{
+  deleted: number;
+}> {
+  return apiJson<{ deleted: number }>(`admin/people-directory/${personId}`, {
+    method: "DELETE",
+  });
+}
+
 export async function listPeopleForAdmin(): Promise<AdminPerson[]> {
   const data = await apiJson<AdminPerson[] | { people?: AdminPerson[] }>(
     "people",
@@ -57,12 +101,6 @@ export function getSqlExplorerAvailable(): Promise<{ available: boolean }> {
 
 export function getDataExplorerAvailable(): Promise<{ available: boolean }> {
   return apiJson<{ available: boolean }>("admin/data-explorer-available");
-}
-
-export function getUserPeople(
-  userId: number,
-): Promise<{ personIds: number[] }> {
-  return apiJson<{ personIds: number[] }>(`admin/users/${userId}/people`);
 }
 
 export function runSql(
@@ -92,17 +130,6 @@ export function addWhitelistEntry(input: {
 
 export function removeWhitelistEntry(id: number): Promise<unknown> {
   return apiJson(`admin/whitelist/${id}`, { method: "DELETE" });
-}
-
-export function setUserPeople(
-  userId: number,
-  personIds: number[],
-): Promise<unknown> {
-  return apiJson(`admin/users/${userId}/people`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ personIds }),
-  });
 }
 
 export function listDataExplorerTables(): Promise<string[]> {

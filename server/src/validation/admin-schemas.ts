@@ -47,6 +47,32 @@ export const whitelistCreateBodySchema = z.object({
   }, z.coerce.number().int().positive().optional()),
 });
 
+export const peopleDirectoryPersonIdParamsSchema = z.object({
+  personId: z.coerce.number().int().positive(),
+});
+
+export const peopleDirectoryCreateBodySchema = z.object({
+  name: z.string().trim().min(1, "Name required"),
+  email: z
+    .preprocess((value) => {
+      if (value == null || value === "") return undefined;
+      return value;
+    }, z.string().trim().min(1).optional())
+    .optional(),
+  isAdmin: z.boolean().optional().default(false),
+});
+
+export const peopleDirectoryUpdateBodySchema = z.object({
+  name: z.string().trim().min(1, "Name required"),
+  email: z
+    .preprocess((value) => {
+      if (value == null || value === "") return undefined;
+      return value;
+    }, z.string().trim().min(1).optional())
+    .optional(),
+  isAdmin: z.boolean().optional().default(false),
+});
+
 export const userPeopleBodySchema = z.object({
   personIds: z.array(z.coerce.number().int().positive()).default([]),
 });
