@@ -455,54 +455,64 @@ export function MediaViewerContent({
                 {videoTaggingError != null && (
                   <div
                     role="alert"
-                    style={{ fontSize: "0.875rem", color: "var(--color-danger)" }}
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "var(--color-danger)",
+                    }}
                   >
                     {videoTaggingError}
                   </div>
                 )}
-                {!videoTaggingLoading && videoTaggedPeopleWithIds.length === 0 && (
-                  <div style={{ fontSize: "0.875rem" }}>No one tagged yet.</div>
-                )}
-                {!videoTaggingLoading && videoTaggedPeopleWithIds.length > 0 && (
-                  <ul style={{ margin: 0, paddingLeft: 18 }}>
-                    {videoTaggedPeopleWithIds.map((p) => (
-                      <li
-                        key={p.name}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          padding: "4px 0",
-                        }}
-                      >
-                        <span>{p.name}</span>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          disabled={p.personId == null}
-                          onClick={async () => {
-                            if (p.personId == null) return;
-                            try {
-                              await removePersonFromMedia(item.id, p.personId);
-                              await loadVideoTaggedPeople();
-                              setDetailsRefreshKey((k) => k + 1);
-                              onUpdate?.();
-                            } catch (err) {
-                              const msg =
-                                err instanceof ApiError
-                                  ? err.message
-                                  : "Failed to remove tag";
-                              setVideoTaggingError(msg);
-                            }
+                {!videoTaggingLoading &&
+                  videoTaggedPeopleWithIds.length === 0 && (
+                    <div style={{ fontSize: "0.875rem" }}>
+                      No one tagged yet.
+                    </div>
+                  )}
+                {!videoTaggingLoading &&
+                  videoTaggedPeopleWithIds.length > 0 && (
+                    <ul style={{ margin: 0, paddingLeft: 18 }}>
+                      {videoTaggedPeopleWithIds.map((p) => (
+                        <li
+                          key={p.name}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 12,
+                            padding: "4px 0",
                           }}
                         >
-                          Remove
-                        </Button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                          <span>{p.name}</span>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            disabled={p.personId == null}
+                            onClick={async () => {
+                              if (p.personId == null) return;
+                              try {
+                                await removePersonFromMedia(
+                                  item.id,
+                                  p.personId,
+                                );
+                                await loadVideoTaggedPeople();
+                                setDetailsRefreshKey((k) => k + 1);
+                                onUpdate?.();
+                              } catch (err) {
+                                const msg =
+                                  err instanceof ApiError
+                                    ? err.message
+                                    : "Failed to remove tag";
+                                setVideoTaggingError(msg);
+                              }
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 <div
                   style={{
                     fontSize: "0.75rem",

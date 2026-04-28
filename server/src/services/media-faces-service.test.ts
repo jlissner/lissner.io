@@ -95,4 +95,3 @@ describe("addPersonToMediaTag (video tagging)", () => {
     expect(db.addPersonToMediaNoBox).toHaveBeenCalledWith("m1", 9);
   });
 });
-

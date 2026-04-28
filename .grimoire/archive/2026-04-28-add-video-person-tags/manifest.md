@@ -37,8 +37,7 @@ People search via `@personHandle` exists today, but the current people/tagging f
 
 ## Feature changes
 
-| Action       | Path                                 |
-| ------------ | ------------------------------------ |
+| Action       | Path                                       |
+| ------------ | ------------------------------------------ |
 | **MODIFIED** | `features/people/people-and-faces.feature` |
-| **MODIFIED** | `features/search/rich-search.feature`     |
-
+| **MODIFIED** | `features/search/rich-search.feature`      |

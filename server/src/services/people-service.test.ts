@@ -52,7 +52,10 @@ describe("deletePersonById", () => {
       ok: false,
       reason: "linked_to_user",
     });
-    expect(deletePersonById(2)).toEqual({ ok: false, reason: "linked_to_user" });
+    expect(deletePersonById(2)).toEqual({
+      ok: false,
+      reason: "linked_to_user",
+    });
   });
 
   it("deletes when safe", () => {
