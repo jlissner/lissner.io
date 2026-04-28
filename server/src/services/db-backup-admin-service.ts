@@ -17,6 +17,7 @@ import {
 import { isSyncInProgress } from "../s3/sync-state.js";
 import { S3_BUCKET } from "../config/env.js";
 import { s3Client } from "../s3/client.js";
+import { gray, red } from "yoctocolors";
 
 type DbBackupListItem = {
   key: string;
@@ -87,21 +88,18 @@ export async function restoreDbFromS3BackupKey(
       }
       await downloadS3ObjectToFile(body, tempPath);
       if (!validateSqliteDbFile(tempPath)) {
-        await unlinkBestEffort(
-          tempPath,
-          "[admin-db-restore] remove invalid temp db",
-        );
+        await unlinkBestEffort(tempPath, "remove invalid temp db");
         return { ok: false, reason: "invalid_db" };
       }
-      await unlinkBestEffort(dbPath, "[admin-db-restore] replace live db");
+      await unlinkBestEffort(dbPath, "replace live db");
       await rename(tempPath, dbPath);
       return { ok: true };
     } catch (err) {
-      console.error({ err, key }, "[admin-db-restore] restore failed");
-      await unlinkBestEffort(
-        tempPath,
-        "[admin-db-restore] cleanup temp db after failure",
-      );
+      console.info();
+      console.error(`${gray("[ADMIN-DB-RESTORE]")} ${red("restore failed")}`);
+      console.error(red((err as Error).stack ?? "Unknown error"));
+
+      await unlinkBestEffort(tempPath, "cleanup temp db after failure");
       return { ok: false, reason: "download_failed" };
     }
   })();
