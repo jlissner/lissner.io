@@ -46,8 +46,11 @@ export function PeopleMergeModal({
             people={people}
             excludeIds={[person.id]}
             placeholder="Select person"
-            value={targetId}
-            onChange={(e) => onTargetChange(e.target.value)}
+            onChange={(value) => {
+              if (typeof value === "number") {
+                onTargetChange(String(value));
+              }
+            }}
             className="form__select"
             aria-label="Person to merge into"
           />

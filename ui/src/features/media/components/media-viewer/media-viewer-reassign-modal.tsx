@@ -1,4 +1,10 @@
 import type { TaggedFace } from "./media-viewer-types";
+import { useState } from "react";
+import {
+  PersonSelect,
+  type PersonSelectValue,
+} from "@/features/people/components/PersonSelect";
+import { createPerson } from "@/features/people/api";
 
 interface MediaViewerReassignModalProps {
   reassigningFace: TaggedFace;
@@ -13,7 +19,27 @@ export function MediaViewerReassignModal({
   onReassign,
   onCancel,
 }: MediaViewerReassignModalProps) {
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const otherPeople = people.filter((p) => p.id !== reassigningFace.personId);
+
+  const handleChange = async (value: PersonSelectValue) => {
+    if (typeof value === "number") {
+      onReassign(value);
+      return;
+    }
+    setCreating(true);
+    setError(null);
+    try {
+      const result = await createPerson(value.createName);
+      onReassign(result.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create person");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <div
@@ -57,34 +83,30 @@ export function MediaViewerReassignModal({
           Currently: {reassigningFace.name}
         </p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <select
-            value=""
-            onChange={(e) => {
-              const v = e.target.value;
-              if (v === "new") onReassign("new");
-              else if (v === "remove") onReassign("remove");
-              else if (v) onReassign(parseInt(v, 10));
-            }}
+          <PersonSelect
+            people={otherPeople}
+            excludeIds={[reassigningFace.personId]}
+            allowCreate={true}
+            placeholder="Reassign to…"
+            onChange={handleChange}
+            disabled={creating}
+            style={{ flex: 1, minWidth: 160 }}
+          />
+          <button
+            type="button"
+            onClick={() => onReassign("remove")}
             style={{
-              padding: "10px 14px",
-              fontSize: "1rem",
-              borderRadius: 6,
+              padding: "8px 16px",
+              fontSize: "0.875rem",
+              cursor: "pointer",
+              background: "none",
               border: "1px solid var(--color-border)",
-              background: "var(--color-bg)",
-              color: "var(--color-text)",
-              flex: 1,
-              minWidth: 160,
+              color: "var(--color-text-muted)",
+              borderRadius: 6,
             }}
           >
-            <option value="">Reassign to…</option>
-            {otherPeople.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-            <option value="new">Create new person</option>
-            <option value="remove">Remove tag</option>
-          </select>
+            Remove tag
+          </button>
           <button
             type="button"
             onClick={onCancel}
@@ -101,6 +123,28 @@ export function MediaViewerReassignModal({
             Cancel
           </button>
         </div>
+        {creating && (
+          <p
+            style={{
+              margin: "8px 0 0",
+              fontSize: "0.875rem",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            Creating...
+          </p>
+        )}
+        {error && (
+          <p
+            style={{
+              margin: "8px 0 0",
+              fontSize: "0.875rem",
+              color: "var(--color-danger)",
+            }}
+          >
+            {error}
+          </p>
+        )}
       </div>
     </div>
   );

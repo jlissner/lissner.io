@@ -2,9 +2,6 @@ import { Given, Then, When } from "@cucumber/cucumber";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
 
-// These steps make the remaining baseline specs executable in CI.
-// Where feasible we assert against stable artifacts (routes/modules/tests) rather than full UI automation.
-
 Given("I am signed in", function () {
   // Covered by auth BDD; baseline specs reuse this as a precondition.
 });
@@ -321,7 +318,7 @@ Given("a person has associated media", function () {
   // Deferred.
 });
 
-When("I view that person’s detail", function () {
+When("I view that person's detail", function () {
   // UI-only.
 });
 
@@ -329,50 +326,26 @@ Then("I see thumbnails or previews for their photos", function () {
   assert.ok(true);
 });
 
-Given(
-  "I have an image open in the media viewer with detected faces",
-  function () {
-    // Deferred.
-  },
-);
+// Commented out: now handled in people-and-faces.steps.ts
+// Given(
+//   "I have an image open in the media viewer with detected faces",
+//   function () {
+//     // Deferred.
+//   },
+// );
 
-When("I assign a face region to a person", function () {
-  // Deferred.
-});
+// Commented out: now handled in people-and-faces.steps.ts
+// When("I assign a face region to a person", function () {
+//   // Deferred.
+// });
 
-Then(
-  "that assignment is saved and reflected when I reload faces for the item",
-  function () {
-    assert.ok(true);
-  },
-);
-
-Given("I have a video open in the media viewer", function () {
-  // Placeholder: the minimal UI for video tagging lives in the viewer content.
-  assert.ok(
-    existsSync(
-      "ui/src/features/media/components/media-viewer/media-viewer-content.tsx",
-    ),
-  );
-});
-
-When("I tag that person as appearing in the video", function () {
-  // Placeholder: should flow through the shared media API.
-  assert.ok(existsSync("ui/src/features/media/api.ts"));
-});
-
-Then("that person appears in the video's tagged people list", function () {
-  // Placeholder: viewer should be able to show tagged people without face boxes.
-  assert.ok(
-    existsSync(
-      "ui/src/features/media/components/media-viewer/use-media-viewer-faces.ts",
-    ),
-  );
-});
-
-Given("a face on media is linked to a person", function () {
-  // Deferred.
-});
+// Commented out: now handled in people-and-faces.steps.ts
+// Then(
+//   "that assignment is saved and reflected when I reload faces for the item",
+//   function () {
+//     assert.ok(true);
+//   },
+// );
 
 When("I remove or reassign that link", function () {
   // Deferred.

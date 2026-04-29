@@ -24,6 +24,11 @@ import {
   removePersonFromMedia,
 } from "@/features/media/api";
 import { Button } from "@/components/ui/button";
+import {
+  PersonSelect,
+  type PersonSelectValue,
+} from "@/features/people/components/PersonSelect";
+import { createPerson } from "@/features/people/api";
 
 interface MediaViewerContentProps {
   item: MediaItem;
@@ -535,45 +540,40 @@ export function MediaViewerContent({
                 >
                   Add person
                 </div>
-                <select
-                  value=""
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    if (!v) return;
-                    const personId = Number(v);
-                    void (async () => {
-                      try {
-                        await addPersonToMedia(item.id, { personId });
-                        await loadVideoTaggedPeople();
-                        setDetailsRefreshKey((k) => k + 1);
-                        onUpdate?.();
-                      } catch (err) {
-                        const msg =
-                          err instanceof ApiError
-                            ? err.message
-                            : "Failed to add tag";
-                        setVideoTaggingError(msg);
+                <PersonSelect
+                  people={people}
+                  allowCreate={true}
+                  placeholder="Select…"
+                  onChange={async (value: PersonSelectValue) => {
+                    try {
+                      let personId: number;
+                      if (typeof value === "number") {
+                        personId = value;
+                      } else {
+                        setVideoTaggingLoading(true);
+                        const result = await createPerson(value.createName);
+                        personId = result.id;
                       }
-                    })();
+                      await addPersonToMedia(item.id, { personId });
+                      await loadVideoTaggedPeople();
+                      setDetailsRefreshKey((k) => k + 1);
+                      onUpdate?.();
+                    } catch (err) {
+                      const msg =
+                        err instanceof ApiError
+                          ? err.message
+                          : "Failed to add tag";
+                      setVideoTaggingError(msg);
+                    } finally {
+                      setVideoTaggingLoading(false);
+                    }
                   }}
+                  disabled={videoTaggingLoading}
                   style={{
-                    padding: "6px 10px",
-                    fontSize: "0.875rem",
-                    borderRadius: 6,
-                    border: "1px solid var(--color-border)",
-                    background: "var(--color-bg)",
-                    color: "var(--color-text)",
                     minWidth: 220,
                     maxWidth: "100%",
                   }}
-                >
-                  <option value="">Select…</option>
-                  {people.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             </div>
           </div>

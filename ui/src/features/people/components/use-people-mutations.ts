@@ -17,10 +17,15 @@ function faceTagLabel(count: number): string {
   return count === 1 ? "face tag" : "face tags";
 }
 
-function deletePersonMessage(person: Person): string {
+function deletePersonMessage(person: Person): string | false {
   if (person.photoCount == null) {
     return `Delete "${person.name}"? All their face tags will be removed.`;
   }
+
+  if (person.photoCount === 0) {
+    return false;
+  }
+
   return `Delete "${person.name}"? This will remove ${person.photoCount} ${faceTagLabel(person.photoCount)}.`;
 }
 
@@ -147,7 +152,10 @@ export function usePeopleMutations({
   const handleDeletePerson = useCallback(
     async (person: Person) => {
       const msg = deletePersonMessage(person);
-      if (!confirm(msg)) return;
+      const confirmed = msg === false || confirm(msg);
+
+      if (!confirmed) return;
+
       try {
         if (isAdmin) {
           await deletePersonViaDirectory(person.id);

@@ -1,4 +1,10 @@
 import type { FaceBox } from "./media-viewer-types";
+import { useState } from "react";
+import {
+  PersonSelect,
+  type PersonSelectValue,
+} from "@/features/people/components/PersonSelect";
+import { createPerson } from "@/features/people/api";
 
 interface InlineAssignBarProps {
   box: FaceBox;
@@ -15,6 +21,9 @@ export function InlineAssignBar({
   onAssign,
   onCancel,
 }: InlineAssignBarProps) {
+  const [creating, setCreating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const img = imgRef.current;
   if (!img) return null;
 
@@ -29,6 +38,23 @@ export function InlineAssignBar({
   const barWidth = 340;
   const barLeft = imgRect.left + Math.min(screenX, imgRect.width - barWidth);
   const barTop = imgRect.top + screenY + screenHeight + 12;
+
+  const handleChange = async (value: PersonSelectValue) => {
+    if (typeof value === "number") {
+      onAssign(value);
+      return;
+    }
+    setCreating(true);
+    setError(null);
+    try {
+      const result = await createPerson(value.createName);
+      onAssign(result.id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create person");
+    } finally {
+      setCreating(false);
+    }
+  };
 
   return (
     <div
@@ -49,40 +75,25 @@ export function InlineAssignBar({
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <span
-        style={{
-          color: "var(--color-text)",
-          fontSize: "0.875rem",
-          whiteSpace: "nowrap",
-        }}
-      >
-        Who is this?
-      </span>
-      <select
-        value=""
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v === "new") onAssign("new");
-          else if (v) onAssign(parseInt(v, 10));
-        }}
-        style={{
-          padding: "6px 10px",
-          fontSize: "0.875rem",
-          borderRadius: 6,
-          border: "1px solid var(--color-border)",
-          background: "var(--color-bg)",
-          color: "var(--color-text)",
-          minWidth: 120,
-        }}
-      >
-        <option value="">Select...</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-        <option value="new">New person</option>
-      </select>
+      <PersonSelect
+        people={people}
+        allowCreate={true}
+        placeholder="Who is this?"
+        onChange={handleChange}
+        disabled={creating}
+      />
+      {creating && (
+        <span
+          style={{ fontSize: "0.875rem", color: "var(--color-text-muted)" }}
+        >
+          Creating...
+        </span>
+      )}
+      {error && (
+        <span style={{ fontSize: "0.875rem", color: "var(--color-danger)" }}>
+          {error}
+        </span>
+      )}
       <button
         type="button"
         onClick={onCancel}

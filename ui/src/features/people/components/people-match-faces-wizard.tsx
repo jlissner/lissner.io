@@ -173,8 +173,11 @@ function MatchFaceReviewCard({
               id="match-faces-merge-into"
               className="match-faces-modal__select"
               people={namedOptions}
-              value={otherTargetId}
-              onChange={(e) => setOtherTargetId(e.target.value)}
+              onChange={(value) => {
+                if (typeof value === "number") {
+                  setOtherTargetId(String(value));
+                }
+              }}
               disabled={busy || namedOptions.length === 0}
             />
             <Button
