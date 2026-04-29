@@ -94,10 +94,7 @@
         - Select "Create: {name}" option
         - Verify new person was created and face reassigned
 
-- [x] 5.3 Add step definitions for video tagging scenarios: - **Given** "I have a video open in the media viewer": - Navigate to media viewer with a video - Open the video tagging dialog
-      - **When** "I tag that person as appearing in the video using the person selector":
-        - Select existing person from PersonSelect in video dialog
-        - Verify the person appears in tagged people list
+- [x] 5.3 Add step definitions for video tagging scenarios: - **Given** "I have a video open in the media viewer": - Navigate to media viewer with a video - Open the video tagging dialog - **When** "I tag that person as appearing in the video using the person selector": - Select existing person from PersonSelect in video dialog - Verify the person appears in tagged people list
 
       - **When** "I type a new person's name in the person selector and tag the video":
         - Type a new person's name in the PersonSelect
