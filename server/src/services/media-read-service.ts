@@ -106,10 +106,27 @@ export async function getFacesPayloadForMedia(mediaId: string) {
   try {
     const faces = await extractFacesFromImage(filePath, item.id);
     const detected = faces
-      .map((f) => f.box)
+      .map((f) => {
+        const b = f.box;
+        if (!b) return null;
+        return {
+          x: b.x,
+          y: b.y,
+          width: b.width,
+          height: b.height,
+          detectorScore: f.detectorScore ?? null,
+        };
+      })
       .filter(
-        (b): b is { x: number; y: number; width: number; height: number } =>
-          !!b,
+        (
+          row,
+        ): row is {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+          detectorScore: number | null;
+        } => row != null,
       );
     const tagged = db.getTaggedFacesInMedia(item.id);
     const personNames = db.getPersonNames();

@@ -1,8 +1,9 @@
 /**
  * Environment and paths — load env files before reading `process.env`.
  *
- * Order: `.env` (base) → `.env.prod` when `NODE_ENV=production` (overrides) →
- * `.env.local` in non-production (overrides, local dev only).
+ * Loads **one** file when present: `.env.prod` if `NODE_ENV=production`, else
+ * `.env.local` (override). There is no automatic `.env` load here — set vars in
+ * the shell or the chosen file.
  * Imported first by `paths.ts` so all server modules see the same env.
  */
 import { config } from "dotenv";

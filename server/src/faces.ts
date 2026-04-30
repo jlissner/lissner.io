@@ -22,6 +22,18 @@ const human = new Human({
 
 const FACE_SIMILARITY_THRESHOLD = 0.5;
 
+/** Human `FaceResult.score` is an overall 0–1 style quality; we persist it for auto-tag confidence. */
+function clamp01(n: number): number {
+  if (n < 0) return 0;
+  if (n > 1) return 1;
+  return n;
+}
+
+function detectorConfidence(score: number | undefined): number {
+  if (score == null || Number.isNaN(score)) return 0.65;
+  return clamp01(score);
+}
+
 /**
  * Human + tfjs-node are not safe for concurrent `detect()` on the same singleton; parallel
  * uploads (or overlap with bulk indexing) can yield "squeeze ... got null". Run detection
@@ -38,6 +50,8 @@ export interface FaceInImage {
   imageId: string;
   descriptor: number[];
   box?: { x: number; y: number; width: number; height: number };
+  /** From Human `FaceResult.score` when present; drives stored auto-tag confidence. */
+  detectorScore?: number | null;
 }
 
 type HumanInstance = InstanceType<typeof Human>;
@@ -56,6 +70,7 @@ function facesFromDetectResult(
       box: box
         ? { x: box[0], y: box[1], width: box[2], height: box[3] }
         : undefined,
+      detectorScore: typeof f.score === "number" ? f.score : null,
     });
   }
   return faces;
@@ -134,6 +149,9 @@ export async function extractFacesFromImage(
     if (buffer.length < MIN_IMAGE_BYTES) {
       return [];
     }
+    if (process.env.BDD_FACE_DETECT_OFF === "1") {
+      return [];
+    }
     return detectFacesFromBuffer(human, buffer, imageId);
   };
 
@@ -177,12 +195,13 @@ function clusterFacesWithConfidence(
     );
 
     if (best == null) {
+      const dc = detectorConfidence(face.detectorScore ?? undefined);
       return [
         ...clusters,
         {
           id: clusters.length + 1,
           descriptor: [...face.descriptor],
-          faces: [{ imageId: face.imageId, box: face.box, confidence: 1 }],
+          faces: [{ imageId: face.imageId, box: face.box, confidence: dc }],
         },
       ];
     }
@@ -193,12 +212,17 @@ function clusterFacesWithConfidence(
     const descriptor = matched.descriptor.map(
       (value, i) => (value * prevCount + face.descriptor[i]!) / n,
     );
+    const dc = detectorConfidence(face.detectorScore ?? undefined);
     const next: FaceCluster = {
       id: matched.id,
       descriptor,
       faces: [
         ...matched.faces,
-        { imageId: face.imageId, box: face.box, confidence: best.sim },
+        {
+          imageId: face.imageId,
+          box: face.box,
+          confidence: best.sim * dc,
+        },
       ],
     };
     return clusters.map((cluster, i) => (i === best.idx ? next : cluster));

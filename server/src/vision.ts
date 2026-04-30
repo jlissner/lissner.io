@@ -2,6 +2,9 @@ import { readFile } from "fs/promises";
 import { OLLAMA_HOST, OLLAMA_VISION_MODEL } from "./config/env.js";
 
 export async function describeImage(imagePath: string): Promise<string> {
+  if (process.env.BDD_STUB_VISION === "1") {
+    return "bdd fixture image for search indexing";
+  }
   const buffer = await readFile(imagePath);
   const base64 = buffer.toString("base64");
 

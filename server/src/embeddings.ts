@@ -3,6 +3,9 @@ import { OLLAMA_HOST } from "./config/env.js";
 const OLLAMA_MODEL = process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text";
 
 export async function getEmbedding(text: string): Promise<number[]> {
+  if (process.env.BDD_STUB_EMBEDDINGS === "1") {
+    return new Array(768).fill(0.01);
+  }
   const res = await fetch(`${OLLAMA_HOST}/api/embeddings`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

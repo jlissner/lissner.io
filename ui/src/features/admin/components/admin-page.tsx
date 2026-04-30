@@ -4,6 +4,8 @@ import { ApiError } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { BackupPage } from "@/features/backup/components/backup-page";
+import { triggerIndex } from "@/features/media/api";
+import { useActivity } from "@/components/activity/activity-provider";
 import { cn } from "@/lib/utils";
 import {
   addWhitelistEntry,
@@ -92,6 +94,10 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [thumbRepairError, setThumbRepairError] = useState<string | null>(null);
   const [thumbRepairResult, setThumbRepairResult] =
     useState<AdminThumbnailRepairResponse | null>(null);
+  const [libraryReindexError, setLibraryReindexError] = useState<string | null>(
+    null,
+  );
+  const activity = useActivity();
 
   const adminTabs = useMemo(() => {
     const rows: Array<{ id: AdminTabId; label: string }> = [
@@ -462,6 +468,54 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
             aria-labelledby="admin-tab-sync"
             className="admin-page__panel"
           >
+            <section className="admin-page__section">
+              <h3>Search index & faces</h3>
+              <p className="admin-page__desc">
+                Re-run indexing for the entire library (embeddings, automatic
+                face tags from current rules). Manual face assignments are
+                preserved.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                disabled={activity?.index.inProgress === true}
+                onClick={() => {
+                  setLibraryReindexError(null);
+                  void (async () => {
+                    try {
+                      const data = await triggerIndex(true);
+                      if (data.started !== true) {
+                        setLibraryReindexError(
+                          data.error ?? "Could not start re-index",
+                        );
+                      }
+                    } catch (err) {
+                      const msg =
+                        err instanceof ApiError
+                          ? err.message
+                          : "Re-index failed";
+                      setLibraryReindexError(msg);
+                    }
+                  })();
+                }}
+              >
+                {activity?.index.inProgress
+                  ? "Re-indexing…"
+                  : "Re-index entire library"}
+              </Button>
+              {activity?.index.inProgress && (
+                <p className="admin-page__meta" style={{ marginTop: 8 }}>
+                  Progress: {activity.index.progressProcessed ?? 0} /{" "}
+                  {activity.index.progressTotal ?? 0}
+                </p>
+              )}
+              {libraryReindexError && (
+                <Alert variant="danger" role="alert" className="u-mt-3">
+                  <p>{libraryReindexError}</p>
+                </Alert>
+              )}
+            </section>
             <section className="admin-page__section">
               <h3>S3 sync</h3>
               <p className="admin-page__desc">

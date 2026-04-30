@@ -77,7 +77,7 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:443"
       - "--entrypoints.webhttp.address=:80"
-      - "--providers.docker.network=family-image-manager_traefik"
+      - "--providers.docker.network=lissnerio_traefik"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=jlissner@gmail.com" # maybe turn into an environment variable
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"

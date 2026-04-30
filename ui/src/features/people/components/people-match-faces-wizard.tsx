@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ApiError } from "@/api";
 import { Button } from "@/components/ui/button";
+import { FullscreenImage } from "@/features/media/components/media-viewer/fullscreen-image";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import {
   ModalBody,
@@ -16,8 +17,8 @@ import {
   updatePerson,
 } from "../api";
 import { Person } from "./people-types";
-import { PersonSelect } from "./PersonSelect";
-import { FaceMatchAutoMerged, FaceMatchReviewItem } from "@shared";
+import { PersonSelect, type PersonSelectValue } from "./PersonSelect";
+import { FaceMatchReviewItem } from "@shared";
 
 function pluralize(base: string, count: number): string {
   return count === 1 ? base : `${base}s`;
@@ -48,6 +49,11 @@ function faceMatchPreviewSrc(current: FaceMatchReviewItem): string | null {
   return `/api/media/${current.previewMediaId}/preview`;
 }
 
+function faceMatchFullImageSrc(current: FaceMatchReviewItem): string | null {
+  if (!current.previewMediaId) return null;
+  return `/api/media/${current.previewMediaId}/preview`;
+}
+
 function MatchFaceReviewCard({
   current,
   namedPeople,
@@ -60,6 +66,7 @@ function MatchFaceReviewCard({
   onDiscard,
   onRemoveTagFromPreview,
   onDeletePerson,
+  onOpenFullPreview,
 }: {
   current: FaceMatchReviewItem;
   namedPeople: Person[];
@@ -72,22 +79,24 @@ function MatchFaceReviewCard({
   onDiscard: () => void;
   onRemoveTagFromPreview: () => void;
   onDeletePerson: () => void;
+  onOpenFullPreview: () => void;
 }) {
   const namedOptions = useMemo(
     () => namedPeople.filter((p) => !p.name.trim().startsWith("Person")),
     [namedPeople],
   );
 
-  const defaultOtherId = useMemo(() => {
-    const prefer =
-      current.otherMatches[0]?.personId ??
-      namedOptions.find((p) => p.id !== current.topMatch?.personId)?.id ??
-      namedOptions[0]?.id;
-    return prefer != null ? String(prefer) : "";
-  }, [current.otherMatches, current.topMatch?.personId, namedOptions]);
-
-  const [otherTargetId, setOtherTargetId] = useState(defaultOtherId);
-  const [renameDraft, setRenameDraft] = useState("");
+  const handleMergeOrRename = (value: PersonSelectValue) => {
+    if (typeof value === "number") {
+      onMergeOther(value);
+      return;
+    }
+    const name = value.createName.trim();
+    if (!name) {
+      return;
+    }
+    onRename(name);
+  };
 
   const faceTagCount = useMemo(() => {
     const p = namedPeople.find((x) => x.id === current.placeholderPersonId);
@@ -101,7 +110,32 @@ function MatchFaceReviewCard({
       </p>
       <div className="match-faces-modal__card">
         <div className="match-faces-modal__preview-wrap">
-          <div className="match-faces-modal__preview">
+          <div
+            className={
+              current.previewMediaId
+                ? "match-faces-modal__preview match-faces-modal__preview--open-full"
+                : "match-faces-modal__preview"
+            }
+            role={current.previewMediaId ? "button" : undefined}
+            tabIndex={current.previewMediaId ? 0 : undefined}
+            aria-label={
+              current.previewMediaId ? "Open full image in viewer" : undefined
+            }
+            onClick={() => {
+              if (current.previewMediaId && !busy) onOpenFullPreview();
+            }}
+            onKeyDown={(e) => {
+              if (
+                !current.previewMediaId ||
+                busy ||
+                (e.key !== "Enter" && e.key !== " ")
+              ) {
+                return;
+              }
+              e.preventDefault();
+              onOpenFullPreview();
+            }}
+          >
             {current.previewMediaId ? (
               current.previewFaceCrop ? (
                 <img
@@ -125,8 +159,8 @@ function MatchFaceReviewCard({
           {current.previewMediaId && (
             <p className="match-faces-modal__preview-caption">
               {current.previewFaceCrop
-                ? "Tagged face region for this placeholder"
-                : "Full image — no face box stored for this tag"}
+                ? "Tagged face region — click image for full photo"
+                : "Click image to enlarge"}
             </p>
           )}
         </div>
@@ -166,63 +200,19 @@ function MatchFaceReviewCard({
             className="match-faces-modal__label"
             htmlFor="match-faces-merge-into"
           >
-            Merge into someone else
+            Merge into another person — or type a new name to rename
           </label>
-          <div className="match-faces-modal__row">
-            <PersonSelect
-              id="match-faces-merge-into"
-              className="match-faces-modal__select"
-              people={namedOptions}
-              onChange={(value) => {
-                if (typeof value === "number") {
-                  setOtherTargetId(String(value));
-                }
-              }}
-              disabled={busy || namedOptions.length === 0}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy || namedOptions.length === 0}
-              onClick={() => {
-                const target = parseInt(otherTargetId, 10);
-                if (Number.isNaN(target)) {
-                  alert("Choose someone to merge into.");
-                  return;
-                }
-                onMergeOther(target);
-              }}
-            >
-              Merge
-            </Button>
-          </div>
-        </div>
-        <div className="match-faces-modal__rename">
-          <label
-            className="match-faces-modal__label"
-            htmlFor="match-faces-rename"
-          >
-            Name as a new person
-          </label>
-          <div className="match-faces-modal__row">
-            <input
-              id="match-faces-rename"
-              type="text"
-              className="match-faces-modal__input"
-              value={renameDraft}
-              onChange={(e) => setRenameDraft(e.target.value)}
-              placeholder="Full name"
-              disabled={busy}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              disabled={busy}
-              onClick={() => onRename(renameDraft.trim())}
-            >
-              Save name
-            </Button>
-          </div>
+          <PersonSelect
+            id="match-faces-merge-into"
+            className="match-faces-modal__select match-faces-modal__select--full"
+            people={namedOptions}
+            excludeIds={[current.placeholderPersonId]}
+            allowCreate={true}
+            formatCreateOption={(name) => `Rename to: ${name}`}
+            placeholder="Search people or type a new name…"
+            onChange={handleMergeOrRename}
+            disabled={busy}
+          />
         </div>
         <Button
           type="button"
@@ -269,13 +259,11 @@ function MatchFaceReviewCard({
 }
 
 export function PeopleMatchFacesWizard({
-  autoMerged,
   initialQueue,
   namedPeople,
   onClose,
   onMerged,
 }: {
-  autoMerged: FaceMatchAutoMerged[];
   initialQueue: FaceMatchReviewItem[];
   namedPeople: Person[];
   onClose: () => void;
@@ -283,10 +271,15 @@ export function PeopleMatchFacesWizard({
 }) {
   const [queue, setQueue] = useState<FaceMatchReviewItem[]>(initialQueue);
   const [busy, setBusy] = useState(false);
+  const [fullPreviewOpen, setFullPreviewOpen] = useState(false);
 
   const current = queue[0];
   const totalReview = initialQueue.length;
   const doneCount = totalReview - queue.length;
+
+  useEffect(() => {
+    setFullPreviewOpen(false);
+  }, [current?.placeholderPersonId]);
 
   const popQueue = useCallback(() => {
     setQueue((q) => q.slice(1));
@@ -327,13 +320,14 @@ export function PeopleMatchFacesWizard({
   const handleRename = useCallback(
     async (name: string) => {
       if (!current) return;
-      if (!name) {
+      const trimmed = name.trim();
+      if (!trimmed) {
         alert("Enter a name.");
         return;
       }
       setBusy(true);
       try {
-        await updatePerson(current.placeholderPersonId, name);
+        await updatePerson(current.placeholderPersonId, trimmed);
         popQueue();
       } catch (err) {
         const message = err instanceof ApiError ? err.message : "Rename failed";
@@ -394,40 +388,22 @@ export function PeopleMatchFacesWizard({
     }
   }, [current, namedPeople, popQueue]);
 
+  const fullPreviewUrl =
+    fullPreviewOpen && current ? faceMatchFullImageSrc(current) : null;
+
   return (
     <ModalRoot onBackdropClick={busy ? () => {} : onClose}>
       <ModalPanel
         className="match-faces-modal"
-        onEscape={busy ? undefined : onClose}
+        onEscape={busy || fullPreviewOpen ? undefined : onClose}
+        trapFocus={!fullPreviewOpen}
       >
         <ModalTitle id="match-faces-title">Match faces</ModalTitle>
         <ModalBody>
-          {autoMerged.length > 0 && (
-            <section
-              className="match-faces-modal__section"
-              aria-label="Auto-merged"
-            >
-              <p className="match-faces-modal__lead">
-                Auto-merged {autoMerged.length}{" "}
-                {autoMerged.length === 1 ? "placeholder" : "placeholders"}{" "}
-                (≈100% match to an existing name).
-              </p>
-              <ul className="match-faces-modal__list">
-                {autoMerged.map((m) => (
-                  <li key={m.merged}>
-                    <span className="u-text-muted">{m.merged}</span> →{" "}
-                    <strong>{m.intoName}</strong>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
           {initialQueue.length === 0 ? (
             <p className="u-text-muted u-text-sm">
-              {autoMerged.length === 0
-                ? "No placeholder people to compare, or nothing met the review threshold."
-                : "No remaining placeholders need a manual decision."}
+              No placeholder people to compare, or nothing met the review
+              threshold.
             </p>
           ) : !current ? (
             <p className="u-text-muted">All reviewed.</p>
@@ -445,6 +421,7 @@ export function PeopleMatchFacesWizard({
               onDiscard={handleDiscard}
               onRemoveTagFromPreview={() => void handleRemoveTagFromPreview()}
               onDeletePerson={() => void handleDeletePerson()}
+              onOpenFullPreview={() => setFullPreviewOpen(true)}
             />
           )}
         </ModalBody>
@@ -459,6 +436,13 @@ export function PeopleMatchFacesWizard({
           </Button>
         </ModalActions>
       </ModalPanel>
+      {fullPreviewUrl != null && current != null && (
+        <FullscreenImage
+          src={fullPreviewUrl}
+          alt={`${current.placeholderName} — full image`}
+          onClose={() => setFullPreviewOpen(false)}
+        />
+      )}
     </ModalRoot>
   );
 }

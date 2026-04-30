@@ -39,9 +39,6 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const [matchFacesQueue, setMatchFacesQueue] = useState<
     FaceMatchRunResponse["reviewQueue"]
   >([]);
-  const [matchFacesAutoMerged, setMatchFacesAutoMerged] = useState<
-    FaceMatchRunResponse["autoMerged"]
-  >([]);
 
   const {
     people,
@@ -79,7 +76,6 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     setMatchFacesBusy(true);
     try {
       const data = (await runMatchFacesApi()) as FaceMatchRunResponse;
-      setMatchFacesAutoMerged(data.autoMerged ?? []);
       setMatchFacesQueue(data.reviewQueue ?? []);
       setMatchFacesOpen(true);
       await fetchPeople({ silent: true });
@@ -197,7 +193,6 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
       )}
       {matchFacesOpen && (
         <PeopleMatchFacesWizard
-          autoMerged={matchFacesAutoMerged}
           initialQueue={matchFacesQueue}
           namedPeople={people}
           onClose={() => setMatchFacesOpen(false)}

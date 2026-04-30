@@ -129,6 +129,7 @@ export function MediaViewerContent({
     people,
     handleAssignFace,
     handleReassignFace,
+    handleDismissAutoTagged,
   } = useMediaViewerFaces({
     mediaId: item.id,
     taggingMode,
@@ -629,6 +630,9 @@ export function MediaViewerContent({
                       assigningFace={assigningFace}
                       onAssigningFaceChange={setAssigningFace}
                       showDetected={showDetectedFaces}
+                      onDismissAutoTagged={(pid) => {
+                        void handleDismissAutoTagged(pid);
+                      }}
                     />
                   </div>
                 )}
@@ -672,6 +676,9 @@ export function MediaViewerContent({
                       assigningFace={assigningFace}
                       onAssigningFaceChange={setAssigningFace}
                       showDetected={showDetectedFaces}
+                      onDismissAutoTagged={(pid) => {
+                        void handleDismissAutoTagged(pid);
+                      }}
                     />
                   </div>
                 )}

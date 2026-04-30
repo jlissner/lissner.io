@@ -66,7 +66,7 @@ function buildPeopleStmts() {
       "UPDATE image_people SET confidence = 1, source = 'manual' WHERE media_id = ? AND person_id = ?",
     ),
     listTaggedFaces: db.prepare(
-      "SELECT person_id as personId, x, y, width, height, confidence FROM image_people WHERE media_id = ? AND x IS NOT NULL AND y IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL",
+      "SELECT person_id as personId, x, y, width, height, confidence, COALESCE(source, 'auto') as source FROM image_people WHERE media_id = ? AND x IS NOT NULL AND y IS NOT NULL AND width IS NOT NULL AND height IS NOT NULL",
     ),
     listManualFaceRowsForMedia: db.prepare(
       `SELECT person_id as personId, x, y, width, height, confidence, COALESCE(source, 'auto') as source
@@ -343,6 +343,7 @@ export function getTaggedFacesInMedia(mediaId: string): Array<{
   width: number;
   height: number;
   confidence?: number | null;
+  source: "auto" | "manual";
 }> {
   return peopleStmts().listTaggedFaces.all(mediaId) as Array<{
     personId: number;
@@ -351,6 +352,7 @@ export function getTaggedFacesInMedia(mediaId: string): Array<{
     width: number;
     height: number;
     confidence?: number | null;
+    source: "auto" | "manual";
   }>;
 }
 

@@ -109,7 +109,7 @@ export type MergePeopleResponse = { merged: number; into: number };
 export type UpdatePersonResponse = { id: number; name: string };
 
 /** POST /api/people/match-faces */
-export type FaceMatchAutoMerged = {
+type FaceMatchAutoMerged = {
   merged: number;
   into: number;
   intoName: string;
@@ -126,6 +126,7 @@ export type FaceMatchReviewItem = {
 };
 
 export type FaceMatchRunResponse = {
+  /** @deprecated Always empty; merges require explicit user confirmation. */
   autoMerged: FaceMatchAutoMerged[];
   reviewQueue: FaceMatchReviewItem[];
 };

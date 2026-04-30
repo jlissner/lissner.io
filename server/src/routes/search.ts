@@ -1,4 +1,6 @@
 import { Router } from "express";
+import type { NextFunction, Request, Response } from "express";
+import { requireAdmin } from "../auth/middleware.js";
 import { sendApiError } from "../lib/api-error.js";
 import { asyncHandler } from "../middleware/async-handler.js";
 import { parseWithSchema } from "../validation/parse.js";
@@ -16,21 +18,44 @@ import {
   searchListQuerySchema,
 } from "../validation/search-schemas.js";
 
-export const searchRouter = Router();
-
-searchRouter.post("/index", (req, res) => {
+export function requireAdminForFullLibraryForceIndex(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
   const { force } = parseWithSchema(searchIndexQuerySchema, req.query);
-  const body = parseWithSchema(searchIndexBodySchema, req.body);
-  const mediaIds = body?.mediaIds;
-  const result = startBulkIndexingJob({ force, mediaIds });
-  if (!result.ok) {
-    sendApiError(res, 409, "Indexing already in progress", result.reason);
+  if (!force) {
+    next();
     return;
   }
-  res.json({ started: true, jobId: result.jobId });
-});
+  const body = parseWithSchema(searchIndexBodySchema, req.body);
+  const mediaIds = body?.mediaIds;
+  if (Array.isArray(mediaIds) && mediaIds.length > 0) {
+    next();
+    return;
+  }
+  requireAdmin(req, res, next);
+}
 
-searchRouter.post("/index/cancel", (req, res) => {
+export const searchRouter = Router();
+
+searchRouter.post(
+  "/index",
+  requireAdminForFullLibraryForceIndex,
+  (req, res) => {
+    const { force } = parseWithSchema(searchIndexQuerySchema, req.query);
+    const body = parseWithSchema(searchIndexBodySchema, req.body);
+    const mediaIds = body?.mediaIds;
+    const result = startBulkIndexingJob({ force, mediaIds });
+    if (!result.ok) {
+      sendApiError(res, 409, "Indexing already in progress", result.reason);
+      return;
+    }
+    res.json({ started: true, jobId: result.jobId });
+  },
+);
+
+searchRouter.post("/index/cancel", requireAdmin, (req, res) => {
   const body = parseWithSchema(cancelIndexBodySchema, req.body);
   const ok = cancelBulkIndexJob(body.jobId);
   if (!ok) {
@@ -45,7 +70,7 @@ searchRouter.post("/index/cancel", (req, res) => {
   res.json({ ok: true });
 });
 
-searchRouter.post("/index/clear", (_req, res) => {
+searchRouter.post("/index/clear", requireAdmin, (_req, res) => {
   clearAllSearchIndexData();
   res.json({ cleared: true });
 });

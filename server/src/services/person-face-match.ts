@@ -1,24 +1,12 @@
 import * as db from "../db/media.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
 import { getFaceSimilarityFn } from "../faces.js";
-import { mergePeople } from "./people-service.js";
-import type {
-  FaceMatchAutoMerged,
-  FaceMatchReviewItem,
-  FaceMatchRunResponse,
-} from "@shared";
+import type { FaceMatchReviewItem, FaceMatchRunResponse } from "@shared";
 import {
   collectDescriptorsForPerson,
   isPlaceholderPersonName,
   mergeSuggestionsFromDescriptors,
-  type MergeSuggestion,
 } from "./person-merge-suggestions.js";
-
-/**
- * When similarity rounds to 100% in the UI (`Math.round(score * 100) === 100`),
- * treat as an automatic merge into that named person.
- */
-const AUTO_MERGE_MATCH_SCORE = 0.995;
 
 function getFirstImagePreviewForPerson(personId: number): {
   mediaId: string | null;
@@ -38,10 +26,38 @@ function getFirstImagePreviewForPerson(personId: number): {
 }
 
 /**
- * Compare every `Person …` placeholder to every named person, auto-merge near-identical
- * matches, then return a FIFO review queue for the rest.
+ * Compare every `Person …` placeholder to every named person and return a review queue.
+ * Merging into a named person always requires an explicit user action (no silent auto-merge).
  */
 export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
+  if (process.env.BDD_FACE_MATCH_STUB === "1") {
+    const names = db.getPersonNames();
+    const ids = db.getAllPersonIds();
+    const ph = ids.find((id) => (names.get(id) ?? "").startsWith("Person"));
+    const named = ids.find((id) => !(names.get(id) ?? "").startsWith("Person"));
+    if (ph == null || named == null) {
+      return { autoMerged: [], reviewQueue: [] };
+    }
+    return {
+      autoMerged: [],
+      reviewQueue: [
+        {
+          placeholderPersonId: ph,
+          placeholderName: names.get(ph) ?? `Person ${ph}`,
+          hasFaceDescriptors: true,
+          topMatch: {
+            personId: named,
+            name: names.get(named) ?? `Person ${named}`,
+            score: 0.99,
+          },
+          otherMatches: [],
+          previewMediaId: null,
+          previewFaceCrop: false,
+        },
+      ],
+    };
+  }
+
   const sim = await getFaceSimilarityFn();
   const names = db.getPersonNames();
   const allIds = db.getAllPersonIds();
@@ -64,63 +80,19 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
     namedDescriptors.set(id, await collectDescriptorsForPerson(id));
   }
 
-  const analysesById = new Map<number, MergeSuggestion[]>();
-  for (const id of placeholders) {
-    const src = placeholderDescriptors.get(id) ?? [];
-    analysesById.set(
-      id,
-      mergeSuggestionsFromDescriptors(
-        src,
-        namedIds,
-        names,
-        namedDescriptors,
-        sim,
-      ),
-    );
-  }
-
-  const autoMerged: FaceMatchAutoMerged[] = [];
-  const sortedPlaceholders = [...placeholders].sort((a, b) => a - b);
-  for (const id of sortedPlaceholders) {
-    const stillThere = db.getAllPersonIds().includes(id);
-    if (!stillThere) continue;
-    const suggestions = analysesById.get(id) ?? [];
-    const top = suggestions[0];
-    if (top && top.score >= AUTO_MERGE_MATCH_SCORE) {
-      const result = mergePeople(id, top.personId);
-      if (result.ok) {
-        autoMerged.push({ merged: id, into: top.personId, intoName: top.name });
-      }
-    }
-  }
-
-  const namesAfter = db.getPersonNames();
-  const allIdsAfter = db.getAllPersonIds();
-  const remainingPlaceholders = allIdsAfter.filter((pid) => {
-    const n = namesAfter.get(pid) ?? `Person ${pid}`;
-    return isPlaceholderPersonName(n);
-  });
-  const namedIdsAfter = allIdsAfter.filter((pid) => {
-    const n = namesAfter.get(pid) ?? `Person ${pid}`;
-    return !isPlaceholderPersonName(n);
-  });
-
-  const namedDescriptorsAfter = new Map<number, number[][]>();
-  for (const id of namedIdsAfter) {
-    namedDescriptorsAfter.set(id, await collectDescriptorsForPerson(id));
-  }
+  const namedDescriptorsForReview = new Map(namedDescriptors);
 
   const reviewQueue: FaceMatchReviewItem[] = [];
-  for (const id of remainingPlaceholders) {
+  for (const id of placeholders.sort((a, b) => a - b)) {
     const src = placeholderDescriptors.get(id) ?? [];
-    const placeholderName = namesAfter.get(id) ?? `Person ${id}`;
+    const placeholderName = names.get(id) ?? `Person ${id}`;
     const hasFaceDescriptors = src.length > 0;
     const suggestions = hasFaceDescriptors
       ? mergeSuggestionsFromDescriptors(
           src,
-          namedIdsAfter,
-          namesAfter,
-          namedDescriptorsAfter,
+          namedIds,
+          names,
+          namedDescriptorsForReview,
           sim,
         )
       : [];
@@ -145,5 +117,5 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
     return a.placeholderPersonId - b.placeholderPersonId;
   });
 
-  return { autoMerged, reviewQueue };
+  return { autoMerged: [], reviewQueue };
 }

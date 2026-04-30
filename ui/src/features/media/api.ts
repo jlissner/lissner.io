@@ -85,12 +85,14 @@ export async function triggerIndex(
   });
 }
 
-export function listMediaFaces(
-  mediaId: string,
-): Promise<{ detected?: FaceBox[]; tagged?: TaggedFace[] }> {
-  return apiJson<{ detected?: FaceBox[]; tagged?: TaggedFace[] }>(
-    `media/${mediaId}/faces`,
-  );
+export function listMediaFaces(mediaId: string): Promise<{
+  detected?: FaceBox[];
+  tagged?: TaggedFace[];
+}> {
+  return apiJson<{
+    detected?: FaceBox[];
+    tagged?: TaggedFace[];
+  }>(`media/${mediaId}/faces`);
 }
 
 export function addPersonToMedia(

@@ -2628,6 +2628,15 @@
   background: var(--color-bg-subtle);
 }
 
+.match-faces-modal__preview--open-full {
+  cursor: zoom-in;
+}
+
+.match-faces-modal__preview--open-full:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 @media (min-width: 640px) {
   .match-faces-modal__preview {
     width: 72px;
@@ -2699,6 +2708,10 @@
   border: 1px solid var(--color-border);
   background: var(--color-bg);
   color: var(--color-text);
+}
+
+.match-faces-modal__select--full {
+  width: 100%;
 }
 
 @media (min-width: 640px) {

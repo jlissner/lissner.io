@@ -1,4 +1,12 @@
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import {
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  useEffect,
+  type CSSProperties,
+  type KeyboardEvent,
+} from "react";
 
 export type PersonSelectValue = number | { createName: string };
 
@@ -13,15 +21,17 @@ type PersonSelectProps = {
   placeholder?: string;
   extraOptions?: Array<{ value: string; label: string }>;
   allowCreate?: boolean;
+  /** Label for the synthetic row when `allowCreate` (default: `Create: {name}`). */
+  formatCreateOption?: (name: string) => string;
   onChange: (value: PersonSelectValue) => void;
   disabled?: boolean;
   className?: string;
   id?: string;
   "aria-label"?: string;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 };
 
-const defaultStyle: React.CSSProperties = {
+const defaultStyle: CSSProperties = {
   padding: "6px 10px",
   fontSize: "0.875rem",
   borderRadius: 6,
@@ -37,6 +47,7 @@ export function PersonSelect({
   placeholder,
   extraOptions,
   allowCreate = false,
+  formatCreateOption = (name: string) => `Create: ${name}`,
   onChange,
   disabled = false,
   className,
@@ -121,7 +132,7 @@ export function PersonSelect({
   }, []);
 
   // Keyboard navigation
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (!isOpen) {
       if (e.key === "ArrowDown" || e.key === "Enter") {
         e.preventDefault();
@@ -310,7 +321,7 @@ export function PersonSelect({
                 }}
               >
                 {item.type === "person" && item.name}
-                {item.type === "create" && `Create: ${item.name}`}
+                {item.type === "create" && formatCreateOption(item.name)}
                 {item.type === "extra" && item.label}
               </div>
             );

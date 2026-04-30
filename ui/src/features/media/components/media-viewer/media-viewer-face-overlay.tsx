@@ -1,4 +1,6 @@
+import { Button } from "@/components/ui/button";
 import type { FaceBox, TaggedFace } from "./media-viewer-types";
+import { isLowConfidenceAutoTag } from "./face-confidence";
 import { ResizableFaceBox } from "./resizable-face-box";
 
 interface MediaViewerFaceOverlayProps {
@@ -8,6 +10,7 @@ interface MediaViewerFaceOverlayProps {
   onAssigningFaceChange?: (box: FaceBox) => void;
   /** When false, dashed detection boxes are hidden (manual tagging only). */
   showDetected?: boolean;
+  onDismissAutoTagged?: (personId: number) => void;
 }
 
 export function MediaViewerFaceOverlay({
@@ -16,6 +19,7 @@ export function MediaViewerFaceOverlay({
   assigningFace,
   onAssigningFaceChange,
   showDetected = true,
+  onDismissAutoTagged,
 }: MediaViewerFaceOverlayProps) {
   const img = imgRef.current;
   if (!img) return null;
@@ -49,33 +53,71 @@ export function MediaViewerFaceOverlay({
           />
         </ResizableFaceBox>
       )}
-      {(faces?.tagged ?? []).map((t, i) => (
-        <div
-          key={`t-${i}`}
-          style={{
-            position: "absolute",
-            left: t.x * scaleX,
-            top: t.y * scaleY,
-            width: t.width * scaleX,
-            height: t.height * scaleY,
-            border: "2px solid #22c55e",
-            borderRadius: 4,
-            color: "#22c55e",
-            fontSize: "clamp(12px, 2.5vw, 18px)",
-            fontWeight: 700,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-            backgroundColor: "rgba(34, 197, 94, 0.25)",
-            display: "flex",
-            alignItems: "center",
-            padding: "0 4px",
-            textShadow: "0 0 2px #000, 0 1px 3px rgba(0,0,0,0.8)",
-          }}
-        >
-          {t.name}
-        </div>
-      ))}
+      {(faces?.tagged ?? []).map((t, i) => {
+        const isManual = t.source === "manual";
+        const isAuto = !isManual;
+        const low = isLowConfidenceAutoTag(t.source, t.confidence);
+        const borderColor = isManual ? "#22c55e" : low ? "#f59e0b" : "#22c55e";
+        const bg = isManual
+          ? "rgba(34, 197, 94, 0.25)"
+          : low
+            ? "rgba(245, 158, 11, 0.22)"
+            : "rgba(34, 197, 94, 0.25)";
+        return (
+          <div
+            key={`t-${i}-${t.personId}`}
+            style={{
+              position: "absolute",
+              left: t.x * scaleX,
+              top: t.y * scaleY,
+              width: t.width * scaleX,
+              minHeight: t.height * scaleY,
+              border: `2px solid ${borderColor}`,
+              borderRadius: 4,
+              color: borderColor,
+              fontSize: "clamp(11px, 2.2vw, 15px)",
+              fontWeight: 700,
+              backgroundColor: bg,
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "flex-start",
+              gap: 4,
+              padding: 4,
+              pointerEvents: "auto",
+              boxSizing: "border-box",
+            }}
+          >
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textShadow: "0 0 2px #000, 0 1px 3px rgba(0,0,0,0.8)",
+              }}
+            >
+              {t.name}
+              {isAuto && low ? " · low confidence" : ""}
+            </span>
+            {isAuto && onDismissAutoTagged && (
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="u-self-start"
+                style={{ fontSize: "0.75rem", padding: "2px 8px" }}
+                aria-label={`Dismiss auto tag for ${t.name}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  onDismissAutoTagged(t.personId);
+                }}
+              >
+                Dismiss
+              </Button>
+            )}
+          </div>
+        );
+      })}
       {showDetected &&
         (faces?.detected ?? []).map((d, i) => (
           <div
@@ -88,6 +130,7 @@ export function MediaViewerFaceOverlay({
               height: d.height * scaleY,
               border: "2px dashed rgba(255,255,255,0.6)",
               borderRadius: 4,
+              pointerEvents: "none",
             }}
           />
         ))}

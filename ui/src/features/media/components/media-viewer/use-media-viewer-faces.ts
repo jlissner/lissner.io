@@ -154,6 +154,23 @@ export function useMediaViewerFaces({
     [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange],
   );
 
+  const handleDismissAutoTagged = useCallback(
+    async (personId: number) => {
+      if (!mediaId) return;
+      try {
+        await removePersonFromMedia(mediaId, personId);
+        loadFaces();
+        onUpdate?.();
+        onTagChange?.();
+      } catch (err) {
+        const message =
+          err instanceof ApiError ? err.message : "Failed to dismiss tag";
+        alert(message);
+      }
+    },
+    [mediaId, loadFaces, onUpdate, onTagChange],
+  );
+
   return {
     faces,
     facesLoading,
@@ -166,5 +183,6 @@ export function useMediaViewerFaces({
     loadPeople,
     handleAssignFace,
     handleReassignFace,
+    handleDismissAutoTagged,
   };
 }

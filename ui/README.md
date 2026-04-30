@@ -1,4 +1,4 @@
-# UI (`family-image-manager` / Vite + React)
+# UI (`lissner.io` / Vite + React)
 
 ## Layout (bulletproof-react style)
 

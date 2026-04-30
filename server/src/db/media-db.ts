@@ -6,7 +6,6 @@ const state = { db: null as InstanceType<typeof Database> | null };
 
 export function getDb(): InstanceType<typeof Database> {
   if (state.db?.open) return state.db;
-  console.log("here?");
 
   const db = new Database(dbPath);
   db.pragma("foreign_keys = ON");
