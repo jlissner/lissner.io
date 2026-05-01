@@ -65,25 +65,24 @@ Keep app secrets in **`.env.prod`** (do not commit). See **`.env.prod.example`**
 
 The Docker image **does not compile** TypeScript or Vite; it copies **`server/dist`** and **`ui/dist`** from the build host. Always run a full build before building images.
 
-| Command               | Description                                                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `npm run deploy`      | **`npm run validate`** (lint, test, compose config) → **`npm run host`**                                                      |
-| `npm run validate`    | Lint, unit tests, `docker compose config -q`                                                                                  |
-| `npm run host`        | **`npm run build`** → Docker build (`--no-cache`) → `docker compose up -d`                                                    |
-| `npm run host:build`  | Build images only (`docker compose build --no-cache`)                                                                         |
-| `npm run host:up`     | Start containers and **wait** until services with healthchecks are **healthy** (so Traefik does not hit a still-starting app) |
-| `npm run host:down`   | Stop containers                                                                                                               |
-| `npm run host:pull`   | Pull Ollama embedding model (`nomic-embed-text`) into the running container                                                   |
-| `npm run host:logs`   | Follow logs for all services                                                                                                  |
-| `npm run host:status` | `docker compose ps`                                                                                                           |
-| `npm run host:local`  | Local dev without Docker (Ollama + server + Vite)                                                                             |
+| Command               | Description                                                                                                                        |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run deploy`      | **`npm run validate`** (lint, test, compose config) → **`npm run host`**                                                           |
+| `npm run validate`    | Lint, unit tests, `docker compose config -q`                                                                                       |
+| `npm run host`        | **`npm run build`** → Docker build (`--no-cache`) → `docker compose up -d`                                                         |
+| `npm run host:build`  | Build images only (`docker compose build --no-cache`)                                                                              |
+| `npm run host:up`     | Start containers and **wait** until services with healthchecks are **healthy** (so Traefik does not hit a still-starting app)      |
+| `npm run host:down`   | Stop containers                                                                                                                    |
+| `npm run host:pull`   | Re-pull default Ollama models (`nomic-embed-text`, `llava`) into the running container (usually unnecessary; see First-time setup) |
+| `npm run host:logs`   | Follow logs for all services                                                                                                       |
+| `npm run host:status` | `docker compose ps`                                                                                                                |
+| `npm run host:local`  | Local dev without Docker (Ollama + server + Vite)                                                                                  |
 
 ## First-time setup
 
-1. Configure **`.env`** (see above), especially **`ACME_EMAIL`** and **`TRAEFIK_RULE`** for your hostname.
-2. Run **`npm run host`** (includes `npm run build`).
-3. Pull the embedding model: **`npm run host:pull`**
-4. Check **`npm run host:status`**
+1. Configure **`.env`** (see above), especially **`ACME_EMAIL`** and **`TRAEFIK_RULE`** for your hostname. In **`.env.prod`**, set **`OLLAMA_VISION_MODEL`** (and optionally **`OLLAMA_EMBED_MODEL`**) if you do not want the defaults (**`llava`** and **`nomic-embed-text`**).
+2. Run **`npm run host`** (includes `npm run build`). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`app`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
+3. Check **`npm run host:status`**
 
 The app is reachable on the host/port configured in Traefik (see **`TRAEFIK_RULE`** and host firewall). **HTTP** on **`HTTP_PORT`** (default **80**) redirects to **HTTPS** on **`HTTPS_PORT`** (default **443**). Forward **WAN 80 → LAN `HTTP_PORT`** if you want `http://` URLs to upgrade automatically. Direct **`HOST_PORT`** access hits the API container without Traefik (useful for debugging).
 
@@ -125,7 +124,7 @@ permission denied while trying to connect to the docker API
 Error: model 'nomic-embed-text' not found
 ```
 
-→ `npm run host:pull`
+→ Confirm **`ollama`** logs show pulls finished (`bash scripts/docker-compose.sh logs ollama`). On first boot, downloads can take many minutes. To refresh models manually: **`npm run host:pull`**.
 
 ### Port already in use
 
@@ -149,7 +148,9 @@ Repeated failed validations (wrong DNS, wrong port 443, bad router before the fi
 
 ### App cannot reach Ollama
 
-The **`app`** service joins both the **`traefik`** and **`default`** networks so it can talk to Traefik and to the **`ollama`** service. If you change networks, confirm **`OLLAMA_HOST=http://ollama:11434`** still resolves inside the **`app`** container.
+The **`app`** service joins both the **`traefik`** and **`default`** networks so it can talk to Traefik and to the **`ollama`** service. **`docker-compose.yml` sets `OLLAMA_HOST=http://ollama:11434` on the app container** so indexing and vision use the Compose DNS name to the bundled **`ollama`** service. A value like **`ollama.internal`** in **`.env.prod`** is for Traefik-style routing on other networks and is **not** used for app→Ollama inside this stack.
+
+If you change networks or use an external Ollama host, edit the app service **`environment`** in **`docker-compose.yml`** (or split overrides) so **`OLLAMA_HOST`** points at a URL the app container can resolve.
 
 ### Gateway Timeout (504) right after `host:down` / `deploy`
 

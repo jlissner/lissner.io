@@ -38,6 +38,12 @@ function buildWriteStmts() {
       "DELETE FROM embeddings WHERE media_id = ?",
     ),
     deleteMediaRow: db.prepare("DELETE FROM media WHERE id = ?"),
+    setFileIssue: db.prepare(
+      `UPDATE media SET file_issue_code = ?, file_issue_detail = ?, file_issue_at = datetime('now') WHERE id = ?`,
+    ),
+    clearFileIssue: db.prepare(
+      `UPDATE media SET file_issue_code = NULL, file_issue_detail = NULL, file_issue_at = NULL WHERE id = ?`,
+    ),
   };
 }
 
@@ -174,4 +180,16 @@ export function setMediaPerceptualHash(mediaId: string, hash: Buffer): void {
   getDb()
     .prepare("UPDATE media SET perceptual_hash = ? WHERE id = ?")
     .run(hash, mediaId);
+}
+
+export function setMediaFileIssue(
+  mediaId: string,
+  code: string,
+  detail: string | null,
+): void {
+  writeStmts().setFileIssue.run(code, detail, mediaId);
+}
+
+export function clearMediaFileIssue(mediaId: string): void {
+  writeStmts().clearFileIssue.run(mediaId);
 }

@@ -1016,6 +1016,19 @@
   font-size: var(--text-sm);
 }
 
+.admin-page__issue-detail {
+  margin: 0 0 var(--space-2);
+  padding: var(--space-2);
+  max-height: 8rem;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-xs);
+  background: var(--color-bg-subtle);
+  border-radius: var(--radius-md);
+}
+
 .admin-page__form {
   display: flex;
   flex-wrap: wrap;

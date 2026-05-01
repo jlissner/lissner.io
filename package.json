@@ -22,7 +22,7 @@
     "host:build": "bash scripts/docker-compose.sh build --no-cache",
     "host:up": "bash scripts/docker-compose.sh up -d --wait",
     "host:down": "bash scripts/docker-compose.sh down",
-    "host:pull": "bash scripts/docker-compose.sh exec ollama ollama pull nomic-embed-text",
+    "host:pull": "bash scripts/docker-compose.sh exec ollama sh -lc 'ollama pull \"${OLLAMA_EMBED_MODEL:-nomic-embed-text}\" && ollama pull \"${OLLAMA_VISION_MODEL:-llava}\"'",
     "host:logs": "bash scripts/docker-compose.sh logs -f",
     "host:status": "bash scripts/docker-compose.sh ps",
     "host:config": "bash scripts/docker-compose.sh config -q",

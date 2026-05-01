@@ -117,6 +117,13 @@ function buildReadStmts() {
        JOIN image_people ip ON ip.media_id = m.id
        WHERE ip.person_id = ? AND ${GALLERY_VISIBLE_M} AND COALESCE(m.date_taken, m.uploaded_at) >= ?`,
     ),
+    listMediaWithFileIssues: db.prepare(
+      `SELECT id, original_name as originalName, mime_type as mimeType, size, uploaded_at as uploadedAt,
+              file_issue_code as issueCode, file_issue_detail as issueDetail, file_issue_at as issueAt
+       FROM media
+       WHERE file_issue_code IS NOT NULL AND TRIM(file_issue_code) != ''
+       ORDER BY datetime(COALESCE(file_issue_at, uploaded_at)) DESC, uploaded_at DESC`,
+    ),
   };
 }
 
@@ -165,6 +172,28 @@ export function listMedia() {
     size: number;
     uploadedAt: string;
     backedUpAt?: string | null;
+  }>;
+}
+
+export function listMediaWithFileIssues(): Array<{
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+  issueCode: string;
+  issueDetail: string | null;
+  issueAt: string | null;
+}> {
+  return readStmts().listMediaWithFileIssues.all() as Array<{
+    id: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    uploadedAt: string;
+    issueCode: string;
+    issueDetail: string | null;
+    issueAt: string | null;
   }>;
 }
 

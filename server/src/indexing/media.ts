@@ -1,10 +1,9 @@
+import { existsSync } from "node:fs";
 import { readFile } from "fs/promises";
 import path from "path";
 import { execFile } from "child_process";
-import { promisify } from "util";
 import exifr from "exifr";
 
-const execFileAsync = promisify(execFile);
 import * as db from "../db/media.js";
 import { getEmbedding } from "../embeddings.js";
 import {
@@ -59,9 +58,9 @@ async function getTextForItem(
           : "";
       return `${base}${suffix}`.trim();
     } catch (err) {
-      console.error(
+      console.warn(
         { err, originalName: item.originalName },
-        "Image description failed",
+        "Image description failed (vision API error)",
       );
       return `Image: ${item.originalName}`;
     }
@@ -133,38 +132,173 @@ function remapClusterPersonIdsToNewDbPeople(
 const FFPROBE_NOT_FOUND =
   "ffprobe not found. Install ffmpeg to extract video metadata (e.g. apt install ffmpeg).";
 
+function execFileCapture(
+  command: string,
+  args: readonly string[],
+): Promise<{ code: number; stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(
+      command,
+      [...args],
+      { maxBuffer: 64 * 1024 * 1024 },
+      (err, stdout, stderr) => {
+        const toStr = (chunk: string | Buffer | undefined): string => {
+          if (chunk == null) return "";
+          return typeof chunk === "string" ? chunk : chunk.toString("utf8");
+        };
+        const out = toStr(stdout);
+        const errStr = toStr(stderr);
+        if (err) {
+          const ne = err as NodeJS.ErrnoException;
+          if (ne.code === "ENOENT") {
+            reject(err);
+            return;
+          }
+          const withCode = err as NodeJS.ErrnoException & { status?: number };
+          const exitCode =
+            typeof withCode.code === "number"
+              ? withCode.code
+              : typeof withCode.status === "number"
+                ? withCode.status
+                : 1;
+          resolve({ code: exitCode, stdout: out, stderr: errStr });
+          return;
+        }
+        resolve({ code: 0, stdout: out, stderr: errStr });
+      },
+    );
+  });
+}
+
+function ffprobeArgs(
+  filePath: string,
+  probesize: string,
+  analyzeduration: string,
+): string[] {
+  return [
+    "-v",
+    "error",
+    "-print_format",
+    "json",
+    "-show_format",
+    "-show_streams",
+    "-probesize",
+    probesize,
+    "-analyzeduration",
+    analyzeduration,
+    filePath,
+  ];
+}
+
+async function runFfprobeJson(filePath: string): Promise<{
+  code: number;
+  stdout: string;
+  stderr: string;
+}> {
+  const quick = await execFileCapture("ffprobe", [
+    "-v",
+    "error",
+    "-print_format",
+    "json",
+    "-show_format",
+    "-show_streams",
+    filePath,
+  ]);
+  if (quick.code === 0) return quick;
+  const deep = await execFileCapture(
+    "ffprobe",
+    ffprobeArgs(filePath, "100000000", "500000000"),
+  );
+  return deep;
+}
+
+function truncateFileIssueDetail(message: string): string {
+  const max = 480;
+  return message.length <= max ? message : `${message.slice(0, max)}…`;
+}
+
+function stderrLooksLikeMissingPath(stderr: string): boolean {
+  return /\bno such file or directory\b/i.test(stderr);
+}
+
 async function extractVideoMetadata(
   filePath: string,
+  ctx?: { mediaId?: string; originalName?: string },
 ): Promise<{ dateTaken: string | null }> {
-  const stdout: string = await (async () => {
-    try {
-      const result = await execFileAsync("ffprobe", [
-        "-v",
-        "quiet",
-        "-print_format",
-        "json",
-        "-show_format",
-        "-show_streams",
-        filePath,
-      ]);
-      return result.stdout;
-    } catch (err) {
-      const code = (err as NodeJS.ErrnoException)?.code;
-      if (code === "ENOENT") {
-        throw new Error(FFPROBE_NOT_FOUND, { cause: err });
-      }
-      throw new Error(
-        `ffprobe failed: ${err instanceof Error ? err.message : String(err)}`,
-        {
-          cause: err,
-        },
-      );
+  const recordIssue = (code: string, detail: string): void => {
+    if (ctx?.mediaId) {
+      db.setMediaFileIssue(ctx.mediaId, code, truncateFileIssueDetail(detail));
     }
-  })();
-  const data = JSON.parse(stdout) as {
+  };
+  const clearIssue = (): void => {
+    if (ctx?.mediaId) {
+      db.clearMediaFileIssue(ctx.mediaId);
+    }
+  };
+
+  if (!existsSync(filePath)) {
+    recordIssue(
+      "file_missing",
+      `Media file not found on disk (wrong path, not synced yet, or removed): ${filePath}`,
+    );
+    console.warn("Video date skipped — media file not on disk", {
+      filePath,
+      originalName: ctx?.originalName,
+    });
+    return { dateTaken: null };
+  }
+
+  const probe = await runFfprobeJson(filePath).catch((err: unknown) => {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") {
+      throw new Error(FFPROBE_NOT_FOUND, { cause: err });
+    }
+    throw err;
+  });
+  const { code: exitCode, stdout, stderr } = probe;
+
+  if (exitCode !== 0) {
+    const fileStillMissing =
+      !existsSync(filePath) || stderrLooksLikeMissingPath(stderr);
+    const issueCode = fileStillMissing ? "file_missing" : "ffprobe_failed";
+    const detail = [
+      `ffprobe exited ${exitCode}`,
+      stderr.trim() !== "" ? `stderr: ${stderr.trim().slice(0, 400)}` : null,
+      `stdout: ${stdout.trim().slice(0, 200)}`,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+    recordIssue(issueCode, detail);
+    const logMessage = fileStillMissing
+      ? "Video date skipped — file missing on disk (see Admin → File issues)"
+      : "ffprobe could not read video (date skipped); flagged for admin review";
+    console.warn(logMessage, {
+      filePath,
+      originalName: ctx?.originalName,
+      exitCode,
+      stderrPreview: stderr.trim().slice(0, 240),
+    });
+    return { dateTaken: null };
+  }
+
+  let data: {
     format?: { tags?: { creation_time?: string } };
     streams?: Array<{ tags?: { creation_time?: string } }>;
   };
+  try {
+    data = JSON.parse(stdout) as {
+      format?: { tags?: { creation_time?: string } };
+      streams?: Array<{ tags?: { creation_time?: string } }>;
+    };
+  } catch (err) {
+    const parseMsg = err instanceof Error ? err.message : String(err);
+    recordIssue(
+      "ffprobe_bad_response",
+      `JSON parse error: ${parseMsg}; stdout: ${stdout.slice(0, 200)}`,
+    );
+    return { dateTaken: null };
+  }
+  clearIssue();
   const formatDate = data.format?.tags?.creation_time;
   const streamDate = data.streams?.[0]?.tags?.creation_time;
   const dateStr = formatDate ?? streamDate;
@@ -213,20 +347,18 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           );
         }
       } else if (isVideoMime(item.mimeType)) {
-        try {
-          const meta = await extractVideoMetadata(filePath);
-          if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
-        } catch (err) {
-          console.error(
-            { err, originalName: item.originalName },
-            "Video metadata failed",
-          );
-        }
+        const meta = await extractVideoMetadata(filePath, {
+          mediaId: item.id,
+          originalName: item.originalName,
+        });
+        if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
       }
       const text = await getTextForItem(item, imagePersonIds);
       if (!text.trim()) return false;
       const embedding = await getEmbedding(text.slice(0, 8000));
-      db.upsertEmbedding(item.id, embedding);
+      if (embedding) {
+        db.upsertEmbedding(item.id, embedding);
+      }
       if (isEffectiveImageItem(item)) {
         await computeAndStoreHash(item.id);
       }
@@ -263,7 +395,10 @@ export async function indexMediaItems(
 
   for (const item of videoItems) {
     const filePath = path.join(mediaDir, item.filename);
-    const meta = await extractVideoMetadata(filePath);
+    const meta = await extractVideoMetadata(filePath, {
+      mediaId: item.id,
+      originalName: item.originalName,
+    });
     if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
   }
 
@@ -341,8 +476,10 @@ export async function indexMediaItems(
         continue;
       }
       const embedding = await getEmbedding(text.slice(0, 8000));
-      db.upsertEmbedding(item.id, embedding);
-      progress.indexed++;
+      if (embedding) {
+        db.upsertEmbedding(item.id, embedding);
+        progress.indexed++;
+      }
     } catch (err) {
       console.error(
         { err, originalName: item.originalName },

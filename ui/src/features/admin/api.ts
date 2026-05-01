@@ -3,6 +3,7 @@ import type {
   AdminDbRestoreResponse,
   AdminDuplicatesBulkDeleteRequest,
   AdminDuplicatesBulkDeleteResponse,
+  AdminMediaFileIssuesResponse,
   AdminThumbnailRepairRequest,
   AdminThumbnailRepairResponse,
 } from "@shared";
@@ -237,6 +238,16 @@ export function repairAdminThumbnails(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+}
+
+export function listMediaFileIssues(): Promise<AdminMediaFileIssuesResponse> {
+  return apiJson<AdminMediaFileIssuesResponse>("admin/media-file-issues");
+}
+
+export function clearMediaFileIssue(mediaId: string): Promise<{ ok: true }> {
+  return apiJson<{ ok: true }>(`admin/media-file-issues/${mediaId}/clear`, {
+    method: "POST",
   });
 }
 

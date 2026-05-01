@@ -92,6 +92,9 @@ async function textSearchOrderedIds(text: string): Promise<string[]> {
     return [];
   }
   const queryEmbedding = await getEmbedding(text.trim());
+  if (queryEmbedding === null) {
+    return [];
+  }
   const scored = stored.map(({ mediaId, embedding }) => ({
     mediaId,
     score: cosineSimilarity(queryEmbedding, JSON.parse(embedding) as number[]),
@@ -125,18 +128,20 @@ async function legacySearchOrderedIds(query: string): Promise<string[]> {
   const stored = db.getEmbeddings();
   if (stored.length > 0) {
     const queryEmbedding = await getEmbedding(query);
-    const scored = stored.map(({ mediaId, embedding }) => ({
-      mediaId,
-      score: cosineSimilarity(
-        queryEmbedding,
-        JSON.parse(embedding) as number[],
-      ),
-    }));
-    scored.sort((a, b) => b.score - a.score);
-    for (const id of scored.slice(0, EMBEDDING_TOP).map((s) => s.mediaId)) {
-      if (!seen.has(id)) {
-        mediaIds.push(id);
-        seen.add(id);
+    if (queryEmbedding !== null) {
+      const scored = stored.map(({ mediaId, embedding }) => ({
+        mediaId,
+        score: cosineSimilarity(
+          queryEmbedding,
+          JSON.parse(embedding) as number[],
+        ),
+      }));
+      scored.sort((a, b) => b.score - a.score);
+      for (const id of scored.slice(0, EMBEDDING_TOP).map((s) => s.mediaId)) {
+        if (!seen.has(id)) {
+          mediaIds.push(id);
+          seen.add(id);
+        }
       }
     }
   }

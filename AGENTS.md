@@ -56,7 +56,7 @@ npm run host               # build (tsc + vite) → docker compose build --no-ca
 npm run host:build         # docker compose build --no-cache (run after npm run build)
 npm run host:up            # docker compose up -d --wait (until app/ollama healthy)
 npm run host:down          # docker compose down
-npm run host:pull          # ollama pull nomic-embed-text (requires ollama container running)
+npm run host:pull          # optional: re-pull nomic-embed-text + llava in running ollama container
 npm run host:logs          # docker compose logs -f
 npm run host:status        # docker compose ps
 npm run host:config        # docker compose config -q (validate compose + env interpolation)

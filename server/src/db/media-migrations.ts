@@ -151,6 +151,14 @@ const migrations: MigrationStep[] = [
       );
     },
   },
+  {
+    version: 13,
+    apply: (db) => {
+      addColumnIfMissing(db, "media", "file_issue_code", "TEXT");
+      addColumnIfMissing(db, "media", "file_issue_detail", "TEXT");
+      addColumnIfMissing(db, "media", "file_issue_at", "TEXT");
+    },
+  },
 ];
 
 export function runMediaMigrations(db: Database.Database): void {

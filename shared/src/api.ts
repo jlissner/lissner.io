@@ -186,3 +186,19 @@ export type AdminThumbnailRepairResponse = {
     detail?: string;
   }>;
 };
+
+/** GET /api/admin/media-file-issues */
+export type AdminMediaFileIssueItem = {
+  id: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+  issueCode: string;
+  issueDetail: string | null;
+  issueAt: string | null;
+};
+
+export type AdminMediaFileIssuesResponse = {
+  items: AdminMediaFileIssueItem[];
+};

@@ -11,7 +11,8 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - SERVER_PORT=${SERVER_PORT}
-      - OLLAMA_HOST=${OLLAMA_HOST}
+      # Resolve the `ollama` service on the Compose network (overrides OLLAMA_HOST from env_file).
+      - OLLAMA_HOST=http://ollama:11434
       - DATA_DIR=${DATA_DIR}
     # Inject secrets and app config from the host (same file `env.ts` reads locally in production).
     # Compose `--env-file` only affects compose interpolation; it does not pass vars into containers.
@@ -49,7 +50,10 @@ services:
       - default
 
   ollama:
-    image: ollama/ollama:latest
+    build:
+      context: ./docker/ollama
+    env_file:
+      - .env.prod
     volumes:
       - ollama-models:/root/.ollama
     environment:
@@ -61,13 +65,17 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    # Official image has no `curl`; healthcheck uses the `ollama` CLI.
+    # Waits until embedded entrypoint finishes pulling embed + vision models (see docker/ollama/).
     healthcheck:
-      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /tmp/ollama-models-ready && ollama list >/dev/null 2>&1 || exit 1",
+        ]
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 120s
+      start_period: 1200s
     restart: unless-stopped
 
   traefik:
