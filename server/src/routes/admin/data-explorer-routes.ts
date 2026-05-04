@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { parseWithSchema } from "../../validation/parse.js";
 import {
   dataExplorerDeleteBodySchema,
   dataExplorerInsertBodySchema,
@@ -35,8 +34,8 @@ adminDataExplorerRouter.get("/data-explorer/tables", (_req, res) => {
 
 adminDataExplorerRouter.get("/data-explorer/tables/:table", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
-  const { table } = parseWithSchema(tableParamSchema, req.params);
-  const { q } = parseWithSchema(dataExplorerSchemaQuerySchema, req.query);
+  const { table } = tableParamSchema.parse(req.params);
+  const { q } = dataExplorerSchemaQuerySchema.parse(req.query);
   const result = sendAdminResult(res, getDataExplorerSchemaAndCount(table, q));
   if (result == null) return;
   res.json(result);
@@ -44,11 +43,8 @@ adminDataExplorerRouter.get("/data-explorer/tables/:table", (req, res) => {
 
 adminDataExplorerRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
-  const { table } = parseWithSchema(tableParamSchema, req.params);
-  const { limit, offset, q } = parseWithSchema(
-    dataExplorerRowsQuerySchema,
-    req.query,
-  );
+  const { table } = tableParamSchema.parse(req.params);
+  const { limit, offset, q } = dataExplorerRowsQuerySchema.parse(req.query);
   const result = sendAdminResult(
     res,
     listDataExplorerRows(table, limit, offset, q),
@@ -59,8 +55,8 @@ adminDataExplorerRouter.get("/data-explorer/tables/:table/rows", (req, res) => {
 
 adminDataExplorerRouter.post("/data-explorer/tables/:table", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
-  const { table } = parseWithSchema(tableParamSchema, req.params);
-  const body = parseWithSchema(dataExplorerInsertBodySchema, req.body);
+  const { table } = tableParamSchema.parse(req.params);
+  const body = dataExplorerInsertBodySchema.parse(req.body);
   const result = sendAdminResult(res, insertDataExplorerRow(table, body));
   if (result == null) return;
   res.status(201).json({ id: result });
@@ -68,11 +64,8 @@ adminDataExplorerRouter.post("/data-explorer/tables/:table", (req, res) => {
 
 adminDataExplorerRouter.put("/data-explorer/tables/:table", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
-  const { table } = parseWithSchema(tableParamSchema, req.params);
-  const { pk, ...data } = parseWithSchema(
-    dataExplorerUpdateBodySchema,
-    req.body,
-  );
+  const { table } = tableParamSchema.parse(req.params);
+  const { pk, ...data } = dataExplorerUpdateBodySchema.parse(req.body);
   const result = sendAdminResult(res, updateDataExplorerRow(table, pk, data));
   if (result == null) return;
   res.json({ changes: result });
@@ -80,8 +73,8 @@ adminDataExplorerRouter.put("/data-explorer/tables/:table", (req, res) => {
 
 adminDataExplorerRouter.delete("/data-explorer/tables/:table", (req, res) => {
   if (!ensureDataExplorerEnabled(res)) return;
-  const { table } = parseWithSchema(tableParamSchema, req.params);
-  const { pk } = parseWithSchema(dataExplorerDeleteBodySchema, req.body);
+  const { table } = tableParamSchema.parse(req.params);
+  const { pk } = dataExplorerDeleteBodySchema.parse(req.body);
   const result = sendAdminResult(res, deleteDataExplorerRow(table, pk));
   if (result == null) return;
   res.json({ changes: result });

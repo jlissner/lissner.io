@@ -3,7 +3,6 @@ import type { NextFunction, Request, Response } from "express";
 import { requireAdmin } from "../auth/middleware.js";
 import { sendApiError } from "../lib/api-error.js";
 import { asyncHandler } from "../middleware/async-handler.js";
-import { parseWithSchema } from "../validation/parse.js";
 import {
   clearAllSearchIndexData,
   getIndexStatusBody,
@@ -23,12 +22,12 @@ export function requireAdminForFullLibraryForceIndex(
   res: Response,
   next: NextFunction,
 ): void {
-  const { force } = parseWithSchema(searchIndexQuerySchema, req.query);
+  const { force } = searchIndexQuerySchema.parse(req.query);
   if (!force) {
     next();
     return;
   }
-  const body = parseWithSchema(searchIndexBodySchema, req.body);
+  const body = searchIndexBodySchema.parse(req.body);
   const mediaIds = body?.mediaIds;
   if (Array.isArray(mediaIds) && mediaIds.length > 0) {
     next();
@@ -43,8 +42,8 @@ searchRouter.post(
   "/index",
   requireAdminForFullLibraryForceIndex,
   (req, res) => {
-    const { force } = parseWithSchema(searchIndexQuerySchema, req.query);
-    const body = parseWithSchema(searchIndexBodySchema, req.body);
+    const { force } = searchIndexQuerySchema.parse(req.query);
+    const body = searchIndexBodySchema.parse(req.body);
     const mediaIds = body?.mediaIds;
     const result = startBulkIndexingJob({ force, mediaIds });
     if (!result.ok) {
@@ -56,7 +55,7 @@ searchRouter.post(
 );
 
 searchRouter.post("/index/cancel", requireAdmin, (req, res) => {
-  const body = parseWithSchema(cancelIndexBodySchema, req.body);
+  const body = cancelIndexBodySchema.parse(req.body);
   const ok = cancelBulkIndexJob(body.jobId);
   if (!ok) {
     sendApiError(
@@ -82,7 +81,7 @@ searchRouter.get("/index/status", (_req, res) => {
 searchRouter.get(
   "/",
   asyncHandler(async (req, res) => {
-    const query = parseWithSchema(searchListQuerySchema, req.query);
+    const query = searchListQuerySchema.parse(req.query);
     const searchResult = await searchMediaByQuery(query.q ?? "");
     if (!searchResult.ok) {
       if (searchResult.reason === "missing_query") {

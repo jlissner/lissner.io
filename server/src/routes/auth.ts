@@ -13,7 +13,6 @@ import {
 } from "../services/jwt-auth-service.js";
 import { requireAuth } from "../auth/middleware.js";
 import { checkCodeRateLimit } from "../auth/rate-limit.js";
-import { parseWithSchema } from "../validation/parse.js";
 import {
   magicLinkBodySchema,
   verifyCodeBodySchema,
@@ -23,9 +22,9 @@ import {
 export const authRouter = Router();
 
 authRouter.post("/magic-link", async (req, res) => {
-  const { email } = parseWithSchema(magicLinkBodySchema, req.body);
-
+  const { email } = magicLinkBodySchema.parse(req.body);
   const normalized = email.toLowerCase();
+
   if (!authDb.isEmailWhitelisted(normalized)) {
     sendApiError(
       res,
@@ -55,7 +54,7 @@ authRouter.post("/magic-link", async (req, res) => {
 });
 
 authRouter.post("/verify-code", async (req, res) => {
-  const { email, code } = parseWithSchema(verifyCodeBodySchema, req.body);
+  const { email, code } = verifyCodeBodySchema.parse(req.body);
   const normalizedEmail = email.toLowerCase();
 
   const rateCheck = checkCodeRateLimit(normalizedEmail);
@@ -132,7 +131,7 @@ authRouter.get("/me/people", requireAuth, (req, res) => {
 
 authRouter.put("/me/people", requireAuth, (req, res) => {
   const userId = req.jwtUser!.id;
-  const { personIds } = parseWithSchema(updateMyPeopleBodySchema, req.body);
+  const { personIds } = updateMyPeopleBodySchema.parse(req.body);
   const ids = personIds ?? [];
 
   authDb.setUserPeople(userId, ids);

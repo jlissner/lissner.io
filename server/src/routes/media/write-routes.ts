@@ -13,7 +13,6 @@ import {
 } from "../../services/media-service.js";
 import { rotateMediaImage90Clockwise } from "../../services/media-rotate-service.js";
 import { setMediaTags } from "../../services/media-tags-service.js";
-import { parseWithSchema } from "../../validation/parse.js";
 import {
   mediaIdParamSchema,
   mediaTagsBodySchema,
@@ -110,35 +109,40 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
 });
 
 mediaWriteRouter.post("/upload/check-names", (req, res) => {
-  const { names } = parseWithSchema(uploadCheckNamesBodySchema, req.body);
+  const { names } = uploadCheckNamesBodySchema.parse(req.body);
   const conflicts: Array<{
     requestedName: string;
     existing: { id: string; originalName: string; uploadedAt: string };
   }> = [];
+
   for (const requestedName of names) {
     const existing = db.findExistingMediaByOriginalName(requestedName);
     if (existing) {
       conflicts.push({ requestedName, existing });
     }
   }
+
   res.json({ conflicts });
 });
 
 mediaWriteRouter.put("/:id/tags", (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
-  const body = parseWithSchema(mediaTagsBodySchema, req.body);
+  const { id } = mediaIdParamSchema.parse(req.params);
+  const body = mediaTagsBodySchema.parse(req.body);
   const result = setMediaTags(id, body.tags, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
+
   if (result.ok) {
     res.json({ ok: true as const });
     return;
   }
+
   if (result.reason === "not_found") {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   sendApiError(
     res,
     403,
@@ -148,19 +152,22 @@ mediaWriteRouter.put("/:id/tags", (req, res) => {
 });
 
 mediaWriteRouter.delete("/:id", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const result = await deleteMediaItem(id, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
+
   if (result.ok) {
     res.status(204).send();
     return;
   }
+
   if (result.reason === "not_found") {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   if (result.reason === "forbidden") {
     sendApiError(
       res,
@@ -170,23 +177,27 @@ mediaWriteRouter.delete("/:id", async (req, res) => {
     );
     return;
   }
+
   sendApiError(res, 500, "Failed to delete file", "delete_failed");
 });
 
 mediaWriteRouter.post("/:id/rotate", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const result = await rotateMediaImage90Clockwise(id, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
+
   if (result.ok) {
     res.json({ ok: true as const, size: result.size });
     return;
   }
+
   if (result.reason === "not_found") {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   if (result.reason === "forbidden") {
     sendApiError(
       res,
@@ -196,6 +207,7 @@ mediaWriteRouter.post("/:id/rotate", async (req, res) => {
     );
     return;
   }
+
   if (result.reason === "bad_type") {
     sendApiError(
       res,
@@ -205,6 +217,7 @@ mediaWriteRouter.post("/:id/rotate", async (req, res) => {
     );
     return;
   }
+
   if (result.reason === "motion_pair") {
     sendApiError(
       res,
@@ -214,27 +227,32 @@ mediaWriteRouter.post("/:id/rotate", async (req, res) => {
     );
     return;
   }
+
   if (result.reason === "file_missing") {
     sendApiError(res, 404, "File not found", "file_missing");
     return;
   }
+
   sendApiError(res, 500, "Could not rotate this image", "rotate_failed");
 });
 
 mediaWriteRouter.patch("/:id", (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const result = updateMediaDateTaken(id, req.body, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
+
   if (result.ok) {
     res.json({ dateTaken: result.dateTaken });
     return;
   }
+
   if (result.reason === "not_found") {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   if (result.reason === "forbidden") {
     sendApiError(
       res,
@@ -244,6 +262,7 @@ mediaWriteRouter.patch("/:id", (req, res) => {
     );
     return;
   }
+
   if (result.reason === "bad_request") {
     sendApiError(
       res,
@@ -253,6 +272,7 @@ mediaWriteRouter.patch("/:id", (req, res) => {
     );
     return;
   }
+
   sendApiError(
     res,
     400,

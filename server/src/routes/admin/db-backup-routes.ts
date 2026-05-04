@@ -4,7 +4,6 @@ import {
   listDbBackupsForAdmin,
   restoreDbFromS3BackupKey,
 } from "../../services/db-backup-admin-service.js";
-import { parseWithSchema } from "../../validation/parse.js";
 import { dbRestoreBodySchema } from "../../validation/admin-schemas.js";
 
 export const adminDbBackupRouter = Router();
@@ -32,7 +31,7 @@ adminDbBackupRouter.get("/db-backups", async (_req, res, next) => {
 
 adminDbBackupRouter.post("/db-restore", async (req, res, next) => {
   try {
-    const { key } = parseWithSchema(dbRestoreBodySchema, req.body);
+    const { key } = dbRestoreBodySchema.parse(req.body);
     const result = await restoreDbFromS3BackupKey(key);
     if (result.ok) {
       res.json({ restored: true });

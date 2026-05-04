@@ -2,7 +2,6 @@ import { Router } from "express";
 import { requireAdmin } from "../../auth/middleware.js";
 import { getAuthUser } from "../../auth/middleware.js";
 import { asyncHandler } from "../../middleware/async-handler.js";
-import { parseWithSchema } from "../../validation/parse.js";
 import {
   peopleDirectoryCreateBodySchema,
   peopleDirectoryPersonIdParamsSchema,
@@ -30,11 +29,12 @@ export function createAdminPeopleDirectoryListHandler(deps: {
   };
 }
 
+/** TODO: look into this pattern more */
 function createAdminPeopleDirectoryCreateHandler(deps: {
   createDirectoryPerson: typeof createDirectoryPerson;
 }) {
   return asyncHandler(async (req, res) => {
-    const body = parseWithSchema(peopleDirectoryCreateBodySchema, req.body);
+    const body = peopleDirectoryCreateBodySchema.parse(req.body);
     const user = getAuthUser(req);
     const result = sendAdminResult(
       res,
@@ -54,11 +54,8 @@ function createAdminPeopleDirectoryUpdateHandler(deps: {
   updateDirectoryPerson: typeof updateDirectoryPerson;
 }) {
   return asyncHandler(async (req, res) => {
-    const { personId } = parseWithSchema(
-      peopleDirectoryPersonIdParamsSchema,
-      req.params,
-    );
-    const body = parseWithSchema(peopleDirectoryUpdateBodySchema, req.body);
+    const { personId } = peopleDirectoryPersonIdParamsSchema.parse(req.params);
+    const body = peopleDirectoryUpdateBodySchema.parse(req.body);
     const user = getAuthUser(req);
     const result = sendAdminResult(
       res,
@@ -79,16 +76,13 @@ function createAdminPeopleDirectoryDeleteHandler(deps: {
   deleteDirectoryPerson: typeof deleteDirectoryPerson;
 }) {
   return asyncHandler(async (req, res) => {
-    const { personId } = parseWithSchema(
-      peopleDirectoryPersonIdParamsSchema,
-      req.params,
-    );
+    const { personId } = peopleDirectoryPersonIdParamsSchema.parse(req.params);
     const user = getAuthUser(req);
     const result = sendAdminResult(
       res,
       deps.deleteDirectoryPerson({ personId, actorUserId: user?.id }),
     );
-    if (result == null) return;
+
     res.json(result);
   });
 }

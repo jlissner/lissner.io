@@ -7,7 +7,6 @@ import {
 import { deleteMediaItem } from "../../services/media-write-service.js";
 import * as db from "../../db/media.js";
 import { hammingDistance } from "../../lib/perceptual-hash.js";
-import { parseWithSchema } from "../../validation/parse.js";
 import { adminDuplicatesBulkDeleteBodySchema } from "../../validation/admin-duplicates-schemas.js";
 
 export const adminDuplicatesRouter = Router();
@@ -38,11 +37,7 @@ export function createAdminDuplicatesBulkDeleteHandler(deps?: {
   const deleteFn = deps?.deleteMediaItem ?? deleteMediaItem;
 
   return async (req, res) => {
-    const { mediaIds } = parseWithSchema(
-      adminDuplicatesBulkDeleteBodySchema,
-      req.body,
-    );
-
+    const { mediaIds } = adminDuplicatesBulkDeleteBodySchema.parse(req.body);
     const ctx = { userId: req.jwtUser?.id, isAdmin: req.jwtUser?.isAdmin };
     const results = await mapInBatches(mediaIds, 8, async (mediaId) => {
       const result = await deleteFn(mediaId, ctx);

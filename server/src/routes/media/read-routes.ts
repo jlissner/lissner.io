@@ -14,7 +14,6 @@ import {
 } from "../../services/media-service.js";
 import { listDistinctMediaTags } from "../../services/media-tags-service.js";
 import { mediaDir } from "../../config/paths.js";
-import { parseWithSchema } from "../../validation/parse.js";
 import {
   mediaIdParamSchema,
   mediaIdPersonIdParamSchema,
@@ -24,8 +23,7 @@ import {
 export const mediaReadRouter = Router();
 
 mediaReadRouter.get("/", (req, res) => {
-  const { limit, offset, personId, sortBy } = parseWithSchema(
-    mediaListQuerySchema,
+  const { limit, offset, personId, sortBy } = mediaListQuerySchema.parse(
     req.query,
   );
   const { items, total } = listMediaEnriched({
@@ -38,19 +36,21 @@ mediaReadRouter.get("/", (req, res) => {
 });
 
 mediaReadRouter.get("/timeline", (req, res) => {
-  const { personId, sortBy } = parseWithSchema(mediaListQuerySchema, req.query);
+  const { personId, sortBy } = mediaListQuerySchema.parse(req.query);
   const months = db.getDistinctMonths(sortBy, personId);
+
   res.json({ months });
 });
 
 mediaReadRouter.get("/timeline/offset", (req, res) => {
-  const { personId, sortBy } = parseWithSchema(mediaListQuerySchema, req.query);
+  const { personId, sortBy } = mediaListQuerySchema.parse(req.query);
   const monthKey = String(req.query.month ?? "");
   if (!/^\d{4}-\d{2}$/.test(monthKey)) {
     res.status(400).json({ error: "month must be YYYY-MM" });
     return;
   }
   const offset = db.getOffsetForMonth(sortBy, monthKey, personId);
+
   res.json({ offset });
 });
 
@@ -59,18 +59,23 @@ mediaReadRouter.get("/tags", (_req, res) => {
 });
 
 mediaReadRouter.get("/:id", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const item = db.getMediaById(id);
+
   if (!item) {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   const ok = await ensureLocalMediaFile(item);
+
   if (!ok) {
     sendApiError(res, 404, "File not found", "file_missing");
     return;
   }
+
   const filePath = path.join(mediaDir, item.filename);
+
   res.download(filePath, item.originalName, (err) => {
     if (err && !res.headersSent)
       sendApiError(res, 500, "Download failed", "download_failed");
@@ -78,29 +83,31 @@ mediaReadRouter.get("/:id", async (req, res) => {
 });
 
 mediaReadRouter.get("/:id/faces", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const out = await getFacesPayloadForMedia(id);
+
   if (!out.ok) {
     if (out.reason === "not_found") {
       sendApiError(res, 404, "Not found", "not_found");
       return;
     }
+
     if (out.reason === "file_missing") {
       sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
+
     sendApiError(res, 500, "Face detection failed", "face_detection_failed");
     return;
   }
+
   res.json(out.body);
 });
 
 mediaReadRouter.get("/:id/face/:personId", async (req, res) => {
-  const { id, personId } = parseWithSchema(
-    mediaIdPersonIdParamSchema,
-    req.params,
-  );
+  const { id, personId } = mediaIdPersonIdParamSchema.parse(req.params);
   const out = await getFaceCropOrFullImage(id, personId);
+
   if (!out.ok) {
     if (out.reason === "not_found") {
       sendApiError(res, 404, "Not found", "not_found");
@@ -130,12 +137,14 @@ mediaReadRouter.get("/:id/face/:personId", async (req, res) => {
 });
 
 mediaReadRouter.get("/:id/preview", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const out = await getMediaPreviewFile(id);
+
   if (!out.ok) {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   if (out.kind === "file") {
     res.sendFile(
       out.path,
@@ -147,28 +156,33 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
     );
     return;
   }
+
   res.setHeader("Content-Type", out.mimeType);
   res.send(out.buffer);
 });
 
 mediaReadRouter.get("/:id/details", (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const out = getMediaDetailsEnriched(id);
+
   if (!out.ok) {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
+
   res.json(out.body);
 });
 
 mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const out = await getThumbnailResponse(id);
+
   if (!out.ok) {
     if (out.reason === "not_found") {
       sendApiError(res, 404, "Not found", "not_found");
       return;
     }
+
     if (out.reason === "bad_type") {
       sendApiError(
         res,
@@ -178,10 +192,12 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
       );
       return;
     }
+
     if (out.reason === "file_missing") {
       sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
+
     if (out.reason === "ffmpeg_missing") {
       sendApiError(
         res,
@@ -191,6 +207,7 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
       );
       return;
     }
+
     sendApiError(
       res,
       500,
@@ -199,19 +216,22 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
     );
     return;
   }
+
   res.setHeader("Content-Type", out.contentType);
   res.setHeader("Cache-Control", "private, max-age=86400, immutable");
   res.sendFile(out.path);
 });
 
 mediaReadRouter.get("/:id/content", async (req, res) => {
-  const { id } = parseWithSchema(mediaIdParamSchema, req.params);
+  const { id } = mediaIdParamSchema.parse(req.params);
   const out = await readTextMediaContent(id);
+
   if (!out.ok) {
     if (out.reason === "not_found") {
       sendApiError(res, 404, "Not found", "not_found");
       return;
     }
+
     if (out.reason === "not_text") {
       sendApiError(
         res,
@@ -221,12 +241,15 @@ mediaReadRouter.get("/:id/content", async (req, res) => {
       );
       return;
     }
+
     if (out.reason === "file_missing") {
       sendApiError(res, 404, "File not found", "file_missing");
       return;
     }
+
     sendApiError(res, 500, "Failed to read file", "read_failed");
     return;
   }
+
   res.type("text/plain").send(out.content);
 });

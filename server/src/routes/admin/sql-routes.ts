@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { parseWithSchema } from "../../validation/parse.js";
 import { sqlBodySchema } from "../../validation/admin-schemas.js";
 import { ensureSqlExplorerEnabled } from "./feature-gates.js";
 import {
@@ -16,8 +15,9 @@ adminSqlRouter.get("/sql-explorer-available", (_req, res) => {
 
 adminSqlRouter.post("/sql", (req, res) => {
   if (!ensureSqlExplorerEnabled(res)) return;
-  const { query } = parseWithSchema(sqlBodySchema, req.body);
+
+  const { query } = sqlBodySchema.parse(req.body);
   const result = sendAdminResult(res, runSqlQuery(query));
-  if (result == null) return;
+
   res.json(result);
 });
