@@ -1,3 +1,4 @@
+import { prependApiUrl } from "@/api";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { Button } from "@/components/ui/button";
 import { ModalActions } from "@/components/ui/modal";
@@ -100,7 +101,7 @@ function LibraryItemPreview({
   originalName: string;
   maxHeight: number;
 }) {
-  const src = `/api/media/${id}/preview`;
+  const src = prependApiUrl(`/media/${id}/preview`);
   const [mode, setMode] = useState<"img" | "video" | "none">("img");
   const st = mediaFitStyle(maxHeight);
   if (mode === "img") {

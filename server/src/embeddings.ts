@@ -1,6 +1,7 @@
-import { OLLAMA_HOST } from "./config/env.js";
+import { OLLAMA_EMBED_MODEL, OLLAMA_HOST } from "./config/env.js";
+import { logger } from "./logger.js";
 
-const OLLAMA_MODEL = process.env.OLLAMA_EMBED_MODEL ?? "nomic-embed-text";
+const OLLAMA_MODEL = OLLAMA_EMBED_MODEL;
 
 const embedWarnState = {
   missingModel: false,
@@ -30,7 +31,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
           : String(err);
     if (!embedWarnState.unreachable) {
       embedWarnState.unreachable = true;
-      console.warn(
+      logger.warn(
         `Embeddings skipped (could not reach Ollama at ${OLLAMA_HOST}): ${cause}`,
       );
     }
@@ -54,13 +55,13 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     if (modelMissing) {
       if (!embedWarnState.missingModel) {
         embedWarnState.missingModel = true;
-        console.warn(
+        logger.warn(
           `Embeddings skipped — model '${OLLAMA_MODEL}' is not pulled on Ollama (${OLLAMA_HOST}). Run: ollama pull ${OLLAMA_MODEL}`,
         );
       }
     } else if (!embedWarnState.httpOther) {
       embedWarnState.httpOther = true;
-      console.warn(
+      logger.warn(
         `Embeddings skipped — Ollama HTTP ${res.status} at ${OLLAMA_HOST}: ${errMessage.slice(0, 400)}`,
       );
     }
@@ -72,7 +73,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     if (!Array.isArray(data.embedding)) {
       if (!embedWarnState.badBody) {
         embedWarnState.badBody = true;
-        console.warn(
+        logger.warn(
           "Embeddings skipped — Ollama response did not include an embedding array",
         );
       }
@@ -83,7 +84,7 @@ export async function getEmbedding(text: string): Promise<number[] | null> {
     const msg = err instanceof Error ? err.message : String(err);
     if (!embedWarnState.badBody) {
       embedWarnState.badBody = true;
-      console.warn(
+      logger.warn(
         `Embeddings skipped — could not parse Ollama JSON: ${msg.slice(0, 200)}`,
       );
     }

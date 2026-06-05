@@ -1,5 +1,6 @@
 import { readFile } from "fs/promises";
 import { OLLAMA_HOST, OLLAMA_VISION_MODEL } from "./config/env.js";
+import { logger } from "./logger.js";
 
 export async function describeImage(imagePath: string): Promise<string> {
   if (process.env.BDD_STUB_VISION === "1") {
@@ -28,7 +29,7 @@ export async function describeImage(imagePath: string): Promise<string> {
         : err instanceof Error
           ? err.message
           : String(err);
-    console.warn(
+    logger.warn(
       `Vision skipped (could not reach Ollama at ${OLLAMA_HOST}): ${cause}`,
     );
     return "";
@@ -50,11 +51,11 @@ export async function describeImage(imagePath: string): Promise<string> {
       /\bmodel\b.*\bnot found\b/i.test(errMessage) ||
       /\bnot found\b/i.test(lower);
     if (modelMissing) {
-      console.warn(
+      logger.warn(
         `Vision skipped — model '${OLLAMA_VISION_MODEL}' is not pulled on Ollama (${OLLAMA_HOST}). Run: ollama pull ${OLLAMA_VISION_MODEL}`,
       );
     } else {
-      console.warn(
+      logger.warn(
         `Vision skipped — Ollama HTTP ${res.status} at ${OLLAMA_HOST}: ${errMessage.slice(0, 400)}`,
       );
     }

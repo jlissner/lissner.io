@@ -1,3 +1,4 @@
+import { prependApiUrl } from "@/api";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
@@ -462,7 +463,7 @@ export function MediaViewerDetails({
         <dt className="viewer-details__term">Download</dt>
         <dd className="viewer-details__value">
           <a
-            href={`/api/media/${details.id}`}
+            href={prependApiUrl(`/media/${details.id}`)}
             download={details.originalName}
             className="viewer-details__link"
           >
@@ -472,7 +473,7 @@ export function MediaViewerDetails({
             <>
               <br />
               <a
-                href={`/api/media/${details.motionCompanion.id}`}
+                href={prependApiUrl(`/media/${details.motionCompanion.id}`)}
                 download={details.motionCompanion.originalName}
                 className="viewer-details__link"
               >

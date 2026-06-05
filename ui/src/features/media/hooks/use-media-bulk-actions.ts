@@ -4,7 +4,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { ApiError } from "@/api";
+import { ApiError, prependApiUrl } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
 import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
 
@@ -92,7 +92,7 @@ export function useMediaBulkActions({
       const item = displayItems.find((entry) => entry.id === id);
       if (!item) return;
       const link = document.createElement("a");
-      link.href = `/api/media/${id}`;
+      link.href = prependApiUrl(`/media/${id}`);
       link.download = item.originalName;
       link.click();
     });

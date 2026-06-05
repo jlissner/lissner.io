@@ -83,7 +83,7 @@ export function MediaViewerFaceOverlay({
               justifyContent: "flex-start",
               gap: 4,
               padding: 4,
-              pointerEvents: "auto",
+              pointerEvents: "none",
               boxSizing: "border-box",
             }}
           >
@@ -104,7 +104,11 @@ export function MediaViewerFaceOverlay({
                 size="sm"
                 variant="secondary"
                 className="u-self-start"
-                style={{ fontSize: "0.75rem", padding: "2px 8px" }}
+                style={{
+                  fontSize: "0.75rem",
+                  padding: "2px 8px",
+                  pointerEvents: "auto",
+                }}
                 aria-label={`Dismiss auto tag for ${t.name}`}
                 onClick={(e) => {
                   e.stopPropagation();

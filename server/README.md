@@ -34,7 +34,7 @@ Add new modules under `src/services/` when a flow is reused or a route grows bey
 
 ## Entry
 
-- `src/index.ts` — Express app, `createServer`, static UI, wires routers.
+- `src/index.ts` — HTTP server, static UI (when `ui/dist` is present), wires routers and the activity WebSocket.
 
 ## Build
 

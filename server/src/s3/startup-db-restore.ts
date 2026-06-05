@@ -9,7 +9,7 @@ import { S3_PREFIX } from "./sync-constants.js";
 import { s3Client } from "./client.js";
 import { downloadS3ObjectToFile, listAllS3Keys } from "./sync-transfer.js";
 import { S3_BUCKET } from "../config/env.js";
-import { gray, green, red, yellow } from "yoctocolors";
+import { logger } from "../logger.js";
 
 type StartupDbRestoreResult =
   | {
@@ -69,7 +69,7 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
         tempPath,
         "[startup-restore] remove invalid downloaded db",
       );
-      console.warn(
+      logger.warn(
         { key: newestKey },
         "[startup-restore] Downloaded DB failed integrity_check; skipping restore",
       );
@@ -78,14 +78,11 @@ export async function maybeRestoreDbFromLatestS3BackupOnStartup(): Promise<Start
 
     await rename(tempPath, dbPath);
 
-    console.info(green("Restored DB from S3 backup"));
-    console.info(`${gray("[KEY]")} ${yellow(newestKey)}`);
+    logger.info({ key: newestKey }, "Restored DB from S3 backup");
 
     return { restored: true, key: newestKey };
   } catch (err) {
-    console.info();
-    console.error(red("Failed to restore DB from S3"));
-    console.error(red((err as Error).stack ?? "Unknown error"));
+    logger.error({ err }, "Failed to restore DB from S3");
 
     throw err;
   }

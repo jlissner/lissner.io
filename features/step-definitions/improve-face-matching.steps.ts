@@ -109,7 +109,7 @@ Given(
     const fd = new FormData();
     fd.set("file", new Blob([buf]), basename(abs));
 
-    const up = await fetch(`${base}/api/media/upload`, {
+    const up = await fetch(`${base}/media/upload`, {
       method: "POST",
       headers: this.cookie ? { cookie: this.cookie } : {},
       body: fd,
@@ -151,7 +151,7 @@ When(
   "I open that media in the media viewer",
   async function (this: FaceMatchWorld) {
     assert.ok(this.fixtureMediaId);
-    await fetchJson(this, `/api/media/${this.fixtureMediaId}/faces`);
+    await fetchJson(this, `/media/${this.fixtureMediaId}/faces`);
   },
 );
 
@@ -175,7 +175,7 @@ Then(
   "every face region shown for that media is indicated as low confidence",
   async function (this: FaceMatchWorld) {
     assert.ok(this.fixtureMediaId);
-    await fetchJson(this, `/api/media/${this.fixtureMediaId}/faces`);
+    await fetchJson(this, `/media/${this.fixtureMediaId}/faces`);
     assert.equal(this.lastStatus, 200);
     const j = this.lastJson as {
       tagged?: Array<{ source?: string; confidence?: number | null }>;
@@ -200,7 +200,7 @@ Then(
   "I can dismiss every face region shown for that media",
   async function (this: FaceMatchWorld) {
     assert.ok(this.fixtureMediaId);
-    await fetchJson(this, `/api/media/${this.fixtureMediaId}/faces`);
+    await fetchJson(this, `/media/${this.fixtureMediaId}/faces`);
     const j = this.lastJson as {
       tagged?: Array<{ personId: number; source?: string }>;
     };
@@ -208,7 +208,7 @@ Then(
     for (const t of tagged) {
       if (t.source === "manual") continue;
       const del = await fetch(
-        `${this.baseUrl}/api/media/${this.fixtureMediaId}/people/${t.personId}`,
+        `${this.baseUrl}/media/${this.fixtureMediaId}/people/${t.personId}`,
         {
           method: "DELETE",
           headers: this.cookie ? { cookie: this.cookie } : {},
@@ -216,7 +216,7 @@ Then(
       );
       assert.ok(del.status === 204 || del.status === 200);
     }
-    await fetchJson(this, `/api/media/${this.fixtureMediaId}/faces`);
+    await fetchJson(this, `/media/${this.fixtureMediaId}/faces`);
     const after = this.lastJson as { tagged?: Array<{ source?: string }> };
     const rest = (after.tagged ?? []).filter((x) => x.source !== "manual");
     assert.equal(rest.length, 0);
@@ -263,7 +263,7 @@ Given(
 When(
   "I run automatic face matching for placeholders",
   async function (this: FaceMatchWorld) {
-    await fetchJson(this, "/api/people/match-faces", {
+    await fetchJson(this, "/people/match-faces", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
@@ -314,7 +314,7 @@ Then(
 When(
   "I start a full library re-index from the admin tools",
   async function (this: FaceMatchWorld) {
-    await fetchJson(this, "/api/search/index?force=true", {
+    await fetchJson(this, "/search/index?force=true", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
@@ -328,7 +328,7 @@ When(
 When(
   "I attempt to start a full library re-index",
   async function (this: FaceMatchWorld) {
-    await fetchJson(this, "/api/search/index?force=true", {
+    await fetchJson(this, "/search/index?force=true", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: "{}",
@@ -347,7 +347,7 @@ Then(
     const deadline = Date.now() + 120_000;
     let done = false;
     while (Date.now() < deadline) {
-      const st = await fetch(`${base}/api/search/index/status`, {
+      const st = await fetch(`${base}/search/index/status`, {
         headers: this.cookie ? { cookie: this.cookie } : {},
       });
       const j = (await st.json()) as { inProgress?: boolean };
@@ -379,7 +379,7 @@ Given(
       const buf = await readFile(jpg);
       const fd = new FormData();
       fd.set("file", new Blob([buf]), `${rel}.jpg`);
-      const up = await fetch(`${base}/api/media/upload`, {
+      const up = await fetch(`${base}/media/upload`, {
         method: "POST",
         headers: this.cookie ? { cookie: this.cookie } : {},
         body: fd,
@@ -411,7 +411,7 @@ Then("the re-index job completes", async function (this: FaceMatchWorld) {
   const base = await ensureServer(this);
   const deadline = Date.now() + 120_000;
   while (Date.now() < deadline) {
-    const st = await fetch(`${base}/api/search/index/status`, {
+    const st = await fetch(`${base}/search/index/status`, {
       headers: this.cookie ? { cookie: this.cookie } : {},
     });
     const j = (await st.json()) as { inProgress?: boolean };
@@ -425,7 +425,7 @@ Then(
   "search behavior for that media reflects newly computed embeddings",
   async function (this: FaceMatchWorld) {
     const base = await ensureServer(this);
-    const st = await fetch(`${base}/api/search/index/status`, {
+    const st = await fetch(`${base}/search/index/status`, {
       headers: this.cookie ? { cookie: this.cookie } : {},
     });
     assert.equal(st.status, 200);
@@ -473,7 +473,7 @@ When(
   "I start a full library re-index that includes that image",
   async function (this: FaceMatchWorld) {
     assert.ok(this.manualLinkMediaId);
-    await fetchJson(this, "/api/search/index?force=true", {
+    await fetchJson(this, "/search/index?force=true", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ mediaIds: [this.manualLinkMediaId] }),

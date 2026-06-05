@@ -7,10 +7,11 @@ import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const repoRoot = path.join(__dirname, "..");
 
 export default defineConfig(({ mode }) => {
-  const repoRoot = path.join(__dirname, "..");
   const env = loadEnv(mode, repoRoot, "");
+
   if (mode === "production") {
     const prodPath = path.join(repoRoot, ".env.prod");
     if (existsSync(prodPath)) {
@@ -18,18 +19,12 @@ export default defineConfig(({ mode }) => {
     }
   }
   const apiPort = env.SERVER_PORT;
-  const apiProxyTarget =
-    env.API_PROXY_TARGET?.trim() ||
-    `http://${env.SERVER_HOST?.trim() || "127.0.0.1"}:${apiPort}`;
-  const uiPortRaw = env.UI_PORT ?? env.VITE_DEV_SERVER_PORT ?? "8042";
-  const devPortParsed = parseInt(uiPortRaw, 10);
-  const devPort =
-    Number.isFinite(devPortParsed) && devPortParsed > 0 && devPortParsed < 65536
-      ? devPortParsed
-      : 8042;
+  const apiProxyTarget = `http://${env.VITE_API_HOST.trim()}:${apiPort}`;
+  const devPort = Number(env.UI_PORT);
 
   return {
     root: __dirname,
+    envDir: repoRoot,
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
@@ -106,6 +101,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           timeout: 0,
           proxyTimeout: 0,
+          rewrite: (path) => path.substring(4),
         },
         "/ws": {
           target: apiProxyTarget,

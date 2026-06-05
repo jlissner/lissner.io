@@ -1,4 +1,5 @@
 import { IndexActivitySlice, SearchResultItem } from "@shared";
+import { logger } from "../logger.js";
 import * as db from "../db/media.js";
 import { getEmbedding, cosineSimilarity } from "../embeddings.js";
 import { indexMediaItems } from "../indexing/media.js";
@@ -66,7 +67,7 @@ export function startBulkIndexingJob(params: {
       });
     })
     .catch((err: unknown) => {
-      console.error({ err }, "Index error");
+      logger.error({ err }, "Index error");
       failIndexJob(err instanceof Error ? err.message : "Indexing failed");
     });
 
@@ -228,7 +229,7 @@ export async function searchMediaByQuery(
 
     return { ok: true, items: mapSearchItems(items, personNames) };
   } catch (err) {
-    console.error({ err }, "Search error");
+    logger.error({ err }, "Search error");
     const message = err instanceof Error ? err.message : "Search failed";
     return { ok: false, reason: "search_failed", message };
   }

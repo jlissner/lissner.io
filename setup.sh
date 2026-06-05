@@ -7,7 +7,7 @@ set -euo pipefail
 echo "==> lissner.io (Ubuntu 24)"
 echo ""
 
-# Node.js 20 LTS
+# Node.js 24
 if ! command -v node &>/dev/null; then
   echo "==> Installing Node.js 24..."
   curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -

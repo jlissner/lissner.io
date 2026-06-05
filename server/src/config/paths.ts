@@ -19,8 +19,6 @@ export const dbPath = path.join(dbDir, "media.db");
 /** Temp SQLite file used during S3 sync merge. */
 export const syncTempDbPath = path.join(dataDir, ".sync_temp_db.db");
 
-export const uiDistDir = path.join(PROJECT_ROOT, "ui", "dist");
-
 mkdirSync(mediaDir, { recursive: true });
 mkdirSync(thumbnailsDir, { recursive: true });
 mkdirSync(dbDir, { recursive: true });

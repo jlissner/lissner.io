@@ -1,4 +1,5 @@
 import { DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { logger } from "../logger.js";
 import { S3Client } from "@aws-sdk/client-s3";
 import { thumbnailFilenameToMediaId } from "../lib/orphan-thumbnails.js";
 import { S3_PREFIX } from "./sync-constants.js";
@@ -22,7 +23,7 @@ export async function deleteOrphanS3Thumbnails(
       await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
       acc.removed += 1;
     } catch (err) {
-      console.error(
+      logger.error(
         { err, key },
         "[s3-sync] DeleteObject orphan thumbnail failed",
       );

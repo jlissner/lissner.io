@@ -1,6 +1,7 @@
 import { execFile } from "child_process";
 import { stat } from "fs/promises";
 import { unlinkBestEffort } from "./fs-best-effort.js";
+import { logger } from "../logger.js";
 import { promisify } from "util";
 
 const execFileAsync = promisify(execFile);
@@ -10,7 +11,7 @@ const MIN_VIDEO_THUMB_BYTES = 64;
 
 function logFfmpegFailure(err: unknown, label: string): void {
   if (typeof err !== "object" || err === null) {
-    console.error({ err, label }, "ffmpeg thumbnail failed");
+    logger.error({ err, label }, "ffmpeg thumbnail failed");
     return;
   }
   const e = err as { stderr?: Buffer | string; message?: string };
@@ -20,7 +21,7 @@ function logFfmpegFailure(err: unknown, label: string): void {
       : e.stderr != null
         ? e.stderr.toString("utf8")
         : "";
-  console.error(
+  logger.error(
     { label, message: e.message, stderr: stderr.trim() || undefined },
     "ffmpeg thumbnail failed",
   );

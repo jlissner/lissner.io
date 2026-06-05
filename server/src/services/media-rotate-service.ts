@@ -1,4 +1,5 @@
 import { rename, writeFile } from "fs/promises";
+import { logger } from "../logger.js";
 import path from "path";
 import sharp from "sharp";
 import * as db from "../db/media.js";
@@ -120,7 +121,7 @@ export async function rotateMediaImage90Clockwise(
     scheduleBackupSyncAfterUpload();
     return { ok: true, size: rotatedBuf.length };
   } catch (err) {
-    console.error({ err, mediaId }, "Rotate media failed");
+    logger.error({ err, mediaId }, "Rotate media failed");
     return { ok: false, reason: "rotate_failed" };
   }
 }

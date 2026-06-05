@@ -1,4 +1,5 @@
 import path from "path";
+import { logger } from "../logger.js";
 import * as db from "../db/media.js";
 import { mediaDir } from "../config/paths.js";
 import {
@@ -29,7 +30,7 @@ export async function findDuplicatesForMedia(
   try {
     newHash = await computePerceptualHash(filePath);
   } catch (err) {
-    console.error({ err, mediaId }, "Failed to compute perceptual hash");
+    logger.error({ err, mediaId }, "Failed to compute perceptual hash");
     return [];
   }
 
@@ -64,7 +65,7 @@ export async function computeAndStoreHash(mediaId: string): Promise<boolean> {
     db.setMediaPerceptualHash(mediaId, hash);
     return true;
   } catch (err) {
-    console.error({ err, mediaId }, "Failed to compute perceptual hash");
+    logger.error({ err, mediaId }, "Failed to compute perceptual hash");
     return false;
   }
 }

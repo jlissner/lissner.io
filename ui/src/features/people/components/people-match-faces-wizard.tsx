@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError } from "@/api";
+import { ApiError, prependApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
 import { FullscreenImage } from "@/features/media/components/media-viewer/fullscreen-image";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
@@ -44,14 +44,16 @@ function deletePersonConfirmMessage(
 function faceMatchPreviewSrc(current: FaceMatchReviewItem): string | null {
   if (!current.previewMediaId) return null;
   if (current.previewFaceCrop) {
-    return `/api/media/${current.previewMediaId}/face/${current.placeholderPersonId}`;
+    return prependApiUrl(
+      `/media/${current.previewMediaId}/face/${current.placeholderPersonId}`,
+    );
   }
-  return `/api/media/${current.previewMediaId}/preview`;
+  return prependApiUrl(`/media/${current.previewMediaId}/preview`);
 }
 
 function faceMatchFullImageSrc(current: FaceMatchReviewItem): string | null {
   if (!current.previewMediaId) return null;
-  return `/api/media/${current.previewMediaId}/preview`;
+  return prependApiUrl(`/media/${current.previewMediaId}/preview`);
 }
 
 function MatchFaceReviewCard({

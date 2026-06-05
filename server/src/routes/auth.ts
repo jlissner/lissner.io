@@ -1,4 +1,5 @@
 import { createHash } from "crypto";
+import { logger } from "../logger.js";
 import { Router } from "express";
 import { sendApiError } from "../lib/api-error.js";
 import * as authDb from "../db/auth.js";
@@ -43,7 +44,7 @@ authRouter.post("/magic-link", async (req, res) => {
     await sendMagicLink(normalized, link, code);
     res.json({ sent: true });
   } catch (err) {
-    console.error({ err, email: normalized }, "Magic link send error");
+    logger.error({ err, email: normalized }, "Magic link send error");
     sendApiError(
       res,
       500,

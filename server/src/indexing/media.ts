@@ -5,6 +5,7 @@ import { execFile } from "child_process";
 import exifr from "exifr";
 
 import * as db from "../db/media.js";
+import { logger } from "../logger.js";
 import { getEmbedding } from "../embeddings.js";
 import {
   beginBackgroundIndex,
@@ -58,7 +59,7 @@ async function getTextForItem(
           : "";
       return `${base}${suffix}`.trim();
     } catch (err) {
-      console.warn(
+      logger.warn(
         { err, originalName: item.originalName },
         "Image description failed (vision API error)",
       );
@@ -241,10 +242,10 @@ async function extractVideoMetadata(
       "file_missing",
       `Media file not found on disk (wrong path, not synced yet, or removed): ${filePath}`,
     );
-    console.warn("Video date skipped — media file not on disk", {
-      filePath,
-      originalName: ctx?.originalName,
-    });
+    logger.warn(
+      { filePath, originalName: ctx?.originalName },
+      "Video date skipped — media file not on disk",
+    );
     return { dateTaken: null };
   }
 
@@ -272,12 +273,15 @@ async function extractVideoMetadata(
     const logMessage = fileStillMissing
       ? "Video date skipped — file missing on disk (see Admin → File issues)"
       : "ffprobe could not read video (date skipped); flagged for admin review";
-    console.warn(logMessage, {
-      filePath,
-      originalName: ctx?.originalName,
-      exitCode,
-      stderrPreview: stderr.trim().slice(0, 240),
-    });
+    logger.warn(
+      {
+        filePath,
+        originalName: ctx?.originalName,
+        exitCode,
+        stderrPreview: stderr.trim().slice(0, 240),
+      },
+      logMessage,
+    );
     return { dateTaken: null };
   }
 
@@ -319,7 +323,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           const [exif, faces] = await Promise.all([
             extractExifData(filePath),
             extractFacesFromImage(filePath, item.id).catch((err: unknown) => {
-              console.error(
+              logger.error(
                 { err, originalName: item.originalName },
                 "Face extraction failed",
               );
@@ -341,7 +345,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
             );
           }
         } catch (err) {
-          console.error(
+          logger.error(
             { err, originalName: item.originalName },
             "Image indexing prep failed",
           );
@@ -364,7 +368,7 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
       }
       return true;
     } catch (err) {
-      console.error(
+      logger.error(
         { err, originalName: item.originalName },
         "Auto-index failed",
       );
@@ -433,7 +437,7 @@ export async function indexMediaItems(
         }
         allFaces.push(...faces);
       } catch (err) {
-        console.error(
+        logger.error(
           { err, originalName: item.originalName },
           "Face extraction failed",
         );
@@ -481,7 +485,7 @@ export async function indexMediaItems(
         progress.indexed++;
       }
     } catch (err) {
-      console.error(
+      logger.error(
         { err, originalName: item.originalName },
         "Failed to index item",
       );

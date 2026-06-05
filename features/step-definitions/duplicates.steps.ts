@@ -95,7 +95,7 @@ Given(
   async function (this: DuplicatesWorld) {
     // Baseline/UI scenarios assume hashes exist; we don't require real media fixtures here.
     // If there are no media rows, the duplicates list is expected to be empty.
-    await getJson(this, "/api/admin/duplicates");
+    await getJson(this, "/admin/duplicates");
   },
 );
 
@@ -107,7 +107,7 @@ When("I run {string}", async function (this: DuplicatesWorld, action: string) {
   if (action !== "Find Duplicates") {
     throw new Error(`Unsupported admin action: ${action}`);
   }
-  const payload = await getJson(this, "/api/admin/duplicates");
+  const payload = await getJson(this, "/admin/duplicates");
   this.duplicates = payload;
 });
 
@@ -128,7 +128,7 @@ Then("each candidate row shows the perceptual hash distance", function () {
 Given(
   "I have a list of duplicate candidates",
   async function (this: DuplicatesWorld) {
-    this.duplicates = await getJson(this, "/api/admin/duplicates");
+    this.duplicates = await getJson(this, "/admin/duplicates");
   },
 );
 
@@ -199,7 +199,7 @@ When(
     const mediaIds = (this as unknown as { mediaIdsToDelete?: string[] })
       .mediaIdsToDelete;
     assert.ok(mediaIds);
-    const res = await postJson(this, "/api/admin/duplicates/bulk-delete", {
+    const res = await postJson(this, "/admin/duplicates/bulk-delete", {
       mediaIds,
     });
     this.duplicates = res;

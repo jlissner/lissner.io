@@ -1,11 +1,14 @@
 import { localCalendarDateKeyFromIso } from "@/lib/local-datetime.js";
+import { prependApiUrl } from "@/api";
 import { isImageMime, isTextMime, isVideoMime } from "../../lib/media-mime.js";
 import { MediaListItem } from "@shared";
 
 export type MediaItem = MediaListItem;
 
 export function mediaThumbnailUrl(item: { id: string; size: number }): string {
-  return `/api/media/${item.id}/thumbnail?v=${encodeURIComponent(String(item.size))}`;
+  return prependApiUrl(
+    `/media/${item.id}/thumbnail?v=${encodeURIComponent(String(item.size))}`,
+  );
 }
 
 function getItemDateKeyForSort(

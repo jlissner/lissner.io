@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { ApiError } from "@/api";
+import { ApiError, prependApiUrl } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -261,7 +261,7 @@ export function DuplicateReviewer() {
                 >
                   <div style={{ flex: "1 1 240px", minWidth: 220 }}>
                     <img
-                      src={`/api/media/${dup.mediaId}/preview`}
+                      src={prependApiUrl(`/media/${dup.mediaId}/preview`)}
                       alt={dup.mediaId}
                       style={{
                         width: "100%",
@@ -278,7 +278,7 @@ export function DuplicateReviewer() {
 
                   <div style={{ flex: "1 1 240px", minWidth: 220 }}>
                     <img
-                      src={`/api/media/${dup.duplicateOfId}/preview`}
+                      src={prependApiUrl(`/media/${dup.duplicateOfId}/preview`)}
                       alt={dup.duplicateOfId}
                       style={{
                         width: "100%",

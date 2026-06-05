@@ -3,7 +3,7 @@ import { readFile, stat } from "fs/promises";
 import "@tensorflow/tfjs-node";
 import { Human } from "@vladmandic/human";
 import { createRequire } from "module";
-import { blue, gray, red, yellow } from "yoctocolors";
+import { logger } from "./logger.js";
 
 const require = createRequire(import.meta.url);
 const humanEntry = require.resolve("@vladmandic/human");
@@ -88,9 +88,7 @@ async function detectFacesFromBuffer(
     const result = await human.detect(tensor);
     return facesFromDetectResult(result, imageId);
   } catch (err) {
-    console.info();
-    console.error(red("Face extraction failed"));
-    console.error(red((err as Error).stack ?? "Unknown error"));
+    logger.error({ err, imageId }, "Face extraction failed");
     return [];
   } finally {
     tf.dispose(tensor);
@@ -108,24 +106,24 @@ export async function extractFacesFromImage(
     } catch (err) {
       const code = (err as NodeJS.ErrnoException)?.code;
       if (code !== "ENOENT") {
-        console.error(
+        logger.error(
           { err, imagePath, imageId },
           "Face extraction: stat failed",
         );
       }
     }
     if (fileStats == null || !fileStats.isFile()) {
-      console.error(red("Face extraction skipped: missing file"));
-      console.error(`${gray("[IMAGE ID]")} ${blue(imageId)}`);
-      console.error(`${gray("[IMAGE PATH]")} ${blue(imagePath)}`);
-
+      logger.error(
+        { imageId, imagePath },
+        "Face extraction skipped: missing file",
+      );
       return [];
     }
     if (fileStats.size < MIN_IMAGE_BYTES) {
       return [];
     }
     if (fileStats.size > MAX_FACE_DETECT_IMAGE_BYTES) {
-      console.warn(
+      logger.warn(
         {
           imageId,
           imagePath,
@@ -134,15 +132,6 @@ export async function extractFacesFromImage(
         },
         "Face extraction skipped: file too large",
       );
-
-      console.warn(yellow("Face extraction skipped: missing file"));
-      console.warn(`${gray("[IMAGE ID]")} ${blue(imageId)}`);
-      console.warn(`${gray("[IMAGE PATH]")} ${blue(imagePath)}`);
-      console.warn(`${gray("[IMAGE SIZE]")} ${blue(String(fileStats.size))}`);
-      console.error(
-        `${gray("[MAX BYTES]")} ${blue(String(MAX_FACE_DETECT_IMAGE_BYTES))}`,
-      );
-
       return [];
     }
     const buffer = await readFile(imagePath);
@@ -157,7 +146,7 @@ export async function extractFacesFromImage(
 
   const scheduled = faceDetectChain.tail.then(() => work());
   faceDetectChain.tail = scheduled.catch((err) => {
-    console.error(
+    logger.error(
       { err, imageId, imagePath },
       "Face extraction chain step failed",
     );

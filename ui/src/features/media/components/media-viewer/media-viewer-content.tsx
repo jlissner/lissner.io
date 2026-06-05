@@ -16,7 +16,7 @@ import { useSwipeNav } from "./use-swipe-nav";
 import { useTapNav } from "./use-tap-nav";
 import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
-import { ApiError } from "@/api";
+import { ApiError, prependApiUrl } from "@/api";
 import {
   addPersonToMedia,
   getMediaDetails,
@@ -73,7 +73,7 @@ export function MediaViewerContent({
   const hasMotionPair =
     item.motionCompanionId != null && item.motionCompanionId !== "";
   const motionVideoUrl = hasMotionPair
-    ? `/api/media/${item.motionCompanionId}/preview`
+    ? prependApiUrl(`/media/${item.motionCompanionId}/preview`)
     : "";
   const [pixelIsVideo, setPixelIsVideo] = useState(false);
   const [motionPairView, setMotionPairView] = useState<"video" | "still">(
@@ -97,8 +97,8 @@ export function MediaViewerContent({
 
   const previewUrl =
     previewRev > 0
-      ? `/api/media/${item.id}/preview?r=${previewRev}`
-      : `/api/media/${item.id}/preview`;
+      ? prependApiUrl(`/media/${item.id}/preview?r=${previewRev}`)
+      : prependApiUrl(`/media/${item.id}/preview`);
 
   useEffect(() => {
     setPixelIsVideo(false);
@@ -749,7 +749,7 @@ export function MediaViewerContent({
               <p style={{ color: "var(--color-text-muted)" }}>
                 Preview not available.{" "}
                 <a
-                  href={`/api/media/${item.id}`}
+                  href={prependApiUrl(`/media/${item.id}`)}
                   download={item.originalName}
                   style={{ color: "var(--color-primary)" }}
                 >

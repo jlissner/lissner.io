@@ -1,3 +1,4 @@
+import { prependApiUrl } from "@/api";
 import { useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -152,8 +153,12 @@ export function PeopleDetail({
               const hasBox =
                 selectedId && pm.x != null && pm.width != null && pm.width > 0;
               const thumbSrc = hasBox
-                ? `/api/media/${m.id}/face/${selectedId}?v=${encodeURIComponent(String(m.size))}`
-                : `/api/media/${m.id}/thumbnail?v=${encodeURIComponent(String(m.size))}`;
+                ? prependApiUrl(
+                    `/media/${m.id}/face/${selectedId}?v=${encodeURIComponent(String(m.size))}`,
+                  )
+                : prependApiUrl(
+                    `/media/${m.id}/thumbnail?v=${encodeURIComponent(String(m.size))}`,
+                  );
               const usePixelHybrid =
                 !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
               return (

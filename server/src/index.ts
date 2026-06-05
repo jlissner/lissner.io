@@ -1,6 +1,6 @@
 import "./polyfill.js";
-import { SERVER_HOST, SERVER_PORT } from "./config/env.js";
-import { dbDir, mediaDir, thumbnailsDir, uiDistDir } from "./config/paths.js";
+import { VITE_API_HOST, SERVER_PORT } from "./config/env.js";
+import { dbDir, mediaDir, thumbnailsDir } from "./config/paths.js";
 import { maybeRestoreDbFromLatestS3BackupOnStartup } from "./s3/startup-db-restore.js";
 import {
   ensureServerDirectories,
@@ -13,7 +13,7 @@ import {
   broadcastActivity,
 } from "./activity/broadcast.js";
 import { setIndexJobChangeListener } from "./indexing/job-store.js";
-import { gray, green, red, yellow } from "yoctocolors";
+import { logger } from "./logger.js";
 import { setSyncChangeListener } from "./s3/sync-state.js";
 
 ensureServerDirectories({ mediaDir, dbDir, thumbnailsDir });
@@ -23,29 +23,26 @@ await maybeRestoreDbFromLatestS3BackupOnStartup();
 
 runStartupMaintenance();
 
-const app = createConfiguredApp(uiDistDir);
+const app = createConfiguredApp();
 
 setIndexJobChangeListener(() => broadcastActivity());
 setSyncChangeListener(() => broadcastActivity());
 attachActivityWebSocket(app);
 
 app.listen(SERVER_PORT, "0.0.0.0", () => {
-  console.info(`
-${gray("Server listening:")}
-${gray("[HOST]")} ${green(SERVER_HOST)}
-${gray("[PORT]")} ${yellow(String(SERVER_PORT))}`);
+  logger.info({ host: VITE_API_HOST, port: SERVER_PORT }, "Server listening");
   runServerStartedTasks();
 });
 
 app.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EADDRINUSE") {
-    console.info();
-    console.error(red(`Port ${SERVER_PORT} already in use`));
-    console.error(red(`stop the other process or change SERVER_PORT`));
+    logger.error(
+      { port: SERVER_PORT },
+      "Port already in use; stop the other process or change SERVER_PORT",
+    );
   }
 
-  console.info();
-  console.error(red(err.stack ?? "Unknown Startup Error"));
+  logger.error({ err }, "Server startup error");
 
   process.exit(1);
 });

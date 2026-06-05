@@ -47,7 +47,7 @@ npm run nuke               # Delete all data (dangerous!)
 
 ### Docker / deploy
 
-The image copies pre-built `server/dist` and `ui/dist`; **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
+The **`api`** image copies pre-built **`server/dist`** only; the **`ui`** image copies **`ui/dist`** (nginx). **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
 
 ```bash
 npm run validate           # lint + test + docker compose config -q (host:config)

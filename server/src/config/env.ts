@@ -5,6 +5,13 @@
  * `.env.local` (override). There is no automatic `.env` load here — set vars in
  * the shell or the chosen file.
  * Imported first by `paths.ts` so all server modules see the same env.
+ *
+ * This module is the single source for **validated deployment config** (AWS
+ * credentials, bucket, Ollama hosts/models, secrets, ports). Read those vars
+ * via the exports here, never `process.env` directly — an ESLint guard enforces
+ * this. `NODE_ENV`, the `BDD_*` test stubs, and the explorer feature flags are
+ * intentionally read directly at their call sites (they must observe runtime/test
+ * overrides and not trigger this module's `dotenv` load), so they live elsewhere.
  */
 import { config } from "dotenv";
 import { existsSync } from "fs";
@@ -17,6 +24,11 @@ function getEnvVar(name: string) {
   invariant(val, `${name} not set`);
 
   return val;
+}
+
+function getOptionalEnvVar(name: string, fallback: string): string {
+  const val = process.env[name];
+  return val == null || val === "" ? fallback : val;
 }
 
 export const PROJECT_ROOT = path.join(
@@ -39,10 +51,13 @@ export const DATA_DIR = getEnvVar("DATA_DIR");
 export const FIRST_ADMIN_EMAIL = getEnvVar("FIRST_ADMIN_EMAIL");
 export const OLLAMA_HOST = getEnvVar("OLLAMA_HOST");
 export const OLLAMA_VISION_MODEL = getEnvVar("OLLAMA_VISION_MODEL");
+export const OLLAMA_EMBED_MODEL = getOptionalEnvVar(
+  "OLLAMA_EMBED_MODEL",
+  "nomic-embed-text",
+);
 export const S3_BUCKET = getEnvVar("S3_BUCKET");
-export const SERVER_HOST = getEnvVar("SERVER_HOST");
+export const VITE_API_HOST = getEnvVar("VITE_API_HOST");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
-export const SERVER_PROTOCOL = getEnvVar("SERVER_PROTOCOL");
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
 export const UI_PORT = Number(getEnvVar("UI_PORT"));
