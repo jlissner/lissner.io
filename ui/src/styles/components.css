@@ -819,10 +819,6 @@
   max-width: 560px;
 }
 
-.backup-page__title {
-  margin-bottom: var(--space-4);
-}
-
 .backup-page__desc {
   margin-bottom: var(--space-4);
   color: var(--color-text-muted);
@@ -1223,30 +1219,6 @@
   gap: var(--space-3);
   margin-top: var(--space-4);
   flex-wrap: wrap;
-}
-
-.admin-page__sql {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.admin-page__sql-input {
-  font-family: ui-monospace, monospace;
-  font-size: 16px;
-  padding: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  resize: vertical;
-  min-height: 80px;
-  color: var(--color-text);
-  background: var(--color-bg-elevated);
-}
-
-@media (min-width: 640px) {
-  .admin-page__sql-input {
-    font-size: var(--text-sm);
-  }
 }
 
 .admin-page__sql-result {

@@ -96,25 +96,8 @@ export async function listPeopleForAdmin(): Promise<AdminPerson[]> {
   return Array.isArray(data) ? data : (data.people ?? []);
 }
 
-export function getSqlExplorerAvailable(): Promise<{ available: boolean }> {
-  return apiJson<{ available: boolean }>("admin/sql-explorer-available");
-}
-
 export function getDataExplorerAvailable(): Promise<{ available: boolean }> {
   return apiJson<{ available: boolean }>("admin/data-explorer-available");
-}
-
-export function runSql(
-  query: string,
-): Promise<
-  | { type: "select"; columns: string[]; rows: Record<string, unknown>[] }
-  | { type: "write"; changes: number; lastInsertRowid: number }
-> {
-  return apiJson("admin/sql", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ query }),
-  });
 }
 
 export function addWhitelistEntry(input: {

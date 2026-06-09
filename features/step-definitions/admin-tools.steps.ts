@@ -82,11 +82,6 @@ Given("I am signed in as an admin", async function (this: BddWorld) {
   this.cookie = await signAdminCookie();
 });
 
-Given("SQL explorer is enabled for this deployment", function () {
-  process.env.SQL_EXPLORER_ENABLED = "true";
-  process.env.NODE_ENV = "development";
-});
-
 Given("data explorer is available", function () {
   process.env.DATA_EXPLORER_ENABLED = "true";
   process.env.NODE_ENV = "development";
@@ -126,21 +121,6 @@ Then(
     assert.equal(this.lastResponse.status, 204);
   },
 );
-
-When(
-  "I submit a read-only query through the admin SQL explorer",
-  async function (this: BddWorld) {
-    await requestJson(this, "POST", "/admin/sql", {
-      query: "select 1 as one",
-    });
-  },
-);
-
-Then("I receive a result set or a clear error", function (this: BddWorld) {
-  assert.ok(this.lastResponse);
-  assert.ok(this.lastJson != null);
-  assert.ok([200, 400, 403].includes(this.lastResponse.status));
-});
 
 When(
   "I request the list of database backups from S3",

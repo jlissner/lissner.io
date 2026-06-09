@@ -12,10 +12,6 @@ export const idParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
-export const sqlBodySchema = z.object({
-  query: z.string().trim().min(1, "query (string) required"),
-});
-
 export const dataExplorerRowsQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(500).default(50),
   offset: z.coerce.number().int().min(0).default(0),

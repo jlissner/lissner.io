@@ -169,27 +169,3 @@ export function deleteDataExplorerRow(
     .run(...values);
   return result.changes;
 }
-
-export function runSql(
-  query: string,
-):
-  | { type: "select"; columns: string[]; rows: Record<string, unknown>[] }
-  | { type: "write"; changes: number; lastInsertRowid: number } {
-  const trimmed = query.trim();
-  if (!trimmed) {
-    throw new Error("Empty query");
-  }
-  const stmt = getDb().prepare(trimmed);
-  const isSelect = /^\s*SELECT\b/i.test(trimmed);
-  if (isSelect) {
-    const rows = stmt.all() as Record<string, unknown>[];
-    const columns = stmt.columns().map((c) => c.name);
-    return { type: "select", columns, rows };
-  }
-  const result = stmt.run();
-  return {
-    type: "write",
-    changes: result.changes,
-    lastInsertRowid: Number(result.lastInsertRowid),
-  };
-}

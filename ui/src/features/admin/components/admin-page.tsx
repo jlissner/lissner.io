@@ -1,39 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getDataExplorerAvailable, getSqlExplorerAvailable } from "../api";
+import { getDataExplorerAvailable } from "../api";
 import { DataExplorer } from "./data-explorer";
 import { DbBackupTab } from "./tabs/db-backup-tab";
 import { DirectoryTab } from "./tabs/directory-tab";
 import { DuplicatesTab } from "./tabs/duplicates-tab";
 import { FileIssuesTab } from "./tabs/file-issues-tab";
-import { SqlExplorerTab } from "./tabs/sql-explorer-tab";
+import { MaintenanceTab } from "./tabs/maintenance-tab";
 import { SyncTab } from "./tabs/sync-tab";
-import { ThumbnailsTab } from "./tabs/thumbnails-tab";
 import { WhitelistTab } from "./tabs/whitelist-tab";
 
 type AdminTabId =
   | "sync"
   | "db-backup"
   | "duplicates"
-  | "thumbnails"
+  | "maintenance"
   | "file-issues"
   | "whitelist"
   | "users"
-  | "data-explorer"
-  | "sql-explorer";
+  | "data-explorer";
 
 export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
   const [activeTab, setActiveTab] = useState<AdminTabId>("sync");
-  const [sqlExplorerAvailable, setSqlExplorerAvailable] = useState(false);
   const [dataExplorerAvailable, setDataExplorerAvailable] = useState(false);
 
   useEffect(() => {
     void (async () => {
-      const [sqlAvailable, dataAvailable] = await Promise.all([
-        getSqlExplorerAvailable(),
-        getDataExplorerAvailable(),
-      ]);
-      setSqlExplorerAvailable(sqlAvailable.available);
+      const dataAvailable = await getDataExplorerAvailable();
       setDataExplorerAvailable(dataAvailable.available);
     })();
   }, []);
@@ -43,7 +36,7 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       { id: "sync", label: "S3 sync" },
       { id: "db-backup", label: "Database backup" },
       { id: "duplicates", label: "Duplicates" },
-      { id: "thumbnails", label: "Thumbnails" },
+      { id: "maintenance", label: "Maintenance" },
       { id: "file-issues", label: "File issues" },
       { id: "whitelist", label: "Whitelist" },
       { id: "users", label: "Directory" },
@@ -51,11 +44,8 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
     if (dataExplorerAvailable) {
       rows.push({ id: "data-explorer", label: "Data explorer" });
     }
-    if (sqlExplorerAvailable) {
-      rows.push({ id: "sql-explorer", label: "SQL explorer" });
-    }
     return rows;
-  }, [dataExplorerAvailable, sqlExplorerAvailable]);
+  }, [dataExplorerAvailable]);
 
   useEffect(() => {
     const allowed = new Set(adminTabs.map((t) => t.id));
@@ -100,7 +90,7 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         {activeTab === "sync" && <SyncTab onSyncComplete={onSyncComplete} />}
         {activeTab === "db-backup" && <DbBackupTab />}
         {activeTab === "duplicates" && <DuplicatesTab />}
-        {activeTab === "thumbnails" && <ThumbnailsTab />}
+        {activeTab === "maintenance" && <MaintenanceTab />}
         {activeTab === "file-issues" && <FileIssuesTab />}
         {activeTab === "whitelist" && <WhitelistTab />}
         {activeTab === "users" && <DirectoryTab />}
@@ -115,9 +105,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
               <DataExplorer />
             </section>
           </div>
-        )}
-        {activeTab === "sql-explorer" && sqlExplorerAvailable && (
-          <SqlExplorerTab />
         )}
       </div>
     </div>

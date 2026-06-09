@@ -10,11 +10,6 @@ Feature: Admin tools beyond duplicate detection
     When I open the admin whitelist section
     Then I can list entries and add or remove allowed emails
 
-  Scenario: SQL explorer when enabled
-    Given SQL explorer is enabled for this deployment
-    When I submit a read-only query through the admin SQL explorer
-    Then I receive a result set or a clear error
-
   Scenario: List database backups
     When I request the list of database backups from S3
     Then I see available backup objects with metadata needed to choose one

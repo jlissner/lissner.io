@@ -69,7 +69,7 @@ export default tseslint.config(
         "error",
         {
           selector:
-            "MemberExpression[computed=false][object.object.name='process'][object.property.name='env'][property.name!=/^(NODE_ENV|BDD_.*|SQL_EXPLORER_ENABLED|DATA_EXPLORER_ENABLED)$/]",
+            "MemberExpression[computed=false][object.object.name='process'][object.property.name='env'][property.name!=/^(NODE_ENV|BDD_.*|DATA_EXPLORER_ENABLED)$/]",
           message:
             "Read validated config from server/src/config/env.ts, not process.env directly. NODE_ENV, BDD_* test stubs, and explorer flags are the only allowed direct reads.",
         },

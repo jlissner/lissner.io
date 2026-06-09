@@ -1,4 +1,4 @@
-/** Dev-only tooling flags (SQL / Data explorer). */
+/** Dev-only tooling flags (Data explorer). */
 import * as authDb from "../db/auth.js";
 import * as mediaDb from "../db/media.js";
 
@@ -14,26 +14,11 @@ function fail<T>(status: number, error: string): AdminServiceResult<T> {
   return { ok: false, status, error };
 }
 
-export function isSqlExplorerEnabled(): boolean {
-  return (
-    process.env.SQL_EXPLORER_ENABLED === "true" &&
-    process.env.NODE_ENV !== "production"
-  );
-}
-
 export function isDataExplorerEnabled(): boolean {
   return (
     process.env.DATA_EXPLORER_ENABLED === "true" &&
     process.env.NODE_ENV !== "production"
   );
-}
-
-export function runSqlQuery(query: string) {
-  try {
-    return ok(mediaDb.runSql(query));
-  } catch (err) {
-    return fail(400, err instanceof Error ? err.message : String(err));
-  }
 }
 
 export function listDataExplorerTables() {

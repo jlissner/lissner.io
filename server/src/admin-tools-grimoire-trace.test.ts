@@ -6,10 +6,6 @@ describe("Gherkin: Admin tools beyond duplicate detection (features/admin/admin-
   );
 
   it.todo(
-    "Scenario: SQL explorer when enabled — see server/src/routes/admin/sql-routes.ts, feature-gates",
-  );
-
-  it.todo(
     "Scenario: Repair thumbnails — see server/src/routes/admin/thumbnails-routes.test.ts, thumbnails-routes.ts",
   );
 

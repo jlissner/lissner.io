@@ -3,14 +3,34 @@ import { AdminThumbnailRepairResponse } from "@shared";
 import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useActivity } from "@/components/activity/activity-provider";
+import { triggerIndex } from "@/features/media/api";
 import { repairAdminThumbnails } from "../../api";
 
-export function ThumbnailsTab() {
+export function MaintenanceTab() {
+  const activity = useActivity();
+  const [libraryReindexError, setLibraryReindexError] = useState<string | null>(
+    null,
+  );
   const [thumbRepairMax, setThumbRepairMax] = useState(100);
   const [thumbRepairRunning, setThumbRepairRunning] = useState(false);
   const [thumbRepairError, setThumbRepairError] = useState<string | null>(null);
   const [thumbRepairResult, setThumbRepairResult] =
     useState<AdminThumbnailRepairResponse | null>(null);
+
+  const handleReindex = () => {
+    setLibraryReindexError(null);
+    void (async () => {
+      try {
+        const data = await triggerIndex(true);
+        if (data.started !== true) {
+          setLibraryReindexError(data.error ?? "Could not start re-index");
+        }
+      } catch (err) {
+        setLibraryReindexError(errorMessage(err, "Re-index failed"));
+      }
+    })();
+  };
 
   const handleRepairThumbnails = async () => {
     setThumbRepairRunning(true);
@@ -31,11 +51,41 @@ export function ThumbnailsTab() {
 
   return (
     <div
-      id="admin-panel-thumbnails"
+      id="admin-panel-maintenance"
       role="tabpanel"
-      aria-labelledby="admin-tab-thumbnails"
+      aria-labelledby="admin-tab-maintenance"
       className="admin-page__panel"
     >
+      <section className="admin-page__section">
+        <h3>Search index & faces</h3>
+        <p className="admin-page__desc">
+          Re-run indexing for the entire library (embeddings, automatic face
+          tags from current rules). Manual face assignments are preserved.
+        </p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          disabled={activity?.index.inProgress === true}
+          onClick={handleReindex}
+        >
+          {activity?.index.inProgress
+            ? "Re-indexing…"
+            : "Re-index entire library"}
+        </Button>
+        {activity?.index.inProgress && (
+          <p className="admin-page__meta" style={{ marginTop: 8 }}>
+            Progress: {activity.index.progressProcessed ?? 0} /{" "}
+            {activity.index.progressTotal ?? 0}
+          </p>
+        )}
+        {libraryReindexError && (
+          <Alert variant="danger" role="alert" className="u-mt-3">
+            <p>{libraryReindexError}</p>
+          </Alert>
+        )}
+      </section>
+
       <section className="admin-page__section">
         <h3>Thumbnails</h3>
         <p className="admin-page__desc">

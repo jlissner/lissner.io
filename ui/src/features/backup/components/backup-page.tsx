@@ -3,13 +3,12 @@ import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/toast";
 import { useActivity } from "@/components/activity/activity-provider";
 import { runBackupSync } from "../api";
 
 interface BackupPageProps {
   onSyncComplete?: () => void;
-  /** When false, omit the page title (e.g. when embedded under Admin with a section heading). */
-  showTitle?: boolean;
 }
 
 function getSyncAlertVariant(phase: string): "danger" | "success" | "info" {
@@ -18,10 +17,8 @@ function getSyncAlertVariant(phase: string): "danger" | "success" | "info" {
   return "info";
 }
 
-export function BackupPage({
-  onSyncComplete,
-  showTitle = true,
-}: BackupPageProps) {
+export function BackupPage({ onSyncComplete }: BackupPageProps) {
+  const { showToast } = useToast();
   const activity = useActivity();
   const wasInProgress = useRef(false);
   const [running, setRunning] = useState(false);
@@ -49,11 +46,11 @@ export function BackupPage({
     try {
       await runBackupSync();
     } catch (err) {
-      alert(errorMessage(err, "Backup failed"));
+      showToast(errorMessage(err, "Backup failed"));
     } finally {
       setRunning(false);
     }
-  }, []);
+  }, [showToast]);
 
   if (status === null) {
     return <p className="empty">Loading…</p>;
@@ -63,8 +60,6 @@ export function BackupPage({
 
   return (
     <div className="backup-page">
-      {showTitle && <h2 className="backup-page__title">Sync with S3</h2>}
-
       <Card padding="lg">
         <p className="backup-page__desc">
           Sync your media with AWS S3. Uploads only new files, downloads missing

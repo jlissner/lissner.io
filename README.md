@@ -128,7 +128,6 @@ The UI proxies `/api` to **port 3000**. That error means the **Express API is no
 | `S3_BUCKET`             | —                        | S3 bucket name for media sync                                                                                                                 |
 | `FIRST_ADMIN_EMAIL`     | —                        | Bootstrap admin email (whitelisted, receives magic links).                                                                                    |
 | `SESSION_SECRET`        | (dev default)            | Secret for session cookies                                                                                                                    |
-| `SQL_EXPLORER_ENABLED`  | —                        | Set to `true` to enable SQL explorer for admins. **Only works when NODE_ENV ≠ production** (local dev only).                                  |
 | `DATA_EXPLORER_ENABLED` | —                        | Set to `true` to enable Data Explorer (CRUD UI for all tables). **Only works when NODE_ENV ≠ production**. Auto-discovers tables and columns. |
 | `SES_FROM_EMAIL`        | —                        | Verified sender email for magic links (must be verified in AWS SES). If unset with AWS configured, link is logged to console.                 |
 
