@@ -171,6 +171,26 @@ export async function sniffAndPersistMediaMime(
   };
 }
 
+const DOCUMENT_MIME_BY_EXTENSION: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".txt": "text/plain",
+  ".text": "text/plain",
+  ".log": "text/plain",
+  ".md": "text/markdown",
+  ".markdown": "text/markdown",
+  ".csv": "text/csv",
+  ".json": "application/json",
+  ".xml": "application/xml",
+  ".html": "text/html",
+  ".htm": "text/html",
+  ".css": "text/css",
+};
+
+/** Browsers often send no/generic MIME for documents; recover it from the extension. */
+export function documentMimeForExtension(ext: string): string | null {
+  return DOCUMENT_MIME_BY_EXTENSION[ext.toLowerCase()] ?? null;
+}
+
 /**
  * Correct MIME for upload when multer reports octet-stream or for `.mp` Pixel motion-photo files.
  */
@@ -196,6 +216,10 @@ export async function resolveMimeTypeAfterUpload(
     if (ext === ".mp") {
       return "image/jpeg";
     }
+  }
+  if (genericMime) {
+    const docMime = documentMimeForExtension(ext);
+    if (docMime) return docMime;
   }
   return multerMimeType || "application/octet-stream";
 }

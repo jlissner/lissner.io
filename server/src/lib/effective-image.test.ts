@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  documentMimeForExtension,
   isEffectiveImageItem,
   isGenericBinaryMime,
   isPixelMotionPhotoExtension,
@@ -37,6 +38,21 @@ describe("isEffectiveImageItem", () => {
         originalName: "a.mp",
       }),
     ).toBe(true);
+  });
+});
+
+describe("documentMimeForExtension", () => {
+  it("maps known document extensions case-insensitively", () => {
+    expect(documentMimeForExtension(".pdf")).toBe("application/pdf");
+    expect(documentMimeForExtension(".MD")).toBe("text/markdown");
+    expect(documentMimeForExtension(".txt")).toBe("text/plain");
+    expect(documentMimeForExtension(".csv")).toBe("text/csv");
+    expect(documentMimeForExtension(".json")).toBe("application/json");
+  });
+
+  it("returns null for unknown extensions", () => {
+    expect(documentMimeForExtension(".jpg")).toBe(null);
+    expect(documentMimeForExtension("")).toBe(null);
   });
 });
 

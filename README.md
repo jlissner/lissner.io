@@ -57,6 +57,7 @@ Create the directory structure and base config:
   - [x] Images
   - [x] Videos
   - [x] Text
+  - [x] PDFs
 - [x] Index documents and media with AI
 - [x] AI documents and media search
 - [x] Face recognition: detect and group people across photos
