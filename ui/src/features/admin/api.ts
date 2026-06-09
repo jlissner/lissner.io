@@ -9,22 +9,6 @@ import type {
 } from "@shared";
 import { apiJson } from "@/api";
 
-export interface AdminWhitelistEntry {
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  invitedAt: string;
-  personId: number | null;
-}
-
-export interface AdminUser {
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  createdAt: string;
-  personId: number | null;
-}
-
 export interface PeopleDirectoryEntry {
   personId: number;
   name: string;
@@ -34,24 +18,11 @@ export interface PeopleDirectoryEntry {
   isIdentity: boolean;
 }
 
-interface AdminPerson {
-  id: number;
-  name: string;
-}
-
 export interface DataExplorerColumn {
   name: string;
   type: string;
   notnull: number;
   pk: number;
-}
-
-export function listWhitelist(): Promise<AdminWhitelistEntry[]> {
-  return apiJson<AdminWhitelistEntry[]>("admin/whitelist");
-}
-
-export function listUsers(): Promise<AdminUser[]> {
-  return apiJson<AdminUser[]>("admin/users");
 }
 
 export function listPeopleDirectory(): Promise<PeopleDirectoryEntry[]> {
@@ -89,31 +60,8 @@ export function deleteDirectoryPerson(personId: number): Promise<{
   });
 }
 
-export async function listPeopleForAdmin(): Promise<AdminPerson[]> {
-  const data = await apiJson<AdminPerson[] | { people?: AdminPerson[] }>(
-    "people",
-  );
-  return Array.isArray(data) ? data : (data.people ?? []);
-}
-
 export function getDataExplorerAvailable(): Promise<{ available: boolean }> {
   return apiJson<{ available: boolean }>("admin/data-explorer-available");
-}
-
-export function addWhitelistEntry(input: {
-  email: string;
-  isAdmin: boolean;
-  personId?: number;
-}): Promise<unknown> {
-  return apiJson("admin/whitelist", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
-}
-
-export function removeWhitelistEntry(id: number): Promise<unknown> {
-  return apiJson(`admin/whitelist/${id}`, { method: "DELETE" });
 }
 
 export function listDataExplorerTables(): Promise<string[]> {

@@ -6,10 +6,6 @@ Feature: Admin tools beyond duplicate detection
   Background:
     Given I am signed in as an admin
 
-  Scenario: View and edit email whitelist
-    When I open the admin whitelist section
-    Then I can list entries and add or remove allowed emails
-
   Scenario: List database backups
     When I request the list of database backups from S3
     Then I see available backup objects with metadata needed to choose one

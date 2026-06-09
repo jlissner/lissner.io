@@ -92,36 +92,6 @@ Given("a valid backup key is selected", function (this: BddWorld) {
   this.selectedBackupKey = "backup/db/media_test.db";
 });
 
-When("I open the admin whitelist section", async function (this: BddWorld) {
-  await requestJson(this, "GET", "/admin/whitelist");
-});
-
-Then(
-  "I can list entries and add or remove allowed emails",
-  async function (this: BddWorld) {
-    assert.ok(this.lastResponse);
-    assert.equal(this.lastResponse.status, 200);
-    assert.ok(this.lastJson && typeof this.lastJson === "object");
-
-    // Add an entry
-    await requestJson(this, "POST", "/admin/whitelist", {
-      email: "someone@test.local",
-      isAdmin: false,
-    });
-    assert.ok(this.lastResponse);
-    assert.equal(this.lastResponse.status, 201);
-    assert.ok(this.lastJson && typeof this.lastJson === "object");
-    const created = this.lastJson as { id: number; email: string };
-    assert.ok(typeof created.id === "number");
-    assert.equal(created.email, "someone@test.local");
-
-    // Remove it
-    await requestJson(this, "DELETE", `/admin/whitelist/${created.id}`);
-    assert.ok(this.lastResponse);
-    assert.equal(this.lastResponse.status, 204);
-  },
-);
-
 When(
   "I request the list of database backups from S3",
   async function (this: BddWorld) {

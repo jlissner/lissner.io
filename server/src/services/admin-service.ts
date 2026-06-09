@@ -1,5 +1,4 @@
 /** Dev-only tooling flags (Data explorer). */
-import * as authDb from "../db/auth.js";
 import * as mediaDb from "../db/media.js";
 
 export type AdminServiceResult<T> =
@@ -85,45 +84,4 @@ export function deleteDataExplorerRow(
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }
-}
-
-export function listWhitelistEntries() {
-  return ok(authDb.getWhitelist());
-}
-
-export function addWhitelistEntry(input: {
-  email: string;
-  isAdmin: boolean;
-  personId?: number;
-  actorUserId?: number;
-}) {
-  try {
-    return ok(
-      authDb.addToWhitelist(
-        input.email,
-        input.isAdmin,
-        input.actorUserId,
-        input.personId,
-      ),
-    );
-  } catch {
-    return fail(400, "Email may already be on whitelist");
-  }
-}
-
-export function removeWhitelistEntry(id: number): boolean {
-  return authDb.removeFromWhitelist(id);
-}
-
-export function listUsers() {
-  return ok(authDb.getUsers());
-}
-
-export function getUserPeople(userId: number) {
-  return ok(authDb.getUserPeople(userId));
-}
-
-export function setUserPeople(userId: number, personIds: number[]) {
-  authDb.setUserPeople(userId, personIds);
-  return ok(personIds);
 }

@@ -8,7 +8,6 @@ import { DuplicatesTab } from "./tabs/duplicates-tab";
 import { FileIssuesTab } from "./tabs/file-issues-tab";
 import { MaintenanceTab } from "./tabs/maintenance-tab";
 import { SyncTab } from "./tabs/sync-tab";
-import { WhitelistTab } from "./tabs/whitelist-tab";
 
 type AdminTabId =
   | "sync"
@@ -16,7 +15,6 @@ type AdminTabId =
   | "duplicates"
   | "maintenance"
   | "file-issues"
-  | "whitelist"
   | "users"
   | "data-explorer";
 
@@ -38,7 +36,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
       { id: "duplicates", label: "Duplicates" },
       { id: "maintenance", label: "Maintenance" },
       { id: "file-issues", label: "File issues" },
-      { id: "whitelist", label: "Whitelist" },
       { id: "users", label: "Directory" },
     ];
     if (dataExplorerAvailable) {
@@ -92,7 +89,6 @@ export function AdminPage({ onSyncComplete }: { onSyncComplete?: () => void }) {
         {activeTab === "duplicates" && <DuplicatesTab />}
         {activeTab === "maintenance" && <MaintenanceTab />}
         {activeTab === "file-issues" && <FileIssuesTab />}
-        {activeTab === "whitelist" && <WhitelistTab />}
         {activeTab === "users" && <DirectoryTab />}
         {activeTab === "data-explorer" && dataExplorerAvailable && (
           <div

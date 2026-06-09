@@ -292,27 +292,6 @@ export function getWhitelist(): Array<{
   return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
 }
 
-export function addToWhitelist(
-  email: string,
-  isAdmin: boolean,
-  invitedByUserId?: number,
-  personId?: number | null,
-): number {
-  const normalized = email.trim().toLowerCase();
-  const db = getDb();
-  const result = db
-    .prepare(
-      "INSERT INTO auth_whitelist (email, is_admin, invited_by_user_id, person_id) VALUES (?, ?, ?, ?)",
-    )
-    .run(
-      normalized,
-      isAdmin ? 1 : 0,
-      invitedByUserId ?? null,
-      personId ?? null,
-    );
-  return result.lastInsertRowid as number;
-}
-
 export function getWhitelistByEmail(email: string): {
   id: number;
   email: string;
@@ -398,12 +377,6 @@ export function upsertWhitelistEntryByEmail(input: {
     .prepare("SELECT id FROM auth_whitelist WHERE LOWER(email) = ?")
     .get(normalized) as { id: number } | undefined;
   return row?.id ?? 0;
-}
-
-export function removeFromWhitelist(id: number): boolean {
-  const db = getDb();
-  const result = db.prepare("DELETE FROM auth_whitelist WHERE id = ?").run(id);
-  return result.changes > 0;
 }
 
 export function getUserPeople(userId: number): number[] {
