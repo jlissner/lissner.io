@@ -5,7 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/components/activity/activity-provider";
 import { triggerIndex } from "@/features/media/api";
-import { repairAdminThumbnails } from "../../api";
+import { computeAllHashes, repairAdminThumbnails } from "../../api";
 
 export function MaintenanceTab() {
   const activity = useActivity();
@@ -17,6 +17,13 @@ export function MaintenanceTab() {
   const [thumbRepairError, setThumbRepairError] = useState<string | null>(null);
   const [thumbRepairResult, setThumbRepairResult] =
     useState<AdminThumbnailRepairResponse | null>(null);
+  const [computingHashes, setComputingHashes] = useState(false);
+  const [hashError, setHashError] = useState<string | null>(null);
+  const [hashResult, setHashResult] = useState<{
+    computed: number;
+    failed: number;
+    total: number;
+  } | null>(null);
 
   const handleReindex = () => {
     setLibraryReindexError(null);
@@ -30,6 +37,19 @@ export function MaintenanceTab() {
         setLibraryReindexError(errorMessage(err, "Re-index failed"));
       }
     })();
+  };
+
+  const handleComputeHashes = async () => {
+    setComputingHashes(true);
+    setHashError(null);
+    setHashResult(null);
+    try {
+      setHashResult(await computeAllHashes());
+    } catch (err) {
+      setHashError(errorMessage(err, "Failed to compute hashes"));
+    } finally {
+      setComputingHashes(false);
+    }
   };
 
   const handleRepairThumbnails = async () => {
@@ -192,6 +212,31 @@ export function MaintenanceTab() {
               </Alert>
             )}
           </div>
+        )}
+      </section>
+
+      <section className="admin-page__section">
+        <h3>Duplicate-detection hashes</h3>
+        <p className="admin-page__desc">
+          Compute perceptual hashes for existing images so they can be matched
+          in the Duplicates tab. New uploads are hashed automatically; this
+          backfills older media.
+        </p>
+        <div className="admin-page__form">
+          <Button onClick={handleComputeHashes} disabled={computingHashes}>
+            {computingHashes ? "Computing…" : "Compute all hashes"}
+          </Button>
+          {hashResult && (
+            <p className="admin-page__meta">
+              Computed {hashResult.computed} of {hashResult.total} images (
+              {hashResult.failed} failed)
+            </p>
+          )}
+        </div>
+        {hashError && (
+          <Alert variant="danger" role="alert">
+            <p>{hashError}</p>
+          </Alert>
         )}
       </section>
     </div>
