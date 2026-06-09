@@ -1,14 +1,26 @@
 import { useCallback, useEffect, useState } from "react";
 import { apiJson } from "@/api";
-import { ModalPanel, ModalRoot, ModalTitle } from "@/components/ui/modal";
+import { Button } from "@/components/ui/button";
+import {
+  ModalActions,
+  ModalPanel,
+  ModalRoot,
+  ModalTitle,
+} from "@/components/ui/modal";
 import { cn } from "@/lib/utils";
 import type { MediaUploadProgress } from "../lib/post-media-upload-with-progress.js";
 import { uploadMediaFilesWithProgress } from "../lib/upload-media-files-with-progress.js";
 import {
-  getFilesToUploadAfterDecisions,
+  computeUploadCount,
+  getUploadActionLabel,
+  isUploadActionDisabled,
+  UploadModalFileList,
+} from "./upload-modal-file-list.js";
+import {
+  allConflictChoicesMade,
   type DuplicateConflictDecision,
-  UploadModalConfirm,
-} from "./upload-modal-confirm.js";
+  getFilesToUploadAfterDecisions,
+} from "./upload-modal-utils.js";
 import { UploadNameConflict } from "@shared";
 
 interface UploadModalProps {
@@ -28,9 +40,14 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   const [uploadProgress, setUploadProgress] =
     useState<MediaUploadProgress | null>(null);
 
-  const handleFilesSelected = useCallback((files: FileList | null) => {
+  const appendFiles = useCallback((files: FileList | null) => {
     if (!files?.length) return;
-    setPendingFiles(Array.from(files));
+    setPendingFiles((prev) => [...prev, ...Array.from(files)]);
+    setError(null);
+  }, []);
+
+  const clearFiles = useCallback(() => {
+    setPendingFiles([]);
     setError(null);
     setConflictDecisions([]);
     setNameConflicts([]);
@@ -76,9 +93,9 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
-      handleFilesSelected(e.dataTransfer?.files ?? null);
+      appendFiles(e.dataTransfer?.files ?? null);
     },
-    [handleFilesSelected],
+    [appendFiles],
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -89,32 +106,29 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
 
   const handleInputChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      handleFilesSelected(e.target.files);
+      appendFiles(e.target.files);
       e.target.value = "";
     },
-    [handleFilesSelected],
+    [appendFiles],
   );
 
-  const handleConfirm = useCallback(async () => {
+  const handleUpload = useCallback(async () => {
     if (!pendingFiles.length || uploading || checkLoading) return;
+    const hasConflicts = nameConflicts.length > 0;
     if (
-      nameConflicts.length > 0 &&
-      (conflictDecisions.length !== nameConflicts.length ||
-        conflictDecisions.some((d) => d == null))
+      hasConflicts &&
+      !allConflictChoicesMade(nameConflicts, conflictDecisions)
     ) {
-      setError(
-        "Choose for each conflicting file whether to skip it or upload it as new.",
-      );
+      setError("Choose Skip or Upload as new for each conflicting file.");
       return;
     }
-    const filesToUpload =
-      nameConflicts.length === 0
-        ? pendingFiles
-        : getFilesToUploadAfterDecisions(
-            pendingFiles,
-            nameConflicts,
-            conflictDecisions as ("skip" | "upload")[],
-          );
+    const filesToUpload = hasConflicts
+      ? getFilesToUploadAfterDecisions(
+          pendingFiles,
+          nameConflicts,
+          conflictDecisions as ("skip" | "upload")[],
+        )
+      : pendingFiles;
     if (filesToUpload.length === 0) {
       setError(null);
       onClose();
@@ -147,101 +161,152 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   ]);
 
   const handleCancel = useCallback(() => {
-    setPendingFiles([]);
-    setError(null);
+    clearFiles();
     onClose();
-  }, [onClose]);
+  }, [clearFiles, onClose]);
 
   const hasFiles = pendingFiles.length > 0;
-  const totalBytes = pendingFiles.reduce((sum, f) => sum + f.size, 0);
+  const hasConflicts = nameConflicts.length > 0;
+  const choicesComplete = allConflictChoicesMade(
+    nameConflicts,
+    conflictDecisions,
+  );
+  const uploadCount = computeUploadCount({
+    pendingFiles,
+    nameConflicts,
+    conflictDecisions,
+    hasConflicts,
+    choicesComplete,
+  });
 
   return (
     <ModalRoot onBackdropClick={handleCancel}>
       <ModalPanel
-        className={cn(hasFiles && "upload-modal-panel")}
-        style={
-          hasFiles
-            ? undefined
-            : { minWidth: 360, maxHeight: "90vh", overflow: "auto" }
-        }
+        className={cn("upload-modal-panel")}
         aria-labelledby="upload-title"
         onEscape={handleCancel}
       >
         <ModalTitle id="upload-title">Upload files</ModalTitle>
-        {!hasFiles ? (
-          <div
-            className="upload-zone"
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-          >
-            <input
-              type="file"
-              multiple
-              accept="image/*,video/*,application/pdf,text/plain,text/markdown,text/csv,application/json,application/xml,.pdf,.txt,.md,.markdown,.csv,.json,.xml,.log"
-              onChange={handleInputChange}
-              className="u-sr-only"
-              id="upload-modal-input"
-            />
-            <label htmlFor="upload-modal-input" style={{ cursor: "pointer" }}>
-              <span className="upload-zone__title">
-                Drop files here or <strong>click to browse</strong>
-              </span>
-              <span className="upload-zone__hint">
-                Images, videos, documents
-              </span>
-            </label>
-            <div className="upload-zone__actions">
-              <button
-                type="button"
-                className="upload-zone__camera-btn"
-                onClick={(e) => {
-                  e.preventDefault();
-                  const input = document.createElement("input");
-                  input.type = "file";
-                  input.accept = "image/*";
-                  input.setAttribute("capture", "environment");
-                  input.onchange = (ev) => {
-                    const files = (ev.target as HTMLInputElement).files;
-                    if (files) handleFilesSelected(files);
-                  };
-                  input.click();
-                }}
-              >
-                Take Photo
-              </button>
+
+        <div className="upload-modal-body">
+          {!uploading && (
+            <div
+              className={cn("upload-zone", hasFiles && "upload-zone--compact")}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+            >
+              <input
+                type="file"
+                multiple
+                accept="image/*,video/*,application/pdf,text/plain,text/markdown,text/csv,application/json,application/xml,.pdf,.txt,.md,.markdown,.csv,.json,.xml,.log"
+                onChange={handleInputChange}
+                className="u-sr-only"
+                id="upload-modal-input"
+              />
+              <label htmlFor="upload-modal-input" style={{ cursor: "pointer" }}>
+                <span className="upload-zone__title">
+                  {hasFiles ? (
+                    <>
+                      Drop more files or <strong>click to browse</strong>
+                    </>
+                  ) : (
+                    <>
+                      Drop files here or <strong>click to browse</strong>
+                    </>
+                  )}
+                </span>
+                {!hasFiles && (
+                  <span className="upload-zone__hint">
+                    Images, videos, documents
+                  </span>
+                )}
+              </label>
+              {!hasFiles && (
+                <div className="upload-zone__actions">
+                  <button
+                    type="button"
+                    className="upload-zone__camera-btn"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const input = document.createElement("input");
+                      input.type = "file";
+                      input.accept = "image/*";
+                      input.setAttribute("capture", "environment");
+                      input.onchange = (ev) => {
+                        const files = (ev.target as HTMLInputElement).files;
+                        if (files) appendFiles(files);
+                      };
+                      input.click();
+                    }}
+                  >
+                    Take Photo
+                  </button>
+                </div>
+              )}
             </div>
+          )}
+
+          {hasFiles && (
+            <UploadModalFileList
+              pendingFiles={pendingFiles}
+              nameConflicts={nameConflicts}
+              conflictDecisions={conflictDecisions}
+              checkLoading={checkLoading}
+              uploading={uploading}
+              uploadProgress={uploadProgress}
+              error={error}
+              onConflictDecisionChange={(index, choice) => {
+                setConflictDecisions((prev) => {
+                  const next = [...prev];
+                  next[index] = choice;
+                  return next;
+                });
+                setError(null);
+              }}
+              onApplyAllDuplicateDecisions={(choice) => {
+                setConflictDecisions(nameConflicts.map(() => choice));
+                setError(null);
+              }}
+            />
+          )}
+        </div>
+
+        {hasFiles && (
+          <div className="upload-modal-footer">
+            <ModalActions className="upload-modal-footer__actions">
+              <Button
+                variant="secondary"
+                onClick={clearFiles}
+                disabled={uploading}
+              >
+                Clear
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={handleCancel}
+                disabled={uploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => void handleUpload()}
+                disabled={isUploadActionDisabled({
+                  uploading,
+                  checkLoading,
+                  hasConflicts,
+                  choicesComplete,
+                })}
+              >
+                {getUploadActionLabel({
+                  uploading,
+                  checkLoading,
+                  hasConflicts,
+                  choicesComplete,
+                  uploadCount,
+                })}
+              </Button>
+            </ModalActions>
           </div>
-        ) : (
-          <UploadModalConfirm
-            fileCount={pendingFiles.length}
-            totalBytes={totalBytes}
-            pendingFiles={pendingFiles}
-            uploading={uploading}
-            uploadProgress={uploadProgress}
-            error={error}
-            onChooseDifferent={() => setPendingFiles([])}
-            onCancel={handleCancel}
-            onConfirm={handleConfirm}
-            nameConflicts={nameConflicts}
-            checkLoading={checkLoading}
-            conflictDecisions={conflictDecisions}
-            onConflictDecisionChange={(index, choice) => {
-              setConflictDecisions((prev) => {
-                const next = [...prev];
-                next[index] = choice;
-                return next;
-              });
-              setError(null);
-            }}
-            onApplyAllDuplicateDecisions={(choice) => {
-              setConflictDecisions(nameConflicts.map(() => choice));
-              setError(null);
-            }}
-            onResetDuplicateDecisions={() => {
-              setConflictDecisions(nameConflicts.map(() => null));
-              setError(null);
-            }}
-          />
         )}
       </ModalPanel>
     </ModalRoot>
