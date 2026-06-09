@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { deleteMediaById, runBulkIndex } from "@/features/media/api";
 import { MEDIA_URL_QUERY_KEY } from "@/features/media/lib/media-viewer-url";
 import { clearMediaFileIssue, listMediaFileIssues } from "../../api";
@@ -10,6 +11,7 @@ import { fileIssueCodeLabel, formatBytes } from "../../lib/format";
 const FILE_ISSUES_KEY = ["admin", "fileIssues"];
 
 export function FileIssuesTab() {
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const fileIssuesQuery = useQuery({
     queryKey: FILE_ISSUES_KEY,
@@ -29,18 +31,19 @@ export function FileIssuesTab() {
       await clearMediaFileIssue(mediaId);
       await invalidateFileIssues();
     } catch (err) {
-      alert(errorMessage(err, "Clear failed"));
+      showToast(errorMessage(err, "Clear failed"));
     }
   };
 
   const handleReindexFileIssue = async (mediaId: string) => {
     try {
       await runBulkIndex([mediaId]);
-      alert(
+      showToast(
         "Re-index started for this item. Check activity, then refresh this list.",
+        "info",
       );
     } catch (err) {
-      alert(errorMessage(err, "Re-index request failed"));
+      showToast(errorMessage(err, "Re-index request failed"));
     }
   };
 
@@ -59,7 +62,7 @@ export function FileIssuesTab() {
       await deleteMediaById(mediaId);
       await invalidateFileIssues();
     } catch (err) {
-      alert(errorMessage(err, "Delete failed"));
+      showToast(errorMessage(err, "Delete failed"));
     }
   };
 

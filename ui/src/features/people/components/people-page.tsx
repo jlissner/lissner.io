@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { errorMessage } from "@/api";
+import { useToast } from "@/components/ui/toast";
 import { PeopleSidebar } from "./people-sidebar";
 import { PeopleDetail } from "./people-detail";
 import { PeopleEditModal } from "./people-edit-modal";
@@ -23,6 +24,7 @@ interface PeoplePageProps {
 
 export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
   const isMobile = useIsMobile();
   const [matchFacesOpen, setMatchFacesOpen] = useState(false);
   const [matchFacesBusy, setMatchFacesBusy] = useState(false);
@@ -71,11 +73,11 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
       await fetchPeople({ silent: true });
       onUpdate?.();
     } catch (err) {
-      alert(errorMessage(err, "Match faces failed"));
+      showToast(errorMessage(err, "Match faces failed"));
     } finally {
       setMatchFacesBusy(false);
     }
-  }, [fetchPeople, onUpdate]);
+  }, [fetchPeople, onUpdate, showToast]);
 
   const handleSelectPerson = useCallback(
     (id: number | null) => {

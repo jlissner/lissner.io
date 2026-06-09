@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { errorMessage, prependApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { FullscreenImage } from "@/features/media/components/media-viewer/fullscreen-image";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import {
@@ -271,6 +272,7 @@ export function PeopleMatchFacesWizard({
   onClose: () => void;
   onMerged: () => void;
 }) {
+  const { showToast } = useToast();
   const [queue, setQueue] = useState<FaceMatchReviewItem[]>(initialQueue);
   const [busy, setBusy] = useState(false);
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false);
@@ -295,11 +297,11 @@ export function PeopleMatchFacesWizard({
       await mergePeople(current.placeholderPersonId, current.topMatch.personId);
       popQueue();
     } catch (err) {
-      alert(errorMessage(err, "Merge failed"));
+      showToast(errorMessage(err, "Merge failed"));
     } finally {
       setBusy(false);
     }
-  }, [current, popQueue]);
+  }, [current, popQueue, showToast]);
 
   const handleMergeOther = useCallback(
     async (target: number) => {
@@ -309,12 +311,12 @@ export function PeopleMatchFacesWizard({
         await mergePeople(current.placeholderPersonId, target);
         popQueue();
       } catch (err) {
-        alert(errorMessage(err, "Merge failed"));
+        showToast(errorMessage(err, "Merge failed"));
       } finally {
         setBusy(false);
       }
     },
-    [current, popQueue],
+    [current, popQueue, showToast],
   );
 
   const handleRename = useCallback(
@@ -322,7 +324,7 @@ export function PeopleMatchFacesWizard({
       if (!current) return;
       const trimmed = name.trim();
       if (!trimmed) {
-        alert("Enter a name.");
+        showToast("Enter a name.", "info");
         return;
       }
       setBusy(true);
@@ -330,12 +332,12 @@ export function PeopleMatchFacesWizard({
         await updatePerson(current.placeholderPersonId, trimmed);
         popQueue();
       } catch (err) {
-        alert(errorMessage(err, "Rename failed"));
+        showToast(errorMessage(err, "Rename failed"));
       } finally {
         setBusy(false);
       }
     },
-    [current, popQueue],
+    [current, popQueue, showToast],
   );
 
   const handleDiscard = useCallback(() => {
@@ -352,11 +354,11 @@ export function PeopleMatchFacesWizard({
       );
       popQueue();
     } catch (err) {
-      alert(errorMessage(err, "Could not remove tag"));
+      showToast(errorMessage(err, "Could not remove tag"));
     } finally {
       setBusy(false);
     }
-  }, [current, popQueue]);
+  }, [current, popQueue, showToast]);
 
   const handleDeletePerson = useCallback(async () => {
     if (!current) return;
@@ -377,11 +379,11 @@ export function PeopleMatchFacesWizard({
       await deletePerson(current.placeholderPersonId);
       popQueue();
     } catch (err) {
-      alert(errorMessage(err, "Could not delete person"));
+      showToast(errorMessage(err, "Could not delete person"));
     } finally {
       setBusy(false);
     }
-  }, [current, namedPeople, popQueue]);
+  }, [current, namedPeople, popQueue, showToast]);
 
   const fullPreviewUrl =
     fullPreviewOpen && current ? faceMatchFullImageSrc(current) : null;

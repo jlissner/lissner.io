@@ -3,6 +3,7 @@ import { useState } from "react";
 import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import {
   addWhitelistEntry,
   listPeopleForAdmin,
@@ -16,6 +17,7 @@ const USERS_KEY = ["admin", "users"];
 const PEOPLE_KEY = ["admin", "people"];
 
 export function WhitelistTab() {
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const whitelistQuery = useQuery({
     queryKey: WHITELIST_KEY,
@@ -59,7 +61,7 @@ export function WhitelistTab() {
       setNewPersonId("");
       refreshWhitelist();
     } catch (err) {
-      alert(errorMessage(err, "Failed to add"));
+      showToast(errorMessage(err, "Failed to add"));
     }
   };
 
@@ -69,7 +71,7 @@ export function WhitelistTab() {
       await removeWhitelistEntry(id);
       refreshWhitelist();
     } catch (err) {
-      alert(errorMessage(err, "Failed to remove"));
+      showToast(errorMessage(err, "Failed to remove"));
     }
   };
 

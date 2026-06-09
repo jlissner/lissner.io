@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { errorMessage } from "@/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { computeAllHashes } from "../../api";
 import { DuplicateReviewer } from "../duplicate-reviewer";
 
 export function DuplicatesTab() {
+  const { showToast } = useToast();
   const [computingHashes, setComputingHashes] = useState(false);
   const [hashResult, setHashResult] = useState<{
     computed: number;
@@ -19,7 +21,7 @@ export function DuplicatesTab() {
       const result = await computeAllHashes();
       setHashResult(result);
     } catch (err) {
-      alert(errorMessage(err, "Failed to compute hashes"));
+      showToast(errorMessage(err, "Failed to compute hashes"));
     } finally {
       setComputingHashes(false);
     }

@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { listDbBackups, restoreDbFromBackup } from "../../api";
 import {
   formatBackupDisplayDate,
@@ -14,6 +15,7 @@ const BACKUP_PAGE_SIZE = 5;
 const DB_BACKUPS_KEY = ["admin", "dbBackups"];
 
 export function DbBackupTab() {
+  const { showToast } = useToast();
   const queryClient = useQueryClient();
   const dbBackupsQuery = useQuery({
     queryKey: DB_BACKUPS_KEY,
@@ -52,7 +54,7 @@ export function DbBackupTab() {
       await restoreDbFromBackup(key);
       window.location.reload();
     } catch (err) {
-      alert(errorMessage(err, "Restore failed"));
+      showToast(errorMessage(err, "Restore failed"));
     } finally {
       setRestoringBackupKey(null);
     }
