@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/components/activity/activity-provider";
@@ -21,8 +21,7 @@ export function SyncTab({ onSyncComplete }: { onSyncComplete?: () => void }) {
           setLibraryReindexError(data.error ?? "Could not start re-index");
         }
       } catch (err) {
-        const msg = err instanceof ApiError ? err.message : "Re-index failed";
-        setLibraryReindexError(msg);
+        setLibraryReindexError(errorMessage(err, "Re-index failed"));
       }
     })();
   };

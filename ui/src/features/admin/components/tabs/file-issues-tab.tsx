@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { AdminMediaFileIssueItem } from "@shared";
-import { ApiError } from "@/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { deleteMediaById, runBulkIndex } from "@/features/media/api";
@@ -8,39 +7,29 @@ import { MEDIA_URL_QUERY_KEY } from "@/features/media/lib/media-viewer-url";
 import { clearMediaFileIssue, listMediaFileIssues } from "../../api";
 import { fileIssueCodeLabel, formatBytes } from "../../lib/format";
 
+const FILE_ISSUES_KEY = ["admin", "fileIssues"];
+
 export function FileIssuesTab() {
-  const [fileIssues, setFileIssues] = useState<
-    AdminMediaFileIssueItem[] | null
-  >(null);
-  const [fileIssuesLoading, setFileIssuesLoading] = useState(false);
-  const [fileIssuesError, setFileIssuesError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const fileIssuesQuery = useQuery({
+    queryKey: FILE_ISSUES_KEY,
+    queryFn: () => listMediaFileIssues().then((r) => r.items),
+  });
+  const fileIssues = fileIssuesQuery.data ?? null;
+  const fileIssuesLoading = fileIssuesQuery.isFetching;
+  const fileIssuesError = fileIssuesQuery.isError
+    ? errorMessage(fileIssuesQuery.error, "Failed to load file issues")
+    : null;
 
-  const loadFileIssues = useCallback(async () => {
-    setFileIssuesLoading(true);
-    setFileIssuesError(null);
-    try {
-      const { items } = await listMediaFileIssues();
-      setFileIssues(items);
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to load file issues";
-      setFileIssuesError(message);
-      setFileIssues([]);
-    } finally {
-      setFileIssuesLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadFileIssues();
-  }, [loadFileIssues]);
+  const invalidateFileIssues = () =>
+    queryClient.invalidateQueries({ queryKey: FILE_ISSUES_KEY });
 
   const handleClearFileIssue = async (mediaId: string) => {
     try {
       await clearMediaFileIssue(mediaId);
-      await loadFileIssues();
+      await invalidateFileIssues();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Clear failed");
+      alert(errorMessage(err, "Clear failed"));
     }
   };
 
@@ -51,7 +40,7 @@ export function FileIssuesTab() {
         "Re-index started for this item. Check activity, then refresh this list.",
       );
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Re-index request failed");
+      alert(errorMessage(err, "Re-index request failed"));
     }
   };
 
@@ -68,9 +57,9 @@ export function FileIssuesTab() {
     }
     try {
       await deleteMediaById(mediaId);
-      await loadFileIssues();
+      await invalidateFileIssues();
     } catch (err) {
-      alert(err instanceof ApiError ? err.message : "Delete failed");
+      alert(errorMessage(err, "Delete failed"));
     }
   };
 
@@ -95,7 +84,7 @@ export function FileIssuesTab() {
             variant="secondary"
             size="sm"
             disabled={fileIssuesLoading}
-            onClick={() => void loadFileIssues()}
+            onClick={() => void invalidateFileIssues()}
           >
             {fileIssuesLoading ? "Loading…" : "Refresh"}
           </Button>

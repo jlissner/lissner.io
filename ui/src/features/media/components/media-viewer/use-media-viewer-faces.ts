@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import {
   addPersonToMedia,
   listMediaFaces,
@@ -100,9 +100,7 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to add tag";
-        alert(message);
+        alert(errorMessage(err, "Failed to add tag"));
       }
     },
     [mediaId, assigningFace, loadFaces, onUpdate, onTagChange],
@@ -119,9 +117,7 @@ export function useMediaViewerFaces({
           onUpdate?.();
           onTagChange?.();
         } catch (err) {
-          const message =
-            err instanceof ApiError ? err.message : "Failed to remove tag";
-          alert(message);
+          alert(errorMessage(err, "Failed to remove tag"));
         }
         return;
       }
@@ -133,9 +129,7 @@ export function useMediaViewerFaces({
           onUpdate?.();
           onTagChange?.();
         } catch (err) {
-          const message =
-            err instanceof ApiError ? err.message : "Failed to reassign";
-          alert(message);
+          alert(errorMessage(err, "Failed to reassign"));
         }
         return;
       }
@@ -146,9 +140,7 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to reassign";
-        alert(message);
+        alert(errorMessage(err, "Failed to reassign"));
       }
     },
     [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange],
@@ -163,9 +155,7 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to dismiss tag";
-        alert(message);
+        alert(errorMessage(err, "Failed to dismiss tag"));
       }
     },
     [mediaId, loadFaces, onUpdate, onTagChange],

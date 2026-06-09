@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { sendMagicLink, verifyLoginCode } from "../api";
@@ -62,7 +62,7 @@ export function LoginPage({ onSent, onAuthenticated }: LoginPageProps) {
     } catch (err) {
       localStorage.removeItem(EMAIL_KEY);
       setStatus("error");
-      setError(err instanceof ApiError ? err.message : "Network error");
+      setError(errorMessage(err, "Network error"));
     }
   };
 

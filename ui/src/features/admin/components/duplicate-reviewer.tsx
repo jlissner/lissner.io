@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { ApiError, prependApiUrl } from "@/api";
+import { errorMessage, prependApiUrl } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,9 +59,7 @@ export function DuplicateReviewer() {
       const result = await getAllDuplicates();
       setDuplicates(result.duplicates);
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to find duplicates";
-      setError(message);
+      setError(errorMessage(err, "Failed to find duplicates"));
     } finally {
       setFindingDuplicates(false);
     }
@@ -114,9 +112,7 @@ export function DuplicateReviewer() {
         ),
       );
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to delete selected";
-      setError(message);
+      setError(errorMessage(err, "Failed to delete selected"));
     } finally {
       setDeletingSelected(false);
     }

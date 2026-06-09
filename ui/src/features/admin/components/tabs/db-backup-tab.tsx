@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError } from "@/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { listDbBackups, restoreDbFromBackup } from "../../api";
@@ -9,38 +10,24 @@ import {
   sortDbBackupsByNewest,
 } from "../../lib/format";
 
-type DbBackup = { key: string; size: number; lastModified: string };
-
 const BACKUP_PAGE_SIZE = 5;
+const DB_BACKUPS_KEY = ["admin", "dbBackups"];
 
 export function DbBackupTab() {
-  const [dbBackups, setDbBackups] = useState<DbBackup[] | null>(null);
-  const [dbBackupsError, setDbBackupsError] = useState<string | null>(null);
-  const [dbBackupsLoading, setDbBackupsLoading] = useState(false);
+  const queryClient = useQueryClient();
+  const dbBackupsQuery = useQuery({
+    queryKey: DB_BACKUPS_KEY,
+    queryFn: () => listDbBackups().then((r) => r.backups),
+  });
+  const dbBackups = dbBackupsQuery.data ?? null;
+  const dbBackupsLoading = dbBackupsQuery.isFetching;
+  const dbBackupsError = dbBackupsQuery.isError
+    ? errorMessage(dbBackupsQuery.error, "Failed to load backups")
+    : null;
   const [restoringBackupKey, setRestoringBackupKey] = useState<string | null>(
     null,
   );
   const [dbBackupsShowAll, setDbBackupsShowAll] = useState(false);
-
-  const fetchDbBackups = useCallback(async () => {
-    setDbBackupsLoading(true);
-    setDbBackupsError(null);
-    try {
-      const { backups } = await listDbBackups();
-      setDbBackups(backups);
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to load backups";
-      setDbBackupsError(message);
-      setDbBackups([]);
-    } finally {
-      setDbBackupsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchDbBackups();
-  }, [fetchDbBackups]);
 
   const sortedDbBackups = useMemo(
     () => (dbBackups == null ? [] : sortDbBackupsByNewest(dbBackups)),
@@ -65,8 +52,7 @@ export function DbBackupTab() {
       await restoreDbFromBackup(key);
       window.location.reload();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Restore failed";
-      alert(message);
+      alert(errorMessage(err, "Restore failed"));
     } finally {
       setRestoringBackupKey(null);
     }
@@ -91,7 +77,9 @@ export function DbBackupTab() {
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => void fetchDbBackups()}
+            onClick={() =>
+              void queryClient.invalidateQueries({ queryKey: DB_BACKUPS_KEY })
+            }
             disabled={dbBackupsLoading}
           >
             {dbBackupsLoading ? "Loading…" : "Refresh list"}

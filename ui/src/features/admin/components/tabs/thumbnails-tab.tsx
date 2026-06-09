@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AdminThumbnailRepairResponse } from "@shared";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { repairAdminThumbnails } from "../../api";
@@ -23,9 +23,7 @@ export function ThumbnailsTab() {
       const result = await repairAdminThumbnails({ maxGenerations });
       setThumbRepairResult(result);
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Thumbnail repair failed";
-      setThumbRepairError(message);
+      setThumbRepairError(errorMessage(err, "Thumbnail repair failed"));
     } finally {
       setThumbRepairRunning(false);
     }

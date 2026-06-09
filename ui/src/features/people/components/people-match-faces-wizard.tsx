@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError, prependApiUrl } from "@/api";
+import { errorMessage, prependApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
 import { FullscreenImage } from "@/features/media/components/media-viewer/fullscreen-image";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
@@ -295,8 +295,7 @@ export function PeopleMatchFacesWizard({
       await mergePeople(current.placeholderPersonId, current.topMatch.personId);
       popQueue();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Merge failed";
-      alert(message);
+      alert(errorMessage(err, "Merge failed"));
     } finally {
       setBusy(false);
     }
@@ -310,8 +309,7 @@ export function PeopleMatchFacesWizard({
         await mergePeople(current.placeholderPersonId, target);
         popQueue();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Merge failed";
-        alert(message);
+        alert(errorMessage(err, "Merge failed"));
       } finally {
         setBusy(false);
       }
@@ -332,8 +330,7 @@ export function PeopleMatchFacesWizard({
         await updatePerson(current.placeholderPersonId, trimmed);
         popQueue();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Rename failed";
-        alert(message);
+        alert(errorMessage(err, "Rename failed"));
       } finally {
         setBusy(false);
       }
@@ -355,9 +352,7 @@ export function PeopleMatchFacesWizard({
       );
       popQueue();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Could not remove tag";
-      alert(message);
+      alert(errorMessage(err, "Could not remove tag"));
     } finally {
       setBusy(false);
     }
@@ -382,9 +377,7 @@ export function PeopleMatchFacesWizard({
       await deletePerson(current.placeholderPersonId);
       popQueue();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Could not delete person";
-      alert(message);
+      alert(errorMessage(err, "Could not delete person"));
     } finally {
       setBusy(false);
     }

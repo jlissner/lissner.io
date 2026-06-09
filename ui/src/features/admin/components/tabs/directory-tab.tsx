@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { ApiError, errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,8 @@ import {
   type PeopleDirectoryEntry,
 } from "../../api";
 import { canDeleteDirectoryPerson } from "../directory-delete";
+
+const DIRECTORY_KEY = ["admin", "directory"];
 
 function friendlyDirectoryError(err: unknown): string {
   if (!(err instanceof ApiError)) return "Request failed";
@@ -29,7 +32,12 @@ function friendlyDirectoryError(err: unknown): string {
 }
 
 export function DirectoryTab() {
-  const [directory, setDirectory] = useState<PeopleDirectoryEntry[]>([]);
+  const queryClient = useQueryClient();
+  const directoryQuery = useQuery({
+    queryKey: DIRECTORY_KEY,
+    queryFn: listPeopleDirectory,
+  });
+  const directory = directoryQuery.data ?? [];
   const [directoryError, setDirectoryError] = useState<string | null>(null);
   const [directorySaving, setDirectorySaving] = useState(false);
   const [directoryNewName, setDirectoryNewName] = useState("");
@@ -42,20 +50,15 @@ export function DirectoryTab() {
   const [directoryEditEmail, setDirectoryEditEmail] = useState("");
   const [directoryEditIsAdmin, setDirectoryEditIsAdmin] = useState(false);
 
-  const fetchDirectory = useCallback(async () => {
-    setDirectoryError(null);
-    try {
-      setDirectory(await listPeopleDirectory());
-    } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to load the directory";
-      setDirectoryError(message);
-    }
-  }, []);
+  const loadError = directoryQuery.isError
+    ? errorMessage(directoryQuery.error, "Failed to load the directory")
+    : null;
+  const shownError = directoryError ?? loadError;
 
-  useEffect(() => {
-    void fetchDirectory();
-  }, [fetchDirectory]);
+  const refreshDirectory = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: DIRECTORY_KEY }),
+    [queryClient],
+  );
 
   const startEditDirectoryPerson = useCallback((row: PeopleDirectoryEntry) => {
     setDirectoryEditingPersonId(row.personId);
@@ -91,14 +94,19 @@ export function DirectoryTab() {
         setDirectoryNewName("");
         setDirectoryNewEmail("");
         setDirectoryNewIsAdmin(false);
-        await fetchDirectory();
+        await refreshDirectory();
       } catch (err) {
         setDirectoryError(friendlyDirectoryError(err));
       } finally {
         setDirectorySaving(false);
       }
     },
-    [directoryNewEmail, directoryNewIsAdmin, directoryNewName, fetchDirectory],
+    [
+      directoryNewEmail,
+      directoryNewIsAdmin,
+      directoryNewName,
+      refreshDirectory,
+    ],
   );
 
   const handleUpdateDirectoryPerson = useCallback(async () => {
@@ -116,7 +124,7 @@ export function DirectoryTab() {
         isAdmin: email === "" ? undefined : directoryEditIsAdmin,
       });
       cancelEditDirectoryPerson();
-      await fetchDirectory();
+      await refreshDirectory();
     } catch (err) {
       setDirectoryError(friendlyDirectoryError(err));
     } finally {
@@ -128,7 +136,7 @@ export function DirectoryTab() {
     directoryEditIsAdmin,
     directoryEditName,
     directoryEditingPersonId,
-    fetchDirectory,
+    refreshDirectory,
   ]);
 
   const handleDeleteDirectoryPerson = useCallback(
@@ -148,14 +156,14 @@ export function DirectoryTab() {
         if (directoryEditingPersonId === row.personId) {
           cancelEditDirectoryPerson();
         }
-        await fetchDirectory();
+        await refreshDirectory();
       } catch (err) {
         setDirectoryError(friendlyDirectoryError(err));
       } finally {
         setDirectorySaving(false);
       }
     },
-    [cancelEditDirectoryPerson, directoryEditingPersonId, fetchDirectory],
+    [cancelEditDirectoryPerson, directoryEditingPersonId, refreshDirectory],
   );
 
   return (
@@ -212,16 +220,16 @@ export function DirectoryTab() {
             type="button"
             variant="secondary"
             size="sm"
-            onClick={() => void fetchDirectory()}
+            onClick={() => void refreshDirectory()}
             disabled={directorySaving}
           >
             Refresh
           </Button>
         </form>
 
-        {directoryError && (
+        {shownError && (
           <Alert variant="danger" role="alert">
-            <p>{directoryError}</p>
+            <p>{shownError}</p>
           </Alert>
         )}
 

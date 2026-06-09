@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
-import { ApiError, apiJson } from "@/api";
+import { apiJson, errorMessage } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
 import type { SearchMediaResponse } from "@shared";
 
@@ -21,8 +21,7 @@ export function useMediaSearch() {
       setToolbarError(null);
     },
     onError: (err: unknown) => {
-      const msg = err instanceof ApiError ? err.message : "Search failed";
-      setToolbarError(msg);
+      setToolbarError(errorMessage(err, "Search failed"));
     },
     onSettled: () => {
       setSearching(false);

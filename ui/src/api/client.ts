@@ -3,24 +3,14 @@
  * ALWAYS use this over raw `fetch("/api/...")` so credentials and error parsing stay consistent.
  */
 
+import { ApiError } from "./errors";
+
 const AUTH_PATHS = new Set([
   "auth/refresh",
   "auth/magic-link",
   "auth/verify-code",
   "auth/config",
 ]);
-
-export class ApiError extends Error {
-  readonly status: number;
-  readonly body: unknown;
-
-  constructor(status: number, message: string, body: unknown) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.body = body;
-  }
-}
 
 const { VITE_API_HOST } = import.meta.env;
 

@@ -4,7 +4,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { ApiError, prependApiUrl } from "@/api";
+import { errorMessage, prependApiUrl } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
 import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
 
@@ -64,8 +64,7 @@ export function useMediaBulkActions({
       try {
         await runBulkIndex(ids);
       } catch (err) {
-        const msg = err instanceof ApiError ? err.message : "Index failed";
-        setToolbarError(msg);
+        setToolbarError(errorMessage(err, "Index failed"));
       }
     },
     [setToolbarError],
@@ -79,8 +78,7 @@ export function useMediaBulkActions({
         if (data.started !== true)
           setToolbarError(data.error ?? "Indexing failed");
       } catch (err) {
-        const msg = err instanceof ApiError ? err.message : "Indexing failed";
-        setToolbarError(msg);
+        setToolbarError(errorMessage(err, "Indexing failed"));
       }
     },
     [setToolbarError],

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -49,8 +49,7 @@ export function BackupPage({
     try {
       await runBackupSync();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Backup failed";
-      alert(message);
+      alert(errorMessage(err, "Backup failed"));
     } finally {
       setRunning(false);
     }

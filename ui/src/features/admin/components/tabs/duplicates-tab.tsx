@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Button } from "@/components/ui/button";
 import { computeAllHashes } from "../../api";
 import { DuplicateReviewer } from "../duplicate-reviewer";
@@ -19,9 +19,7 @@ export function DuplicatesTab() {
       const result = await computeAllHashes();
       setHashResult(result);
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to compute hashes";
-      alert(message);
+      alert(errorMessage(err, "Failed to compute hashes"));
     } finally {
       setComputingHashes(false);
     }

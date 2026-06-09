@@ -16,7 +16,7 @@ import { useSwipeNav } from "./use-swipe-nav";
 import { useTapNav } from "./use-tap-nav";
 import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
-import { ApiError, prependApiUrl } from "@/api";
+import { errorMessage, prependApiUrl } from "@/api";
 import {
   addPersonToMedia,
   getMediaDetails,
@@ -29,6 +29,7 @@ import {
   type PersonSelectValue,
 } from "@/features/people/components/PersonSelect";
 import { createPerson } from "@/features/people/api";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 interface MediaViewerContentProps {
   item: MediaItem;
@@ -42,17 +43,6 @@ interface MediaViewerContentProps {
   setTaggingMode: (fn: (prev: boolean) => boolean) => void;
   onClose: () => void;
   onUpdate?: () => void;
-}
-
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return mobile;
 }
 
 export function MediaViewerContent({
@@ -166,9 +156,7 @@ export function MediaViewerContent({
       setDetailsRefreshKey((k) => k + 1);
       onUpdate?.();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Could not rotate image";
-      setRotateError(msg);
+      setRotateError(errorMessage(err, "Could not rotate image"));
     } finally {
       setRotating(false);
     }
@@ -505,11 +493,9 @@ export function MediaViewerContent({
                                 setDetailsRefreshKey((k) => k + 1);
                                 onUpdate?.();
                               } catch (err) {
-                                const msg =
-                                  err instanceof ApiError
-                                    ? err.message
-                                    : "Failed to remove tag";
-                                setVideoTaggingError(msg);
+                                setVideoTaggingError(
+                                  errorMessage(err, "Failed to remove tag"),
+                                );
                               }
                             }}
                           >
@@ -560,11 +546,9 @@ export function MediaViewerContent({
                       setDetailsRefreshKey((k) => k + 1);
                       onUpdate?.();
                     } catch (err) {
-                      const msg =
-                        err instanceof ApiError
-                          ? err.message
-                          : "Failed to add tag";
-                      setVideoTaggingError(msg);
+                      setVideoTaggingError(
+                        errorMessage(err, "Failed to add tag"),
+                      );
                     } finally {
                       setVideoTaggingLoading(false);
                     }

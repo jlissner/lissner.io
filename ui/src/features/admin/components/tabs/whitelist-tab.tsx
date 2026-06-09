@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@/api";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,42 +9,40 @@ import {
   listUsers,
   listWhitelist,
   removeWhitelistEntry,
-  type AdminUser,
-  type AdminWhitelistEntry,
 } from "../../api";
 
-type AdminPersonOption = { id: number; name: string };
+const WHITELIST_KEY = ["admin", "whitelist"];
+const USERS_KEY = ["admin", "users"];
+const PEOPLE_KEY = ["admin", "people"];
 
 export function WhitelistTab() {
-  const [whitelist, setWhitelist] = useState<AdminWhitelistEntry[]>([]);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [people, setPeople] = useState<AdminPersonOption[]>([]);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const whitelistQuery = useQuery({
+    queryKey: WHITELIST_KEY,
+    queryFn: listWhitelist,
+  });
+  const usersQuery = useQuery({ queryKey: USERS_KEY, queryFn: listUsers });
+  const peopleQuery = useQuery({
+    queryKey: PEOPLE_KEY,
+    queryFn: listPeopleForAdmin,
+  });
+  const whitelist = whitelistQuery.data ?? [];
+  const users = usersQuery.data ?? [];
+  const people = peopleQuery.data ?? [];
+  const loadErrorSource =
+    whitelistQuery.error ?? usersQuery.error ?? peopleQuery.error;
+  const loadError = loadErrorSource
+    ? errorMessage(loadErrorSource, "Failed to load whitelist")
+    : null;
+
   const [newEmail, setNewEmail] = useState("");
   const [newIsAdmin, setNewIsAdmin] = useState(false);
   const [newPersonId, setNewPersonId] = useState<number | "">("");
 
-  const fetchData = useCallback(async () => {
-    setLoadError(null);
-    try {
-      const [wl, usersData, peopleData] = await Promise.all([
-        listWhitelist(),
-        listUsers(),
-        listPeopleForAdmin(),
-      ]);
-      setWhitelist(wl);
-      setUsers(usersData);
-      setPeople(peopleData);
-    } catch (err) {
-      setLoadError(
-        err instanceof ApiError ? err.message : "Failed to load whitelist",
-      );
-    }
-  }, []);
-
-  useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
+  const refreshWhitelist = () => {
+    void queryClient.invalidateQueries({ queryKey: WHITELIST_KEY });
+    void queryClient.invalidateQueries({ queryKey: USERS_KEY });
+  };
 
   const handleAddWhitelist = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,10 +57,9 @@ export function WhitelistTab() {
       setNewEmail("");
       setNewIsAdmin(false);
       setNewPersonId("");
-      await fetchData();
+      refreshWhitelist();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed to add";
-      alert(message);
+      alert(errorMessage(err, "Failed to add"));
     }
   };
 
@@ -69,11 +67,9 @@ export function WhitelistTab() {
     if (!confirm("Remove from whitelist?")) return;
     try {
       await removeWhitelistEntry(id);
-      await fetchData();
+      refreshWhitelist();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to remove";
-      alert(message);
+      alert(errorMessage(err, "Failed to remove"));
     }
   };
 

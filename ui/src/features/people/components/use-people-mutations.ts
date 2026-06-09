@@ -1,5 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import {
   createPerson,
   deletePerson,
@@ -80,9 +80,7 @@ export function usePeopleMutations({
         onUpdate?.();
         setSelectedId(nextSelectedId);
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Reassign failed";
-        alert(message);
+        alert(errorMessage(err, "Reassign failed"));
       }
     },
     [
@@ -108,9 +106,7 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to remove tag";
-        alert(message);
+        alert(errorMessage(err, "Failed to remove tag"));
       }
     },
     [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia],
@@ -126,8 +122,7 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Merge failed";
-        alert(message);
+        alert(errorMessage(err, "Merge failed"));
       }
     },
     [fetchPeople, onUpdate, setMergeModal, setMergeTargetId, setSelectedId],
@@ -141,9 +136,7 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to add person";
-        alert(message);
+        alert(errorMessage(err, "Failed to add person"));
       }
     },
     [fetchPeople, onUpdate, setAddModalOpen],
@@ -168,9 +161,7 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to delete";
-        alert(message);
+        alert(errorMessage(err, "Failed to delete"));
       }
     },
     [
@@ -195,9 +186,7 @@ export function usePeopleMutations({
       await fetchPeople();
       onUpdate?.();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to rename";
-      alert(message);
+      alert(errorMessage(err, "Failed to rename"));
     }
   }, [editModal, editDraft, fetchPeople, onUpdate, setEditModal, setEditDraft]);
 

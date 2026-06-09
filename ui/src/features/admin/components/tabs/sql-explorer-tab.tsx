@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { runSql } from "../../api";
@@ -21,8 +21,7 @@ export function SqlExplorerTab() {
     try {
       setSqlResult(await runSql(sqlQuery));
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Request failed";
-      setSqlError(message);
+      setSqlError(errorMessage(err, "Request failed"));
     } finally {
       setSqlRunning(false);
     }

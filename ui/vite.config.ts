@@ -93,6 +93,24 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return;
+            if (id.includes("@tanstack")) return "react-query";
+            if (
+              id.includes("/react-dom/") ||
+              id.includes("/react/") ||
+              id.includes("/scheduler/")
+            ) {
+              return "react-vendor";
+            }
+            return "vendor";
+          },
+        },
+      },
+    },
     server: {
       port: devPort,
       proxy: {
