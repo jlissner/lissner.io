@@ -4,12 +4,12 @@ import {
 } from "./search-query-normalize.js";
 
 export type SearchQueryAst =
-  | { kind: "legacy"; text: string }
   | { kind: "and"; left: SearchQueryAst; right: SearchQueryAst }
   | { kind: "or"; left: SearchQueryAst; right: SearchQueryAst }
   | { kind: "not"; child: SearchQueryAst }
   | { kind: "tag"; tag: string }
   | { kind: "person"; handle: string }
+  | { kind: "personName"; text: string }
   | { kind: "text"; text: string };
 
 type RawToken =
@@ -58,8 +58,8 @@ function readWord(s: string, start: number): { word: string; end: number } {
   return { word: out, end: i };
 }
 
-/** True when the string should use the legacy embedding path (full query, substring people). */
-function isLegacyQueryString(q: string): boolean {
+/** True for a plain query with no #tags, @handles, parentheses, or boolean operators. */
+function isBareQueryString(q: string): boolean {
   const t = q.trim();
   if (!t) return false;
   if (/[#@]/.test(t)) return false;
@@ -279,8 +279,15 @@ export function parseSearchQuery(q: string): ParseSearchQueryResult {
   if (!trimmed) {
     return { ok: false, message: "Empty search query" };
   }
-  if (isLegacyQueryString(trimmed)) {
-    return { ok: true, ast: { kind: "legacy", text: trimmed } };
+  if (isBareQueryString(trimmed)) {
+    return {
+      ok: true,
+      ast: {
+        kind: "or",
+        left: { kind: "personName", text: trimmed },
+        right: { kind: "text", text: trimmed },
+      },
+    };
   }
   return parseStructuredSearchQuery(trimmed);
 }

@@ -42,7 +42,7 @@ describe("searchMediaByQuery", () => {
     });
   });
 
-  it("legacy path runs embedding over full string and merges substring people", async () => {
+  it("bare query merges person-name-substring matches with text embedding results", async () => {
     vi.mocked(db.getPersonNames).mockReturnValue(
       new Map([
         [1, "Joe Holiday"],

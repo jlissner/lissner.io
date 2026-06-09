@@ -104,45 +104,21 @@ async function textSearchOrderedIds(text: string): Promise<string[]> {
   return scored.slice(0, EMBEDDING_TOP).map((s) => s.mediaId);
 }
 
-/**
- * Legacy: substring match on person names + embedding over full query (unchanged behavior
- * for queries without # @ AND OR parentheses).
- */
-async function legacySearchOrderedIds(query: string): Promise<string[]> {
+/** Media of every person whose display name contains the query as a substring. */
+function personNameSearchOrderedIds(query: string): string[] {
   const queryLower = query.toLowerCase();
   const personNames = db.getPersonNames();
   const matchingPersonIds = [...personNames.entries()]
     .filter(([, name]) => name.toLowerCase().includes(queryLower))
     .map(([id]) => id)
     .sort((a, b) => a - b);
-  const mediaIds: string[] = [];
   const seen = new Set<string>();
+  const mediaIds: string[] = [];
   for (const personId of matchingPersonIds) {
-    const media = db.getMediaForPerson(personId, 10000);
-    for (const m of media) {
-      if (!seen.has(m.id)) {
-        mediaIds.push(m.id);
-        seen.add(m.id);
-      }
-    }
-  }
-  const stored = db.getEmbeddings();
-  if (stored.length > 0) {
-    const queryEmbedding = await getEmbedding(query);
-    if (queryEmbedding !== null) {
-      const scored = stored.map(({ mediaId, embedding }) => ({
-        mediaId,
-        score: cosineSimilarity(
-          queryEmbedding,
-          JSON.parse(embedding) as number[],
-        ),
-      }));
-      scored.sort((a, b) => b.score - a.score);
-      for (const id of scored.slice(0, EMBEDDING_TOP).map((s) => s.mediaId)) {
-        if (!seen.has(id)) {
-          mediaIds.push(id);
-          seen.add(id);
-        }
+    for (const id of db.getMediaForPerson(personId, 10000).map((m) => m.id)) {
+      if (!seen.has(id)) {
+        mediaIds.push(id);
+        seen.add(id);
       }
     }
   }
@@ -151,8 +127,6 @@ async function legacySearchOrderedIds(query: string): Promise<string[]> {
 
 async function evalAstOrdered(ast: SearchQueryAst): Promise<string[]> {
   switch (ast.kind) {
-    case "legacy":
-      return legacySearchOrderedIds(ast.text);
     case "tag":
       return db.getMediaIdsForTag(ast.tag);
     case "person": {
@@ -162,6 +136,8 @@ async function evalAstOrdered(ast: SearchQueryAst): Promise<string[]> {
       }
       return db.getMediaForPerson(personId, 10000).map((m) => m.id);
     }
+    case "personName":
+      return personNameSearchOrderedIds(ast.text);
     case "text":
       return textSearchOrderedIds(ast.text);
     case "not": {

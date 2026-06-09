@@ -105,18 +105,22 @@ describe("parseStructuredSearchQuery", () => {
 });
 
 describe("parseSearchQuery", () => {
-  it("uses legacy path for plain terms without operators", () => {
+  it("desugars plain terms to OR of person-name and text search", () => {
     const r = parseSearchQuery("holiday photos");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.ast).toEqual({ kind: "legacy", text: "holiday photos" });
+    expect(r.ast).toEqual({
+      kind: "or",
+      left: { kind: "personName", text: "holiday photos" },
+      right: { kind: "text", text: "holiday photos" },
+    });
   });
 
-  it("does not use legacy path when NOT appears", () => {
+  it("parses structurally when operators appear", () => {
     const r = parseSearchQuery("#a AND NOT #b");
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.ast.kind).not.toBe("legacy");
+    expect(r.ast.kind).toBe("and");
   });
 
   it("parses structured when # is present", () => {
