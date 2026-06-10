@@ -19,6 +19,7 @@ env:
   UI_PORT: ${{ vars.UI_PORT }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+  VITE_API_HOST: ${{ vars.VITE_API_HOST }}
 
 jobs:
   build:
