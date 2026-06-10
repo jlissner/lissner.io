@@ -19,12 +19,16 @@ export default defineConfig(({ mode }) => {
     }
   }
   const apiPort = env.SERVER_PORT;
-  const apiProxyTarget = `http://${env.VITE_API_HOST.trim()}:${apiPort}`;
+  const viteApiHost = env.VITE_API_HOST.trim();
+  const apiProxyTarget = `http://${viteApiHost}:${apiPort}`;
   const devPort = Number(env.UI_PORT);
 
   return {
     root: __dirname,
     envDir: repoRoot,
+    define: {
+      "import.meta.env.VITE_API_HOST": JSON.stringify(viteApiHost),
+    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),

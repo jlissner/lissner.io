@@ -19,7 +19,7 @@ const apiUrl =
 const webSocketUrl =
   VITE_API_HOST === "localhost"
     ? `ws://${window.location.host}/ws`
-    : `wss//${VITE_API_HOST}/ws`;
+    : `wss://${VITE_API_HOST}/ws`;
 
 /** Path under `/api`, e.g. `"activity"` or `"/activity"` → `/api/activity` (or absolute API origin URL in production). */
 export function prependApiUrl(path: string): string {
