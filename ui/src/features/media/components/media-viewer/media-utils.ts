@@ -1,11 +1,19 @@
 import { localCalendarDateKeyFromIso } from "@/lib/local-datetime.js";
-import { isImageMime, isTextMime, isVideoMime } from "../../lib/media-mime.js";
+import { prependApiUrl } from "@/api";
+import {
+  isImageMime,
+  isPdfMime,
+  isTextMime,
+  isVideoMime,
+} from "../../lib/media-mime.js";
 import { MediaListItem } from "@shared";
 
 export type MediaItem = MediaListItem;
 
 export function mediaThumbnailUrl(item: { id: string; size: number }): string {
-  return `/api/media/${item.id}/thumbnail?v=${encodeURIComponent(String(item.size))}`;
+  return prependApiUrl(
+    `/media/${item.id}/thumbnail?v=${encodeURIComponent(String(item.size))}`,
+  );
 }
 
 function getItemDateKeyForSort(
@@ -77,4 +85,8 @@ export function isVideo(mimeType: string): boolean {
 
 export function isText(mimeType: string): boolean {
   return isTextMime(mimeType);
+}
+
+export function isPdf(mimeType: string): boolean {
+  return isPdfMime(mimeType);
 }

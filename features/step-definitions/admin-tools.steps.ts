@@ -82,11 +82,6 @@ Given("I am signed in as an admin", async function (this: BddWorld) {
   this.cookie = await signAdminCookie();
 });
 
-Given("SQL explorer is enabled for this deployment", function () {
-  process.env.SQL_EXPLORER_ENABLED = "true";
-  process.env.NODE_ENV = "development";
-});
-
 Given("data explorer is available", function () {
   process.env.DATA_EXPLORER_ENABLED = "true";
   process.env.NODE_ENV = "development";
@@ -97,55 +92,10 @@ Given("a valid backup key is selected", function (this: BddWorld) {
   this.selectedBackupKey = "backup/db/media_test.db";
 });
 
-When("I open the admin whitelist section", async function (this: BddWorld) {
-  await requestJson(this, "GET", "/api/admin/whitelist");
-});
-
-Then(
-  "I can list entries and add or remove allowed emails",
-  async function (this: BddWorld) {
-    assert.ok(this.lastResponse);
-    assert.equal(this.lastResponse.status, 200);
-    assert.ok(this.lastJson && typeof this.lastJson === "object");
-
-    // Add an entry
-    await requestJson(this, "POST", "/api/admin/whitelist", {
-      email: "someone@test.local",
-      isAdmin: false,
-    });
-    assert.ok(this.lastResponse);
-    assert.equal(this.lastResponse.status, 201);
-    assert.ok(this.lastJson && typeof this.lastJson === "object");
-    const created = this.lastJson as { id: number; email: string };
-    assert.ok(typeof created.id === "number");
-    assert.equal(created.email, "someone@test.local");
-
-    // Remove it
-    await requestJson(this, "DELETE", `/api/admin/whitelist/${created.id}`);
-    assert.ok(this.lastResponse);
-    assert.equal(this.lastResponse.status, 204);
-  },
-);
-
-When(
-  "I submit a read-only query through the admin SQL explorer",
-  async function (this: BddWorld) {
-    await requestJson(this, "POST", "/api/admin/sql", {
-      query: "select 1 as one",
-    });
-  },
-);
-
-Then("I receive a result set or a clear error", function (this: BddWorld) {
-  assert.ok(this.lastResponse);
-  assert.ok(this.lastJson != null);
-  assert.ok([200, 400, 403].includes(this.lastResponse.status));
-});
-
 When(
   "I request the list of database backups from S3",
   async function (this: BddWorld) {
-    await requestJson(this, "GET", "/api/admin/db-backups");
+    await requestJson(this, "GET", "/admin/db-backups");
   },
 );
 
@@ -161,7 +111,7 @@ Then(
 
 When("I confirm database restore", async function (this: BddWorld) {
   assert.ok(this.selectedBackupKey);
-  await requestJson(this, "POST", "/api/admin/db-restore", {
+  await requestJson(this, "POST", "/admin/db-restore", {
     key: this.selectedBackupKey,
   });
 });
@@ -178,7 +128,7 @@ Then(
 When(
   "I trigger thumbnail repair for the library",
   async function (this: BddWorld) {
-    await requestJson(this, "POST", "/api/admin/thumbnails/repair", {
+    await requestJson(this, "POST", "/admin/thumbnails/repair", {
       maxGenerations: 1,
     });
   },
@@ -199,7 +149,7 @@ Then(
 When(
   "I list tables and open rows for a table",
   async function (this: BddWorld) {
-    await requestJson(this, "GET", "/api/admin/data-explorer/tables");
+    await requestJson(this, "GET", "/admin/data-explorer/tables");
     assert.ok(this.lastResponse);
     assert.equal(this.lastResponse.status, 200);
     const tables = this.lastJson as Array<string>;
@@ -210,7 +160,7 @@ When(
     await requestJson(
       this,
       "GET",
-      `/api/admin/data-explorer/tables/${encodeURIComponent(table)}/rows?limit=1&offset=0`,
+      `/admin/data-explorer/tables/${encodeURIComponent(table)}/rows?limit=1&offset=0`,
     );
   },
 );

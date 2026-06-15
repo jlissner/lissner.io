@@ -1,7 +1,7 @@
 import { mkdirSync } from "fs";
 import { deleteOrphanedLocalThumbnailFiles } from "../lib/orphan-thumbnails.js";
 import * as mediaDb from "../db/media.js";
-import { red } from "yoctocolors";
+import { logger } from "../logger.js";
 
 export function ensureServerDirectories(paths: {
   mediaDir: string;
@@ -17,17 +17,17 @@ export async function runStartupMaintenance(): Promise<void> {
   try {
     mediaDb.relinkAllMotionPairs();
   } catch (err) {
-    console.info();
-    console.error(red("[db] relinkAllMotionPairs failed (continuing startup)"));
-    console.error(red((err as Error).stack ?? "Unknonw Error"));
-    console.info();
+    logger.error(
+      { err },
+      "[db] relinkAllMotionPairs failed (continuing startup)",
+    );
   }
 }
 
 export function runServerStartedTasks(): void {
   deleteOrphanedLocalThumbnailFiles().then((removed) => {
     if (removed > 0) {
-      console.info(
+      logger.info(
         { removed },
         "[thumbnails] Removed orphaned local thumbnail files",
       );

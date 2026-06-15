@@ -23,7 +23,6 @@ const PATH_TO_PAGE: Record<string, PageId> = {
   "/": "home",
   "/home": "home",
   "/people": "people",
-  "/backup": "admin",
   "/admin": "admin",
 };
 

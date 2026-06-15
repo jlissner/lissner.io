@@ -2,6 +2,7 @@ import { unlink } from "fs/promises";
 import path from "path";
 import * as db from "../db/media.js";
 import { thumbnailsDir } from "../config/paths.js";
+import { logger } from "../logger.js";
 import { readdirOrEmptyWithWarn } from "./fs-best-effort.js";
 
 /**
@@ -34,7 +35,7 @@ export async function deleteOrphanedLocalThumbnailFiles(): Promise<number> {
       await unlink(path.join(thumbnailsDir, name));
       acc.removed += 1;
     } catch (err) {
-      console.error(
+      logger.error(
         { err, path: path.join(thumbnailsDir, name) },
         "[thumbnails] orphan file delete failed",
       );

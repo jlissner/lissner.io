@@ -17,7 +17,7 @@ import {
 import { isSyncInProgress } from "../s3/sync-state.js";
 import { S3_BUCKET } from "../config/env.js";
 import { s3Client } from "../s3/client.js";
-import { gray, red } from "yoctocolors";
+import { logger } from "../logger.js";
 
 type DbBackupListItem = {
   key: string;
@@ -29,7 +29,7 @@ export async function listDbBackupsForAdmin(): Promise<
   | { ok: true; backups: DbBackupListItem[] }
   | { ok: false; reason: "not_configured"; missingVars: string[] }
 > {
-  const bucket = process.env.S3_BUCKET!;
+  const bucket = S3_BUCKET;
   const objects = await listS3ObjectsWithMetadata(
     s3Client,
     bucket,
@@ -95,9 +95,7 @@ export async function restoreDbFromS3BackupKey(
       await rename(tempPath, dbPath);
       return { ok: true };
     } catch (err) {
-      console.info();
-      console.error(`${gray("[ADMIN-DB-RESTORE]")} ${red("restore failed")}`);
-      console.error(red((err as Error).stack ?? "Unknown error"));
+      logger.error({ err }, "[admin-db-restore] restore failed");
 
       await unlinkBestEffort(tempPath, "cleanup temp db after failure");
       return { ok: false, reason: "download_failed" };
@@ -107,7 +105,7 @@ export async function restoreDbFromS3BackupKey(
   try {
     getDb();
   } catch (err) {
-    console.error(
+    logger.error(
       { err },
       "[admin-db-restore] failed to reopen DB after restore attempt",
     );

@@ -188,7 +188,7 @@ export type AdminThumbnailRepairResponse = {
 };
 
 /** GET /api/admin/media-file-issues */
-export type AdminMediaFileIssueItem = {
+type AdminMediaFileIssueItem = {
   id: string;
   originalName: string;
   mimeType: string;

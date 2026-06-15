@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError } from "@/api";
+import { useCallback, useRef, useState } from "react";
+import { errorMessage } from "@/api";
+import { useToast } from "@/components/ui/toast";
 import { PeopleSidebar } from "./people-sidebar";
 import { PeopleDetail } from "./people-detail";
 import { PeopleEditModal } from "./people-edit-modal";
@@ -14,17 +15,7 @@ import { MediaViewer } from "@/features/media/components/media-viewer";
 import { usePeoplePage } from "./use-people-page";
 import { runMatchFaces as runMatchFacesApi } from "../api";
 import { FaceMatchRunResponse } from "@shared";
-
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return mobile;
-}
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 interface PeoplePageProps {
   onUpdate?: () => void;
@@ -33,6 +24,7 @@ interface PeoplePageProps {
 
 export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
   const isMobile = useIsMobile();
   const [matchFacesOpen, setMatchFacesOpen] = useState(false);
   const [matchFacesBusy, setMatchFacesBusy] = useState(false);
@@ -81,13 +73,11 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
       await fetchPeople({ silent: true });
       onUpdate?.();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Match faces failed";
-      alert(message);
+      showToast(errorMessage(err, "Match faces failed"));
     } finally {
       setMatchFacesBusy(false);
     }
-  }, [fetchPeople, onUpdate]);
+  }, [fetchPeople, onUpdate, showToast]);
 
   const handleSelectPerson = useCallback(
     (id: number | null) => {

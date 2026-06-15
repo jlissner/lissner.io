@@ -1,6 +1,12 @@
 # Hosting Guide
 
-Deploy stack: **Traefik** (TLS) → **app** (Node API + static UI) + **Ollama on NVIDIA GPU**. Compose file: `docker-compose.yml` reserves a GPU for Ollama; **CPU-only hosts cannot run this stack as-is**.
+Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** (nginx static SPA) + **Ollama on NVIDIA GPU**. Compose file: `docker-compose.yml` reserves a GPU for Ollama; **CPU-only hosts cannot run this stack as-is**.
+
+### Public hostnames (example: Lissner)
+
+- **`API_HOST`** — e.g. `api.lissner.io` (Traefik routes TLS here to the **`api`** service).
+- **`UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
+- The API allows browser **CORS** from `https://lissner.io` and `https://*.lissner.io` when **`NODE_ENV=production`** (and whenever **`BDD_STRICT_CORS=1`** is set for tests).
 
 ## Prerequisites
 
@@ -13,7 +19,7 @@ sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 ```
 
-Confirm a GPU is visible: `nvidia-smi`. Without a working NVIDIA stack, **`ollama`** will not start and **`depends_on: service_healthy`** will block **`app`**.
+Confirm a GPU is visible: `nvidia-smi`. Without a working NVIDIA stack, **`ollama`** will not start and **`depends_on: service_healthy`** will block **`api`**.
 
 ### 2. Docker permissions
 
@@ -31,16 +37,15 @@ Create a **`.env`** file in the repo root (Compose reads it automatically for **
 
 If you run **`docker compose`** yourself, add **`--env-file .env.prod`** when those variables live only in **`.env.prod`**, e.g. **`docker compose --env-file .env.prod config`**.
 
-At minimum in **`.env`** and/or **`.env.prod`**:
+At minimum in **`.env`** and/or **`.env.prod`** (for compose **variable substitution**):
 
-| Variable       | Required                        | Purpose                                                                                                                     |
-| -------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `ACME_EMAIL`   | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                                          |
-| `TRAEFIK_RULE` | Optional                        | Traefik router rule (e.g. `Host(\`photos.example.com\`)`); compose defaults to a sample hostname — override for your domain |
-| `HTTPS_PORT`   | Optional                        | Host port for Traefik HTTPS (default `443`)                                                                                 |
-| `HTTP_PORT`    | Optional                        | Host port for Traefik HTTP → HTTPS redirect (default `80`)                                                                  |
+| Variable     | Required                        | Purpose                                                                                          |
+| ------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ACME_EMAIL` | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                               |
+| `API_HOST`   | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                     |
+| `UI_HOST`    | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly |
 
-The **`app`** service uses **`env_file: .env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
+The **`api`** service uses **`env_file: .env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
 
 **Compose `${VAR}` substitution** (used in **`docker-compose.yml`** for Traefik’s **`ACME_EMAIL`**, router rules, ports, etc.) comes **only** from: the project **`.env`** file, your **shell environment**, and files passed as **`docker compose --env-file …`**. It does **not** read **`env_file:`** on services — those keys are injected **into containers** at runtime, not used to replace **`${…}`** in the compose file.
 
@@ -63,28 +68,28 @@ Keep app secrets in **`.env.prod`** (do not commit). See **`.env.prod.example`**
 
 ## Build and deploy
 
-The Docker image **does not compile** TypeScript or Vite; it copies **`server/dist`** and **`ui/dist`** from the build host. Always run a full build before building images.
+The Docker images **do not compile** TypeScript or Vite on their own: **`server/Dockerfile`** copies **`server/dist`**; **`ui/Dockerfile`** copies **`ui/dist`**. Always run **`npm run build`** on the host first.
 
-| Command               | Description                                                                                                                        |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run deploy`      | **`npm run validate`** (lint, test, compose config) → **`npm run host`**                                                           |
-| `npm run validate`    | Lint, unit tests, `docker compose config -q`                                                                                       |
-| `npm run host`        | **`npm run build`** → Docker build (`--no-cache`) → `docker compose up -d`                                                         |
-| `npm run host:build`  | Build images only (`docker compose build --no-cache`)                                                                              |
-| `npm run host:up`     | Start containers and **wait** until services with healthchecks are **healthy** (so Traefik does not hit a still-starting app)      |
-| `npm run host:down`   | Stop containers                                                                                                                    |
-| `npm run host:pull`   | Re-pull default Ollama models (`nomic-embed-text`, `llava`) into the running container (usually unnecessary; see First-time setup) |
-| `npm run host:logs`   | Follow logs for all services                                                                                                       |
-| `npm run host:status` | `docker compose ps`                                                                                                                |
-| `npm run host:local`  | Local dev without Docker (Ollama + server + Vite)                                                                                  |
+| Command               | Description                                                                                                                         |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run deploy`      | **`npm run validate`** (lint, test, compose config) → **`npm run host`**                                                            |
+| `npm run validate`    | Lint, unit tests, `docker compose config -q`                                                                                        |
+| `npm run host`        | **`npm run build`** → Docker build (`--no-cache`) → `docker compose up -d`                                                          |
+| `npm run host:build`  | Build images only (`docker compose build --no-cache`)                                                                               |
+| `npm run host:up`     | Start containers and **wait** until services with healthchecks are **healthy** (so Traefik does not hit a still-starting **`api`**) |
+| `npm run host:down`   | Stop containers                                                                                                                     |
+| `npm run host:pull`   | Re-pull default Ollama models (`nomic-embed-text`, `llava`) into the running container (usually unnecessary; see First-time setup)  |
+| `npm run host:logs`   | Follow logs for all services                                                                                                        |
+| `npm run host:status` | `docker compose ps`                                                                                                                 |
+| `npm run host:local`  | Local dev without Docker (Ollama + server + Vite)                                                                                   |
 
 ## First-time setup
 
 1. Configure **`.env`** (see above), especially **`ACME_EMAIL`** and **`TRAEFIK_RULE`** for your hostname. In **`.env.prod`**, set **`OLLAMA_VISION_MODEL`** (and optionally **`OLLAMA_EMBED_MODEL`**) if you do not want the defaults (**`llava`** and **`nomic-embed-text`**).
-2. Run **`npm run host`** (includes `npm run build`). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`app`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
+2. Run **`npm run host`** (includes `npm run build`). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
 3. Check **`npm run host:status`**
 
-The app is reachable on the host/port configured in Traefik (see **`TRAEFIK_RULE`** and host firewall). **HTTP** on **`HTTP_PORT`** (default **80**) redirects to **HTTPS** on **`HTTPS_PORT`** (default **443**). Forward **WAN 80 → LAN `HTTP_PORT`** if you want `http://` URLs to upgrade automatically. Direct **`HOST_PORT`** access hits the API container without Traefik (useful for debugging).
+The site is reachable on **`UI_HOST`** (static **`ui`** container) and **`API_HOST`** (**`api`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
 
 ## Manual commands
 
@@ -92,10 +97,11 @@ Prefer **`bash scripts/docker-compose.sh …`** (or **`npm run host:status`** / 
 
 ```bash
 bash scripts/docker-compose.sh ps
-bash scripts/docker-compose.sh logs -f app
+bash scripts/docker-compose.sh logs -f api
+bash scripts/docker-compose.sh logs -f ui
 bash scripts/docker-compose.sh logs -f ollama
 bash scripts/docker-compose.sh logs -f traefik
-bash scripts/docker-compose.sh restart app
+bash scripts/docker-compose.sh restart api
 bash scripts/docker-compose.sh pull
 bash scripts/docker-compose.sh down -v   # removes containers and named volumes (destructive)
 ```
@@ -148,22 +154,26 @@ Repeated failed validations (wrong DNS, wrong port 443, bad router before the fi
 
 ### App cannot reach Ollama
 
-The **`app`** service joins both the **`traefik`** and **`default`** networks so it can talk to Traefik and to the **`ollama`** service. **`docker-compose.yml` sets `OLLAMA_HOST=http://ollama:11434` on the app container** so indexing and vision use the Compose DNS name to the bundled **`ollama`** service. A value like **`ollama.internal`** in **`.env.prod`** is for Traefik-style routing on other networks and is **not** used for app→Ollama inside this stack.
+The **`api`** service joins both the **`traefik`** and **`default`** networks so it can talk to Traefik and to the **`ollama`** service. **`docker-compose.yml` sets `OLLAMA_HOST=http://ollama:11434` on the **`api`** container** so indexing and vision use the Compose DNS name to the bundled **`ollama`** service. A value like **`ollama.internal`** in **`.env.prod`** is for Traefik-style routing on other networks and is **not** used for **`api`→Ollama** inside this stack.
 
-If you change networks or use an external Ollama host, edit the app service **`environment`** in **`docker-compose.yml`** (or split overrides) so **`OLLAMA_HOST`** points at a URL the app container can resolve.
+If you change networks or use an external Ollama host, edit the **`api`** service **`environment`** in **`docker-compose.yml`** (or split overrides) so **`OLLAMA_HOST`** points at a URL the **`api`** container can resolve.
+
+### Local development (no Docker UI/API split)
+
+**`npm run dev`** and **`npm run host:local`** keep the same workflow: Vite serves the SPA and proxies **`/api`** and **`/ws`** to the Node server. Keep **`VITE_API_HOST=localhost`** locally so the SPA uses the Vite proxy; set it to the API hostname (e.g. `api.lissner.io`) only when building for split-host production.
 
 ### Gateway Timeout (504) right after `host:down` / `deploy`
 
-**What’s going on:** Traefik can route to the **`app`** container as soon as it exists, but **Node is not listening yet** until startup finishes (including optional **S3 database restore** when there is no local DB yet). Requests in that window can hang and show **504 Gateway Timeout**.
+**What’s going on:** Traefik can route to the **`api`** container as soon as it exists, but **Node is not listening yet** until startup finishes (including optional **S3 database restore** when there is no local DB yet). Requests in that window can hang and show **504 Gateway Timeout**.
 
 **What we do in this repo:**
 
-- **`app`** exposes **`GET /health`** (no auth) and Docker **`healthcheck`** probes it.
-- **`npm run host:up`** runs **`docker compose up -d --wait`**, which blocks until **`app`** (and **`ollama`**) report **healthy**, so **`npm run deploy`** does not return “done” while the app is still starting.
+- **`api`** exposes **`GET /health`** (no auth) and Docker **`healthcheck`** probes it.
+- **`npm run host:up`** runs **`docker compose up -d --wait`**, which blocks until **`api`**, **`ui`**, and **`ollama`** report **healthy**, so **`npm run deploy`** does not return “done” while the API is still starting.
 
-We intentionally **do not** use Traefik’s **load-balancer** HTTP healthcheck (`traefik.http.services.*.loadbalancer.healthcheck.*`). Those checks are easy to misconfigure and can mark every backend as down, which surfaces as **503 no available server**. Docker’s healthcheck plus **`--wait`** is enough to avoid hitting the app before it listens.
+We intentionally **do not** use Traefik’s **load-balancer** HTTP healthcheck (`traefik.http.services.*.loadbalancer.healthcheck.*`). Those checks are easy to misconfigure and can mark every backend as down, which surfaces as **503 no available server**. Docker’s healthcheck plus **`--wait`** is enough to avoid hitting the API before it listens.
 
-If you start Compose **without** `--wait` (e.g. raw `docker compose up -d`), wait a few seconds or watch **`bash scripts/docker-compose.sh ps`** until **`app`** is **healthy** before loading the site.
+If you start Compose **without** `--wait` (e.g. raw `docker compose up -d`), wait a few seconds or watch **`bash scripts/docker-compose.sh ps`** until **`api`** is **healthy** before loading the site.
 
 Requires **Docker Compose v2.20+** for `up --wait`. If your CLI errors on `--wait`, upgrade Docker / Compose or run **`bash scripts/docker-compose.sh up -d`** and wait manually.
 

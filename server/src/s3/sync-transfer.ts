@@ -1,4 +1,5 @@
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
+import { logger } from "../logger.js";
 import type { S3Client } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { createReadStream, createWriteStream } from "fs";
@@ -74,7 +75,7 @@ export function fileExists(filePath: string): Promise<boolean> {
     .catch((err: unknown) => {
       const code = (err as NodeJS.ErrnoException)?.code;
       if (code === "ENOENT") return false;
-      console.error(
+      logger.error(
         { err, path: filePath },
         "fileExists: unexpected access error",
       );

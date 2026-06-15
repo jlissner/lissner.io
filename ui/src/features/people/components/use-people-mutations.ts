@@ -1,5 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
+import { useToast } from "@/components/ui/toast";
 import {
   createPerson,
   deletePerson,
@@ -64,6 +65,8 @@ export function usePeopleMutations({
   editModal,
   editDraft,
 }: UsePeopleMutationsOptions) {
+  const { showToast } = useToast();
+
   const handleReassign = useCallback(
     async (mediaId: string, assignTo: number | "new") => {
       if (!selectedId) return;
@@ -80,9 +83,7 @@ export function usePeopleMutations({
         onUpdate?.();
         setSelectedId(nextSelectedId);
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Reassign failed";
-        alert(message);
+        showToast(errorMessage(err, "Reassign failed"));
       }
     },
     [
@@ -92,6 +93,7 @@ export function usePeopleMutations({
       setPreviewMedia,
       setViewingMedia,
       setSelectedId,
+      showToast,
     ],
   );
 
@@ -108,12 +110,17 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to remove tag";
-        alert(message);
+        showToast(errorMessage(err, "Failed to remove tag"));
       }
     },
-    [selectedId, fetchPeople, onUpdate, setPreviewMedia, setViewingMedia],
+    [
+      selectedId,
+      fetchPeople,
+      onUpdate,
+      setPreviewMedia,
+      setViewingMedia,
+      showToast,
+    ],
   );
 
   const handleMerge = useCallback(
@@ -126,11 +133,17 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Merge failed";
-        alert(message);
+        showToast(errorMessage(err, "Merge failed"));
       }
     },
-    [fetchPeople, onUpdate, setMergeModal, setMergeTargetId, setSelectedId],
+    [
+      fetchPeople,
+      onUpdate,
+      setMergeModal,
+      setMergeTargetId,
+      setSelectedId,
+      showToast,
+    ],
   );
 
   const handleAddPerson = useCallback(
@@ -141,12 +154,10 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to add person";
-        alert(message);
+        showToast(errorMessage(err, "Failed to add person"));
       }
     },
-    [fetchPeople, onUpdate, setAddModalOpen],
+    [fetchPeople, onUpdate, setAddModalOpen, showToast],
   );
 
   const handleDeletePerson = useCallback(
@@ -168,9 +179,7 @@ export function usePeopleMutations({
         await fetchPeople();
         onUpdate?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to delete";
-        alert(message);
+        showToast(errorMessage(err, "Failed to delete"));
       }
     },
     [
@@ -181,6 +190,7 @@ export function usePeopleMutations({
       setSelectedId,
       setEditModal,
       setMergeModal,
+      showToast,
     ],
   );
 
@@ -195,11 +205,17 @@ export function usePeopleMutations({
       await fetchPeople();
       onUpdate?.();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Failed to rename";
-      alert(message);
+      showToast(errorMessage(err, "Failed to rename"));
     }
-  }, [editModal, editDraft, fetchPeople, onUpdate, setEditModal, setEditDraft]);
+  }, [
+    editModal,
+    editDraft,
+    fetchPeople,
+    onUpdate,
+    setEditModal,
+    setEditDraft,
+    showToast,
+  ]);
 
   const handleMergeFromSuggestion = useCallback(
     async (mergeIntoId: number) => {

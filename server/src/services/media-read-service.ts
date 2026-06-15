@@ -1,4 +1,5 @@
 import { access, readFile } from "fs/promises";
+import { logger } from "../logger.js";
 import path from "path";
 import sharp from "sharp";
 import {
@@ -141,7 +142,7 @@ export async function getFacesPayloadForMedia(mediaId: string) {
       },
     };
   } catch (err) {
-    console.error({ err, mediaId }, "Face detection error");
+    logger.error({ err, mediaId }, "Face detection error");
     return { ok: false as const, reason: "detection_failed" as const };
   }
 }
@@ -191,7 +192,7 @@ export async function getFaceCropOrFullImage(
       mimeType: effectiveImageResponseMimeType(item),
     };
   } catch (err) {
-    console.error({ err, mediaId, personId }, "Face crop error");
+    logger.error({ err, mediaId, personId }, "Face crop error");
     return { ok: false as const, reason: "crop_failed" as const };
   }
 }
@@ -330,7 +331,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
           .toFile(imgThumbPath);
       }
       if (!(await isUsableVideoThumbnailFile(imgThumbPath))) {
-        console.error(
+        logger.error(
           { mediaId },
           "Image thumbnail file missing or too small after Sharp write",
         );
@@ -343,7 +344,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
         contentType: "image/jpeg",
       };
     } catch (err) {
-      console.error({ err, mediaId }, "Image thumbnail generation error");
+      logger.error({ err, mediaId }, "Image thumbnail generation error");
       return { ok: false, reason: "thumb_failed" };
     }
   }
@@ -362,7 +363,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
       }
     }
     if (!(await isUsableVideoThumbnailFile(thumbPath))) {
-      console.error(
+      logger.error(
         { mediaId },
         "Video thumbnail file missing or too small after restore/ffmpeg",
       );
@@ -379,7 +380,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
     if (code === "ENOENT") {
       return { ok: false, reason: "ffmpeg_missing" };
     }
-    console.error({ err, mediaId }, "Video thumbnail error");
+    logger.error({ err, mediaId }, "Video thumbnail error");
     return { ok: false, reason: "thumb_failed" };
   }
 }
@@ -454,7 +455,7 @@ export async function repairMissingThumbnails(params: {
     }
     const verified = await isUsableVideoThumbnailFile(expectedPath);
     if (!verified) {
-      console.error(
+      logger.error(
         { mediaId: item.id, expectedPath },
         "Thumbnail repair: generation reported ok but expected JPEG is still missing or under minimum size",
       );

@@ -1,5 +1,6 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,51 +35,61 @@ function formatSearchMeta(count: number, query: string): string {
 }
 
 export function DataExplorer() {
-  const [tables, setTables] = useState<string[]>([]);
+  const queryClient = useQueryClient();
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [schema, setSchema] = useState<Column[] | null>(null);
-  const [count, setCount] = useState(0);
-  const [rows, setRows] = useState<Record<string, unknown>[]>([]);
   const [limit] = useState(50);
   const [offset, setOffset] = useState(0);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [mutationError, setMutationError] = useState<string | null>(null);
   const [editingRow, setEditingRow] = useState<Record<string, unknown> | null>(
     null,
   );
   const [addingRow, setAddingRow] = useState(false);
   const [newRow, setNewRow] = useState<Record<string, string>>({});
 
-  const fetchTables = useCallback(async () => {
-    setTables(await listDataExplorerTables());
-  }, []);
+  const tablesQuery = useQuery({
+    queryKey: ["admin", "tables"],
+    queryFn: listDataExplorerTables,
+  });
+  const tables = tablesQuery.data ?? [];
 
-  const fetchTableData = useCallback(async () => {
-    if (!selectedTable) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const query = debouncedSearch.trim();
+  const search = debouncedSearch.trim();
+  const tableDataQuery = useQuery({
+    queryKey: ["admin", "table", selectedTable, { q: search, limit, offset }],
+    queryFn: async () => {
       const [schemaData, rowData] = await Promise.all([
-        getDataExplorerSchema(selectedTable, query),
-        getDataExplorerRows(selectedTable, { limit, offset, q: query }),
+        getDataExplorerSchema(selectedTable as string, search),
+        getDataExplorerRows(selectedTable as string, {
+          limit,
+          offset,
+          q: search,
+        }),
       ]);
-      setSchema(schemaData.schema);
-      setCount(schemaData.count);
-      setRows(rowData);
-    } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Failed";
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedTable, limit, offset, debouncedSearch]);
+      return {
+        schema: schemaData.schema,
+        count: schemaData.count,
+        rows: rowData,
+      };
+    },
+    enabled: selectedTable != null,
+  });
+  const schema = tableDataQuery.data?.schema ?? null;
+  const count = tableDataQuery.data?.count ?? 0;
+  const rows = tableDataQuery.data?.rows ?? [];
+  const loading = tableDataQuery.isFetching;
+  const loadError = tableDataQuery.isError
+    ? errorMessage(tableDataQuery.error, "Failed")
+    : null;
+  const error = mutationError ?? loadError;
 
-  useEffect(() => {
-    fetchTables();
-  }, [fetchTables]);
+  const invalidateTableData = useCallback(
+    () =>
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "table", selectedTable],
+      }),
+    [queryClient, selectedTable],
+  );
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchInput), 300);
@@ -95,15 +106,6 @@ export function DataExplorer() {
     setOffset(0);
   }, [selectedTable]);
 
-  useEffect(() => {
-    if (selectedTable) fetchTableData();
-    else {
-      setSchema(null);
-      setRows([]);
-      setCount(0);
-    }
-  }, [selectedTable, fetchTableData]);
-
   const handleAdd = useCallback(async () => {
     if (!selectedTable || !schema) return;
     const data: Record<string, unknown> = {};
@@ -116,12 +118,12 @@ export function DataExplorer() {
       await insertDataExplorerRow(selectedTable, data);
       setAddingRow(false);
       setNewRow({});
-      fetchTableData();
+      setMutationError(null);
+      await invalidateTableData();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Insert failed";
-      setError(message);
+      setMutationError(errorMessage(err, "Insert failed"));
     }
-  }, [selectedTable, schema, newRow, fetchTableData]);
+  }, [selectedTable, schema, newRow, invalidateTableData]);
 
   const handleUpdate = useCallback(
     async (row: Record<string, unknown>) => {
@@ -140,13 +142,13 @@ export function DataExplorer() {
       try {
         await updateDataExplorerRow(selectedTable, { pk, ...data });
         setEditingRow(null);
-        fetchTableData();
+        setMutationError(null);
+        await invalidateTableData();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Update failed";
-        setError(message);
+        setMutationError(errorMessage(err, "Update failed"));
       }
     },
-    [selectedTable, schema, editingRow, fetchTableData],
+    [selectedTable, schema, editingRow, invalidateTableData],
   );
 
   const handleDelete = useCallback(
@@ -157,13 +159,13 @@ export function DataExplorer() {
       for (const c of pkCols) pk[c] = row[c];
       try {
         await deleteDataExplorerRow(selectedTable, { pk });
-        fetchTableData();
+        setMutationError(null);
+        await invalidateTableData();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Delete failed";
-        setError(message);
+        setMutationError(errorMessage(err, "Delete failed"));
       }
     },
-    [selectedTable, schema, fetchTableData],
+    [selectedTable, schema, invalidateTableData],
   );
 
   const pkCols = schema?.filter((c) => c.pk).map((c) => c.name) ?? [];
@@ -183,6 +185,7 @@ export function DataExplorer() {
             setSelectedTable(e.target.value || null);
             setEditingRow(null);
             setAddingRow(false);
+            setMutationError(null);
           }}
           className="form__select"
         >

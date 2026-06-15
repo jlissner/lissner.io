@@ -27,7 +27,6 @@ type ApiErrorCode =
   | "search_failed"
   | "backup_not_configured"
   | "sync_in_progress"
-  | "sql_explorer_disabled"
   | "data_explorer_disabled"
   | "hash_failed"
   | "admin_not_found"

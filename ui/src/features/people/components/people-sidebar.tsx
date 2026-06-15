@@ -1,3 +1,4 @@
+import { prependApiUrl } from "@/api";
 import { useEffect, useMemo, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
@@ -43,7 +44,9 @@ function PersonAvatar({ person }: { person: Person }) {
     return (
       <div className="person-row__avatar person-row__avatar--photo">
         <img
-          src={`/api/media/${person.representativeMediaId}/face/${person.id}`}
+          src={prependApiUrl(
+            `/media/${person.representativeMediaId}/face/${person.id}`,
+          )}
           alt=""
           className="person-row__avatar-img"
           onError={() => setImgError(true)}

@@ -1,5 +1,5 @@
 services:
-  app:
+  api:
     env_file: ".env.prod"
     build:
       context: .
@@ -11,25 +11,22 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - SERVER_PORT=${SERVER_PORT}
-      # Resolve the `ollama` service on the Compose network (overrides OLLAMA_HOST from env_file).
       - OLLAMA_HOST=http://ollama:11434
       - DATA_DIR=${DATA_DIR}
-    # Inject secrets and app config from the host (same file `env.ts` reads locally in production).
-    # Compose `--env-file` only affects compose interpolation; it does not pass vars into containers.
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.app.rule=Host(`${SERVER_HOST}`)"
-      - "traefik.http.routers.app.entrypoints=web"
-      - "traefik.http.routers.app.service=app"
-      - "traefik.http.routers.app.tls=true"
-      - "traefik.http.routers.app.tls.certResolver=letsencrypt"
-      - "traefik.http.routers.app-http.rule=Host(`${SERVER_HOST}`)"
-      - "traefik.http.routers.app-http.entrypoints=webhttp"
-      - "traefik.http.routers.app-http.middlewares=app-redirect-https@docker"
-      - "traefik.http.routers.app-http.service=app"
-      - "traefik.http.middlewares.app-redirect-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.app-redirect-https.redirectscheme.permanent=true"
-      - "traefik.http.services.app.loadbalancer.server.port=${SERVER_PORT}"
+      - "traefik.http.routers.api.rule=Host(`${VITE_API_HOST}`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.routers.api.service=api"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.api-http.rule=Host(`${VITE_API_HOST}`)"
+      - "traefik.http.routers.api-http.entrypoints=webhttp"
+      - "traefik.http.routers.api-http.middlewares=api-redirect-https@docker"
+      - "traefik.http.routers.api-http.service=api"
+      - "traefik.http.middlewares.api-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.api-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.api.loadbalancer.server.port=${SERVER_PORT}"
     depends_on:
       ollama:
         condition: service_healthy
@@ -42,12 +39,41 @@ services:
       interval: 5s
       timeout: 5s
       retries: 3
-      # First boot may download a DB from S3 before `listen()`; allow long startup before counting failures.
       start_period: 300s
     restart: unless-stopped
     networks:
       - traefik
       - default
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    ports:
+      - "${UI_PORT}:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ui.rule=Host(`${UI_HOST}`)"
+      - "traefik.http.routers.ui.entrypoints=web"
+      - "traefik.http.routers.ui.service=ui"
+      - "traefik.http.routers.ui.tls=true"
+      - "traefik.http.routers.ui.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.ui-http.rule=Host(`${UI_HOST}`)"
+      - "traefik.http.routers.ui-http.entrypoints=webhttp"
+      - "traefik.http.routers.ui-http.middlewares=ui-redirect-https@docker"
+      - "traefik.http.routers.ui-http.service=ui"
+      - "traefik.http.middlewares.ui-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.ui-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.ui.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = ok']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - traefik
 
   ollama:
     build:
@@ -65,7 +91,6 @@ services:
             - driver: nvidia
               count: 1
               capabilities: [gpu]
-    # Waits until embedded entrypoint finishes pulling embed + vision models (see docker/ollama/).
     healthcheck:
       test:
         [
@@ -87,11 +112,11 @@ services:
       - "--entrypoints.webhttp.address=:80"
       - "--providers.docker.network=lissnerio_traefik"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=jlissner@gmail.com" # maybe turn into an environment variable
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
       - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
     ports:
-      - "443:443" # HTTPS
-      - "80:80" # HTTP
+      - "443:443"
+      - "80:80"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - traefik-certs:/letsencrypt

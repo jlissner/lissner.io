@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage, prependApiUrl } from "@/api";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/toast";
 import { FullscreenImage } from "@/features/media/components/media-viewer/fullscreen-image";
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import {
@@ -44,14 +45,16 @@ function deletePersonConfirmMessage(
 function faceMatchPreviewSrc(current: FaceMatchReviewItem): string | null {
   if (!current.previewMediaId) return null;
   if (current.previewFaceCrop) {
-    return `/api/media/${current.previewMediaId}/face/${current.placeholderPersonId}`;
+    return prependApiUrl(
+      `/media/${current.previewMediaId}/face/${current.placeholderPersonId}`,
+    );
   }
-  return `/api/media/${current.previewMediaId}/preview`;
+  return prependApiUrl(`/media/${current.previewMediaId}/preview`);
 }
 
 function faceMatchFullImageSrc(current: FaceMatchReviewItem): string | null {
   if (!current.previewMediaId) return null;
-  return `/api/media/${current.previewMediaId}/preview`;
+  return prependApiUrl(`/media/${current.previewMediaId}/preview`);
 }
 
 function MatchFaceReviewCard({
@@ -269,6 +272,7 @@ export function PeopleMatchFacesWizard({
   onClose: () => void;
   onMerged: () => void;
 }) {
+  const { showToast } = useToast();
   const [queue, setQueue] = useState<FaceMatchReviewItem[]>(initialQueue);
   const [busy, setBusy] = useState(false);
   const [fullPreviewOpen, setFullPreviewOpen] = useState(false);
@@ -293,12 +297,11 @@ export function PeopleMatchFacesWizard({
       await mergePeople(current.placeholderPersonId, current.topMatch.personId);
       popQueue();
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : "Merge failed";
-      alert(message);
+      showToast(errorMessage(err, "Merge failed"));
     } finally {
       setBusy(false);
     }
-  }, [current, popQueue]);
+  }, [current, popQueue, showToast]);
 
   const handleMergeOther = useCallback(
     async (target: number) => {
@@ -308,13 +311,12 @@ export function PeopleMatchFacesWizard({
         await mergePeople(current.placeholderPersonId, target);
         popQueue();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Merge failed";
-        alert(message);
+        showToast(errorMessage(err, "Merge failed"));
       } finally {
         setBusy(false);
       }
     },
-    [current, popQueue],
+    [current, popQueue, showToast],
   );
 
   const handleRename = useCallback(
@@ -322,7 +324,7 @@ export function PeopleMatchFacesWizard({
       if (!current) return;
       const trimmed = name.trim();
       if (!trimmed) {
-        alert("Enter a name.");
+        showToast("Enter a name.", "info");
         return;
       }
       setBusy(true);
@@ -330,13 +332,12 @@ export function PeopleMatchFacesWizard({
         await updatePerson(current.placeholderPersonId, trimmed);
         popQueue();
       } catch (err) {
-        const message = err instanceof ApiError ? err.message : "Rename failed";
-        alert(message);
+        showToast(errorMessage(err, "Rename failed"));
       } finally {
         setBusy(false);
       }
     },
-    [current, popQueue],
+    [current, popQueue, showToast],
   );
 
   const handleDiscard = useCallback(() => {
@@ -353,13 +354,11 @@ export function PeopleMatchFacesWizard({
       );
       popQueue();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Could not remove tag";
-      alert(message);
+      showToast(errorMessage(err, "Could not remove tag"));
     } finally {
       setBusy(false);
     }
-  }, [current, popQueue]);
+  }, [current, popQueue, showToast]);
 
   const handleDeletePerson = useCallback(async () => {
     if (!current) return;
@@ -380,13 +379,11 @@ export function PeopleMatchFacesWizard({
       await deletePerson(current.placeholderPersonId);
       popQueue();
     } catch (err) {
-      const message =
-        err instanceof ApiError ? err.message : "Could not delete person";
-      alert(message);
+      showToast(errorMessage(err, "Could not delete person"));
     } finally {
       setBusy(false);
     }
-  }, [current, namedPeople, popQueue]);
+  }, [current, namedPeople, popQueue, showToast]);
 
   const fullPreviewUrl =
     fullPreviewOpen && current ? faceMatchFullImageSrc(current) : null;

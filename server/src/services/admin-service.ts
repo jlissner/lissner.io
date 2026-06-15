@@ -1,5 +1,4 @@
-/** Dev-only tooling flags (SQL / Data explorer). */
-import * as authDb from "../db/auth.js";
+/** Dev-only tooling flags (Data explorer). */
 import * as mediaDb from "../db/media.js";
 
 export type AdminServiceResult<T> =
@@ -14,26 +13,11 @@ function fail<T>(status: number, error: string): AdminServiceResult<T> {
   return { ok: false, status, error };
 }
 
-export function isSqlExplorerEnabled(): boolean {
-  return (
-    process.env.SQL_EXPLORER_ENABLED === "true" &&
-    process.env.NODE_ENV !== "production"
-  );
-}
-
 export function isDataExplorerEnabled(): boolean {
   return (
     process.env.DATA_EXPLORER_ENABLED === "true" &&
     process.env.NODE_ENV !== "production"
   );
-}
-
-export function runSqlQuery(query: string) {
-  try {
-    return ok(mediaDb.runSql(query));
-  } catch (err) {
-    return fail(400, err instanceof Error ? err.message : String(err));
-  }
 }
 
 export function listDataExplorerTables() {
@@ -100,45 +84,4 @@ export function deleteDataExplorerRow(
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }
-}
-
-export function listWhitelistEntries() {
-  return ok(authDb.getWhitelist());
-}
-
-export function addWhitelistEntry(input: {
-  email: string;
-  isAdmin: boolean;
-  personId?: number;
-  actorUserId?: number;
-}) {
-  try {
-    return ok(
-      authDb.addToWhitelist(
-        input.email,
-        input.isAdmin,
-        input.actorUserId,
-        input.personId,
-      ),
-    );
-  } catch {
-    return fail(400, "Email may already be on whitelist");
-  }
-}
-
-export function removeWhitelistEntry(id: number): boolean {
-  return authDb.removeFromWhitelist(id);
-}
-
-export function listUsers() {
-  return ok(authDb.getUsers());
-}
-
-export function getUserPeople(userId: number) {
-  return ok(authDb.getUserPeople(userId));
-}
-
-export function setUserPeople(userId: number, personIds: number[]) {
-  authDb.setUserPeople(userId, personIds);
-  return ok(personIds);
 }

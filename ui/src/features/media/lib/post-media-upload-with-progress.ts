@@ -1,3 +1,5 @@
+import { prependApiUrl } from "@/api";
+
 export type MediaUploadProgress = {
   currentFile: number;
   totalFiles: number;
@@ -15,7 +17,7 @@ interface AbortControllerLike {
 }
 
 /**
- * POST multipart to `/api/media/upload` via XMLHttpRequest so `upload.onprogress` works (fetch does not expose upload progress).
+ * POST multipart to `/media/upload` via XMLHttpRequest so `upload.onprogress` works (fetch does not expose upload progress).
  */
 export function postMediaUploadWithProgress(
   formData: FormData,
@@ -24,7 +26,7 @@ export function postMediaUploadWithProgress(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/media/upload");
+    xhr.open("POST", prependApiUrl("/media/upload"));
     xhr.responseType = "json";
     xhr.withCredentials = true;
 

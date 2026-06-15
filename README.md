@@ -57,6 +57,7 @@ Create the directory structure and base config:
   - [x] Images
   - [x] Videos
   - [x] Text
+  - [x] PDFs
 - [x] Index documents and media with AI
 - [x] AI documents and media search
 - [x] Face recognition: detect and group people across photos
@@ -72,7 +73,7 @@ Create the directory structure and base config:
   - [ ] Blog
 - [x] AWS S3 sync (upload new files, download missing, merge from other devices)
 - [x] Magic link authentication (whitelist-only)
-- [x] Admin: whitelist management, user–People linking
+- [x] Admin: directory (access & roles) management, user–People linking
 - [ ] Recipies feature
 - [ ] Import photos from google
 
@@ -128,7 +129,6 @@ The UI proxies `/api` to **port 3000**. That error means the **Express API is no
 | `S3_BUCKET`             | —                        | S3 bucket name for media sync                                                                                                                 |
 | `FIRST_ADMIN_EMAIL`     | —                        | Bootstrap admin email (whitelisted, receives magic links).                                                                                    |
 | `SESSION_SECRET`        | (dev default)            | Secret for session cookies                                                                                                                    |
-| `SQL_EXPLORER_ENABLED`  | —                        | Set to `true` to enable SQL explorer for admins. **Only works when NODE_ENV ≠ production** (local dev only).                                  |
 | `DATA_EXPLORER_ENABLED` | —                        | Set to `true` to enable Data Explorer (CRUD UI for all tables). **Only works when NODE_ENV ≠ production**. Auto-discovers tables and columns. |
 | `SES_FROM_EMAIL`        | —                        | Verified sender email for magic links (must be verified in AWS SES). If unset with AWS configured, link is logged to console.                 |
 
@@ -142,7 +142,7 @@ If S3 variables are missing, the server logs a warning on startup and the UI sho
 
 **Nuclear reset:** `npm run nuke` permanently removes local media and thumbnails (`data/media/`, `data/thumbnails/`), deletes all rows in the SQLite database (schema kept), clears the S3 `backup/` prefix when AWS env vars are set, and removes `data/.sync_temp_db.db` if present. It prints counts/sizes first and requires typing a **random 6-digit code** to confirm. **Stop the server** before running so the database is not locked.
 
-**Auth (magic link):** Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage the whitelist and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
+**Auth (magic link):** Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage access from the Directory tab (which maintains the allowlist) and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
 
 The server loads environment variables from `.env` and `.env.local` (the latter overrides the former). Create `.env.local` for local development; it is gitignored.
 

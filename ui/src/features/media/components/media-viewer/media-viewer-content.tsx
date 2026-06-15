@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isImage,
+  isPdf,
   isPixelMotionPhotoBasename,
   isText,
   isVideo,
@@ -9,26 +10,19 @@ import { PixelMpOrImageVideoPreview } from "./pixel-mp-preview";
 import { MediaViewerFaceOverlay } from "./media-viewer-face-overlay";
 import { MediaViewerReassignModal } from "./media-viewer-reassign-modal";
 import { MediaViewerDetails } from "./media-viewer-details";
+import { MediaViewerActions } from "./media-viewer-actions";
+import { MediaViewerVideoTaggingModal } from "./media-viewer-video-tagging-modal";
 import { InlineAssignBar } from "./inline-assign-bar";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
+import { useMediaViewerKeyboard } from "./use-media-viewer-keyboard";
 import { useSwipeNav } from "./use-swipe-nav";
 import { useTapNav } from "./use-tap-nav";
 import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
-import { ApiError } from "@/api";
-import {
-  addPersonToMedia,
-  getMediaDetails,
-  postRotateMedia90,
-  removePersonFromMedia,
-} from "@/features/media/api";
-import { Button } from "@/components/ui/button";
-import {
-  PersonSelect,
-  type PersonSelectValue,
-} from "@/features/people/components/PersonSelect";
-import { createPerson } from "@/features/people/api";
+import { errorMessage, prependApiUrl } from "@/api";
+import { postRotateMedia90 } from "@/features/media/api";
+import { useIsMobile } from "@/hooks/use-is-mobile";
 
 interface MediaViewerContentProps {
   item: MediaItem;
@@ -42,17 +36,6 @@ interface MediaViewerContentProps {
   setTaggingMode: (fn: (prev: boolean) => boolean) => void;
   onClose: () => void;
   onUpdate?: () => void;
-}
-
-function useIsMobile(): boolean {
-  const [mobile, setMobile] = useState(() => window.innerWidth < 640);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 639px)");
-    const handler = (e: MediaQueryListEvent) => setMobile(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return mobile;
 }
 
 export function MediaViewerContent({
@@ -73,7 +56,7 @@ export function MediaViewerContent({
   const hasMotionPair =
     item.motionCompanionId != null && item.motionCompanionId !== "";
   const motionVideoUrl = hasMotionPair
-    ? `/api/media/${item.motionCompanionId}/preview`
+    ? prependApiUrl(`/media/${item.motionCompanionId}/preview`)
     : "";
   const [pixelIsVideo, setPixelIsVideo] = useState(false);
   const [motionPairView, setMotionPairView] = useState<"video" | "still">(
@@ -87,18 +70,13 @@ export function MediaViewerContent({
   const [rotating, setRotating] = useState(false);
   const [rotateError, setRotateError] = useState<string | null>(null);
   const [videoTaggingOpen, setVideoTaggingOpen] = useState(false);
-  const [videoTaggingLoading, setVideoTaggingLoading] = useState(false);
-  const [videoTaggingError, setVideoTaggingError] = useState<string | null>(
-    null,
-  );
-  const [taggedVideoPeople, setTaggedVideoPeople] = useState<string[]>([]);
 
   const isMobile = useIsMobile();
 
   const previewUrl =
     previewRev > 0
-      ? `/api/media/${item.id}/preview?r=${previewRev}`
-      : `/api/media/${item.id}/preview`;
+      ? prependApiUrl(`/media/${item.id}/preview?r=${previewRev}`)
+      : prependApiUrl(`/media/${item.id}/preview`);
 
   useEffect(() => {
     setPixelIsVideo(false);
@@ -109,9 +87,6 @@ export function MediaViewerContent({
     setPreviewRev(0);
     setRotateError(null);
     setVideoTaggingOpen(false);
-    setVideoTaggingLoading(false);
-    setVideoTaggingError(null);
-    setTaggedVideoPeople([]);
   }, [item.id]);
 
   const handleTagChange = useCallback(
@@ -138,24 +113,10 @@ export function MediaViewerContent({
     onTagChange: handleTagChange,
   });
 
-  const loadVideoTaggedPeople = useCallback(async () => {
-    setVideoTaggingLoading(true);
-    setVideoTaggingError(null);
-    try {
-      const details = await getMediaDetails(item.id);
-      setTaggedVideoPeople(details.people ?? []);
-    } catch {
-      setVideoTaggingError("Could not load tagged people");
-      setTaggedVideoPeople([]);
-    } finally {
-      setVideoTaggingLoading(false);
-    }
-  }, [item.id]);
-
-  useEffect(() => {
-    if (!videoTaggingOpen) return;
-    void loadVideoTaggedPeople();
-  }, [videoTaggingOpen, loadVideoTaggedPeople]);
+  const handleVideoTaggingChanged = useCallback(() => {
+    setDetailsRefreshKey((k) => k + 1);
+    onUpdate?.();
+  }, [onUpdate]);
 
   const handleRotate90 = useCallback(async () => {
     setRotateError(null);
@@ -166,9 +127,7 @@ export function MediaViewerContent({
       setDetailsRefreshKey((k) => k + 1);
       onUpdate?.();
     } catch (err) {
-      const msg =
-        err instanceof ApiError ? err.message : "Could not rotate image";
-      setRotateError(msg);
+      setRotateError(errorMessage(err, "Could not rotate image"));
     } finally {
       setRotating(false);
     }
@@ -183,52 +142,19 @@ export function MediaViewerContent({
     setReassigningFace,
   );
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      const active = document.activeElement as HTMLElement | null;
-      const activeTag = active?.tagName?.toLowerCase();
-      const typing =
-        activeTag === "input" ||
-        activeTag === "textarea" ||
-        active?.getAttribute("contenteditable") === "true";
-      if (e.key === "Escape") {
-        if (fullscreen) setFullscreen(false);
-        else if (assigningFace) setAssigningFace(null);
-        else if (reassigningFace) setReassigningFace(null);
-        else onClose();
-      }
-      if (typing) return;
-      if (
-        e.key === "ArrowLeft" &&
-        !assigningFace &&
-        !reassigningFace &&
-        !fullscreen
-      ) {
-        if (prevItem) goPrev();
-      }
-      if (
-        e.key === "ArrowRight" &&
-        !assigningFace &&
-        !reassigningFace &&
-        !fullscreen
-      ) {
-        if (nextItem) goNext();
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [
-    onClose,
+  useMediaViewerKeyboard({
     fullscreen,
     assigningFace,
     reassigningFace,
-    setAssigningFace,
-    setReassigningFace,
-    prevItem,
-    nextItem,
+    hasPrev: prevItem != null,
+    hasNext: nextItem != null,
     goPrev,
     goNext,
-  ]);
+    onClose,
+    onClearFullscreen: () => setFullscreen(false),
+    onClearAssigning: () => setAssigningFace(null),
+    onClearReassigning: () => setReassigningFace(null),
+  });
 
   const swipeRef = useRef<HTMLDivElement>(null);
   useSwipeNav(
@@ -262,11 +188,10 @@ export function MediaViewerContent({
 
   const showDetails = !isMobile || detailsOpen;
 
-  const videoTaggedPeopleWithIds = taggedVideoPeople.map((name) => {
-    const matches = people.filter((p) => p.name === name);
-    if (matches.length === 1) return { name, personId: matches[0].id };
-    return { name, personId: null };
-  });
+  const canTagFaces =
+    isImage(item.mimeType, item.originalName) &&
+    (!pixelMp || !pixelIsVideo) &&
+    (!hasMotionPair || motionPairView === "still");
 
   return (
     <div
@@ -319,266 +244,34 @@ export function MediaViewerContent({
           </svg>
         </button>
       )}
-      <div className="viewer-content__actions">
-        {hasMotionPair && motionPairView === "video" && (
-          <Button
-            onClick={() => setMotionPairView("still")}
-            variant="secondary"
-            size="sm"
-          >
-            Still
-          </Button>
-        )}
-        {hasMotionPair && motionPairView === "still" && (
-          <Button
-            onClick={() => {
-              setMotionPairView("video");
-              setTaggingMode(() => false);
-            }}
-            variant="secondary"
-            size="sm"
-          >
-            Motion
-          </Button>
-        )}
-        {isImage(item.mimeType, item.originalName) &&
-          (!pixelMp || !pixelIsVideo) &&
-          (!hasMotionPair || motionPairView === "still") && (
-            <Button
-              onClick={() => setTaggingMode((p) => !p)}
-              variant={taggingMode ? "primary" : "secondary"}
-              size="sm"
-            >
-              {taggingMode ? "Exit tagging" : "Tag faces"}
-            </Button>
-          )}
-        {canRotateImage && (
-          <Button
-            type="button"
-            onClick={() => {
-              void handleRotate90();
-            }}
-            variant="secondary"
-            size="sm"
-            disabled={rotating}
-          >
-            {rotating ? "Rotating…" : "Rotate 90°"}
-          </Button>
-        )}
-        {taggingMode &&
-          isImage(item.mimeType, item.originalName) &&
-          (!pixelMp || !pixelIsVideo) &&
-          (!hasMotionPair || motionPairView === "still") && (
-            <label className="viewer-content__toggle">
-              <input
-                type="checkbox"
-                checked={showDetectedFaces}
-                onChange={(e) => setShowDetectedFaces(e.target.checked)}
-              />
-              <span>Detections</span>
-            </label>
-          )}
-        {isVideo(item.mimeType) && (
-          <Button
-            onClick={() => setVideoTaggingOpen(true)}
-            variant="secondary"
-            size="sm"
-          >
-            Tag people
-          </Button>
-        )}
-        <Button onClick={onClose} variant="secondary" size="sm">
-          Close
-        </Button>
-        {rotateError != null && (
-          <p
-            role="alert"
-            className="viewer-content__rotate-error u-text-danger"
-          >
-            {rotateError}
-          </p>
-        )}
-      </div>
+      <MediaViewerActions
+        hasMotionPair={hasMotionPair}
+        motionPairView={motionPairView}
+        onShowStill={() => setMotionPairView("still")}
+        onShowMotion={() => {
+          setMotionPairView("video");
+          setTaggingMode(() => false);
+        }}
+        canTagFaces={canTagFaces}
+        taggingMode={taggingMode}
+        onToggleTagging={() => setTaggingMode((p) => !p)}
+        canRotateImage={canRotateImage}
+        rotating={rotating}
+        onRotate={() => void handleRotate90()}
+        showDetectedFaces={showDetectedFaces}
+        onToggleDetections={setShowDetectedFaces}
+        isVideoType={isVideo(item.mimeType)}
+        onOpenVideoTagging={() => setVideoTaggingOpen(true)}
+        onClose={onClose}
+        rotateError={rotateError}
+      />
       {videoTaggingOpen && (
-        <div
-          role="dialog"
-          aria-label="Tag people"
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.55)",
-            zIndex: 2500,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              width: "min(520px, 95vw)",
-              background: "var(--color-bg-elevated)",
-              border: "1px solid var(--color-border)",
-              borderRadius: 12,
-              padding: 16,
-              boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                gap: 12,
-                marginBottom: 12,
-              }}
-            >
-              <h3 style={{ margin: 0, fontSize: "1rem" }}>Tag people</h3>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => setVideoTaggingOpen(false)}
-              >
-                Close
-              </Button>
-            </div>
-
-            <div style={{ display: "grid", gap: 12 }}>
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "var(--color-text-muted)",
-                    marginBottom: 6,
-                  }}
-                >
-                  Currently tagged
-                </div>
-                {videoTaggingLoading && (
-                  <div style={{ fontSize: "0.875rem" }}>Loading…</div>
-                )}
-                {videoTaggingError != null && (
-                  <div
-                    role="alert"
-                    style={{
-                      fontSize: "0.875rem",
-                      color: "var(--color-danger)",
-                    }}
-                  >
-                    {videoTaggingError}
-                  </div>
-                )}
-                {!videoTaggingLoading &&
-                  videoTaggedPeopleWithIds.length === 0 && (
-                    <div style={{ fontSize: "0.875rem" }}>
-                      No one tagged yet.
-                    </div>
-                  )}
-                {!videoTaggingLoading &&
-                  videoTaggedPeopleWithIds.length > 0 && (
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                      {videoTaggedPeopleWithIds.map((p) => (
-                        <li
-                          key={p.name}
-                          style={{
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "space-between",
-                            gap: 12,
-                            padding: "4px 0",
-                          }}
-                        >
-                          <span>{p.name}</span>
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            disabled={p.personId == null}
-                            onClick={async () => {
-                              if (p.personId == null) return;
-                              try {
-                                await removePersonFromMedia(
-                                  item.id,
-                                  p.personId,
-                                );
-                                await loadVideoTaggedPeople();
-                                setDetailsRefreshKey((k) => k + 1);
-                                onUpdate?.();
-                              } catch (err) {
-                                const msg =
-                                  err instanceof ApiError
-                                    ? err.message
-                                    : "Failed to remove tag";
-                                setVideoTaggingError(msg);
-                              }
-                            }}
-                          >
-                            Remove
-                          </Button>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                <div
-                  style={{
-                    fontSize: "0.75rem",
-                    color: "var(--color-text-muted)",
-                    marginTop: 6,
-                  }}
-                >
-                  If a name can’t be matched to a unique person, removal is
-                  disabled.
-                </div>
-              </div>
-
-              <div>
-                <div
-                  style={{
-                    fontSize: "0.875rem",
-                    color: "var(--color-text-muted)",
-                    marginBottom: 6,
-                  }}
-                >
-                  Add person
-                </div>
-                <PersonSelect
-                  people={people}
-                  allowCreate={true}
-                  placeholder="Select…"
-                  onChange={async (value: PersonSelectValue) => {
-                    try {
-                      let personId: number;
-                      if (typeof value === "number") {
-                        personId = value;
-                      } else {
-                        setVideoTaggingLoading(true);
-                        const result = await createPerson(value.createName);
-                        personId = result.id;
-                      }
-                      await addPersonToMedia(item.id, { personId });
-                      await loadVideoTaggedPeople();
-                      setDetailsRefreshKey((k) => k + 1);
-                      onUpdate?.();
-                    } catch (err) {
-                      const msg =
-                        err instanceof ApiError
-                          ? err.message
-                          : "Failed to add tag";
-                      setVideoTaggingError(msg);
-                    } finally {
-                      setVideoTaggingLoading(false);
-                    }
-                  }}
-                  disabled={videoTaggingLoading}
-                  style={{
-                    minWidth: 220,
-                    maxWidth: "100%",
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
+        <MediaViewerVideoTaggingModal
+          mediaId={item.id}
+          people={people}
+          onClose={() => setVideoTaggingOpen(false)}
+          onChanged={handleVideoTaggingChanged}
+        />
       )}
       <div
         className="viewer-content__body"
@@ -723,6 +416,19 @@ export function MediaViewerContent({
               <source src={previewUrl} type={item.mimeType} />
             </video>
           )}
+          {isPdf(item.mimeType) && (
+            <iframe
+              src={prependApiUrl(`/media/${item.id}/preview`)}
+              title={item.originalName}
+              style={{
+                width: "min(90vw, 900px)",
+                height: "85vh",
+                border: "1px solid var(--color-border)",
+                borderRadius: 8,
+                background: "var(--color-bg-elevated)",
+              }}
+            />
+          )}
           {isText(item.mimeType) && (
             <pre
               style={{
@@ -745,11 +451,12 @@ export function MediaViewerContent({
           {!isImage(item.mimeType, item.originalName) &&
             !isVideo(item.mimeType) &&
             !pixelMp &&
-            !isText(item.mimeType) && (
+            !isText(item.mimeType) &&
+            !isPdf(item.mimeType) && (
               <p style={{ color: "var(--color-text-muted)" }}>
                 Preview not available.{" "}
                 <a
-                  href={`/api/media/${item.id}`}
+                  href={prependApiUrl(`/media/${item.id}`)}
                   download={item.originalName}
                   style={{ color: "var(--color-primary)" }}
                 >

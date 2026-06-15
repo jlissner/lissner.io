@@ -1,4 +1,5 @@
 import { DeleteObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { logger } from "../logger.js";
 import path from "path";
 import * as db from "../db/media.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
@@ -29,7 +30,7 @@ export async function deleteMediaFromS3(item: {
     try {
       await s3Client.send(new DeleteObjectCommand({ Bucket: bucket, Key }));
     } catch (err) {
-      console.error({ err, key: Key }, "[s3-sync] DeleteObject failed");
+      logger.error({ err, key: Key }, "[s3-sync] DeleteObject failed");
     }
   }
 }
@@ -60,7 +61,7 @@ export async function tryRestoreMediaFromBackup(item: {
       db.clearMediaBackedUpAt(item.id);
       return false;
     }
-    console.error(
+    logger.error(
       { err, mediaId: item.id },
       "restore: failed to download media from S3",
     );
@@ -94,7 +95,7 @@ export async function tryRestoreVideoThumbnailFromBackup(
     if (isS3NoSuchKey(err)) {
       return false;
     }
-    console.error(
+    logger.error(
       { err, mediaId },
       "restore: failed to download thumbnail from S3",
     );

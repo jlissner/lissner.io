@@ -13,3 +13,7 @@ export function isTextMime(mimeType: string): boolean {
     mimeType === "application/xml"
   );
 }
+
+export function isPdfMime(mimeType: string): boolean {
+  return mimeType === "application/pdf";
+}

@@ -1,4 +1,5 @@
 import { syncDefer } from "./sync-defer.js";
+import { logger } from "../logger.js";
 import { isSyncInProgress } from "./sync-state.js";
 import { runSync } from "./sync-runner.js";
 
@@ -23,7 +24,7 @@ export function scheduleBackupSyncAfterUpload(): void {
       return;
     }
     void runSync().catch((err) => {
-      console.error({ err }, "[s3-sync] Auto backup after upload failed");
+      logger.error({ err }, "[s3-sync] Auto backup after upload failed");
     });
   }, AUTO_BACKUP_DEBOUNCE_MS);
 }

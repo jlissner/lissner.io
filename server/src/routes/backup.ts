@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { logger } from "../logger.js";
 import { sendApiError } from "../lib/api-error.js";
 import { getSyncStatusBody, prepareSync } from "../services/backup-service.js";
 
@@ -30,6 +31,6 @@ backupRouter.post("/run", (_req, res) => {
   res.json({ started: true });
 
   prepared.execute().catch((err) => {
-    console.error({ err }, "Backup sync run failed");
+    logger.error({ err }, "Backup sync run failed");
   });
 });

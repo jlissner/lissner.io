@@ -133,7 +133,7 @@ async function ensureMagicCode(world: AuthWorld): Promise<void> {
 async function loginWithCode(world: AuthWorld): Promise<void> {
   assert.ok(world.email);
   assert.ok(world.magicCode);
-  await postJson(world, "/api/auth/verify-code", {
+  await postJson(world, "/auth/verify-code", {
     email: world.email,
     code: world.magicCode,
   });
@@ -205,7 +205,7 @@ When(
 );
 
 Then("I should be authenticated", async function (this: AuthWorld) {
-  await getJson(this, "/api/auth/me");
+  await getJson(this, "/auth/me");
   assert.ok(this.lastResponse);
   assert.equal(this.lastResponse.status, 200);
 });
@@ -249,8 +249,8 @@ Given("I have a valid access token", async function (this: AuthWorld) {
 });
 
 When("I make an API request", async function (this: AuthWorld) {
-  // Use `/api/auth/me` as the canonical authenticated request.
-  await getJson(this, "/api/auth/me");
+  // Use `/auth/me` as the canonical authenticated request.
+  await getJson(this, "/auth/me");
 });
 
 Then(
@@ -283,7 +283,7 @@ Then(
   "a new access token should be issued automatically",
   async function (this: AuthWorld) {
     // Model “silent refresh” as the client calling refresh prior to the request.
-    await postJson(this, "/api/auth/refresh", {});
+    await postJson(this, "/auth/refresh", {});
     const access = firstSetCookie(this.lastResponse!.headers, "access_token");
     const refresh = firstSetCookie(this.lastResponse!.headers, "refresh_token");
     if (access) this.cookie = cookiePair(access);
@@ -295,7 +295,7 @@ Then(
 Then(
   "the request should succeed without user interaction",
   async function (this: AuthWorld) {
-    await getJson(this, "/api/auth/me");
+    await getJson(this, "/auth/me");
     assert.ok(this.lastResponse);
     assert.equal(this.lastResponse.status, 200);
   },
@@ -311,7 +311,7 @@ Given(
     }
     const prevRefresh = this.refreshCookie;
     assert.ok(prevRefresh);
-    await postJson(this, "/api/auth/refresh", {});
+    await postJson(this, "/auth/refresh", {});
     const refresh = firstSetCookie(this.lastResponse!.headers, "refresh_token");
     if (refresh) this.refreshCookie = cookiePair(refresh);
     (this as unknown as { prevRefresh?: string }).prevRefresh = prevRefresh;
@@ -339,7 +339,7 @@ Then(
     // Use old token alone; refresh should fail 401.
     this.cookie = "";
     this.refreshCookie = prev;
-    await postJson(this, "/api/auth/refresh", {});
+    await postJson(this, "/auth/refresh", {});
     assert.ok(this.lastResponse);
     assert.equal(this.lastResponse.status, 401);
     this.cookie = saved.cookie;
@@ -391,14 +391,14 @@ Given("I am logged in", async function (this: AuthWorld) {
 });
 
 When("I log out", async function (this: AuthWorld) {
-  await postJson(this, "/api/auth/logout", {});
+  await postJson(this, "/auth/logout", {});
 });
 
 Then("my refresh token should be revoked", async function (this: AuthWorld) {
   // Attempt refresh should fail.
   const savedRes = this.lastResponse;
   const savedJson = this.lastJson;
-  await postJson(this, "/api/auth/refresh", {});
+  await postJson(this, "/auth/refresh", {});
   assert.ok(this.lastResponse);
   assert.equal(this.lastResponse.status, 401);
   this.lastResponse = savedRes;
@@ -420,7 +420,7 @@ Given("my refresh token has been rotated", async function (this: AuthWorld) {
   await loginWithCode(this);
   const prev = this.refreshCookie;
   assert.ok(prev);
-  await postJson(this, "/api/auth/refresh", {});
+  await postJson(this, "/auth/refresh", {});
   const refresh = firstSetCookie(this.lastResponse!.headers, "refresh_token");
   assert.ok(refresh);
   this.refreshCookie = cookiePair(refresh);
@@ -435,7 +435,7 @@ When(
     const saved = { cookie: this.cookie, refreshCookie: this.refreshCookie };
     this.cookie = "";
     this.refreshCookie = prev;
-    await postJson(this, "/api/auth/refresh", {});
+    await postJson(this, "/auth/refresh", {});
     this.cookie = saved.cookie;
     this.refreshCookie = saved.refreshCookie;
   },
@@ -471,7 +471,7 @@ When(
   async function (this: AuthWorld) {
     assert.ok(this.email);
     assert.ok(this.magicCode);
-    await postJson(this, "/api/auth/verify-code", {
+    await postJson(this, "/auth/verify-code", {
       email: this.email,
       code: this.magicCode,
     });
@@ -502,7 +502,7 @@ Given(
 When("I try to use the same code again", async function (this: AuthWorld) {
   assert.ok(this.email);
   assert.ok(this.magicCode);
-  await postJson(this, "/api/auth/verify-code", {
+  await postJson(this, "/auth/verify-code", {
     email: this.email,
     code: this.magicCode,
   });
@@ -521,7 +521,7 @@ When(
   async function (this: AuthWorld) {
     await ensureWhitelistedEmail(this);
     this.magicCode = "000000";
-    await postJson(this, "/api/auth/verify-code", {
+    await postJson(this, "/auth/verify-code", {
       email: this.email,
       code: this.magicCode,
     });
@@ -549,7 +549,7 @@ Then(
     // Reusing should fail.
     assert.ok(this.email);
     assert.ok(this.magicCode);
-    await postJson(this, "/api/auth/verify-code", {
+    await postJson(this, "/auth/verify-code", {
       email: this.email,
       code: this.magicCode,
     });
@@ -573,7 +573,7 @@ Given(
 Then(
   "I should be authenticated on the desktop browser",
   async function (this: AuthWorld) {
-    await getJson(this, "/api/auth/me");
+    await getJson(this, "/auth/me");
     assert.ok(this.lastResponse);
     assert.equal(this.lastResponse.status, 200);
   },

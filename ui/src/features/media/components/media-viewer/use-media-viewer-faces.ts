@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { ApiError } from "@/api";
+import { errorMessage } from "@/api";
+import { useToast } from "@/components/ui/toast";
 import {
   addPersonToMedia,
   listMediaFaces,
@@ -40,6 +41,7 @@ export function useMediaViewerFaces({
   onUpdate,
   onTagChange,
 }: UseMediaViewerFacesOptions) {
+  const { showToast } = useToast();
   const [faces, setFaces] = useState<{
     detected: FaceBox[];
     tagged: TaggedFace[];
@@ -100,12 +102,10 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to add tag";
-        alert(message);
+        showToast(errorMessage(err, "Failed to add tag"));
       }
     },
-    [mediaId, assigningFace, loadFaces, onUpdate, onTagChange],
+    [mediaId, assigningFace, loadFaces, onUpdate, onTagChange, showToast],
   );
 
   const handleReassignFace = useCallback(
@@ -119,9 +119,7 @@ export function useMediaViewerFaces({
           onUpdate?.();
           onTagChange?.();
         } catch (err) {
-          const message =
-            err instanceof ApiError ? err.message : "Failed to remove tag";
-          alert(message);
+          showToast(errorMessage(err, "Failed to remove tag"));
         }
         return;
       }
@@ -133,9 +131,7 @@ export function useMediaViewerFaces({
           onUpdate?.();
           onTagChange?.();
         } catch (err) {
-          const message =
-            err instanceof ApiError ? err.message : "Failed to reassign";
-          alert(message);
+          showToast(errorMessage(err, "Failed to reassign"));
         }
         return;
       }
@@ -146,12 +142,10 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to reassign";
-        alert(message);
+        showToast(errorMessage(err, "Failed to reassign"));
       }
     },
-    [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange],
+    [mediaId, reassigningFace, loadFaces, onUpdate, onTagChange, showToast],
   );
 
   const handleDismissAutoTagged = useCallback(
@@ -163,12 +157,10 @@ export function useMediaViewerFaces({
         onUpdate?.();
         onTagChange?.();
       } catch (err) {
-        const message =
-          err instanceof ApiError ? err.message : "Failed to dismiss tag";
-        alert(message);
+        showToast(errorMessage(err, "Failed to dismiss tag"));
       }
     },
-    [mediaId, loadFaces, onUpdate, onTagChange],
+    [mediaId, loadFaces, onUpdate, onTagChange, showToast],
   );
 
   return {

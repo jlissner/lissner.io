@@ -1,24 +1,20 @@
 import type { NextFunction, Request, Response } from "express";
-import { bgMagenta, blue, gray, green, red, white, yellow } from "yoctocolors";
+import { randomUUID } from "node:crypto";
+import { logger, type Logger } from "../logger.js";
 
-function logMethod(method: string) {
-  switch (method.toLowerCase()) {
-    case "get":
-      return blue(method);
-    case "post":
-      return yellow(method);
-    case "delete":
-      return red(method);
-    default:
-      return bgMagenta(white(method));
+declare module "express-serve-static-core" {
+  interface Request {
+    log: Logger;
+    requestId: string;
   }
 }
 
-/** Wrap async route handlers so rejections become `next(err)` for the error middleware. */
+/** Attach a request-scoped logger (`req.log`) and log the incoming request. */
 export function logRequests(req: Request, _res: Response, next: NextFunction) {
-  console.info(`
-${gray(`Request recieved at ${new Date().toLocaleTimeString()}:`)}
-${gray("[TARGET]")} ${logMethod(req.method)} ${green(req.url)}`);
+  const requestId = randomUUID();
+  req.requestId = requestId;
+  req.log = logger.child({ requestId });
+  req.log.info({ method: req.method, url: req.url }, "request received");
 
   next();
 }

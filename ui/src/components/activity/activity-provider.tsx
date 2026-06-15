@@ -5,7 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiFetch } from "@/api";
+import { apiFetch, prependWebSocketUrl } from "@/api";
 import { ActivitySnapshot } from "@shared";
 
 const ActivityContext = createContext<ActivitySnapshot | null>(null);
@@ -84,9 +84,9 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
       }
       wsRef.current = null;
 
-      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
-      const url = `${proto}//${window.location.host}/ws/activity`;
+      const url = prependWebSocketUrl("/activity");
       const socket = new WebSocket(url);
+
       wsRef.current = socket;
 
       socket.onopen = () => {

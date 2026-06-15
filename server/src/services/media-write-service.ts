@@ -1,4 +1,5 @@
 import { unlink } from "fs/promises";
+import { logger } from "../logger.js";
 import path from "path";
 import * as db from "../db/media.js";
 import { indexMediaItem } from "../indexing/media.js";
@@ -72,7 +73,7 @@ export async function deleteMediaItem(
     scheduleBackupSyncAfterUpload();
     return { ok: true };
   } catch (err) {
-    console.error({ err, mediaId }, "Delete media failed");
+    logger.error({ err, mediaId }, "Delete media failed");
     return { ok: false, reason: "delete_failed" };
   }
 }

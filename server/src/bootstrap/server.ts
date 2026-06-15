@@ -1,5 +1,3 @@
-import { existsSync } from "fs";
-import path from "path";
 import { createServer } from "node:http";
 import cors from "cors";
 import express from "express";
@@ -15,8 +13,12 @@ import {
 import { requireAuth, jwtMiddleware } from "../auth/middleware.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { logRequests } from "../middleware/logRequests.js";
+import {
+  corsStrictHttpsEnabled,
+  isAllowedLissnerCorsOrigin,
+} from "../lib/lissner-cors.js";
 
-export function createConfiguredApp(uiDistDir: string) {
+export function createConfiguredApp() {
   const app = express();
 
   app.set("trust proxy", true);
@@ -25,24 +27,37 @@ export function createConfiguredApp(uiDistDir: string) {
   });
 
   app.use(logRequests);
-  app.use(cors({ origin: true, credentials: true }));
+  app.use(
+    cors({
+      credentials: true,
+      origin(origin, callback) {
+        const strict = corsStrictHttpsEnabled();
+        if (!strict) {
+          callback(null, true);
+          return;
+        }
+        if (origin === undefined) {
+          callback(null, true);
+          return;
+        }
+        if (isAllowedLissnerCorsOrigin(origin, true)) {
+          callback(null, origin);
+          return;
+        }
+        callback(null, false);
+      },
+    }),
+  );
   app.use(express.json());
   app.use(jwtMiddleware());
 
-  app.use("/api/auth", authRouter);
-  app.use("/api/admin", requireAuth, adminRouter);
-  app.use("/api/activity", requireAuth, activityRouter);
-  app.use("/api/media", requireAuth, mediaRouter);
-  app.use("/api/people", requireAuth, peopleRouter);
-  app.use("/api/search", requireAuth, searchRouter);
-  app.use("/api/backup", requireAuth, backupRouter);
-
-  if (existsSync(uiDistDir)) {
-    app.use(express.static(uiDistDir));
-    app.get("/{*any}", (_req, res) =>
-      res.sendFile(path.join(uiDistDir, "index.html")),
-    );
-  }
+  app.use("/auth", authRouter);
+  app.use("/admin", requireAuth, adminRouter);
+  app.use("/activity", requireAuth, activityRouter);
+  app.use("/media", requireAuth, mediaRouter);
+  app.use("/people", requireAuth, peopleRouter);
+  app.use("/search", requireAuth, searchRouter);
+  app.use("/backup", requireAuth, backupRouter);
 
   app.use(errorHandler);
 

@@ -1,4 +1,5 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
+import { logger } from "../logger.js";
 import Database from "better-sqlite3";
 import path from "path";
 import * as authDb from "../db/auth.js";
@@ -391,7 +392,7 @@ export async function runSync(
       syncDefer.pendingAfterCurrent = false;
       setImmediate(() => {
         void runSync().catch((err) => {
-          console.error({ err }, "[s3-sync] Queued backup sync failed");
+          logger.error({ err }, "[s3-sync] Queued backup sync failed");
         });
       });
     }

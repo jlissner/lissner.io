@@ -17,7 +17,7 @@ import {
 export const mediaFacesRouter = Router();
 
 mediaFacesRouter.delete("/:id/people/:personId", (req, res) => {
-  const { id, personId } = mediaIdPersonIdParamSchema(req.params);
+  const { id, personId } = mediaIdPersonIdParamSchema.parse(req.params);
   const result = removePersonFromMediaTag(id, personId);
 
   if (result.ok) {
