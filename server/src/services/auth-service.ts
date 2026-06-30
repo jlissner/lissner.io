@@ -1,9 +1,9 @@
-import { VITE_API_HOST, UI_PORT } from "../config/env.js";
+import { UI_HOST, UI_PORT } from "../config/env.js";
 
-/** Public URL for magic-link redirects and email links (from env or request). */
+/** Public URL for magic-link redirects and email links (UI host, not API). */
 export function getMagicLinkBaseUrl(): string {
-  const protocol = VITE_API_HOST === "localhost" ? "http" : "https";
-  const withoutPort = `${protocol}://${VITE_API_HOST}`;
+  const protocol = UI_HOST === "localhost" ? "http" : "https";
+  const withoutPort = `${protocol}://${UI_HOST}`;
 
   if (protocol === "https") return withoutPort;
 

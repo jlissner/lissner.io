@@ -57,6 +57,7 @@ export const OLLAMA_EMBED_MODEL = getOptionalEnvVar(
 );
 export const S3_BUCKET = getEnvVar("S3_BUCKET");
 export const VITE_API_HOST = getEnvVar("VITE_API_HOST");
+export const UI_HOST = getEnvVar("UI_HOST");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
