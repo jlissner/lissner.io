@@ -22,6 +22,21 @@ export default defineConfig(({ mode }) => {
   const viteApiHost = env.VITE_API_HOST.trim();
   const apiProxyTarget = `http://${viteApiHost}:${apiPort}`;
   const devPort = Number(env.UI_PORT);
+  const apiProxy = {
+    target: apiProxyTarget,
+    changeOrigin: true,
+    timeout: 0,
+    proxyTimeout: 0,
+  };
+  const apiProxyPrefixes = [
+    "/auth",
+    "/admin",
+    "/media",
+    "/people",
+    "/search",
+    "/backup",
+    "/activity",
+  ] as const;
 
   return {
     root: __dirname,
@@ -118,12 +133,9 @@ export default defineConfig(({ mode }) => {
     server: {
       port: devPort,
       proxy: {
-        "^/(auth|admin|media|people|search|backup|activity)(/|$)": {
-          target: apiProxyTarget,
-          changeOrigin: true,
-          timeout: 0,
-          proxyTimeout: 0,
-        },
+        ...Object.fromEntries(
+          apiProxyPrefixes.map((prefix) => [prefix, apiProxy]),
+        ),
         "/ws": {
           target: apiProxyTarget,
           ws: true,
