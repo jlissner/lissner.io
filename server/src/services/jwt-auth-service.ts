@@ -10,6 +10,8 @@ import * as authDb from "../db/auth.js";
 const IS_PROD = process.env.NODE_ENV === "production";
 const ACCESS_MAX_AGE = 3600;
 const REFRESH_MAX_AGE = 7 * 24 * 3600;
+/** Must match the browser request path prefix (e.g. `/auth/refresh`), not a dev-only `/api` proxy prefix. */
+export const REFRESH_COOKIE_PATH = "/auth";
 
 function hashToken(raw: string): string {
   return createHash("sha256").update(raw).digest("hex");
@@ -81,12 +83,12 @@ export function setTokenCookies(
     httpOnly: true,
     secure: IS_PROD,
     sameSite: "lax",
-    path: "/api/auth",
+    path: REFRESH_COOKIE_PATH,
     maxAge: REFRESH_MAX_AGE * 1000,
   });
 }
 
 export function clearTokenCookies(res: Response): void {
   res.clearCookie("access_token", { path: "/" });
-  res.clearCookie("refresh_token", { path: "/api/auth" });
+  res.clearCookie("refresh_token", { path: REFRESH_COOKIE_PATH });
 }

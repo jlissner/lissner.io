@@ -118,12 +118,11 @@ export default defineConfig(({ mode }) => {
     server: {
       port: devPort,
       proxy: {
-        "/api": {
+        "^/(auth|admin|media|people|search|backup|activity)(/|$)": {
           target: apiProxyTarget,
           changeOrigin: true,
           timeout: 0,
           proxyTimeout: 0,
-          rewrite: (path) => path.substring(4),
         },
         "/ws": {
           target: apiProxyTarget,
