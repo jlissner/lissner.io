@@ -6,6 +6,7 @@ interface MediaListBulkActionsProps {
   onDelete?: () => void;
   onIndex?: () => void;
   onDateTaken?: () => void;
+  onAddTags?: () => void;
   onCancel: () => void;
   deleting: boolean;
   indexing: boolean;
@@ -17,6 +18,7 @@ export function MediaListBulkActions({
   onDelete,
   onIndex,
   onDateTaken,
+  onAddTags,
   onCancel,
   deleting,
   indexing,
@@ -25,6 +27,11 @@ export function MediaListBulkActions({
     <div className="bulk-actions bulk-actions--sticky">
       <span className="bulk-actions__count">{count} selected</span>
       <div className="bulk-actions__buttons">
+        {onAddTags && (
+          <Button variant="secondary" size="sm" onClick={onAddTags}>
+            Add tags
+          </Button>
+        )}
         {onDateTaken && (
           <Button variant="secondary" size="sm" onClick={onDateTaken}>
             Set date

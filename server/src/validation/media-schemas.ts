@@ -24,6 +24,17 @@ export const mediaTagsBodySchema = z.object({
   tags: z.array(z.string()).max(200, "At most 200 tags per request"),
 });
 
+export const bulkMediaTagsBodySchema = z.object({
+  mediaIds: z
+    .array(z.string().min(1))
+    .min(1, "Select at least one file")
+    .max(500, "At most 500 files per request"),
+  tags: z
+    .array(z.string())
+    .min(1, "Add at least one tag")
+    .max(200, "At most 200 tags per request"),
+});
+
 export const reassignFaceBodySchema = z.object({
   assignTo: z.coerce.number().int().positive(),
 });

@@ -12,10 +12,15 @@ import {
   updateMediaDateTaken,
 } from "../../services/media-service.js";
 import { rotateMediaImage90Clockwise } from "../../services/media-rotate-service.js";
-import { setMediaTags } from "../../services/media-tags-service.js";
+import {
+  setMediaTags,
+  bulkAddMediaTags,
+  bulkRemoveMediaTags,
+} from "../../services/media-tags-service.js";
 import {
   mediaIdParamSchema,
   mediaTagsBodySchema,
+  bulkMediaTagsBodySchema,
   uploadCheckNamesBodySchema,
 } from "../../validation/media-schemas.js";
 import invariant from "tiny-invariant";
@@ -123,6 +128,24 @@ mediaWriteRouter.post("/upload/check-names", (req, res) => {
   }
 
   res.json({ conflicts });
+});
+
+mediaWriteRouter.post("/tags/bulk-add", (req, res) => {
+  const body = bulkMediaTagsBodySchema.parse(req.body);
+  const result = bulkAddMediaTags(body.mediaIds, body.tags, {
+    userId: req.jwtUser?.id,
+    isAdmin: req.jwtUser?.isAdmin,
+  });
+  res.json(result);
+});
+
+mediaWriteRouter.post("/tags/bulk-remove", (req, res) => {
+  const body = bulkMediaTagsBodySchema.parse(req.body);
+  const result = bulkRemoveMediaTags(body.mediaIds, body.tags, {
+    userId: req.jwtUser?.id,
+    isAdmin: req.jwtUser?.isAdmin,
+  });
+  res.json(result);
 });
 
 mediaWriteRouter.put("/:id/tags", (req, res) => {

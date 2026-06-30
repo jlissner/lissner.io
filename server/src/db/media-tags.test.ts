@@ -20,6 +20,8 @@ import {
   listDistinctTags,
   listTagsForMedia,
   setTagsForMedia,
+  addTagsForMedia,
+  removeTagsFromMedia,
 } from "./media-tags.js";
 
 function insertMinimalMedia(id: string): void {
@@ -69,5 +71,19 @@ describe("media_tags migration and helpers", () => {
     setTagsForMedia("m3", ["a", "b"]);
     setTagsForMedia("m3", ["c"]);
     expect(listTagsForMedia("m3")).toEqual(["c"]);
+  });
+
+  it("adds tags without removing existing ones", () => {
+    insertMinimalMedia("m4");
+    setTagsForMedia("m4", ["beach"]);
+    addTagsForMedia("m4", ["Summer", "beach"]);
+    expect(listTagsForMedia("m4")).toEqual(["beach", "summer"]);
+  });
+
+  it("removes specific tags without clearing others", () => {
+    insertMinimalMedia("m5");
+    setTagsForMedia("m5", ["beach", "summer", "trip"]);
+    removeTagsFromMedia("m5", ["Summer"]);
+    expect(listTagsForMedia("m5")).toEqual(["beach", "trip"]);
   });
 });

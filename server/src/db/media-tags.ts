@@ -10,6 +10,9 @@ function buildStmts() {
     insertTag: db.prepare(
       "INSERT OR IGNORE INTO media_tags (media_id, tag) VALUES (?, ?)",
     ),
+    deleteTag: db.prepare(
+      "DELETE FROM media_tags WHERE media_id = ? AND tag = ?",
+    ),
     listDistinct: db.prepare(
       "SELECT DISTINCT tag FROM media_tags ORDER BY tag ASC",
     ),
@@ -50,6 +53,42 @@ export function setTagsForMedia(mediaId: string, tags: string[]): void {
     stmts().deleteAllForMedia.run(mediaId);
     for (const tag of normalized) {
       stmts().insertTag.run(mediaId, tag);
+    }
+  });
+  tx();
+}
+
+export function addTagsForMedia(mediaId: string, tags: string[]): void {
+  const normalized = [
+    ...new Set(
+      tags
+        .map((t) => normalizeTagForStorage(t))
+        .filter((t): t is string => t != null),
+    ),
+  ];
+  if (normalized.length === 0) return;
+  const db = getDb();
+  const tx = db.transaction(() => {
+    for (const tag of normalized) {
+      stmts().insertTag.run(mediaId, tag);
+    }
+  });
+  tx();
+}
+
+export function removeTagsFromMedia(mediaId: string, tags: string[]): void {
+  const normalized = [
+    ...new Set(
+      tags
+        .map((t) => normalizeTagForStorage(t))
+        .filter((t): t is string => t != null),
+    ),
+  ];
+  if (normalized.length === 0) return;
+  const db = getDb();
+  const tx = db.transaction(() => {
+    for (const tag of normalized) {
+      stmts().deleteTag.run(mediaId, tag);
     }
   });
   tx();

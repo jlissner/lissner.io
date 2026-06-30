@@ -15,6 +15,7 @@ interface HomePageHeaderBarProps {
   onBulkDelete?: () => void;
   onBulkIndex?: () => void;
   onBulkDateTaken?: () => void;
+  onBulkAddTags?: () => void;
   onCancelSelection: () => void;
   bulkDeleting: boolean;
   bulkIndexing: boolean;
@@ -34,6 +35,7 @@ export function HomePageHeaderBar({
   onBulkDelete,
   onBulkIndex,
   onBulkDateTaken,
+  onBulkAddTags,
   onCancelSelection,
   bulkDeleting,
   bulkIndexing,
@@ -48,6 +50,7 @@ export function HomePageHeaderBar({
             onDelete={onBulkDelete}
             onIndex={onBulkIndex}
             onDateTaken={onBulkDateTaken}
+            onAddTags={onBulkAddTags}
             onCancel={onCancelSelection}
             deleting={bulkDeleting}
             indexing={bulkIndexing}

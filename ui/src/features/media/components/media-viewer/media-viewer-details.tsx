@@ -1,6 +1,6 @@
 import { prependApiUrl } from "@/api";
 import { useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import { getMediaDetails, patchMediaDateTaken, putMediaTags } from "../../api";
 import type { MediaItem } from "./media-utils";
@@ -182,47 +182,44 @@ export function MediaViewerDetails({
     setTagsError(null);
   }, [item.id, details, refreshTrigger]);
 
-  const tagsDirty = useMemo(() => {
-    if (!details) return false;
-    const prev = [...(details.tags ?? [])].sort().join("\n");
-    const next = [...workingTags].sort().join("\n");
-    return prev !== next;
-  }, [details, workingTags]);
+  const persistTags = useCallback(
+    async (tags: string[]) => {
+      setTagsSaving(true);
+      setTagsError(null);
+      try {
+        await putMediaTags(item.id, { tags });
+        await queryClient.invalidateQueries({ queryKey: ["mediaTags"] });
+        setDetails((prev) => (prev ? { ...prev, tags } : prev));
+        onMetadataUpdated?.();
+      } catch (e) {
+        setTagsError(e instanceof Error ? e.message : "Could not save tags");
+        loadDetails();
+      } finally {
+        setTagsSaving(false);
+      }
+    },
+    [item.id, loadDetails, onMetadataUpdated, queryClient],
+  );
 
   const addDraftTag = useCallback(() => {
     const raw = tagDraft.trim().toLowerCase();
-    if (!raw) return;
-    setWorkingTags((prev) => {
-      if (prev.includes(raw)) return prev;
-      return [...prev, raw].sort((a, b) => a.localeCompare(b));
-    });
+    if (!raw || tagsSaving) return;
     setTagDraft("");
-  }, [tagDraft]);
+    if (workingTags.includes(raw)) return;
+    const next = [...workingTags, raw].sort((a, b) => a.localeCompare(b));
+    setWorkingTags(next);
+    void persistTags(next);
+  }, [tagDraft, tagsSaving, workingTags, persistTags]);
 
-  const removeTag = useCallback((tag: string) => {
-    setWorkingTags((prev) => prev.filter((t) => t !== tag));
-  }, []);
-
-  const saveTags = useCallback(async () => {
-    setTagsSaving(true);
-    setTagsError(null);
-    const failMessage = await (async (): Promise<string | null> => {
-      try {
-        await putMediaTags(item.id, { tags: workingTags });
-        return null;
-      } catch (e) {
-        return e instanceof Error ? e.message : "Could not save tags";
-      }
-    })();
-    setTagsSaving(false);
-    if (failMessage != null) {
-      setTagsError(failMessage);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: ["mediaTags"] });
-    loadDetails();
-    onMetadataUpdated?.();
-  }, [item.id, loadDetails, onMetadataUpdated, queryClient, workingTags]);
+  const removeTag = useCallback(
+    (tag: string) => {
+      if (tagsSaving) return;
+      const next = workingTags.filter((t) => t !== tag);
+      setWorkingTags(next);
+      void persistTags(next);
+    },
+    [tagsSaving, workingTags, persistTags],
+  );
 
   const beginEditDateTaken = useCallback(() => {
     const { date, time } = isoToDateAndTimeInputs(details?.dateTaken);
@@ -364,17 +361,7 @@ export function MediaViewerDetails({
               onClick={addDraftTag}
               disabled={tagsSaving}
             >
-              Add
-            </button>
-            <button
-              type="button"
-              className="btn btn--primary btn--sm"
-              onClick={() => {
-                void saveTags();
-              }}
-              disabled={tagsSaving || !tagsDirty}
-            >
-              {tagsSaving ? "Saving…" : "Save tags"}
+              {tagsSaving ? "Saving…" : "Add"}
             </button>
           </div>
           {tagsError && (

@@ -2,6 +2,8 @@ import { ApiError, apiFetch, apiJson } from "@/api";
 import {
   MediaDetailsApiResponse,
   MediaPatchRequest,
+  MediaTagsBulkAddRequest,
+  MediaTagsBulkAddResponse,
   MediaTagsListResponse,
   MediaTagsPutRequest,
 } from "@shared";
@@ -160,4 +162,28 @@ export async function bulkPatchDateTaken(
     else acc.failed += 1;
   }
   return acc;
+}
+
+export function bulkAddMediaTags(
+  mediaIds: string[],
+  tags: string[],
+): Promise<MediaTagsBulkAddResponse> {
+  const body: MediaTagsBulkAddRequest = { mediaIds, tags };
+  return apiJson<MediaTagsBulkAddResponse>("media/tags/bulk-add", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function bulkRemoveMediaTags(
+  mediaIds: string[],
+  tags: string[],
+): Promise<MediaTagsBulkAddResponse> {
+  const body: MediaTagsBulkAddRequest = { mediaIds, tags };
+  return apiJson<MediaTagsBulkAddResponse>("media/tags/bulk-remove", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
 }

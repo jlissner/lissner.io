@@ -3,10 +3,12 @@ import { MediaList } from "./media-list";
 import { HomePageHeaderBar } from "./home-page-header-bar";
 import { TimelineScrubber } from "./TimelineScrubber";
 import { BulkDateModal } from "./BulkDateModal";
+import { BulkTagsModal } from "./BulkTagsModal";
 import { useHomePage } from "../hooks/use-home-page";
 
 export function HomePage() {
   const [bulkDateOpen, setBulkDateOpen] = useState(false);
+  const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
 
   const {
     displayItems,
@@ -50,6 +52,15 @@ export function HomePage() {
     fetchItems();
   }, [clearSelection, fetchItems]);
 
+  const handleBulkTagsClose = useCallback(() => {
+    setBulkTagsOpen(false);
+    clearSelection();
+  }, [clearSelection]);
+
+  const handleBulkTagsChanged = useCallback(() => {
+    fetchItems();
+  }, [fetchItems]);
+
   return (
     <div className="home-page">
       <HomePageHeaderBar
@@ -66,6 +77,7 @@ export function HomePage() {
         onBulkDelete={handleBulkDeleteWrapped}
         onBulkIndex={handleBulkIndexWrapped}
         onBulkDateTaken={() => setBulkDateOpen(true)}
+        onBulkAddTags={() => setBulkTagsOpen(true)}
         onCancelSelection={clearSelection}
         bulkDeleting={bulkAction === "deleting"}
         bulkIndexing={bulkAction === "indexing"}
@@ -118,6 +130,13 @@ export function HomePage() {
           mediaIds={Array.from(selected)}
           onClose={() => setBulkDateOpen(false)}
           onDone={handleBulkDateDone}
+        />
+      )}
+      {bulkTagsOpen && selected.size > 0 && (
+        <BulkTagsModal
+          mediaIds={Array.from(selected)}
+          onClose={handleBulkTagsClose}
+          onChanged={handleBulkTagsChanged}
         />
       )}
     </div>

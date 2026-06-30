@@ -53,6 +53,11 @@ export type MediaTagsListResponse = { tags: string[] };
 /** PUT /api/media/:id/tags */
 export type MediaTagsPutRequest = { tags: string[] };
 
+/** POST /api/media/tags/bulk-add */
+export type MediaTagsBulkAddRequest = { mediaIds: string[]; tags: string[] };
+
+export type MediaTagsBulkAddResponse = { succeeded: number; failed: number };
+
 /** PATCH /api/media/:id */
 export type MediaPatchRequest = { dateTaken: string | null };
 
