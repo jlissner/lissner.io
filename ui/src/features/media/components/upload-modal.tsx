@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { apiJson } from "@/api";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,24 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
   >([]);
   const [uploadProgress, setUploadProgress] =
     useState<MediaUploadProgress | null>(null);
+  const uploadControlRef = useRef<{
+    aborted: boolean;
+    activeAbort: (() => void) | null;
+  }>({ aborted: false, activeAbort: null });
+
+  const createUploadController = useCallback(
+    () => ({
+      abort: () => {
+        uploadControlRef.current.aborted = true;
+        uploadControlRef.current.activeAbort?.();
+      },
+      isAborted: () => uploadControlRef.current.aborted,
+      setActiveAbort: (abortFn: (() => void) | null) => {
+        uploadControlRef.current.activeAbort = abortFn;
+      },
+    }),
+    [],
+  );
 
   const appendFiles = useCallback((files: FileList | null) => {
     if (!files?.length) return;
@@ -136,8 +154,15 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     }
     setError(null);
     setUploading(true);
+    uploadControlRef.current = { aborted: false, activeAbort: null };
+    const controller = createUploadController();
     try {
-      await uploadMediaFilesWithProgress(filesToUpload, setUploadProgress);
+      await uploadMediaFilesWithProgress(
+        filesToUpload,
+        setUploadProgress,
+        controller,
+      );
+      if (controller.isAborted()) return;
       try {
         onUploadComplete();
       } catch {
@@ -145,10 +170,15 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
       }
       onClose();
     } catch (e) {
+      if (controller.isAborted()) {
+        setError("Upload cancelled");
+        return;
+      }
       setError(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setUploading(false);
       setUploadProgress(null);
+      uploadControlRef.current = { aborted: false, activeAbort: null };
     }
   }, [
     pendingFiles,
@@ -158,12 +188,22 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
     conflictDecisions,
     onUploadComplete,
     onClose,
+    createUploadController,
   ]);
 
+  const handleCancelUpload = useCallback(() => {
+    uploadControlRef.current.aborted = true;
+    uploadControlRef.current.activeAbort?.();
+  }, []);
+
   const handleCancel = useCallback(() => {
+    if (uploading) {
+      handleCancelUpload();
+      return;
+    }
     clearFiles();
     onClose();
-  }, [clearFiles, onClose]);
+  }, [clearFiles, onClose, uploading, handleCancelUpload]);
 
   const hasFiles = pendingFiles.length > 0;
   const hasConflicts = nameConflicts.length > 0;
@@ -271,23 +311,17 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
           )}
         </div>
 
-        {hasFiles && (
-          <div className="upload-modal-footer">
-            <ModalActions className="upload-modal-footer__actions">
-              <Button
-                variant="secondary"
-                onClick={clearFiles}
-                disabled={uploading}
-              >
+        <div className="upload-modal-footer">
+          <ModalActions className="upload-modal-footer__actions">
+            {hasFiles && !uploading && (
+              <Button variant="secondary" onClick={clearFiles}>
                 Clear
               </Button>
-              <Button
-                variant="secondary"
-                onClick={handleCancel}
-                disabled={uploading}
-              >
-                Cancel
-              </Button>
+            )}
+            <Button variant="secondary" onClick={handleCancel}>
+              {uploading ? "Cancel upload" : "Cancel"}
+            </Button>
+            {hasFiles && (
               <Button
                 onClick={() => void handleUpload()}
                 disabled={isUploadActionDisabled({
@@ -305,9 +339,9 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
                   uploadCount,
                 })}
               </Button>
-            </ModalActions>
-          </div>
-        )}
+            )}
+          </ModalActions>
+        </div>
       </ModalPanel>
     </ModalRoot>
   );

@@ -16,6 +16,7 @@ function resolveFileTotal(
 interface UploadController {
   abort: () => void;
   isAborted: () => boolean;
+  setActiveAbort?: (abortFn: (() => void) | null) => void;
 }
 
 const MAX_RETRIES = 3;
@@ -59,12 +60,13 @@ export async function uploadMediaFilesWithProgress(
   const controller = uploadController ?? {
     abort: () => {},
     isAborted: () => false,
+    setActiveAbort: () => {},
   };
   const overallTotal = files.reduce((sum, f) => sum + f.size, 0);
   let retryCount = 0;
   const acc = { completedBytes: 0 };
   for (const [i, file] of files.entries()) {
-    if (controller.isAborted()) break;
+    if (controller.isAborted()) throw new Error("Upload cancelled");
     const fileTotalFallback = file.size > 0 ? file.size : 1;
     const bumpProgress = (loaded: number, xhrTotal: number) => {
       const fileTotal = resolveFileTotal(file, xhrTotal, fileTotalFallback);

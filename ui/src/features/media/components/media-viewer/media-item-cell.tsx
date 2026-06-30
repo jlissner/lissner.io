@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   isImage,
   isPixelMotionPhotoBasename,
@@ -127,16 +128,16 @@ export function MediaItemCell({
   onCheckboxToggle,
   onCellClick,
 }: MediaItemCellProps) {
-  const [hovered, setHovered] = useState(false);
-  const showCheckbox = selectionMode || hovered;
   const needsIndexingBackupAttention = !item.indexed || !item.backedUp;
   const warningTitle = indexingBackupWarningTitle(item);
 
   return (
     <li
-      className="media-cell"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={cn(
+        "media-cell",
+        selectionMode && "media-cell--selection-mode",
+        selected && "media-cell--selected",
+      )}
     >
       <button
         type="button"
@@ -147,25 +148,16 @@ export function MediaItemCell({
         }}
       >
         <div className="media-cell__inner">
-          {showCheckbox && (
-            <div
-              style={{
-                position: "absolute",
-                top: 8,
-                right: 8,
-                zIndex: 2,
-                opacity: selectionMode ? 1 : 0.6,
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={selected}
-                onChange={() => onCheckboxToggle(item.id)}
-                onClick={(e) => e.stopPropagation()}
-                className="media-cell__checkbox"
-              />
-            </div>
-          )}
+          <div className="media-cell__checkbox-wrap">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={() => onCheckboxToggle(item.id)}
+              onClick={(e) => e.stopPropagation()}
+              className="media-cell__checkbox"
+              aria-label={`Select ${item.originalName}`}
+            />
+          </div>
           {needsIndexingBackupAttention && warningTitle && (
             <div
               className="media-cell__badges media-cell__badges--warning"

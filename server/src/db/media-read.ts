@@ -212,7 +212,7 @@ export function listMediaPaginated(
   limit: number,
   offset: number,
   personId?: number,
-  sortBy: MediaSortBy = "uploaded",
+  sortBy: MediaSortBy = "taken",
 ) {
   if (personId != null) {
     const stmt =

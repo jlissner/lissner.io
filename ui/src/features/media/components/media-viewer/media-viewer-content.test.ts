@@ -1,13 +1,25 @@
+import { describe, expect, it } from "vitest";
 import { readFileSync } from "fs";
 import path from "path";
-import { describe, expect, it } from "vitest";
 
-describe("media-viewer-content", () => {
-  it("Bug: motion companion video source must not use still image mimeType", () => {
+describe("media-viewer mobile gestures", () => {
+  it("uses unified gesture hook on the media area only", () => {
     const filePath = path.join(__dirname, "media-viewer-content.tsx");
     const contents = readFileSync(filePath, "utf-8");
-    expect(contents).not.toContain(
-      "<source src={motionVideoUrl} type={item.mimeType}",
+    expect(contents).toContain("useViewerGestures");
+    expect(contents).toContain(
+      'ref={swipeRef} className="viewer-content__media"',
     );
+    expect(contents).not.toContain("useTapNav");
+    expect(contents).not.toContain("useSwipeNav");
+  });
+
+  it("marks details controls as gesture-excluded", () => {
+    const contentPath = path.join(__dirname, "media-viewer-content.tsx");
+    const actionsPath = path.join(__dirname, "media-viewer-actions.tsx");
+    const content = readFileSync(contentPath, "utf-8");
+    const actions = readFileSync(actionsPath, "utf-8");
+    expect(content).toContain("data-viewer-gesture-ignore");
+    expect(actions).toContain("Details & tags");
   });
 });

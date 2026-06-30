@@ -14,6 +14,8 @@ export type MediaUploadProgress = {
 interface AbortControllerLike {
   abort: () => void;
   isAborted: () => boolean;
+  /** Registers the active XHR abort handler for the current upload. */
+  setActiveAbort?: (abortFn: (() => void) | null) => void;
 }
 
 /**
@@ -30,8 +32,12 @@ export function postMediaUploadWithProgress(
     xhr.responseType = "json";
     xhr.withCredentials = true;
 
+    const clearActiveAbort = () => controller?.setActiveAbort?.(null);
+
     if (controller) {
+      controller.setActiveAbort?.(() => xhr.abort());
       xhr.addEventListener("abort", () => {
+        clearActiveAbort();
         reject(new Error("Upload cancelled"));
       });
     }
@@ -44,12 +50,15 @@ export function postMediaUploadWithProgress(
         onProgress(e.loaded, 0);
       }
     });
+
     xhr.addEventListener("load", () => {
       if (controller?.isAborted()) return;
       if (xhr.status >= 200 && xhr.status < 300) {
+        clearActiveAbort();
         resolve();
         return;
       }
+      clearActiveAbort();
       const body = xhr.response as { error?: string } | null;
       const err =
         body && typeof body.error === "string"
@@ -59,6 +68,7 @@ export function postMediaUploadWithProgress(
     });
     xhr.addEventListener("error", () => {
       if (controller?.isAborted()) return;
+      clearActiveAbort();
       reject(new Error("Network error"));
     });
     xhr.send(formData);

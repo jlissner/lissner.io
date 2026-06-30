@@ -17,7 +17,7 @@ export function useMediaListQuery({
   isSearchMode,
 }: UseMediaListQueryOptions) {
   const queryClient = useQueryClient();
-  const [sortBy, setSortBy] = useState<"uploaded" | "taken">("uploaded");
+  const [sortBy, setSortBy] = useState<"uploaded" | "taken">("taken");
   const [startOffset, setStartOffset] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);

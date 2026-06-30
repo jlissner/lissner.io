@@ -17,6 +17,9 @@ interface MediaViewerActionsProps {
   onOpenVideoTagging: () => void;
   onClose: () => void;
   rotateError: string | null;
+  showDetailsToggle?: boolean;
+  detailsOpen?: boolean;
+  onToggleDetails?: () => void;
 }
 
 export function MediaViewerActions({
@@ -36,6 +39,9 @@ export function MediaViewerActions({
   onOpenVideoTagging,
   onClose,
   rotateError,
+  showDetailsToggle,
+  detailsOpen,
+  onToggleDetails,
 }: MediaViewerActionsProps) {
   return (
     <div className="viewer-content__actions">
@@ -82,6 +88,15 @@ export function MediaViewerActions({
       {isVideoType && (
         <Button onClick={onOpenVideoTagging} variant="secondary" size="sm">
           Tag people
+        </Button>
+      )}
+      {showDetailsToggle && onToggleDetails && (
+        <Button
+          onClick={onToggleDetails}
+          variant={detailsOpen ? "primary" : "secondary"}
+          size="sm"
+        >
+          {detailsOpen ? "Hide details" : "Details & tags"}
         </Button>
       )}
       <Button onClick={onClose} variant="secondary" size="sm">

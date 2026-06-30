@@ -16,8 +16,7 @@ import { InlineAssignBar } from "./inline-assign-bar";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
 import { useMediaViewerKeyboard } from "./use-media-viewer-keyboard";
-import { useSwipeNav } from "./use-swipe-nav";
-import { useTapNav } from "./use-tap-nav";
+import { useViewerGestures } from "./use-viewer-gestures";
 import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
 import { errorMessage, prependApiUrl } from "@/api";
@@ -157,11 +156,19 @@ export function MediaViewerContent({
   });
 
   const swipeRef = useRef<HTMLDivElement>(null);
-  useSwipeNav(
-    swipeRef,
-    nextItem && !fullscreen ? goNext : null,
-    prevItem && !fullscreen ? goPrev : null,
-  );
+  const gesturesEnabled =
+    isMobile &&
+    !taggingMode &&
+    !fullscreen &&
+    !assigningFace &&
+    !reassigningFace &&
+    !videoTaggingOpen;
+
+  useViewerGestures(swipeRef, {
+    enabled: gesturesEnabled,
+    onPrev: prevItem && !fullscreen ? goPrev : null,
+    onNext: nextItem && !fullscreen ? goNext : null,
+  });
 
   const isItemImage =
     isImage(item.mimeType, item.originalName) &&
@@ -178,14 +185,6 @@ export function MediaViewerContent({
     !assigningFace &&
     !reassigningFace;
 
-  const tapNav = useTapNav(
-    isMobile && prevItem && !taggingMode && !fullscreen ? goPrev : null,
-    isMobile && nextItem && !taggingMode && !fullscreen ? goNext : null,
-    isMobile && isItemImage && !taggingMode && !fullscreen
-      ? () => setFullscreen(true)
-      : null,
-  );
-
   const showDetails = !isMobile || detailsOpen;
 
   const canTagFaces =
@@ -194,11 +193,7 @@ export function MediaViewerContent({
     (!hasMotionPair || motionPairView === "still");
 
   return (
-    <div
-      ref={swipeRef}
-      onClick={(e) => e.stopPropagation()}
-      className="viewer-content"
-    >
+    <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       {fullscreen && (
         <FullscreenImage
           src={previewUrl}
@@ -264,6 +259,9 @@ export function MediaViewerContent({
         onOpenVideoTagging={() => setVideoTaggingOpen(true)}
         onClose={onClose}
         rotateError={rotateError}
+        showDetailsToggle={isMobile}
+        detailsOpen={detailsOpen}
+        onToggleDetails={() => setDetailsOpen((o) => !o)}
       />
       {videoTaggingOpen && (
         <MediaViewerVideoTaggingModal
@@ -274,10 +272,9 @@ export function MediaViewerContent({
         />
       )}
       <div
-        className="viewer-content__body"
-        {...(isMobile && !taggingMode ? tapNav : {})}
+        className={`viewer-content__body${detailsOpen && isMobile ? " viewer-content__body--details-open" : ""}`}
       >
-        <div className="viewer-content__media">
+        <div ref={swipeRef} className="viewer-content__media">
           <p className="viewer-content__filename">{item.originalName}</p>
           {hasMotionPair && motionPairView === "video" && (
             <video
@@ -469,6 +466,7 @@ export function MediaViewerContent({
           <button
             type="button"
             className="viewer-content__details-toggle"
+            data-viewer-gesture-ignore
             onClick={() => setDetailsOpen((o) => !o)}
           >
             {detailsOpen ? "Hide details" : "Show details"}
@@ -486,7 +484,7 @@ export function MediaViewerContent({
           </button>
         )}
         {showDetails && (
-          <aside className="viewer-content__details">
+          <aside className="viewer-content__details" data-viewer-gesture-ignore>
             <MediaViewerDetails
               item={item}
               refreshTrigger={detailsRefreshKey}
