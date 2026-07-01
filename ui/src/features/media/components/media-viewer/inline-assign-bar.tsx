@@ -36,8 +36,26 @@ export function InlineAssignBar({
   const screenHeight = box.height * scaleY;
 
   const barWidth = 340;
-  const barLeft = imgRect.left + Math.min(screenX, imgRect.width - barWidth);
-  const barTop = imgRect.top + screenY + screenHeight + 12;
+  const barHeightEstimate = 56;
+  const dropdownReserve = 200;
+  const gap = 12;
+  const barLeft = Math.max(
+    8,
+    Math.min(imgRect.left + screenX, window.innerWidth - barWidth - 8),
+  );
+  const faceTop = imgRect.top + screenY;
+  const faceBottom = faceTop + screenHeight;
+  const spaceBelow = window.innerHeight - faceBottom - gap;
+  const placeAbove =
+    spaceBelow < barHeightEstimate + dropdownReserve &&
+    faceTop > barHeightEstimate + dropdownReserve + gap;
+  const barTopRaw = placeAbove
+    ? faceTop - barHeightEstimate - gap
+    : faceBottom + gap;
+  const barTop = Math.max(
+    8,
+    Math.min(barTopRaw, window.innerHeight - barHeightEstimate - 8),
+  );
 
   const handleChange = async (value: PersonSelectValue) => {
     if (typeof value === "number") {

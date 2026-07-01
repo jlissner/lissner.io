@@ -4,6 +4,7 @@ import {
   useCallback,
   useRef,
   useEffect,
+  useLayoutEffect,
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
@@ -41,6 +42,27 @@ const defaultStyle: CSSProperties = {
   minWidth: 120,
 };
 
+const DROPDOWN_MAX_HEIGHT = 200;
+const VIEWPORT_MARGIN = 8;
+
+function measureDropdownLayout(wrapper: HTMLDivElement): {
+  placement: "above" | "below";
+  maxHeight: number;
+} {
+  const rect = wrapper.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_MARGIN;
+  const spaceAbove = rect.top - VIEWPORT_MARGIN;
+  const placement =
+    spaceBelow < DROPDOWN_MAX_HEIGHT && spaceAbove > spaceBelow
+      ? "above"
+      : "below";
+  const available = placement === "above" ? spaceAbove : spaceBelow;
+  return {
+    placement,
+    maxHeight: Math.min(DROPDOWN_MAX_HEIGHT, Math.max(80, available)),
+  };
+}
+
 export function PersonSelect({
   people,
   excludeIds,
@@ -58,6 +80,10 @@ export function PersonSelect({
   const [inputValue, setInputValue] = useState("");
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [menuLayout, setMenuLayout] = useState<{
+    placement: "above" | "below";
+    maxHeight: number;
+  }>({ placement: "below", maxHeight: DROPDOWN_MAX_HEIGHT });
   const wrapperRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
@@ -130,6 +156,21 @@ export function PersonSelect({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !wrapperRef.current) return;
+    const updateLayout = (): void => {
+      if (!wrapperRef.current) return;
+      setMenuLayout(measureDropdownLayout(wrapperRef.current));
+    };
+    updateLayout();
+    window.addEventListener("resize", updateLayout);
+    window.addEventListener("scroll", updateLayout, true);
+    return () => {
+      window.removeEventListener("resize", updateLayout);
+      window.removeEventListener("scroll", updateLayout, true);
+    };
+  }, [isOpen, items.length, inputValue]);
 
   // Keyboard navigation
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -267,17 +308,18 @@ export function PersonSelect({
           role="listbox"
           style={{
             position: "absolute",
-            top: "100%",
             left: 0,
             right: 0,
             zIndex: 2000,
             background: "var(--color-bg)",
             border: "1px solid var(--color-border)",
             borderRadius: 6,
-            marginTop: 2,
-            maxHeight: 200,
+            maxHeight: menuLayout.maxHeight,
             overflowY: "auto",
             boxShadow: "0 4px 12px rgba(0,0,0,0.3)",
+            ...(menuLayout.placement === "above"
+              ? { bottom: "100%", marginBottom: 2 }
+              : { top: "100%", marginTop: 2 }),
           }}
         >
           {items.map((item, index) => {
