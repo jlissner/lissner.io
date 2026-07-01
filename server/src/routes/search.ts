@@ -7,6 +7,8 @@ import {
   clearAllSearchIndexData,
   getIndexStatusBody,
   searchMediaByQuery,
+  searchTimelineMonths,
+  searchTimelineOffset,
   startBulkIndexingJob,
 } from "../services/search-service.js";
 import { cancelBulkIndexJob } from "../indexing/job-store.js";
@@ -15,6 +17,8 @@ import {
   searchIndexBodySchema,
   searchIndexQuerySchema,
   searchListQuerySchema,
+  searchTimelineOffsetQuerySchema,
+  searchTimelineQuerySchema,
 } from "../validation/search-schemas.js";
 
 export function requireAdminForFullLibraryForceIndex(
@@ -34,6 +38,31 @@ export function requireAdminForFullLibraryForceIndex(
     return;
   }
   requireAdmin(req, res, next);
+}
+
+function sendSearchFailure(
+  res: Response,
+  searchResult: { ok: false; reason: string; message?: string },
+): void {
+  if (searchResult.reason === "missing_query") {
+    sendApiError(res, 400, "Missing query parameter: q", "missing_query");
+    return;
+  }
+  if (searchResult.reason === "invalid_query") {
+    sendApiError(
+      res,
+      400,
+      searchResult.message ?? "Invalid search query",
+      "search_query_invalid",
+    );
+    return;
+  }
+  sendApiError(
+    res,
+    500,
+    searchResult.message ?? "Search failed",
+    "search_failed",
+  );
 }
 
 export const searchRouter = Router();
@@ -79,22 +108,47 @@ searchRouter.get("/index/status", (_req, res) => {
 });
 
 searchRouter.get(
+  "/timeline/offset",
+  asyncHandler(async (req, res) => {
+    const query = searchTimelineOffsetQuerySchema.parse(req.query);
+    const searchResult = await searchTimelineOffset(
+      query.q,
+      query.sortBy,
+      query.month,
+    );
+    if (!searchResult.ok) {
+      sendSearchFailure(res, searchResult);
+      return;
+    }
+    res.json({ offset: searchResult.offset });
+  }),
+);
+
+searchRouter.get(
+  "/timeline",
+  asyncHandler(async (req, res) => {
+    const query = searchTimelineQuerySchema.parse(req.query);
+    const searchResult = await searchTimelineMonths(query.q, query.sortBy);
+    if (!searchResult.ok) {
+      sendSearchFailure(res, searchResult);
+      return;
+    }
+    res.json({ months: searchResult.months });
+  }),
+);
+
+searchRouter.get(
   "/",
   asyncHandler(async (req, res) => {
     const query = searchListQuerySchema.parse(req.query);
-    const searchResult = await searchMediaByQuery(query.q ?? "");
+    const searchResult = await searchMediaByQuery(query.q, {
+      limit: query.limit,
+      offset: query.offset,
+    });
     if (!searchResult.ok) {
-      if (searchResult.reason === "missing_query") {
-        sendApiError(res, 400, "Missing query parameter: q", "missing_query");
-        return;
-      }
-      if (searchResult.reason === "invalid_query") {
-        sendApiError(res, 400, searchResult.message, "search_query_invalid");
-        return;
-      }
-      sendApiError(res, 500, searchResult.message, "search_failed");
+      sendSearchFailure(res, searchResult);
       return;
     }
-    res.json(searchResult.items);
+    res.json({ items: searchResult.items, total: searchResult.total });
   }),
 );

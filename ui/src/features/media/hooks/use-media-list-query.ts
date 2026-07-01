@@ -1,11 +1,18 @@
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { apiJson } from "@/api";
 import { MediaListQueryResponse } from "@shared";
 
 interface UseMediaListQueryOptions {
   personFilter: number | null;
   isSearchMode: boolean;
+  scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
 
 const PAGE_SIZE = 50;
@@ -15,13 +22,13 @@ type PageWithOffset = MediaListQueryResponse & { __offset: number };
 export function useMediaListQuery({
   personFilter,
   isSearchMode,
+  scrollContainerRef,
 }: UseMediaListQueryOptions) {
   const queryClient = useQueryClient();
   const [sortBy, setSortBy] = useState<"uploaded" | "taken">("taken");
   const [startOffset, setStartOffset] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const loadingMoreRef = useRef(false);
   const loadingPrevRef = useRef(false);
 
@@ -71,14 +78,17 @@ export function useMediaListQuery({
     void queryClient.invalidateQueries({ queryKey: ["media", "list"] });
   }, [queryClient]);
 
-  const jumpToOffset = useCallback((offset: number) => {
-    const aligned = Math.floor(offset / PAGE_SIZE) * PAGE_SIZE;
-    setStartOffset(aligned);
-    requestAnimationFrame(() => {
-      const container = scrollContainerRef.current;
-      if (container) container.scrollTop = 0;
-    });
-  }, []);
+  const jumpToOffset = useCallback(
+    (offset: number) => {
+      const aligned = Math.floor(offset / PAGE_SIZE) * PAGE_SIZE;
+      setStartOffset(aligned);
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current;
+        if (container) container.scrollTop = 0;
+      });
+    },
+    [scrollContainerRef],
+  );
 
   const loadMore = useCallback(async () => {
     if (
@@ -101,7 +111,7 @@ export function useMediaListQuery({
     } finally {
       loadingMoreRef.current = false;
     }
-  }, [mediaQuery]);
+  }, [mediaQuery, scrollContainerRef]);
 
   const loadPrevious = useCallback(async () => {
     if (
@@ -127,7 +137,7 @@ export function useMediaListQuery({
     } finally {
       loadingPrevRef.current = false;
     }
-  }, [mediaQuery]);
+  }, [mediaQuery, scrollContainerRef]);
 
   useEffect(() => {
     if (isSearchMode) return;
@@ -142,7 +152,7 @@ export function useMediaListQuery({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isSearchMode, loadMore]);
+  }, [isSearchMode, loadMore, scrollContainerRef]);
 
   useEffect(() => {
     if (isSearchMode || startOffset === 0) return;
@@ -157,7 +167,7 @@ export function useMediaListQuery({
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [isSearchMode, startOffset, loadPrevious]);
+  }, [isSearchMode, startOffset, loadPrevious, scrollContainerRef]);
 
   useEffect(() => {
     window.addEventListener("home-refresh", fetchItems);

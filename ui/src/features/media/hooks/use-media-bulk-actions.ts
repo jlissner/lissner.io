@@ -13,8 +13,8 @@ interface UseMediaBulkActionsOptions {
   displayItems: MediaItem[];
   selected: Set<string>;
   clearSelection: () => void;
-  searchResults: MediaItem[] | null;
-  setSearchResults: Dispatch<SetStateAction<MediaItem[] | null>>;
+  isSearchMode: boolean;
+  refetchSearch: () => void;
   setToolbarError: Dispatch<SetStateAction<string | null>>;
 }
 
@@ -23,8 +23,8 @@ export function useMediaBulkActions({
   displayItems,
   selected,
   clearSelection,
-  searchResults,
-  setSearchResults,
+  isSearchMode,
+  refetchSearch,
   setToolbarError,
 }: UseMediaBulkActionsOptions) {
   const [bulkAction, setBulkAction] = useState<
@@ -35,12 +35,9 @@ export function useMediaBulkActions({
     async (id: string) => {
       await deleteMediaById(id);
       fetchItems();
-      if (searchResults)
-        setSearchResults(
-          (prev) => prev?.filter((item) => item.id !== id) ?? null,
-        );
+      if (isSearchMode) refetchSearch();
     },
-    [fetchItems, searchResults, setSearchResults],
+    [fetchItems, isSearchMode, refetchSearch],
   );
 
   const handleBulkDelete = useCallback(
@@ -49,13 +46,9 @@ export function useMediaBulkActions({
         await deleteMediaById(id);
       }
       fetchItems();
-      if (searchResults) {
-        setSearchResults(
-          (prev) => prev?.filter((item) => !ids.includes(item.id)) ?? null,
-        );
-      }
+      if (isSearchMode) refetchSearch();
     },
-    [fetchItems, searchResults, setSearchResults],
+    [fetchItems, isSearchMode, refetchSearch],
   );
 
   const handleBulkIndex = useCallback(

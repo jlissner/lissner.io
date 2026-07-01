@@ -7,6 +7,7 @@ import {
   type RefObject,
 } from "react";
 import { apiJson } from "@/api";
+import { SearchTimelineOffsetResponse, SearchTimelineResponse } from "@shared";
 import { useMatchMaxWidth } from "../hooks/use-match-max-width";
 
 interface TimelineScrubberProps {
@@ -14,6 +15,8 @@ interface TimelineScrubberProps {
   setSortBy: (v: "uploaded" | "taken") => void;
   scrollContainerRef: RefObject<HTMLElement | null>;
   onJumpToMonth: (offset: number) => void;
+  /** When set, timeline reflects the full search result set (not just loaded pages). */
+  searchQuery?: string | null;
 }
 
 const SHORT_MONTHS = [
@@ -53,6 +56,7 @@ export function TimelineScrubber({
   setSortBy,
   scrollContainerRef,
   onJumpToMonth,
+  searchQuery,
 }: TimelineScrubberProps) {
   const [months, setMonths] = useState<string[]>([]);
   const isNarrow = useMatchMaxWidth(MOBILE_MAX_PX);
@@ -70,13 +74,23 @@ export function TimelineScrubber({
 
   useEffect(() => {
     const params = new URLSearchParams({ sortBy });
-    apiJson<{ months: string[] }>(`media/timeline?${params}`)
+    const timelinePath =
+      searchQuery != null && searchQuery.trim() !== ""
+        ? (() => {
+            params.set("q", searchQuery.trim());
+            return "search/timeline";
+          })()
+        : "media/timeline";
+    apiJson<SearchTimelineResponse>(`${timelinePath}?${params}`)
       .then((data) => setMonths(data.months))
       .catch((err) => {
-        console.error({ err, sortBy }, "Timeline months fetch failed");
+        console.error(
+          { err, sortBy, searchQuery },
+          "Timeline months fetch failed",
+        );
         setMonths([]);
       });
-  }, [sortBy]);
+  }, [sortBy, searchQuery]);
 
   useEffect(() => {
     if (!isNarrow) setDrawerOpen(false);
@@ -199,20 +213,33 @@ export function TimelineScrubber({
         }
       }
 
-      const params = new URLSearchParams({ sortBy, month: monthKey });
-      apiJson<{ offset: number }>(`media/timeline/offset?${params}`)
+      const offsetParams = new URLSearchParams({ sortBy, month: monthKey });
+      const offsetPath =
+        searchQuery != null && searchQuery.trim() !== ""
+          ? (() => {
+              offsetParams.set("q", searchQuery.trim());
+              return "search/timeline/offset";
+            })()
+          : "media/timeline/offset";
+      apiJson<SearchTimelineOffsetResponse>(`${offsetPath}?${offsetParams}`)
         .then(({ offset }) => {
           onJumpToMonth(offset);
           closeDrawerIfNarrow();
         })
         .catch((err) => {
           console.error(
-            { err, sortBy, monthKey },
+            { err, sortBy, monthKey, searchQuery },
             "Timeline offset fetch failed",
           );
         });
     },
-    [scrollContainerRef, sortBy, onJumpToMonth, closeDrawerIfNarrow],
+    [
+      scrollContainerRef,
+      sortBy,
+      onJumpToMonth,
+      closeDrawerIfNarrow,
+      searchQuery,
+    ],
   );
 
   if (months.length === 0) return null;

@@ -171,15 +171,49 @@ async function evalAstOrdered(ast: SearchQueryAst): Promise<string[]> {
   }
 }
 
-type SearchMediaByQueryResult =
-  | { ok: true; items: SearchResultItem[] }
+type SearchQueryFailure =
   | ServiceFailure<"missing_query">
   | { ok: false; reason: "invalid_query"; message: string }
   | { ok: false; reason: "search_failed"; message: string };
 
-export async function searchMediaByQuery(
+type SearchMediaByQueryResult =
+  | { ok: true; items: SearchResultItem[]; total: number }
+  | SearchQueryFailure;
+
+type SearchTimelineResult = { ok: true; months: string[] } | SearchQueryFailure;
+
+type SearchTimelineOffsetResult =
+  | { ok: true; offset: number }
+  | SearchQueryFailure;
+
+type MediaSortBy = "uploaded" | "taken";
+
+function monthKeyForItem(
+  item: { uploadedAt: string; dateTaken?: string | null },
+  sortBy: MediaSortBy,
+): string {
+  const iso =
+    sortBy === "uploaded"
+      ? item.uploadedAt
+      : (item.dateTaken ?? item.uploadedAt);
+  return iso.slice(0, 7);
+}
+
+function visibleItemsInSearchOrder(
+  mediaIds: string[],
+): ReturnType<typeof db.getMediaByIds> {
+  const items = db
+    .getMediaByIds(mediaIds)
+    .filter((x) => (x.hideFromGallery ?? 0) === 0);
+  const order = new Map(mediaIds.map((id, i) => [id, i]));
+  return [...items].sort(
+    (a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999),
+  );
+}
+
+async function resolveSearchMediaIds(
   q: string,
-): Promise<SearchMediaByQueryResult> {
+): Promise<{ ok: true; mediaIds: string[] } | SearchQueryFailure> {
   const query = q.trim();
   if (!query) {
     return { ok: false, reason: "missing_query" };
@@ -192,23 +226,76 @@ export async function searchMediaByQuery(
 
   try {
     const mediaIds = await evalAstOrdered(parsed.ast);
-    if (mediaIds.length === 0) {
-      return { ok: true, items: [] };
-    }
-
-    const personNames = db.getPersonNames();
-    const items = db
-      .getMediaByIds(mediaIds)
-      .filter((x) => (x.hideFromGallery ?? 0) === 0);
-    const order = new Map(mediaIds.map((id, i) => [id, i]));
-    items.sort((a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999));
-
-    return { ok: true, items: mapSearchItems(items, personNames) };
+    return { ok: true, mediaIds };
   } catch (err) {
     logger.error({ err }, "Search error");
     const message = err instanceof Error ? err.message : "Search failed";
     return { ok: false, reason: "search_failed", message };
   }
+}
+
+export async function searchMediaByQuery(
+  q: string,
+  pagination: { limit: number; offset: number },
+): Promise<SearchMediaByQueryResult> {
+  const resolved = await resolveSearchMediaIds(q);
+  if (!resolved.ok) return resolved;
+
+  const { mediaIds } = resolved;
+  if (mediaIds.length === 0) {
+    return { ok: true, items: [], total: 0 };
+  }
+
+  const ordered = visibleItemsInSearchOrder(mediaIds);
+  const page = ordered.slice(
+    pagination.offset,
+    pagination.offset + pagination.limit,
+  );
+  const personNames = db.getPersonNames();
+  return {
+    ok: true,
+    items: mapSearchItems(page, personNames),
+    total: ordered.length,
+  };
+}
+
+export async function searchTimelineMonths(
+  q: string,
+  sortBy: MediaSortBy,
+): Promise<SearchTimelineResult> {
+  const resolved = await resolveSearchMediaIds(q);
+  if (!resolved.ok) return resolved;
+
+  if (resolved.mediaIds.length === 0) {
+    return { ok: true, months: [] };
+  }
+
+  const monthSet = visibleItemsInSearchOrder(resolved.mediaIds).reduce(
+    (acc, item) => {
+      acc.add(monthKeyForItem(item, sortBy));
+      return acc;
+    },
+    new Set<string>(),
+  );
+  return {
+    ok: true,
+    months: [...monthSet].sort((a, b) => b.localeCompare(a)),
+  };
+}
+
+export async function searchTimelineOffset(
+  q: string,
+  sortBy: MediaSortBy,
+  monthKey: string,
+): Promise<SearchTimelineOffsetResult> {
+  const resolved = await resolveSearchMediaIds(q);
+  if (!resolved.ok) return resolved;
+
+  const ordered = visibleItemsInSearchOrder(resolved.mediaIds);
+  const index = ordered.findIndex(
+    (item) => monthKeyForItem(item, sortBy) === monthKey,
+  );
+  return { ok: true, offset: index >= 0 ? index : 0 };
 }
 
 function mapSearchItems(

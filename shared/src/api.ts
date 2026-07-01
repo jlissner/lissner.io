@@ -5,7 +5,7 @@
 
 import { SyncProgressMessage } from "./activity.js";
 
-/** GET /api/search?q= */
+/** GET /api/search?q=&limit=&offset= */
 type MediaListFields = {
   id: string;
   filename: string;
@@ -27,7 +27,16 @@ export type MediaListItem = MediaListFields & {
   people?: string[];
 };
 
-export type SearchMediaResponse = SearchResultItem[];
+export type SearchMediaResponse = {
+  items: SearchResultItem[];
+  total: number;
+};
+
+/** GET /api/search/timeline?q=&sortBy= */
+export type SearchTimelineResponse = { months: string[] };
+
+/** GET /api/search/timeline/offset?q=&sortBy=&month= */
+export type SearchTimelineOffsetResponse = { offset: number };
 
 /** Same enrichment as list media; search omits some optional location fields. */
 export type SearchResultItem = MediaListItem;

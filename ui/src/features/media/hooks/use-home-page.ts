@@ -11,26 +11,32 @@ interface UseHomePageOptions {
 
 export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
   const activity = useActivity();
-  const mediaSearch = useMediaSearch();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const mediaSearch = useMediaSearch({ scrollContainerRef });
   const mediaList = useMediaListQuery({
     personFilter: personFilter ?? null,
-    isSearchMode: mediaSearch.searchResults !== null,
+    isSearchMode: mediaSearch.isSearchMode,
+    scrollContainerRef,
   });
   const fetchItems = mediaList.fetchItems;
   const mediaSelection = useMediaSelection();
   const bulkActions = useMediaBulkActions({
     fetchItems: mediaList.fetchItems,
-    displayItems: mediaSearch.searchResults ?? mediaList.items,
+    displayItems: mediaSearch.isSearchMode
+      ? mediaSearch.items
+      : mediaList.items,
     selected: mediaSelection.selected,
     clearSelection: mediaSelection.clearSelection,
-    searchResults: mediaSearch.searchResults,
-    setSearchResults: mediaSearch.setSearchResults,
+    isSearchMode: mediaSearch.isSearchMode,
+    refetchSearch: mediaSearch.refetchSearch,
     setToolbarError: mediaSearch.setToolbarError,
   });
   const prevActivityBusy = useRef(false);
 
   const indexPolling = activity?.index.inProgress ?? false;
-  const displayItems = mediaSearch.searchResults ?? mediaList.items;
+  const displayItems = mediaSearch.isSearchMode
+    ? mediaSearch.items
+    : mediaList.items;
   const hasUnindexed = displayItems.some((item) => !item.indexed);
 
   useEffect(() => {
@@ -43,23 +49,35 @@ export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
     const busy = indexBusy || syncBusy;
     if (prevActivityBusy.current && !busy) {
       fetchItems();
+      if (mediaSearch.isSearchMode) mediaSearch.refetchSearch();
     }
     prevActivityBusy.current = busy;
-  }, [activity, fetchItems]);
+  }, [
+    activity,
+    fetchItems,
+    mediaSearch.isSearchMode,
+    mediaSearch.refetchSearch,
+  ]);
 
   return {
     fetchItems,
     displayItems,
     hasUnindexed,
-    loading: mediaList.loading,
-    loadingMore: mediaList.loadingMore,
-    isSearchMode: mediaSearch.searchResults !== null,
+    loading: mediaSearch.isSearchMode ? mediaSearch.loading : mediaList.loading,
+    loadingMore: mediaSearch.isSearchMode
+      ? mediaSearch.loadingMore
+      : mediaList.loadingMore,
+    isSearchMode: mediaSearch.isSearchMode,
+    searchTotal: mediaSearch.total,
     items: mediaList.items,
     total: mediaList.total,
-    sentinelRef: mediaList.sentinelRef,
-    scrollContainerRef: mediaList.scrollContainerRef,
+    sentinelRef: mediaSearch.isSearchMode
+      ? mediaSearch.sentinelRef
+      : mediaList.sentinelRef,
+    scrollContainerRef,
     searchQuery: mediaSearch.searchQuery,
     setSearchQuery: mediaSearch.setSearchQuery,
+    activeSearchQuery: mediaSearch.activeQuery,
     handleSearch: mediaSearch.handleSearch,
     searching: mediaSearch.searching,
     handleIndex: bulkActions.handleIndex,
@@ -81,10 +99,13 @@ export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
     handleBulkDeleteWrapped: bulkActions.handleBulkDeleteWrapped,
     handleBulkIndexWrapped: bulkActions.handleBulkIndexWrapped,
     bulkAction: bulkActions.bulkAction,
-    jumpToOffset: mediaList.jumpToOffset,
+    jumpToOffset: mediaSearch.isSearchMode
+      ? mediaSearch.jumpToOffset
+      : mediaList.jumpToOffset,
     startOffset: mediaList.startOffset,
     topSentinelRef: mediaList.topSentinelRef,
     loadingPrevious: mediaList.loadingPrevious,
     hasPreviousPage: mediaList.hasPreviousPage,
+    refetchSearch: mediaSearch.refetchSearch,
   };
 }

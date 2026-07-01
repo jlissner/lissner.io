@@ -19,11 +19,13 @@ export function HomePage() {
     isSearchMode,
     items,
     total,
+    searchTotal,
     sentinelRef,
     topSentinelRef,
     scrollContainerRef,
     searchQuery,
     setSearchQuery,
+    activeSearchQuery,
     handleSearch,
     searching,
     handleIndex,
@@ -44,13 +46,15 @@ export function HomePage() {
     fetchItems,
     hasUnindexed,
     jumpToOffset,
+    refetchSearch,
   } = useHomePage();
 
   const handleBulkDateDone = useCallback(() => {
     setBulkDateOpen(false);
     clearSelection();
     fetchItems();
-  }, [clearSelection, fetchItems]);
+    if (isSearchMode) refetchSearch();
+  }, [clearSelection, fetchItems, isSearchMode, refetchSearch]);
 
   const handleBulkTagsClose = useCallback(() => {
     setBulkTagsOpen(false);
@@ -59,7 +63,8 @@ export function HomePage() {
 
   const handleBulkTagsChanged = useCallback(() => {
     fetchItems();
-  }, [fetchItems]);
+    if (isSearchMode) refetchSearch();
+  }, [fetchItems, isSearchMode, refetchSearch]);
 
   return (
     <div className="home-page">
@@ -97,32 +102,37 @@ export function HomePage() {
           )}
           <MediaList
             items={displayItems}
-            loading={loading && !isSearchMode}
+            loading={loading}
             sortBy={sortBy}
             selected={selected}
             setSelected={setSelected}
             selectionMode={selectionMode}
             onCheckboxToggle={handleCheckboxToggle}
             onToggleSelectAllForDay={toggleSelectAllForDay}
-            onUpdate={fetchItems}
+            onUpdate={() => {
+              fetchItems();
+              if (isSearchMode) refetchSearch();
+            }}
           />
-          {!isSearchMode && items.length < total && total > 0 && (
-            <div
-              ref={sentinelRef}
-              className="u-flex-shrink-0"
-              style={{ height: 20 }}
-              aria-hidden
-            />
-          )}
-          {loadingMore && !isSearchMode && (
-            <p className="empty">Loading more…</p>
-          )}
+          {(isSearchMode
+            ? displayItems.length < searchTotal
+            : items.length < total) &&
+            (isSearchMode ? searchTotal : total) > 0 && (
+              <div
+                ref={sentinelRef}
+                className="u-flex-shrink-0"
+                style={{ height: 20 }}
+                aria-hidden
+              />
+            )}
+          {loadingMore && <p className="empty">Loading more…</p>}
         </div>
         <TimelineScrubber
           sortBy={sortBy}
           setSortBy={setSortBy}
           scrollContainerRef={scrollContainerRef}
           onJumpToMonth={jumpToOffset}
+          searchQuery={activeSearchQuery}
         />
       </div>
       {bulkDateOpen && selected.size > 0 && (

@@ -19,7 +19,7 @@ vi.mock("../embeddings.js", () => ({
 
 import * as db from "../db/media.js";
 import * as embeddings from "../embeddings.js";
-import { searchMediaByQuery } from "./search-service.js";
+import { searchMediaByQuery, searchTimelineMonths } from "./search-service.js";
 
 describe("searchMediaByQuery", () => {
   beforeEach(() => {
@@ -36,7 +36,7 @@ describe("searchMediaByQuery", () => {
   });
 
   it("returns missing_query for blank input", async () => {
-    expect(await searchMediaByQuery("   ")).toEqual({
+    expect(await searchMediaByQuery("   ", { limit: 50, offset: 0 })).toEqual({
       ok: false,
       reason: "missing_query",
     });
@@ -76,9 +76,10 @@ describe("searchMediaByQuery", () => {
       new Set(["m-person", "m-emb"]),
     );
 
-    const r = await searchMediaByQuery("holiday");
+    const r = await searchMediaByQuery("holiday", { limit: 50, offset: 0 });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
+    expect(r.total).toBe(2);
     expect(r.items.map((i) => i.id)).toContain("m-person");
     expect(r.items.map((i) => i.id)).toContain("m-emb");
     expect(embeddings.getEmbedding).toHaveBeenCalledWith("holiday");
@@ -104,7 +105,7 @@ describe("searchMediaByQuery", () => {
     vi.mocked(db.getImagePeople).mockReturnValue([]);
     vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
 
-    const r = await searchMediaByQuery("(#a OR #b)");
+    const r = await searchMediaByQuery("(#a OR #b)", { limit: 50, offset: 0 });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     const ids = r.items.map((i) => i.id).sort();
@@ -113,7 +114,7 @@ describe("searchMediaByQuery", () => {
   });
 
   it("returns invalid_query for broken structured syntax", async () => {
-    const r = await searchMediaByQuery("(#oops");
+    const r = await searchMediaByQuery("(#oops", { limit: 50, offset: 0 });
     expect(r.ok).toBe(false);
     if (r.ok) return;
     expect(r.reason).toBe("invalid_query");
@@ -138,7 +139,7 @@ describe("searchMediaByQuery", () => {
     vi.mocked(db.getImagePeople).mockReturnValue([7]);
     vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
 
-    const r = await searchMediaByQuery("@joelissner");
+    const r = await searchMediaByQuery("@joelissner", { limit: 50, offset: 0 });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.items.map((i) => i.id)).toContain("v1");
@@ -180,9 +181,70 @@ describe("searchMediaByQuery", () => {
     vi.mocked(db.getImagePeople).mockReturnValue([]);
     vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
 
-    const r = await searchMediaByQuery("@alpha AND NOT @beta");
+    const r = await searchMediaByQuery("@alpha AND NOT @beta", {
+      limit: 50,
+      offset: 0,
+    });
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.items.map((i) => i.id)).toEqual(["m1"]);
+  });
+
+  it("paginates tag search results", async () => {
+    vi.mocked(db.getMediaIdsForTag).mockReturnValue(["m1", "m2", "m3"]);
+    vi.mocked(db.getMediaByIds).mockImplementation((ids: string[]) =>
+      ids.map((id) => ({
+        id,
+        filename: `${id}.jpg`,
+        originalName: `${id}.jpg`,
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "2024-03-15T12:00:00.000Z",
+        dateTaken: "2024-01-10T12:00:00.000Z",
+        hideFromGallery: 0,
+      })),
+    );
+    vi.mocked(db.getImagePeople).mockReturnValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+
+    const page1 = await searchMediaByQuery("#tag", { limit: 2, offset: 0 });
+    expect(page1.ok).toBe(true);
+    if (!page1.ok) return;
+    expect(page1.total).toBe(3);
+    expect(page1.items.map((i) => i.id)).toEqual(["m1", "m2"]);
+
+    const page2 = await searchMediaByQuery("#tag", { limit: 2, offset: 2 });
+    expect(page2.ok).toBe(true);
+    if (!page2.ok) return;
+    expect(page2.items.map((i) => i.id)).toEqual(["m3"]);
+  });
+
+  it("searchTimelineMonths returns months for all matches", async () => {
+    vi.mocked(db.getMediaIdsForTag).mockReturnValue(["m1", "m2"]);
+    vi.mocked(db.getMediaByIds).mockReturnValue([
+      {
+        id: "m1",
+        filename: "m1.jpg",
+        originalName: "m1.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "2024-03-15T12:00:00.000Z",
+        dateTaken: "2024-01-10T12:00:00.000Z",
+        hideFromGallery: 0,
+      },
+      {
+        id: "m2",
+        filename: "m2.jpg",
+        originalName: "m2.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "2023-12-01T12:00:00.000Z",
+        hideFromGallery: 0,
+      },
+    ]);
+    const r = await searchTimelineMonths("#tag", "taken");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.months).toEqual(["2024-01", "2023-12"]);
   });
 });

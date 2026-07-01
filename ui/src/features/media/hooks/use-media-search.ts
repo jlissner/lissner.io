@@ -1,51 +1,153 @@
-import { useMutation } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { apiJson, errorMessage } from "@/api";
-import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
-import type { SearchMediaResponse } from "@shared";
+import { SearchMediaResponse } from "@shared";
 
-export function useMediaSearch() {
+const PAGE_SIZE = 50;
+
+type SearchPage = SearchMediaResponse & { __offset: number };
+
+interface UseMediaSearchOptions {
+  scrollContainerRef: RefObject<HTMLElement | null>;
+}
+
+export function useMediaSearch({ scrollContainerRef }: UseMediaSearchOptions) {
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<MediaItem[] | null>(null);
-  const [searching, setSearching] = useState(false);
+  const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const [toolbarError, setToolbarError] = useState<string | null>(null);
+  const [startOffset, setStartOffset] = useState(0);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const loadingMoreRef = useRef(false);
 
-  const searchMutation = useMutation({
-    mutationFn: async (q: string) =>
-      apiJson<SearchMediaResponse>(`search?q=${encodeURIComponent(q)}`),
-    onMutate: () => {
-      setSearching(true);
+  const searchQueryResult = useInfiniteQuery({
+    queryKey: ["media", "search", { q: activeQuery, startOffset }],
+    enabled: activeQuery != null,
+    initialPageParam: startOffset,
+    queryFn: async ({ pageParam }) => {
+      const params = new URLSearchParams({
+        q: activeQuery!,
+        limit: String(PAGE_SIZE),
+        offset: String(pageParam),
+      });
+      const data = await apiJson<SearchMediaResponse>(`search?${params}`);
+      return { ...data, __offset: pageParam } as SearchPage;
     },
-    onSuccess: (data) => {
-      setSearchResults(data);
-      setToolbarError(null);
+    getNextPageParam: (lastPage, allPages) => {
+      const loaded = allPages.reduce((n, p) => n + p.items.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
     },
-    onError: (err: unknown) => {
-      setToolbarError(errorMessage(err, "Search failed"));
-    },
-    onSettled: () => {
-      setSearching(false);
-    },
+    select: (data) => ({
+      ...data,
+      pages: [...data.pages].sort(
+        (a, b) => (a as SearchPage).__offset - (b as SearchPage).__offset,
+      ),
+    }),
   });
+
+  const items = searchQueryResult.data?.pages.flatMap((p) => p.items) ?? [];
+  const total = searchQueryResult.data?.pages[0]?.total ?? 0;
+  const searching =
+    searchQueryResult.isFetching && !searchQueryResult.isFetchingNextPage;
+  const loading = searchQueryResult.isLoading;
+  const loadingMore = searchQueryResult.isFetchingNextPage;
+  const isSearchMode = activeQuery != null;
+
+  const refetchSearch = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["media", "search"] });
+  }, [queryClient]);
 
   const handleSearch = useCallback(async () => {
     const query = searchQuery.trim();
     if (!query) {
-      setSearchResults(null);
+      setActiveQuery(null);
+      setStartOffset(0);
       setToolbarError(null);
       return;
     }
-    await searchMutation.mutateAsync(query);
-  }, [searchQuery, searchMutation]);
+    setStartOffset(0);
+    setActiveQuery(query);
+    setToolbarError(null);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (searchQueryResult.isError) {
+      setToolbarError(errorMessage(searchQueryResult.error, "Search failed"));
+    }
+  }, [searchQueryResult.isError, searchQueryResult.error]);
+
+  const jumpToOffset = useCallback(
+    (offset: number) => {
+      const aligned = Math.floor(offset / PAGE_SIZE) * PAGE_SIZE;
+      setStartOffset(aligned);
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current;
+        if (container) container.scrollTop = 0;
+      });
+    },
+    [scrollContainerRef],
+  );
+
+  const loadMore = useCallback(async () => {
+    if (
+      loadingMoreRef.current ||
+      !searchQueryResult.hasNextPage ||
+      searchQueryResult.isFetchingNextPage
+    ) {
+      return;
+    }
+    loadingMoreRef.current = true;
+    const container = scrollContainerRef.current;
+    const scrollTop = container?.scrollTop ?? 0;
+    try {
+      await searchQueryResult.fetchNextPage();
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (container) container.scrollTop = scrollTop;
+        });
+      });
+    } finally {
+      loadingMoreRef.current = false;
+    }
+  }, [searchQueryResult, scrollContainerRef]);
+
+  useEffect(() => {
+    if (!isSearchMode) return;
+    const el = sentinelRef.current;
+    const container = scrollContainerRef.current;
+    if (!el || !container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) void loadMore();
+      },
+      { root: container, rootMargin: "200px", threshold: 0 },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [isSearchMode, loadMore, scrollContainerRef]);
 
   return {
     searchQuery,
     setSearchQuery,
-    searchResults,
-    setSearchResults,
+    activeQuery,
+    items,
+    total,
+    isSearchMode,
     searching,
+    loading,
+    loadingMore,
     toolbarError,
     setToolbarError,
     handleSearch,
+    refetchSearch,
+    jumpToOffset,
+    sentinelRef,
+    startOffset,
   };
 }
