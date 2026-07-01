@@ -32,3 +32,4 @@ setIfMissing("SERVER_PORT", "0");
 setIfMissing("SESSION_SECRET", "bdd-session-secret");
 setIfMissing("SES_FROM_EMAIL", "ses@test.local");
 setIfMissing("UI_PORT", "0");
+setIfMissing("NODE_OPTIONS", "--import ./scripts/resolve-shared.mjs");

@@ -6,7 +6,8 @@
     "features/testing/**/*.feature",
     ".grimoire/changes/**/*.feature",
     ".grimoire/changes/**/*.md",
-    "ui/src/vite-env.d.ts"
+    "ui/src/vite-env.d.ts",
+    "scripts/resolve-shared-hooks.mjs"
   ],
   "ignoreBinaries": ["ollama"]
 }
