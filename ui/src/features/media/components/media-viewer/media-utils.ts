@@ -3,7 +3,7 @@ import { prependApiUrl } from "@/api";
 import {
   isImageMime,
   isPdfMime,
-  isTextMime,
+  isTextDocument,
   isVideoMime,
 } from "../../lib/media-mime.js";
 import { MediaListItem } from "@shared";
@@ -83,8 +83,8 @@ export function isVideo(mimeType: string): boolean {
   return isVideoMime(mimeType);
 }
 
-export function isText(mimeType: string): boolean {
-  return isTextMime(mimeType);
+export function isText(mimeType: string, originalName: string): boolean {
+  return isTextDocument({ mimeType, originalName });
 }
 
 export function isPdf(mimeType: string): boolean {

@@ -426,7 +426,7 @@ export function MediaViewerContent({
               }}
             />
           )}
-          {isText(item.mimeType) && (
+          {isText(item.mimeType, item.originalName) && (
             <pre
               style={{
                 backgroundColor: "var(--color-bg-elevated)",
@@ -448,7 +448,7 @@ export function MediaViewerContent({
           {!isImage(item.mimeType, item.originalName) &&
             !isVideo(item.mimeType) &&
             !pixelMp &&
-            !isText(item.mimeType) &&
+            !isText(item.mimeType, item.originalName) &&
             !isPdf(item.mimeType) && (
               <p style={{ color: "var(--color-text-muted)" }}>
                 Preview not available.{" "}

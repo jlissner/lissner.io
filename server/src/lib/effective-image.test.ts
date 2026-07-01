@@ -6,6 +6,7 @@ import {
   isPixelMotionPhotoExtension,
   sniffMediaMimeFromBuffer,
 } from "./effective-image.js";
+import { isTextDocument } from "@shared";
 
 describe("isPixelMotionPhotoExtension", () => {
   it("detects .mp sidecar extension", () => {
@@ -53,6 +54,21 @@ describe("documentMimeForExtension", () => {
   it("returns null for unknown extensions", () => {
     expect(documentMimeForExtension(".jpg")).toBe(null);
     expect(documentMimeForExtension("")).toBe(null);
+  });
+
+  it("maps org files as plain text", () => {
+    expect(documentMimeForExtension(".org")).toBe("text/plain");
+  });
+});
+
+describe("isTextDocument", () => {
+  it("detects text by extension when MIME is generic", () => {
+    expect(
+      isTextDocument({
+        mimeType: "application/octet-stream",
+        originalName: "notes.org",
+      }),
+    ).toBe(true);
   });
 });
 

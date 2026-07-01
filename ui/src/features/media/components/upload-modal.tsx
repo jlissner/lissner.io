@@ -238,7 +238,7 @@ export function UploadModal({ onClose, onUploadComplete }: UploadModalProps) {
               <input
                 type="file"
                 multiple
-                accept="image/*,video/*,application/pdf,text/plain,text/markdown,text/csv,application/json,application/xml,.pdf,.txt,.md,.markdown,.csv,.json,.xml,.log"
+                accept="image/*,video/*,application/pdf,text/*,application/json,application/xml,.pdf,.txt,.md,.markdown,.org,.csv,.json,.xml,.yaml,.yml,.log,.rst,.adoc,.asciidoc"
                 onChange={handleInputChange}
                 className="u-sr-only"
                 id="upload-modal-input"

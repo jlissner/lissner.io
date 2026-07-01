@@ -1,5 +1,6 @@
 import path from "path";
 import { open } from "fs/promises";
+import { documentMimeForExtension as sharedDocumentMimeForExtension } from "@shared";
 
 /**
  * Google Pixel motion-photo companion files sometimes use a `.mp` extension with a generic MIME
@@ -171,24 +172,9 @@ export async function sniffAndPersistMediaMime(
   };
 }
 
-const DOCUMENT_MIME_BY_EXTENSION: Record<string, string> = {
-  ".pdf": "application/pdf",
-  ".txt": "text/plain",
-  ".text": "text/plain",
-  ".log": "text/plain",
-  ".md": "text/markdown",
-  ".markdown": "text/markdown",
-  ".csv": "text/csv",
-  ".json": "application/json",
-  ".xml": "application/xml",
-  ".html": "text/html",
-  ".htm": "text/html",
-  ".css": "text/css",
-};
-
 /** Browsers often send no/generic MIME for documents; recover it from the extension. */
 export function documentMimeForExtension(ext: string): string | null {
-  return DOCUMENT_MIME_BY_EXTENSION[ext.toLowerCase()] ?? null;
+  return sharedDocumentMimeForExtension(ext);
 }
 
 /**

@@ -22,8 +22,9 @@ import {
 } from "../faces.js";
 import { mediaDir } from "../config/paths.js";
 import { isEffectiveImageItem } from "../lib/effective-image.js";
-import { isTextMime, isVideoMime } from "../lib/media-mime.js";
+import { isVideoMime } from "../lib/media-mime.js";
 import { computeAndStoreHash } from "../services/duplicate-detection.js";
+import { isTextDocument } from "@shared";
 
 interface MediaItem {
   id: string;
@@ -43,7 +44,7 @@ async function getTextForItem(
   item: MediaItem,
   imagePersonIds?: Map<string, number[]>,
 ): Promise<string> {
-  if (isTextMime(item.mimeType)) {
+  if (isTextDocument(item)) {
     const filePath = path.join(mediaDir, item.filename);
     return readFile(filePath, "utf-8");
   }

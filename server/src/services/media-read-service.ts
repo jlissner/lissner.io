@@ -3,13 +3,13 @@ import { logger } from "../logger.js";
 import path from "path";
 import sharp from "sharp";
 import {
+  isTextDocument,
   type AdminThumbnailRepairResponse,
-  MediaListQueryResponse,
+  type MediaListQueryResponse,
 } from "@shared";
 import * as db from "../db/media.js";
 import { extractFacesFromImage } from "../faces.js";
 import { mediaDir, thumbnailsDir } from "../config/paths.js";
-import { isTextMime, isVideoMime } from "../lib/media-mime.js";
 import {
   effectiveImageResponseMimeType,
   isEffectiveImageItem,
@@ -24,6 +24,7 @@ import {
   tryRestoreMediaFromBackup,
   tryRestoreVideoThumbnailFromBackup,
 } from "../s3/sync-restore.js";
+import { isVideoMime } from "../lib/media-mime.js";
 
 type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
 
@@ -207,12 +208,12 @@ export async function getMediaPreviewFile(mediaId: string) {
     return { ok: false as const, reason: "file_missing" as const };
   }
   const filePath = path.join(mediaDir, item.filename);
-  const { mimeTypePreview } = await sniffAndPersistMediaMime(
+  const { mimeTypePreview, mimeTypeForKind } = await sniffAndPersistMediaMime(
     item,
     filePath,
     db.updateMediaMimeType,
   );
-  if (isVideoMime(mimeTypePreview)) {
+  if (isVideoMime(mimeTypeForKind)) {
     return {
       ok: true as const,
       kind: "file" as const,
@@ -220,13 +221,25 @@ export async function getMediaPreviewFile(mediaId: string) {
       path: filePath,
     };
   }
-  const rotated = await sharp(filePath).rotate().toBuffer();
-  return {
-    ok: true as const,
-    kind: "buffer" as const,
-    mimeType: mimeTypePreview,
-    buffer: rotated,
-  };
+  const isImageKind =
+    mimeTypeForKind.startsWith("image/") ||
+    (isPixelMotionPhotoExtension(item.originalName) &&
+      !isVideoMime(mimeTypeForKind));
+  if (!isImageKind) {
+    return { ok: false as const, reason: "bad_type" as const };
+  }
+  try {
+    const rotated = await sharp(filePath).rotate().toBuffer();
+    return {
+      ok: true as const,
+      kind: "buffer" as const,
+      mimeType: mimeTypePreview,
+      buffer: rotated,
+    };
+  } catch (err) {
+    logger.error({ err, mediaId }, "Image preview generation error");
+    return { ok: false as const, reason: "preview_failed" as const };
+  }
 }
 
 export function getMediaDetailsEnriched(mediaId: string) {
@@ -273,7 +286,7 @@ export async function readTextMediaContent(mediaId: string) {
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
-  if (!isTextMime(item.mimeType)) {
+  if (!isTextDocument(item)) {
     return { ok: false as const, reason: "not_text" as const };
   }
   const ok = await ensureLocalMediaFile(item);

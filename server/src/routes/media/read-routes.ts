@@ -141,7 +141,24 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
   const out = await getMediaPreviewFile(id);
 
   if (!out.ok) {
-    sendApiError(res, 404, "Not found", "not_found");
+    if (out.reason === "not_found") {
+      sendApiError(res, 404, "Not found", "not_found");
+      return;
+    }
+    if (out.reason === "file_missing") {
+      sendApiError(res, 404, "File not found", "file_missing");
+      return;
+    }
+    if (out.reason === "bad_type") {
+      sendApiError(
+        res,
+        400,
+        "Preview only supported for images and videos",
+        "thumbnail_bad_type",
+      );
+      return;
+    }
+    sendApiError(res, 500, "Failed to generate preview", "thumbnail_failed");
     return;
   }
 

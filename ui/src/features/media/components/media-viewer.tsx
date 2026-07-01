@@ -45,7 +45,7 @@ export function MediaViewer({
 
   useEffect(() => {
     if (!item) return;
-    if (isText(item.mimeType)) {
+    if (isText(item.mimeType, item.originalName)) {
       apiFetch(`/media/${item.id}/content`)
         .then((res) =>
           res.ok ? res.text() : Promise.reject(new Error("Failed to load")),
