@@ -90,5 +90,6 @@ export function usePeoplePage(onUpdate?: () => void) {
     handleDeletePerson: mutations.handleDeletePerson,
     addModalOpen: uiState.addModalOpen,
     setAddModalOpen: uiState.setAddModalOpen,
+    setPreviewMedia: previewState.setPreviewMedia,
   };
 }

@@ -46,6 +46,7 @@ export function HomePage() {
     hasUnindexed,
     jumpToOffset,
     refetchSearch,
+    handleDelete,
   } = useHomePage();
 
   const handleBulkDateDone = useCallback(() => {
@@ -111,6 +112,7 @@ export function HomePage() {
               fetchItems();
               if (isSearchMode) refetchSearch();
             }}
+            onDelete={handleDelete}
           />
           {(isSearchMode
             ? displayItems.length < searchTotal

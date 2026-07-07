@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { errorMessage } from "@/api";
 import { useToast } from "@/components/ui/toast";
+import { deleteMediaById } from "@/features/media/api";
 import { PeopleSidebar } from "./people-sidebar";
 import { PeopleDetail } from "./people-detail";
 import { PeopleEditModal } from "./people-edit-modal";
@@ -46,6 +47,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     previewLoading,
     viewingMedia,
     setViewingMedia,
+    setPreviewMedia,
     menuOpen,
     setMenuOpen,
     editModal,
@@ -78,6 +80,16 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
       setMatchFacesBusy(false);
     }
   }, [fetchPeople, onUpdate, showToast]);
+
+  const handleDeleteMedia = useCallback(
+    async (id: string) => {
+      await deleteMediaById(id);
+      setPreviewMedia((prev) => prev.filter((m) => m.id !== id));
+      setViewingMedia(null);
+      onUpdate?.();
+    },
+    [onUpdate, setPreviewMedia, setViewingMedia],
+  );
 
   const handleSelectPerson = useCallback(
     (id: number | null) => {
@@ -179,6 +191,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
           onSelectItem={setViewingMedia}
           onClose={() => setViewingMedia(null)}
           onUpdate={onUpdate}
+          onDelete={handleDeleteMedia}
         />
       )}
       {matchFacesOpen && (

@@ -14,6 +14,7 @@ interface MediaListProps {
   onCheckboxToggle: (id: string) => void;
   onToggleSelectAllForDay: (groupItems: MediaItem[]) => void;
   onUpdate?: () => void;
+  onDelete?: (id: string) => Promise<void>;
 }
 
 export function MediaList({
@@ -26,6 +27,7 @@ export function MediaList({
   onCheckboxToggle,
   onToggleSelectAllForDay,
   onUpdate,
+  onDelete,
 }: MediaListProps) {
   const [viewing, setViewing] = useState<MediaItem | null>(null);
   const { dismissViewing } = useMediaViewerUrlSync({
@@ -52,6 +54,7 @@ export function MediaList({
         onSelectItem={setViewing}
         onClose={dismissViewing}
         onUpdate={onUpdate}
+        onDelete={onDelete}
       />
       {groups.map(({ dateKey, dateLabel, items: groupItems }) => {
         const ids = groupItems.map((i) => i.id);

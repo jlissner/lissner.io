@@ -20,6 +20,10 @@ interface MediaViewerActionsProps {
   showDetailsToggle?: boolean;
   detailsOpen?: boolean;
   onToggleDetails?: () => void;
+  onDownload?: () => void;
+  onDelete?: () => void;
+  deleting?: boolean;
+  deleteError?: string | null;
 }
 
 export function MediaViewerActions({
@@ -42,6 +46,10 @@ export function MediaViewerActions({
   showDetailsToggle,
   detailsOpen,
   onToggleDetails,
+  onDownload,
+  onDelete,
+  deleting = false,
+  deleteError,
 }: MediaViewerActionsProps) {
   return (
     <div className="viewer-content__actions">
@@ -99,9 +107,40 @@ export function MediaViewerActions({
           {detailsOpen ? "Hide details" : "Details & tags"}
         </Button>
       )}
-      <Button onClick={onClose} variant="secondary" size="sm">
+      {onDownload && (
+        <Button
+          type="button"
+          onClick={onDownload}
+          variant="secondary"
+          size="sm"
+        >
+          Download
+        </Button>
+      )}
+      {onDelete && (
+        <Button
+          type="button"
+          onClick={onDelete}
+          variant="danger"
+          size="sm"
+          disabled={deleting}
+        >
+          {deleting ? "Deleting…" : "Delete"}
+        </Button>
+      )}
+      <Button
+        onClick={onClose}
+        variant="secondary"
+        size="sm"
+        disabled={deleting}
+      >
         Close
       </Button>
+      {deleteError != null && (
+        <p role="alert" className="viewer-content__rotate-error u-text-danger">
+          {deleteError}
+        </p>
+      )}
       {rotateError != null && (
         <p role="alert" className="viewer-content__rotate-error u-text-danger">
           {rotateError}

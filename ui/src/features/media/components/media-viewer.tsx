@@ -11,6 +11,7 @@ interface MediaViewerProps {
   onSelectItem: (item: MediaItem) => void;
   onClose: () => void;
   onUpdate?: () => void;
+  onDelete?: (id: string) => Promise<void>;
 }
 
 export function MediaViewer({
@@ -19,6 +20,7 @@ export function MediaViewer({
   onSelectItem,
   onClose,
   onUpdate,
+  onDelete,
 }: MediaViewerProps) {
   const [textContent, setTextContent] = useState<string | null>(null);
   const [textError, setTextError] = useState<string | null>(null);
@@ -85,6 +87,7 @@ export function MediaViewer({
           setTaggingMode={setTaggingMode}
           onClose={onClose}
           onUpdate={onUpdate}
+          onDelete={onDelete}
         />
       </ModalPanel>
     </ModalRoot>

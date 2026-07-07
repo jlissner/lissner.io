@@ -4,8 +4,9 @@ import {
   type Dispatch,
   type SetStateAction,
 } from "react";
-import { errorMessage, prependApiUrl } from "@/api";
+import { errorMessage } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
+import { downloadMediaFile } from "../lib/download-media-file";
 import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
 
 interface UseMediaBulkActionsOptions {
@@ -82,10 +83,7 @@ export function useMediaBulkActions({
     ids.forEach((id) => {
       const item = displayItems.find((entry) => entry.id === id);
       if (!item) return;
-      const link = document.createElement("a");
-      link.href = prependApiUrl(`/media/${id}`);
-      link.download = item.originalName;
-      link.click();
+      downloadMediaFile(id, item.originalName);
     });
   }, [selected, displayItems]);
 

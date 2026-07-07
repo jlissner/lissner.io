@@ -21,6 +21,7 @@ import { FullscreenImage } from "./fullscreen-image";
 import type { MediaItem } from "./media-utils";
 import { errorMessage, prependApiUrl } from "@/api";
 import { postRotateMedia90 } from "@/features/media/api";
+import { downloadMediaFile } from "@/features/media/lib/download-media-file";
 import { useIsMobile } from "@/hooks/use-is-mobile";
 
 interface MediaViewerContentProps {
@@ -35,6 +36,7 @@ interface MediaViewerContentProps {
   setTaggingMode: (fn: (prev: boolean) => boolean) => void;
   onClose: () => void;
   onUpdate?: () => void;
+  onDelete?: (id: string) => Promise<void>;
 }
 
 export function MediaViewerContent({
@@ -49,6 +51,7 @@ export function MediaViewerContent({
   setTaggingMode,
   onClose,
   onUpdate,
+  onDelete,
 }: MediaViewerContentProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const pixelMp = isPixelMotionPhotoBasename(item.originalName);
@@ -68,6 +71,8 @@ export function MediaViewerContent({
   const [previewRev, setPreviewRev] = useState(0);
   const [rotating, setRotating] = useState(false);
   const [rotateError, setRotateError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [videoTaggingOpen, setVideoTaggingOpen] = useState(false);
 
   const isMobile = useIsMobile();
@@ -85,6 +90,8 @@ export function MediaViewerContent({
     setFullscreen(false);
     setPreviewRev(0);
     setRotateError(null);
+    setDeleteError(null);
+    setDeleting(false);
     setVideoTaggingOpen(false);
   }, [item.id]);
 
@@ -131,6 +138,25 @@ export function MediaViewerContent({
       setRotating(false);
     }
   }, [item.id, onUpdate]);
+
+  const handleDelete = useCallback(async () => {
+    if (!onDelete) return;
+    if (!confirm(`Delete "${item.originalName}"?`)) return;
+    setDeleteError(null);
+    setDeleting(true);
+    try {
+      await onDelete(item.id);
+      onClose();
+    } catch (err) {
+      setDeleteError(errorMessage(err, "Could not delete file"));
+    } finally {
+      setDeleting(false);
+    }
+  }, [item.id, item.originalName, onClose, onDelete]);
+
+  const handleDownload = useCallback(() => {
+    downloadMediaFile(item.id, item.originalName);
+  }, [item.id, item.originalName]);
 
   const handleImageClick = useMediaViewerImageClick(
     imgRef,
@@ -262,6 +288,10 @@ export function MediaViewerContent({
         showDetailsToggle={isMobile}
         detailsOpen={detailsOpen}
         onToggleDetails={() => setDetailsOpen((o) => !o)}
+        onDownload={handleDownload}
+        onDelete={onDelete ? () => void handleDelete() : undefined}
+        deleting={deleting}
+        deleteError={deleteError}
       />
       {videoTaggingOpen && (
         <MediaViewerVideoTaggingModal
