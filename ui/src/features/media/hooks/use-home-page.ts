@@ -1,20 +1,22 @@
 import { useEffect, useRef } from "react";
 import { useActivity } from "@/components/activity/activity-provider";
+import { useGalleryUrlState } from "./use-gallery-url";
 import { useMediaBulkActions } from "./use-media-bulk-actions";
 import { useMediaListQuery } from "./use-media-list-query";
 import { useMediaSearch } from "./use-media-search";
 import { useMediaSelection } from "./use-media-selection";
 
-interface UseHomePageOptions {
-  personFilter?: number | null;
-}
-
-export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
+export function useHomePage() {
   const activity = useActivity();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const mediaSearch = useMediaSearch({ scrollContainerRef });
+  const galleryUrl = useGalleryUrlState();
+  const mediaSearch = useMediaSearch({
+    scrollContainerRef,
+    activeQuery: galleryUrl.q,
+  });
   const mediaList = useMediaListQuery({
-    personFilter: personFilter ?? null,
+    personFilter: galleryUrl.personId,
+    sortBy: galleryUrl.sortBy,
     isSearchMode: mediaSearch.isSearchMode,
     scrollContainerRef,
   });
@@ -75,16 +77,16 @@ export function useHomePage({ personFilter }: UseHomePageOptions = {}) {
       ? mediaSearch.sentinelRef
       : mediaList.sentinelRef,
     scrollContainerRef,
-    searchQuery: mediaSearch.searchQuery,
-    setSearchQuery: mediaSearch.setSearchQuery,
+    committedSearchQuery: galleryUrl.q ?? "",
+    onCommitSearch: galleryUrl.setQ,
     activeSearchQuery: mediaSearch.activeQuery,
-    handleSearch: mediaSearch.handleSearch,
     searching: mediaSearch.searching,
     handleIndex: bulkActions.handleIndex,
     indexPolling,
     toolbarError: mediaSearch.toolbarError,
-    sortBy: mediaList.sortBy,
-    setSortBy: mediaList.setSortBy,
+    sortBy: galleryUrl.sortBy,
+    setSortBy: galleryUrl.setSortBy,
+    personFilter: galleryUrl.personId,
     handleDelete: bulkActions.handleDelete,
     handleBulkDelete: bulkActions.handleBulkDelete,
     handleBulkIndex: bulkActions.handleBulkIndex,

@@ -15,12 +15,14 @@ type SearchPage = SearchMediaResponse & { __offset: number };
 
 interface UseMediaSearchOptions {
   scrollContainerRef: RefObject<HTMLElement | null>;
+  activeQuery: string | null;
 }
 
-export function useMediaSearch({ scrollContainerRef }: UseMediaSearchOptions) {
+export function useMediaSearch({
+  scrollContainerRef,
+  activeQuery,
+}: UseMediaSearchOptions) {
   const queryClient = useQueryClient();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeQuery, setActiveQuery] = useState<string | null>(null);
   const [toolbarError, setToolbarError] = useState<string | null>(null);
   const [startOffset, setStartOffset] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -63,18 +65,9 @@ export function useMediaSearch({ scrollContainerRef }: UseMediaSearchOptions) {
     void queryClient.invalidateQueries({ queryKey: ["media", "search"] });
   }, [queryClient]);
 
-  const handleSearch = useCallback(async () => {
-    const query = searchQuery.trim();
-    if (!query) {
-      setActiveQuery(null);
-      setStartOffset(0);
-      setToolbarError(null);
-      return;
-    }
+  useEffect(() => {
     setStartOffset(0);
-    setActiveQuery(query);
-    setToolbarError(null);
-  }, [searchQuery]);
+  }, [activeQuery]);
 
   useEffect(() => {
     if (searchQueryResult.isError) {
@@ -133,8 +126,6 @@ export function useMediaSearch({ scrollContainerRef }: UseMediaSearchOptions) {
   }, [isSearchMode, loadMore, scrollContainerRef]);
 
   return {
-    searchQuery,
-    setSearchQuery,
     activeQuery,
     items,
     total,
@@ -144,7 +135,6 @@ export function useMediaSearch({ scrollContainerRef }: UseMediaSearchOptions) {
     loadingMore,
     toolbarError,
     setToolbarError,
-    handleSearch,
     refetchSearch,
     jumpToOffset,
     sentinelRef,

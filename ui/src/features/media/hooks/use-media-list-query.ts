@@ -8,9 +8,11 @@ import {
 } from "react";
 import { apiJson } from "@/api";
 import { MediaListQueryResponse } from "@shared";
+import { type GallerySortBy } from "../lib/gallery-url";
 
 interface UseMediaListQueryOptions {
   personFilter: number | null;
+  sortBy: GallerySortBy;
   isSearchMode: boolean;
   scrollContainerRef: RefObject<HTMLDivElement | null>;
 }
@@ -21,11 +23,11 @@ type PageWithOffset = MediaListQueryResponse & { __offset: number };
 
 export function useMediaListQuery({
   personFilter,
+  sortBy,
   isSearchMode,
   scrollContainerRef,
 }: UseMediaListQueryOptions) {
   const queryClient = useQueryClient();
-  const [sortBy, setSortBy] = useState<"uploaded" | "taken">("taken");
   const [startOffset, setStartOffset] = useState(0);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const topSentinelRef = useRef<HTMLDivElement>(null);
@@ -140,6 +142,10 @@ export function useMediaListQuery({
   }, [mediaQuery, scrollContainerRef]);
 
   useEffect(() => {
+    setStartOffset(0);
+  }, [personFilter, sortBy]);
+
+  useEffect(() => {
     if (isSearchMode) return;
     const el = sentinelRef.current;
     const container = scrollContainerRef.current;
@@ -186,7 +192,6 @@ export function useMediaListQuery({
     topSentinelRef,
     scrollContainerRef,
     sortBy,
-    setSortBy,
     jumpToOffset,
     startOffset,
   };

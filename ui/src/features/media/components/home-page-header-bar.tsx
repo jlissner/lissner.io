@@ -2,9 +2,8 @@ import { HomePageToolbar } from "./home-page-toolbar";
 import { MediaListBulkActions } from "./media-viewer/media-list-bulk-actions";
 
 interface HomePageHeaderBarProps {
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
-  onSearch: () => void;
+  committedSearchQuery: string;
+  onCommitSearch: (query: string) => void;
   searching: boolean;
   onIndex: (force: boolean) => void;
   indexPolling: boolean;
@@ -22,9 +21,8 @@ interface HomePageHeaderBarProps {
 }
 
 export function HomePageHeaderBar({
-  searchQuery,
-  setSearchQuery,
-  onSearch,
+  committedSearchQuery,
+  onCommitSearch,
   searching,
   onIndex,
   indexPolling,
@@ -57,9 +55,8 @@ export function HomePageHeaderBar({
           />
         ) : (
           <HomePageToolbar
-            searchQuery={searchQuery}
-            setSearchQuery={setSearchQuery}
-            onSearch={onSearch}
+            committedSearchQuery={committedSearchQuery}
+            onCommitSearch={onCommitSearch}
             searching={searching}
             onIndex={onIndex}
             indexPolling={indexPolling}

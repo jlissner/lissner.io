@@ -19,9 +19,8 @@ import {
 } from "../lib/search-autocomplete";
 
 interface HomePageToolbarProps {
-  searchQuery: string;
-  setSearchQuery: (v: string) => void;
-  onSearch: () => void;
+  committedSearchQuery: string;
+  onCommitSearch: (query: string) => void;
   searching: boolean;
   onIndex: (force: boolean) => void;
   indexPolling: boolean;
@@ -69,15 +68,15 @@ function SearchQueryHelpIcon() {
 }
 
 export function HomePageToolbar({
-  searchQuery,
-  setSearchQuery,
-  onSearch,
+  committedSearchQuery,
+  onCommitSearch,
   searching,
   onIndex,
   indexPolling,
   toolbarError,
   hasUnindexed,
 }: HomePageToolbarProps) {
+  const [draftQuery, setDraftQuery] = useState(committedSearchQuery);
   const inputRef = useRef<HTMLInputElement>(null);
   const pendingCursorRef = useRef<number | null>(null);
   const blurHideRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -85,6 +84,14 @@ export function HomePageToolbar({
   const [cursor, setCursor] = useState(0);
   const [focused, setFocused] = useState(false);
   const [highlight, setHighlight] = useState(0);
+
+  useEffect(() => {
+    setDraftQuery(committedSearchQuery);
+  }, [committedSearchQuery]);
+
+  const runSearch = useCallback(() => {
+    onCommitSearch(draftQuery);
+  }, [draftQuery, onCommitSearch]);
 
   const tagsQuery = useQuery({
     queryKey: ["mediaTags"],
@@ -104,8 +111,8 @@ export function HomePageToolbar({
   }, []);
 
   const activeToken = useMemo(
-    () => parseActiveSearchToken(searchQuery, cursor),
-    [searchQuery, cursor],
+    () => parseActiveSearchToken(draftQuery, cursor),
+    [draftQuery, cursor],
   );
 
   const suggestionItems: SearchSuggestionItem[] = useMemo(() => {
@@ -140,7 +147,7 @@ export function HomePageToolbar({
       el.setSelectionRange(pos, pos);
       pendingCursorRef.current = null;
     }
-  }, [searchQuery]);
+  }, [draftQuery]);
 
   useLayoutEffect(() => {
     setHighlight(0);
@@ -150,19 +157,19 @@ export function HomePageToolbar({
     (item: SearchSuggestionItem) => {
       const el = inputRef.current;
       const cur = el?.selectionStart ?? cursor;
-      const token = parseActiveSearchToken(searchQuery, cur);
+      const token = parseActiveSearchToken(draftQuery, cur);
       if (!token) return;
       const replacement =
         item.type === "tag" ? `#${item.label}` : `@${item.handle}`;
       const next =
-        searchQuery.slice(0, token.at) +
+        draftQuery.slice(0, token.at) +
         replacement +
-        searchQuery.slice(token.end) +
+        draftQuery.slice(token.end) +
         " ";
       pendingCursorRef.current = token.at + replacement.length + 1;
-      setSearchQuery(next);
+      setDraftQuery(next);
     },
-    [cursor, searchQuery, setSearchQuery],
+    [cursor, draftQuery],
   );
 
   const clearBlurTimer = useCallback(() => {
@@ -185,7 +192,7 @@ export function HomePageToolbar({
         <div className="toolbar__search-inline">
           <Button
             className="toolbar__search-submit"
-            onClick={onSearch}
+            onClick={runSearch}
             disabled={searching}
             size="sm"
           >
@@ -197,15 +204,15 @@ export function HomePageToolbar({
                 ref={inputRef}
                 type="search"
                 placeholder="@joeLissner AND @ellieLissner AND NOT water"
-                value={searchQuery}
+                value={draftQuery}
                 onChange={(e) => {
-                  setSearchQuery(e.target.value);
+                  setDraftQuery(e.target.value);
                   syncCursor(e.currentTarget);
                 }}
                 onKeyDown={(e) => {
                   if (!open) {
                     if (e.key === "Enter") {
-                      onSearch();
+                      runSearch();
                     }
                     return;
                   }

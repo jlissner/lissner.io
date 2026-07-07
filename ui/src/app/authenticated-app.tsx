@@ -14,6 +14,7 @@ import { GlobalActivityOverlay } from "@/components/activity/global-activity-ove
 import { UploadModal } from "@/features/media/components/upload-modal";
 import { useAuth } from "@/features/auth/hooks/use-auth";
 import { NAV_ITEMS, pageToPath, pathToPage, type PageId } from "@/config/nav";
+import { searchStringForPageNav } from "@/features/media/lib/gallery-url";
 
 const HomePage = lazy(async () => {
   const m = await import("@/features/media/components/home-page");
@@ -160,7 +161,9 @@ export function AuthenticatedApp() {
               <NavMenuItem
                 key={item.id}
                 active={page === item.id}
-                onClick={() => navigateTo(item.id)}
+                onClick={() =>
+                  navigateTo(item.id, searchStringForPageNav(item.id))
+                }
               >
                 {item.label}
               </NavMenuItem>

@@ -23,10 +23,9 @@ export function HomePage() {
     sentinelRef,
     topSentinelRef,
     scrollContainerRef,
-    searchQuery,
-    setSearchQuery,
+    committedSearchQuery,
+    onCommitSearch,
     activeSearchQuery,
-    handleSearch,
     searching,
     handleIndex,
     indexPolling,
@@ -69,9 +68,8 @@ export function HomePage() {
   return (
     <div className="home-page">
       <HomePageHeaderBar
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        onSearch={handleSearch}
+        committedSearchQuery={committedSearchQuery}
+        onCommitSearch={onCommitSearch}
         searching={searching}
         onIndex={handleIndex}
         indexPolling={indexPolling}
