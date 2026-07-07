@@ -373,7 +373,6 @@ export function MediaViewerContent({
                   setPixelIsVideo(true);
                   setTaggingMode(() => false);
                 }}
-                videoStyle={{ maxWidth: "100%", maxHeight: "100%" }}
               />
             </ViewerStillImageFrame>
           )}

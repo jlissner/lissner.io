@@ -33,7 +33,7 @@ export function PixelMpOrImageVideoPreview({
       <video
         src={src}
         controls
-        className={className}
+        className={className ?? imgClassName}
         style={videoStyle ?? imgStyle}
         aria-label={alt}
       />
