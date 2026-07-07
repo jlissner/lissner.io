@@ -66,7 +66,7 @@ export function MediaViewerContent({
   );
   const [detailsRefreshKey, setDetailsRefreshKey] = useState(0);
   const [showDetectedFaces, setShowDetectedFaces] = useState(true);
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
   const [previewRev, setPreviewRev] = useState(0);
   const [rotating, setRotating] = useState(false);
@@ -82,11 +82,16 @@ export function MediaViewerContent({
       ? prependApiUrl(`/media/${item.id}/preview?r=${previewRev}`)
       : prependApiUrl(`/media/${item.id}/preview`);
 
+  const fullResUrl =
+    previewRev > 0
+      ? prependApiUrl(`/media/${item.id}?r=${previewRev}`)
+      : prependApiUrl(`/media/${item.id}`);
+
   useEffect(() => {
     setPixelIsVideo(false);
     setMotionPairView("video");
     setShowDetectedFaces(true);
-    setDetailsOpen(false);
+    setDetailsOpen(true);
     setFullscreen(false);
     setPreviewRev(0);
     setRotateError(null);
@@ -181,6 +186,26 @@ export function MediaViewerContent({
     onClearReassigning: () => setReassigningFace(null),
   });
 
+  const isItemImage =
+    isImage(item.mimeType, item.originalName) &&
+    !pixelIsVideo &&
+    (!hasMotionPair || motionPairView === "still");
+
+  const canOpenFullscreen =
+    isItemImage &&
+    !taggingMode &&
+    !assigningFace &&
+    !reassigningFace &&
+    !deleting;
+
+  const openFullscreen = useCallback(() => {
+    setFullscreen(true);
+  }, []);
+
+  const handleImageDoubleClick = useCallback(() => {
+    if (canOpenFullscreen) openFullscreen();
+  }, [canOpenFullscreen, openFullscreen]);
+
   const swipeRef = useRef<HTMLDivElement>(null);
   const gesturesEnabled =
     isMobile &&
@@ -196,11 +221,6 @@ export function MediaViewerContent({
     onNext: nextItem && !fullscreen ? goNext : null,
   });
 
-  const isItemImage =
-    isImage(item.mimeType, item.originalName) &&
-    !pixelIsVideo &&
-    (!hasMotionPair || motionPairView === "still");
-
   const motionPairBlocksRotate =
     item.motionCompanionId != null && item.motionCompanionId !== "";
 
@@ -213,6 +233,14 @@ export function MediaViewerContent({
 
   const showDetails = !isMobile || detailsOpen;
 
+  const viewerImageClassName = [
+    "viewer-content__image",
+    taggingMode ? "viewer-content__image--tagging" : "",
+    canOpenFullscreen ? "viewer-content__image--zoomable" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const canTagFaces =
     isImage(item.mimeType, item.originalName) &&
     (!pixelMp || !pixelIsVideo) &&
@@ -222,7 +250,7 @@ export function MediaViewerContent({
     <div onClick={(e) => e.stopPropagation()} className="viewer-content">
       {fullscreen && (
         <FullscreenImage
-          src={previewUrl}
+          src={fullResUrl}
           alt={item.originalName}
           onClose={() => setFullscreen(false)}
         />
@@ -288,6 +316,8 @@ export function MediaViewerContent({
         showDetailsToggle={isMobile}
         detailsOpen={detailsOpen}
         onToggleDetails={() => setDetailsOpen((o) => !o)}
+        canFullscreen={canOpenFullscreen}
+        onToggleFullscreen={openFullscreen}
         onDownload={handleDownload}
         onDelete={onDelete ? () => void handleDelete() : undefined}
         deleting={deleting}
@@ -312,7 +342,7 @@ export function MediaViewerContent({
               controls
               autoPlay
               playsInline
-              style={{ maxWidth: "100%", maxHeight: "85vh" }}
+              className="viewer-content__video"
             >
               <source src={motionVideoUrl} />
             </video>
@@ -320,88 +350,84 @@ export function MediaViewerContent({
           {isImage(item.mimeType, item.originalName) &&
             !pixelMp &&
             (!hasMotionPair || motionPairView === "still") && (
-              <div style={{ position: "relative", display: "inline-block" }}>
-                <img
-                  ref={imgRef}
-                  src={previewUrl}
-                  alt={item.originalName}
-                  onClick={handleImageClick}
-                  style={{
-                    maxWidth: "100%",
-                    maxHeight: "85vh",
-                    objectFit: "contain",
-                    cursor: taggingMode ? "crosshair" : "default",
-                  }}
-                />
-                {taggingMode && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      pointerEvents: "none",
-                    }}
-                  >
-                    <MediaViewerFaceOverlay
-                      imgRef={imgRef}
-                      faces={faces}
-                      assigningFace={assigningFace}
-                      onAssigningFaceChange={setAssigningFace}
-                      showDetected={showDetectedFaces}
-                      onDismissAutoTagged={(pid) => {
-                        void handleDismissAutoTagged(pid);
+              <div className="viewer-content__image-wrap">
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <img
+                    ref={imgRef}
+                    src={previewUrl}
+                    alt={item.originalName}
+                    className={viewerImageClassName}
+                    onClick={handleImageClick}
+                    onDoubleClick={handleImageDoubleClick}
+                  />
+                  {taggingMode && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        pointerEvents: "none",
                       }}
-                    />
-                  </div>
-                )}
+                    >
+                      <MediaViewerFaceOverlay
+                        imgRef={imgRef}
+                        faces={faces}
+                        assigningFace={assigningFace}
+                        onAssigningFaceChange={setAssigningFace}
+                        showDetected={showDetectedFaces}
+                        onDismissAutoTagged={(pid) => {
+                          void handleDismissAutoTagged(pid);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           {pixelMp &&
             !isVideo(item.mimeType) &&
             (!hasMotionPair || motionPairView === "still") && (
-              <div style={{ position: "relative", display: "inline-block" }}>
-                <PixelMpOrImageVideoPreview
-                  src={previewUrl}
-                  alt={item.originalName}
-                  imgRef={imgRef}
-                  onImgClick={handleImageClick}
-                  onSwitchToVideo={() => {
-                    setPixelIsVideo(true);
-                    setTaggingMode(() => false);
-                  }}
-                  imgStyle={{
-                    maxWidth: "100%",
-                    maxHeight: "85vh",
-                    objectFit: "contain",
-                    cursor: taggingMode ? "crosshair" : "default",
-                  }}
-                  videoStyle={{ maxWidth: "100%", maxHeight: "85vh" }}
-                />
-                {taggingMode && !pixelIsVideo && (
-                  <div
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      pointerEvents: "none",
+              <div className="viewer-content__image-wrap">
+                <div style={{ position: "relative", display: "inline-block" }}>
+                  <PixelMpOrImageVideoPreview
+                    src={previewUrl}
+                    alt={item.originalName}
+                    imgRef={imgRef}
+                    imgClassName={viewerImageClassName}
+                    onImgClick={handleImageClick}
+                    onImgDoubleClick={handleImageDoubleClick}
+                    onSwitchToVideo={() => {
+                      setPixelIsVideo(true);
+                      setTaggingMode(() => false);
                     }}
-                  >
-                    <MediaViewerFaceOverlay
-                      imgRef={imgRef}
-                      faces={faces}
-                      assigningFace={assigningFace}
-                      onAssigningFaceChange={setAssigningFace}
-                      showDetected={showDetectedFaces}
-                      onDismissAutoTagged={(pid) => {
-                        void handleDismissAutoTagged(pid);
+                    videoStyle={{ maxWidth: "100%", maxHeight: "100%" }}
+                  />
+                  {taggingMode && !pixelIsVideo && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        pointerEvents: "none",
                       }}
-                    />
-                  </div>
-                )}
+                    >
+                      <MediaViewerFaceOverlay
+                        imgRef={imgRef}
+                        faces={faces}
+                        assigningFace={assigningFace}
+                        onAssigningFaceChange={setAssigningFace}
+                        showDetected={showDetectedFaces}
+                        onDismissAutoTagged={(pid) => {
+                          void handleDismissAutoTagged(pid);
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           {taggingMode && facesLoading && (
@@ -438,7 +464,7 @@ export function MediaViewerContent({
               controls
               autoPlay
               playsInline
-              style={{ maxWidth: "100%", maxHeight: "85vh" }}
+              className="viewer-content__video"
             >
               <source src={previewUrl} type={item.mimeType} />
             </video>

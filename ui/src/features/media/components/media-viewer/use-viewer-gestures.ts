@@ -16,17 +16,20 @@ interface ViewerGesturesOptions {
   enabled: boolean;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
+  onCenter?: (() => void) | null;
 }
 
 /** Swipe and edge-tap navigation for the photo area on touch devices. */
 export function useViewerGestures(
   ref: RefObject<HTMLElement | null>,
-  { enabled, onPrev, onNext }: ViewerGesturesOptions,
+  { enabled, onPrev, onNext, onCenter }: ViewerGesturesOptions,
 ): void {
   const onPrevRef = useRef(onPrev);
   const onNextRef = useRef(onNext);
+  const onCenterRef = useRef(onCenter);
   onPrevRef.current = onPrev;
   onNextRef.current = onNext;
+  onCenterRef.current = onCenter;
 
   useEffect(() => {
     const el = ref.current;
@@ -79,6 +82,7 @@ export function useViewerGestures(
       if (relX < rect.width * TAP_ZONE_FRACTION) onPrevRef.current?.();
       else if (relX > rect.width * (1 - TAP_ZONE_FRACTION))
         onNextRef.current?.();
+      else onCenterRef.current?.();
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });

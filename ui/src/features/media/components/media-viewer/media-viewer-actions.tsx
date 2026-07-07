@@ -20,6 +20,8 @@ interface MediaViewerActionsProps {
   showDetailsToggle?: boolean;
   detailsOpen?: boolean;
   onToggleDetails?: () => void;
+  canFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
   onDownload?: () => void;
   onDelete?: () => void;
   deleting?: boolean;
@@ -46,6 +48,8 @@ export function MediaViewerActions({
   showDetailsToggle,
   detailsOpen,
   onToggleDetails,
+  canFullscreen,
+  onToggleFullscreen,
   onDownload,
   onDelete,
   deleting = false,
@@ -105,6 +109,16 @@ export function MediaViewerActions({
           size="sm"
         >
           {detailsOpen ? "Hide details" : "Details & tags"}
+        </Button>
+      )}
+      {canFullscreen && onToggleFullscreen && (
+        <Button
+          type="button"
+          onClick={onToggleFullscreen}
+          variant="secondary"
+          size="sm"
+        >
+          Fullscreen
         </Button>
       )}
       {onDownload && (

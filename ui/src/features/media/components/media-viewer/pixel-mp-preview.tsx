@@ -11,7 +11,9 @@ export function PixelMpOrImageVideoPreview({
   imgStyle,
   videoStyle,
   imgRef,
+  imgClassName,
   onImgClick,
+  onImgDoubleClick,
   onSwitchToVideo,
 }: {
   src: string;
@@ -20,7 +22,9 @@ export function PixelMpOrImageVideoPreview({
   imgStyle?: CSSProperties;
   videoStyle?: CSSProperties;
   imgRef?: Ref<HTMLImageElement>;
+  imgClassName?: string;
   onImgClick?: (e: MouseEvent<HTMLImageElement>) => void;
+  onImgDoubleClick?: (e: MouseEvent<HTMLImageElement>) => void;
   onSwitchToVideo?: () => void;
 }) {
   const [useVideo, setUseVideo] = useState(false);
@@ -40,9 +44,10 @@ export function PixelMpOrImageVideoPreview({
       ref={imgRef}
       src={src}
       alt={alt}
-      className={className}
+      className={imgClassName ?? className}
       style={imgStyle}
       onClick={onImgClick}
+      onDoubleClick={onImgDoubleClick}
       onError={() => {
         setUseVideo(true);
         onSwitchToVideo?.();
