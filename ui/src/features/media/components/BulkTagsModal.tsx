@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   ModalActions,
@@ -8,8 +8,8 @@ import {
   ModalRoot,
   ModalTitle,
 } from "@/components/ui/modal";
-import { bulkAddMediaTags, bulkRemoveMediaTags, listMediaTags } from "../api";
-import { filterTagSuggestions } from "../lib/search-autocomplete";
+import { bulkAddMediaTags, bulkRemoveMediaTags } from "../api";
+import { TagAddInput } from "./TagAddInput";
 
 interface BulkTagsModalProps {
   mediaIds: string[];
@@ -27,21 +27,6 @@ export function BulkTagsModal({
   const [tagDraft, setTagDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const tagsQuery = useQuery({
-    queryKey: ["mediaTags"],
-    queryFn: listMediaTags,
-    staleTime: 60_000,
-  });
-
-  const suggestions = useMemo(() => {
-    const existing = tagsQuery.data?.tags ?? [];
-    const draft = tagDraft.trim().toLowerCase();
-    if (!draft) return [];
-    return filterTagSuggestions(existing, draft).filter(
-      (tag) => !appliedTags.includes(tag),
-    );
-  }, [tagDraft, tagsQuery.data?.tags, appliedTags]);
 
   const applyTag = useCallback(
     async (raw: string) => {
@@ -133,35 +118,15 @@ export function BulkTagsModal({
             ))}
           </div>
           <div className="viewer-details__tag-add">
-            <input
-              type="text"
-              className="viewer-details__datetime-input"
+            <TagAddInput
               value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addDraftTag();
-                }
-              }}
-              placeholder="Add tag (e.g. summer2025)"
+              onChange={setTagDraft}
+              onAdd={() => addDraftTag()}
+              excludeTags={appliedTags}
               disabled={saving}
-              aria-label="New tag"
-              list="bulk-tags-suggestions"
+              saving={saving}
+              suggestionsListId="bulk-tags-suggestions"
             />
-            <datalist id="bulk-tags-suggestions">
-              {suggestions.map((tag) => (
-                <option key={tag} value={tag} />
-              ))}
-            </datalist>
-            <button
-              type="button"
-              className="btn btn--secondary btn--sm"
-              onClick={() => addDraftTag()}
-              disabled={saving}
-            >
-              {saving ? "Saving…" : "Add"}
-            </button>
           </div>
           {error && <p className="bulk-date__error">{error}</p>}
         </ModalBody>

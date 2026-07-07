@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { formatLocalDateTimeMediumShort } from "@/lib/local-datetime.js";
 import { getMediaDetails, patchMediaDateTaken, putMediaTags } from "../../api";
+import { TagAddInput } from "../TagAddInput";
 import type { MediaItem } from "./media-utils";
 import { MediaDetailsApiResponse, MediaPatchResponse } from "@shared";
 type MediaDetails = MediaDetailsApiResponse;
@@ -340,29 +341,15 @@ export function MediaViewerDetails({
             ))}
           </div>
           <div className="viewer-details__tag-add">
-            <input
-              type="text"
-              className="viewer-details__datetime-input"
+            <TagAddInput
               value={tagDraft}
-              onChange={(e) => setTagDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  addDraftTag();
-                }
-              }}
-              placeholder="Add tag (e.g. summer2025)"
+              onChange={setTagDraft}
+              onAdd={addDraftTag}
+              excludeTags={workingTags}
               disabled={tagsSaving}
-              aria-label="New tag"
+              saving={tagsSaving}
+              suggestionsListId="viewer-tag-suggestions"
             />
-            <button
-              type="button"
-              className="btn btn--secondary btn--sm"
-              onClick={addDraftTag}
-              disabled={tagsSaving}
-            >
-              {tagsSaving ? "Saving…" : "Add"}
-            </button>
           </div>
           {tagsError && (
             <p className="viewer-details__muted u-text-danger">{tagsError}</p>
