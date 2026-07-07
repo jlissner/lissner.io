@@ -5,6 +5,11 @@ import {
   useRef,
   useState,
 } from "react";
+import {
+  clampScrollOffset,
+  normalizedClickAnchor,
+  type NormalizedAnchor,
+} from "./fullscreen-scroll";
 
 interface FullscreenImageProps {
   src: string;
@@ -12,25 +17,10 @@ interface FullscreenImageProps {
   onClose: () => void;
 }
 
-type ClickAnchor = { x: number; y: number };
-
-function clampScrollOffset(
-  anchorFraction: number,
-  contentSize: number,
-  viewportSize: number,
-): number {
-  if (contentSize <= viewportSize) {
-    return 0;
-  }
-  const centered = anchorFraction * contentSize - viewportSize / 2;
-  const max = contentSize - viewportSize;
-  return Math.max(0, Math.min(centered, max));
-}
-
 function scrollNativeViewToAnchor(
   container: HTMLDivElement,
   img: HTMLImageElement,
-  anchor: ClickAnchor,
+  anchor: NormalizedAnchor,
 ): void {
   const apply = (): void => {
     container.scrollLeft = clampScrollOffset(
@@ -61,7 +51,7 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
   const [nativeSize, setNativeSize] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
-  const pendingAnchorRef = useRef<ClickAnchor | null>(null);
+  const pendingAnchorRef = useRef<NormalizedAnchor | null>(null);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -92,15 +82,11 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
         setNativeSize(false);
         return;
       }
-      const rect = e.currentTarget.getBoundingClientRect();
-      if (rect.width <= 0 || rect.height <= 0) {
-        setNativeSize(true);
-        return;
-      }
-      pendingAnchorRef.current = {
-        x: (e.clientX - rect.left) / rect.width,
-        y: (e.clientY - rect.top) / rect.height,
-      };
+      pendingAnchorRef.current = normalizedClickAnchor(
+        e.clientX,
+        e.clientY,
+        e.currentTarget.getBoundingClientRect(),
+      );
       setNativeSize(true);
     },
     [nativeSize],

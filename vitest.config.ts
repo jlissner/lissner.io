@@ -7,6 +7,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
+      "@": path.resolve(__dirname, "ui/src"),
       "@shared": path.resolve(__dirname, "shared/src/index.ts"),
     },
   },

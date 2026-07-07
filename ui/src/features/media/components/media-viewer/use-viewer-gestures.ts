@@ -1,4 +1,9 @@
 import { useEffect, useRef, type RefObject } from "react";
+import {
+  isTapGesture,
+  resolveEdgeTapNav,
+  resolveSwipeNav,
+} from "./viewer-gesture-math";
 
 const SWIPE_THRESHOLD = 50;
 const TAP_MOVE_THRESHOLD = 12;
@@ -16,20 +21,17 @@ interface ViewerGesturesOptions {
   enabled: boolean;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
-  onCenter?: (() => void) | null;
 }
 
 /** Swipe and edge-tap navigation for the photo area on touch devices. */
 export function useViewerGestures(
   ref: RefObject<HTMLElement | null>,
-  { enabled, onPrev, onNext, onCenter }: ViewerGesturesOptions,
+  { enabled, onPrev, onNext }: ViewerGesturesOptions,
 ): void {
   const onPrevRef = useRef(onPrev);
   const onNextRef = useRef(onNext);
-  const onCenterRef = useRef(onCenter);
   onPrevRef.current = onPrev;
   onNextRef.current = onNext;
-  onCenterRef.current = onCenter;
 
   useEffect(() => {
     const el = ref.current;
@@ -59,30 +61,28 @@ export function useViewerGestures(
       const dt = Date.now() - touchStart.current.t;
       touchStart.current = null;
 
-      const absDx = Math.abs(dx);
-      const absDy = Math.abs(dy);
-
-      if (absDx >= SWIPE_THRESHOLD && absDx > absDy) {
-        if (dx < 0) onNextRef.current?.();
-        else onPrevRef.current?.();
-        return;
-      }
-
-      if (
-        absDx > TAP_MOVE_THRESHOLD ||
-        absDy > TAP_MOVE_THRESHOLD ||
-        dt > TAP_TIME_THRESHOLD
-      ) {
-        return;
-      }
-
-      const x = t.clientX;
-      const rect = el.getBoundingClientRect();
-      const relX = x - rect.left;
-      if (relX < rect.width * TAP_ZONE_FRACTION) onPrevRef.current?.();
-      else if (relX > rect.width * (1 - TAP_ZONE_FRACTION))
+      const swipe = resolveSwipeNav(dx, dy, SWIPE_THRESHOLD);
+      if (swipe === "next") {
         onNextRef.current?.();
-      else onCenterRef.current?.();
+        return;
+      }
+      if (swipe === "prev") {
+        onPrevRef.current?.();
+        return;
+      }
+
+      if (!isTapGesture(dx, dy, dt, TAP_MOVE_THRESHOLD, TAP_TIME_THRESHOLD)) {
+        return;
+      }
+
+      const rect = el.getBoundingClientRect();
+      const edgeTap = resolveEdgeTapNav(
+        t.clientX - rect.left,
+        rect.width,
+        TAP_ZONE_FRACTION,
+      );
+      if (edgeTap === "prev") onPrevRef.current?.();
+      else if (edgeTap === "next") onNextRef.current?.();
     };
 
     el.addEventListener("touchstart", onTouchStart, { passive: true });

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  isImage,
   isPdf,
   isPixelMotionPhotoBasename,
   isText,
   isVideo,
+  mediaContentUrls,
 } from "./media-utils";
 import { PixelMpOrImageVideoPreview } from "./pixel-mp-preview";
 import { MediaViewerFaceOverlay } from "./media-viewer-face-overlay";
@@ -13,6 +13,14 @@ import { MediaViewerDetails } from "./media-viewer-details";
 import { MediaViewerActions } from "./media-viewer-actions";
 import { MediaViewerVideoTaggingModal } from "./media-viewer-video-tagging-modal";
 import { InlineAssignBar } from "./inline-assign-bar";
+import { ViewerStillImageFrame } from "./viewer-still-image-frame";
+import {
+  deriveStillImageView,
+  hasMotionCompanion,
+  isMediaPreviewUnavailable,
+  stillImageActionFlags,
+  viewerImageClassName,
+} from "./viewer-media-state";
 import { useMediaViewerFaces } from "./use-media-viewer-faces";
 import { useMediaViewerImageClick } from "./use-media-viewer-image-click";
 import { useMediaViewerKeyboard } from "./use-media-viewer-keyboard";
@@ -55,8 +63,7 @@ export function MediaViewerContent({
 }: MediaViewerContentProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const pixelMp = isPixelMotionPhotoBasename(item.originalName);
-  const hasMotionPair =
-    item.motionCompanionId != null && item.motionCompanionId !== "";
+  const hasMotionPair = hasMotionCompanion(item.motionCompanionId);
   const motionVideoUrl = hasMotionPair
     ? prependApiUrl(`/media/${item.motionCompanionId}/preview`)
     : "";
@@ -77,15 +84,10 @@ export function MediaViewerContent({
 
   const isMobile = useIsMobile();
 
-  const previewUrl =
-    previewRev > 0
-      ? prependApiUrl(`/media/${item.id}/preview?r=${previewRev}`)
-      : prependApiUrl(`/media/${item.id}/preview`);
-
-  const fullResUrl =
-    previewRev > 0
-      ? prependApiUrl(`/media/${item.id}?r=${previewRev}`)
-      : prependApiUrl(`/media/${item.id}`);
+  const { preview: previewUrl, full: fullResUrl } = mediaContentUrls(
+    item.id,
+    previewRev,
+  );
 
   useEffect(() => {
     setPixelIsVideo(false);
@@ -186,25 +188,24 @@ export function MediaViewerContent({
     onClearReassigning: () => setReassigningFace(null),
   });
 
-  const isItemImage =
-    isImage(item.mimeType, item.originalName) &&
-    !pixelIsVideo &&
-    (!hasMotionPair || motionPairView === "still");
+  const { isRegularStillImage, isPixelStillImage, isItemImage, canTagFaces } =
+    deriveStillImageView({
+      mimeType: item.mimeType,
+      originalName: item.originalName,
+      pixelMp,
+      pixelIsVideo,
+      hasMotionPair,
+      motionPairView,
+    });
 
-  const canOpenFullscreen =
-    isItemImage &&
-    !taggingMode &&
-    !assigningFace &&
-    !reassigningFace &&
-    !deleting;
-
-  const openFullscreen = useCallback(() => {
-    setFullscreen(true);
-  }, []);
-
-  const handleImageDoubleClick = useCallback(() => {
-    if (canOpenFullscreen) openFullscreen();
-  }, [canOpenFullscreen, openFullscreen]);
+  const { canOpenFullscreen, canRotateImage } = stillImageActionFlags({
+    isItemImage,
+    taggingMode,
+    assigningFace,
+    reassigningFace,
+    hasMotionPair,
+    deleting,
+  });
 
   const swipeRef = useRef<HTMLDivElement>(null);
   const gesturesEnabled =
@@ -217,34 +218,30 @@ export function MediaViewerContent({
 
   useViewerGestures(swipeRef, {
     enabled: gesturesEnabled,
-    onPrev: prevItem && !fullscreen ? goPrev : null,
-    onNext: nextItem && !fullscreen ? goNext : null,
+    onPrev: prevItem ? goPrev : null,
+    onNext: nextItem ? goNext : null,
   });
-
-  const motionPairBlocksRotate =
-    item.motionCompanionId != null && item.motionCompanionId !== "";
-
-  const canRotateImage =
-    isItemImage &&
-    !motionPairBlocksRotate &&
-    !taggingMode &&
-    !assigningFace &&
-    !reassigningFace;
 
   const showDetails = !isMobile || detailsOpen;
 
-  const viewerImageClassName = [
-    "viewer-content__image",
-    taggingMode ? "viewer-content__image--tagging" : "",
-    canOpenFullscreen ? "viewer-content__image--zoomable" : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  const imageClassName = viewerImageClassName({
+    taggingMode,
+    zoomable: canOpenFullscreen,
+  });
 
-  const canTagFaces =
-    isImage(item.mimeType, item.originalName) &&
-    (!pixelMp || !pixelIsVideo) &&
-    (!hasMotionPair || motionPairView === "still");
+  const stillFaceOverlay =
+    taggingMode && canTagFaces ? (
+      <MediaViewerFaceOverlay
+        imgRef={imgRef}
+        faces={faces}
+        assigningFace={assigningFace}
+        onAssigningFaceChange={setAssigningFace}
+        showDetected={showDetectedFaces}
+        onDismissAutoTagged={(personId) => {
+          void handleDismissAutoTagged(personId);
+        }}
+      />
+    ) : null;
 
   return (
     <div onClick={(e) => e.stopPropagation()} className="viewer-content">
@@ -317,7 +314,7 @@ export function MediaViewerContent({
         detailsOpen={detailsOpen}
         onToggleDetails={() => setDetailsOpen((o) => !o)}
         canFullscreen={canOpenFullscreen}
-        onToggleFullscreen={openFullscreen}
+        onToggleFullscreen={() => setFullscreen(true)}
         onDownload={handleDownload}
         onDelete={onDelete ? () => void handleDelete() : undefined}
         deleting={deleting}
@@ -347,89 +344,39 @@ export function MediaViewerContent({
               <source src={motionVideoUrl} />
             </video>
           )}
-          {isImage(item.mimeType, item.originalName) &&
-            !pixelMp &&
-            (!hasMotionPair || motionPairView === "still") && (
-              <div className="viewer-content__image-wrap">
-                <div style={{ position: "relative", display: "inline-block" }}>
-                  <img
-                    ref={imgRef}
-                    src={previewUrl}
-                    alt={item.originalName}
-                    className={viewerImageClassName}
-                    onClick={handleImageClick}
-                    onDoubleClick={handleImageDoubleClick}
-                  />
-                  {taggingMode && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <MediaViewerFaceOverlay
-                        imgRef={imgRef}
-                        faces={faces}
-                        assigningFace={assigningFace}
-                        onAssigningFaceChange={setAssigningFace}
-                        showDetected={showDetectedFaces}
-                        onDismissAutoTagged={(pid) => {
-                          void handleDismissAutoTagged(pid);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          {pixelMp &&
-            !isVideo(item.mimeType) &&
-            (!hasMotionPair || motionPairView === "still") && (
-              <div className="viewer-content__image-wrap">
-                <div style={{ position: "relative", display: "inline-block" }}>
-                  <PixelMpOrImageVideoPreview
-                    src={previewUrl}
-                    alt={item.originalName}
-                    imgRef={imgRef}
-                    imgClassName={viewerImageClassName}
-                    onImgClick={handleImageClick}
-                    onImgDoubleClick={handleImageDoubleClick}
-                    onSwitchToVideo={() => {
-                      setPixelIsVideo(true);
-                      setTaggingMode(() => false);
-                    }}
-                    videoStyle={{ maxWidth: "100%", maxHeight: "100%" }}
-                  />
-                  {taggingMode && !pixelIsVideo && (
-                    <div
-                      style={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        bottom: 0,
-                        pointerEvents: "none",
-                      }}
-                    >
-                      <MediaViewerFaceOverlay
-                        imgRef={imgRef}
-                        faces={faces}
-                        assigningFace={assigningFace}
-                        onAssigningFaceChange={setAssigningFace}
-                        showDetected={showDetectedFaces}
-                        onDismissAutoTagged={(pid) => {
-                          void handleDismissAutoTagged(pid);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+          {isRegularStillImage && (
+            <ViewerStillImageFrame faceOverlay={stillFaceOverlay}>
+              <img
+                ref={imgRef}
+                src={previewUrl}
+                alt={item.originalName}
+                className={imageClassName}
+                onClick={handleImageClick}
+                onDoubleClick={() => {
+                  if (canOpenFullscreen) setFullscreen(true);
+                }}
+              />
+            </ViewerStillImageFrame>
+          )}
+          {isPixelStillImage && (
+            <ViewerStillImageFrame faceOverlay={stillFaceOverlay}>
+              <PixelMpOrImageVideoPreview
+                src={previewUrl}
+                alt={item.originalName}
+                imgRef={imgRef}
+                imgClassName={imageClassName}
+                onImgClick={handleImageClick}
+                onImgDoubleClick={() => {
+                  if (canOpenFullscreen) setFullscreen(true);
+                }}
+                onSwitchToVideo={() => {
+                  setPixelIsVideo(true);
+                  setTaggingMode(() => false);
+                }}
+                videoStyle={{ maxWidth: "100%", maxHeight: "100%" }}
+              />
+            </ViewerStillImageFrame>
+          )}
           {taggingMode && facesLoading && (
             <p
               style={{
@@ -501,22 +448,22 @@ export function MediaViewerContent({
               {textError ?? textContent ?? "Loading…"}
             </pre>
           )}
-          {!isImage(item.mimeType, item.originalName) &&
-            !isVideo(item.mimeType) &&
-            !pixelMp &&
-            !isText(item.mimeType, item.originalName) &&
-            !isPdf(item.mimeType) && (
-              <p style={{ color: "var(--color-text-muted)" }}>
-                Preview not available.{" "}
-                <a
-                  href={prependApiUrl(`/media/${item.id}`)}
-                  download={item.originalName}
-                  style={{ color: "var(--color-primary)" }}
-                >
-                  Download
-                </a>
-              </p>
-            )}
+          {isMediaPreviewUnavailable(
+            item.mimeType,
+            item.originalName,
+            pixelMp,
+          ) && (
+            <p style={{ color: "var(--color-text-muted)" }}>
+              Preview not available.{" "}
+              <a
+                href={prependApiUrl(`/media/${item.id}`)}
+                download={item.originalName}
+                style={{ color: "var(--color-primary)" }}
+              >
+                Download
+              </a>
+            </p>
+          )}
         </div>
         {isMobile && (
           <button

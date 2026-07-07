@@ -1,12 +1,14 @@
 import { localCalendarDateKeyFromIso } from "@/lib/local-datetime.js";
 import { prependApiUrl } from "@/api";
-import {
-  isImageMime,
-  isPdfMime,
-  isTextDocument,
-  isVideoMime,
-} from "../../lib/media-mime.js";
 import { MediaListItem } from "@shared";
+
+export {
+  isImage,
+  isPdf,
+  isPixelMotionPhotoBasename,
+  isText,
+  isVideo,
+} from "./media-type-checks";
 
 export type MediaItem = MediaListItem;
 
@@ -14,6 +16,17 @@ export function mediaThumbnailUrl(item: { id: string; size: number }): string {
   return prependApiUrl(
     `/media/${item.id}/thumbnail?v=${encodeURIComponent(String(item.size))}`,
   );
+}
+
+export function mediaContentUrls(
+  id: string,
+  previewRev: number,
+): { preview: string; full: string } {
+  const cacheBust = previewRev > 0 ? `?r=${previewRev}` : "";
+  return {
+    preview: prependApiUrl(`/media/${id}/preview${cacheBust}`),
+    full: prependApiUrl(`/media/${id}${cacheBust}`),
+  };
 }
 
 function getItemDateKeyForSort(
@@ -59,34 +72,4 @@ export function groupItemsByDay(
     dateLabel: formatDateLabel(dateKey),
     items: map.get(dateKey)!,
   }));
-}
-
-/** Pixel motion-photo sidecars often use `.mp`; payload may be JPEG or MP4. */
-export function isPixelMotionPhotoBasename(originalName: string): boolean {
-  const base = originalName.replace(/^.*[/\\]/, "");
-  return /\.mp$/i.test(base);
-}
-
-export function isImage(mimeType: string, originalName?: string): boolean {
-  if (isImageMime(mimeType)) return true;
-  if (
-    originalName != null &&
-    originalName !== "" &&
-    isPixelMotionPhotoBasename(originalName)
-  ) {
-    return true;
-  }
-  return false;
-}
-
-export function isVideo(mimeType: string): boolean {
-  return isVideoMime(mimeType);
-}
-
-export function isText(mimeType: string, originalName: string): boolean {
-  return isTextDocument({ mimeType, originalName });
-}
-
-export function isPdf(mimeType: string): boolean {
-  return isPdfMime(mimeType);
 }

@@ -2314,6 +2314,17 @@
   overflow: hidden;
 }
 
+.viewer-content__image-inner {
+  position: relative;
+  display: inline-block;
+}
+
+.viewer-content__face-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .viewer-content__image {
   max-width: 100%;
   max-height: 100%;
