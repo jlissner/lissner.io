@@ -176,8 +176,8 @@ export async function getFaceCropOrFullImage(
       const width = Math.round(Math.max(1, box.width));
       const height = Math.round(Math.max(1, box.height));
       const buffer = await sharp(filePath)
-        .rotate()
         .extract({ left, top, width, height })
+        .rotate()
         .toBuffer();
       return {
         ok: true as const,

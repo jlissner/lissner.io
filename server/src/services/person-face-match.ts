@@ -11,18 +11,25 @@ import {
 function getFirstImagePreviewForPerson(personId: number): {
   mediaId: string | null;
   previewFaceCrop: boolean;
+  previewBox?: { x: number; y: number; width: number; height: number } | null;
 } {
   const rows = db.getMediaForPerson(personId, 10);
   const first = rows.find((r) => isEffectiveImageItem(r));
   if (!first) return { mediaId: null, previewFaceCrop: false };
-  const previewFaceCrop =
+  const hasBox =
     first.x != null &&
     first.y != null &&
     first.width != null &&
     first.height != null &&
     first.width > 0 &&
     first.height > 0;
-  return { mediaId: first.id, previewFaceCrop };
+  return {
+    mediaId: first.id,
+    previewFaceCrop: hasBox,
+    previewBox: hasBox
+      ? { x: first.x!, y: first.y!, width: first.width!, height: first.height! }
+      : null,
+  };
 }
 
 /**
@@ -107,6 +114,7 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
       otherMatches,
       previewMediaId: preview.mediaId,
       previewFaceCrop: preview.previewFaceCrop,
+      previewBox: preview.previewBox,
     });
   }
 

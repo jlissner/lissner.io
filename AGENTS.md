@@ -96,9 +96,29 @@ shared/src/        # Types shared between server and UI
 
 ## Code Style
 
-### Paradigm
+### Philosophy
 
-- **Functional** - Prefer pure functions and avoid mutation
+This codebase is **aggressively functional**. Every design choice favors purity, immutability, and composition. When in doubt, write less code, make it smaller, make it pure. Push back hard against complexity — if a solution feels complicated, it's wrong. Find the simpler one.
+
+**Elegance matters.** Code should read like well-edited prose: every token earns its place. If you can remove something and the meaning doesn't change, remove it.
+
+### Paradigm — Functional Programming
+
+- **Pure functions always.** A function takes arguments and returns a value. No side effects, no hidden state, no reaching outside its scope. Isolate impurity at the edges (route handlers, main entry points) and keep everything else pure.
+- **No mutation.** Never mutate data. No `push`, no `splice`, no `obj.key = val`. Spread, `map`, `filter`, `reduce`, and destructuring are your vocabulary. Build new values from old ones.
+- **Composition over orchestration.** Build complex behavior by composing small functions: `pipe`, `flow`, function chaining. Don't write a big function that "does steps" — compose small transforms.
+- **Currying and partial application.** Prefer curried functions when a function is reused with a fixed argument. `const byId = (id: string) => (item: Item): boolean => item.id === id` is better than passing `id` around everywhere.
+- **Declarative over imperative.** Describe _what_, not _how_. `items.filter(isActive).map(toView)` not a `for` loop with conditionals and a mutable accumulator. No `for` loops. No `while`. No `do`.
+- **Point-free when clear.** `items.map(getName)` over `items.map(x => getName(x))` — but only when readability improves. Don't sacrifice clarity for style.
+- **No classes.** Plain objects, closures, and functions. If you need polymorphism, use discriminated unions and pattern matching. Classes are forbidden in application code.
+- **Expressions over statements.** Prefer ternaries (single-level), `??`, `||`, and expression-bodied arrow functions. Avoid `if/else` blocks when an expression suffices.
+
+### Functions — Small, Single-Purpose, Composable
+
+- **Tiny functions.** If a function is more than ~10 lines, it's too big. Extract a named helper. If you're scrolling to read a function, it's way too big.
+- **One thing.** A function does one thing. Not "one thing and also logs" — one thing. Side effects like logging live in a wrapper, not interleaved with logic.
+- **Name the concept.** `const isExpired = (token: Token): boolean => token.expiresAt < Date.now()` is better than an inline `token.expiresAt < Date.now()` check repeated three times. Name every non-trivial predicate, transform, and selector.
+- **Derive, don't store.** Computed values are functions, not cached state. If you can compute it from existing data, don't store it separately.
 
 ### Types & Imports
 
@@ -107,26 +127,37 @@ shared/src/        # Types shared between server and UI
 - **Prefer inline type imports**: `import { type Foo } from "bar"`
 - **Explicit return types** on public/exported functions
 - **Discriminated unions** for expected failures: `{ ok: true, data: T } | { ok: false, reason: string }`
+- **Algebraic data modeling.** Model domain concepts as unions of tagged objects. Pattern-match exhaustively. This replaces inheritance, `null` checks, and string-typed state.
 
 ### Variables
 
 - **No `let`** — always use `const`; derive new values instead of reassigning
-- **No mutation** — prefer immutable patterns; `reduce` over mutable accumulators
+- **No reassignment, ever.** If you're tempted to reassign, you're thinking imperatively. Use `reduce`, ternaries, helper functions, or restructure the logic.
 
 ### React (UI)
 
-- **One responsibility per function** — keep components focused
+- **Components are pure functions of props.** A component takes props and returns JSX. Nothing else. Side effects live in hooks, not in the render path.
+- **One responsibility per component** — if it needs a section comment, it needs extraction
 - **Early returns** — guard clauses over deep nesting
-- **Named helpers** for non-trivial conditions and parsing
+- **Named helpers** for non-trivial conditions and parsing; extract predicates and transforms
 - **No nested ternaries**
 - **Use `@/`** path alias for all UI imports
+- **Compose hooks, don't nest logic.** Custom hooks should be small and composable. A hook that does three things should be three hooks composed together.
 
 ### Error Handling
 
 - **Zod schemas** for request validation — not `parseInt`/`typeof` in routes
-- **Service failures** → discriminated unions
+- **Service failures** → discriminated unions; never `throw` for expected cases
 - **Unexpected failures** → throw (caught by error handler)
 - **Structured logging** via `logger`/`req.log` with stable metadata keys
+- **No try/catch in business logic.** Handle errors through return types. Reserve try/catch for the impure boundary.
+
+### Simplicity — The Prime Directive
+
+- **Push back against complexity.** If a PR adds abstraction, indirection, or generality that isn't required by the current task, reject it. "We might need it later" is not a reason.
+- **Fewer moving parts.** One function that does the job beats three files of architecture. A raw `fetch` beats an HTTP client wrapper if you only call one endpoint.
+- **Delete aggressively.** Dead code, unused imports, stale comments, vestigial abstractions — delete on sight. The best code is code that doesn't exist.
+- **Question every dependency.** Can you write it in 20 lines? Then don't install a package. Every dependency is a liability.
 
 ---
 

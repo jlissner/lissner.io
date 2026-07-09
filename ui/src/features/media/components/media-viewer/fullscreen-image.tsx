@@ -10,11 +10,17 @@ import {
   normalizedClickAnchor,
   type NormalizedAnchor,
 } from "./fullscreen-scroll";
+import type { FaceBox } from "./media-viewer-types";
+
+function pct(value: number, total: number): string {
+  return `${(value / total) * 100}%`;
+}
 
 interface FullscreenImageProps {
   src: string;
   alt: string;
   onClose: () => void;
+  faceBox?: FaceBox | null;
 }
 
 function scrollNativeViewToAnchor(
@@ -47,8 +53,14 @@ function scrollNativeViewToAnchor(
   img.addEventListener("load", onLoad);
 }
 
-export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
+export function FullscreenImage({
+  src,
+  alt,
+  onClose,
+  faceBox,
+}: FullscreenImageProps) {
   const [nativeSize, setNativeSize] = useState(false);
+  const [showBox, setShowBox] = useState(!!faceBox);
   const containerRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const pendingAnchorRef = useRef<NormalizedAnchor | null>(null);
@@ -92,6 +104,21 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
     [nativeSize],
   );
 
+  const img = (
+    <img
+      ref={imgRef}
+      src={src}
+      alt={alt}
+      className={
+        nativeSize
+          ? "fullscreen-zoom__img fullscreen-zoom__img--native"
+          : "fullscreen-zoom__img fullscreen-zoom__img--constrained"
+      }
+      onClick={handleImageClick}
+      draggable={false}
+    />
+  );
+
   return (
     <div
       ref={containerRef}
@@ -101,18 +128,61 @@ export function FullscreenImage({ src, alt, onClose }: FullscreenImageProps) {
           : "fullscreen-zoom fullscreen-zoom--constrained"
       }
     >
-      <img
-        ref={imgRef}
-        src={src}
-        alt={alt}
-        className={
-          nativeSize
-            ? "fullscreen-zoom__img fullscreen-zoom__img--native"
-            : "fullscreen-zoom__img fullscreen-zoom__img--constrained"
-        }
-        onClick={handleImageClick}
-        draggable={false}
-      />
+      {faceBox && showBox && !nativeSize
+        ? (() => {
+            const nw = imgRef.current?.naturalWidth || 1;
+            const nh = imgRef.current?.naturalHeight || 1;
+            return (
+              <div
+                style={{
+                  position: "relative",
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  lineHeight: 0,
+                }}
+              >
+                {img}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: pct(faceBox.x, nw),
+                    top: pct(faceBox.y, nh),
+                    width: pct(faceBox.width, nw),
+                    height: pct(faceBox.height, nh),
+                    border: "2px solid #f59e0b",
+                    borderRadius: 4,
+                    pointerEvents: "none",
+                  }}
+                />
+              </div>
+            );
+          })()
+        : img}
+      {faceBox && (
+        <button
+          type="button"
+          className="fullscreen-zoom__close"
+          style={{ right: 56 }}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowBox((v) => !v);
+          }}
+          aria-label={showBox ? "Hide face border" : "Show face border"}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke={showBox ? "#f59e0b" : "currentColor"}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="12" cy="10" r="3" />
+            <path d="M7 20c0-3 2.5-5 5-5s5 2 5 5" />
+          </svg>
+        </button>
+      )}
       <button
         type="button"
         className="fullscreen-zoom__close"

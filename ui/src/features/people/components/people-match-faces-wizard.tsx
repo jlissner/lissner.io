@@ -438,6 +438,7 @@ export function PeopleMatchFacesWizard({
           src={fullPreviewUrl}
           alt={`${current.placeholderName} — full image`}
           onClose={() => setFullPreviewOpen(false)}
+          faceBox={current.previewBox}
         />
       )}
     </ModalRoot>

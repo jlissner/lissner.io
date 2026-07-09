@@ -13,6 +13,10 @@ interface MediaViewerFaceOverlayProps {
   onDismissAutoTagged?: (personId: number) => void;
 }
 
+function pct(value: number, total: number): string {
+  return `${(value / total) * 100}%`;
+}
+
 export function MediaViewerFaceOverlay({
   imgRef,
   faces,
@@ -24,15 +28,8 @@ export function MediaViewerFaceOverlay({
   const img = imgRef.current;
   if (!img) return null;
 
-  const rect = img.getBoundingClientRect();
-  const naturalWidth = img.naturalWidth || 1;
-  const naturalHeight = img.naturalHeight || 1;
-  const scaleX = rect.width / naturalWidth;
-  const scaleY = rect.height / naturalHeight;
-
-  const parentRect = img.parentElement?.getBoundingClientRect();
-  const offsetX = parentRect ? rect.left - parentRect.left : 0;
-  const offsetY = parentRect ? rect.top - parentRect.top : 0;
+  const nw = img.naturalWidth || 1;
+  const nh = img.naturalHeight || 1;
 
   return (
     <>
@@ -45,10 +42,10 @@ export function MediaViewerFaceOverlay({
           <div
             style={{
               position: "absolute",
-              left: offsetX + assigningFace.x * scaleX,
-              top: offsetY + assigningFace.y * scaleY,
-              width: assigningFace.width * scaleX,
-              height: assigningFace.height * scaleY,
+              left: pct(assigningFace.x, nw),
+              top: pct(assigningFace.y, nh),
+              width: pct(assigningFace.width, nw),
+              height: pct(assigningFace.height, nh),
               border: "2px solid #f59e0b",
               borderRadius: 4,
               backgroundColor: "rgba(245, 158, 11, 0.2)",
@@ -72,10 +69,10 @@ export function MediaViewerFaceOverlay({
             key={`t-${i}-${t.personId}`}
             style={{
               position: "absolute",
-              left: offsetX + t.x * scaleX,
-              top: offsetY + t.y * scaleY,
-              width: t.width * scaleX,
-              minHeight: t.height * scaleY,
+              left: pct(t.x, nw),
+              top: pct(t.y, nh),
+              width: pct(t.width, nw),
+              minHeight: pct(t.height, nh),
               border: `2px solid ${borderColor}`,
               borderRadius: 4,
               color: borderColor,
@@ -132,10 +129,10 @@ export function MediaViewerFaceOverlay({
             key={`d-${i}`}
             style={{
               position: "absolute",
-              left: offsetX + d.x * scaleX,
-              top: offsetY + d.y * scaleY,
-              width: d.width * scaleX,
-              height: d.height * scaleY,
+              left: pct(d.x, nw),
+              top: pct(d.y, nh),
+              width: pct(d.width, nw),
+              height: pct(d.height, nh),
               border: "2px dashed rgba(255,255,255,0.6)",
               borderRadius: 4,
               pointerEvents: "none",

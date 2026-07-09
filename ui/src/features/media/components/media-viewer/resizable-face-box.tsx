@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { FaceBox } from "./media-viewer-types";
 
 type Handle = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w" | "move";
@@ -11,7 +11,7 @@ interface ResizableFaceBoxProps {
 }
 
 const HANDLE_SIZE = 12;
-const MIN_SIZE = 20;
+const MIN_NAT = 20;
 
 const HANDLE_STYLES: Array<{
   handle: Handle;
@@ -31,6 +31,10 @@ const HANDLE_STYLES: Array<{
   { handle: "w", top: "calc(50% - 6px)", left: "-6px", cursor: "ew-resize" },
 ];
 
+function pct(value: number, total: number): string {
+  return `${(value / total) * 100}%`;
+}
+
 export function ResizableFaceBox({
   box,
   imgRef,
@@ -39,75 +43,50 @@ export function ResizableFaceBox({
 }: ResizableFaceBoxProps) {
   const [dragging, setDragging] = useState<Handle | null>(null);
   const startRef = useRef<{
-    x: number;
-    y: number;
-    boxX: number;
-    boxY: number;
-    boxW: number;
-    boxH: number;
+    mx: number;
+    my: number;
+    box: FaceBox;
   } | null>(null);
-
-  const scaled = useMemo(() => {
-    const img = imgRef.current;
-    if (!img) return box;
-    const rect = img.getBoundingClientRect();
-    const parentRect = img.parentElement?.getBoundingClientRect();
-    const oX = parentRect ? rect.left - parentRect.left : 0;
-    const oY = parentRect ? rect.top - parentRect.top : 0;
-    return {
-      x: oX + box.x * (rect.width / img.naturalWidth),
-      y: oY + box.y * (rect.height / img.naturalHeight),
-      width: box.width * (rect.width / img.naturalWidth),
-      height: box.height * (rect.height / img.naturalHeight),
-    };
-  }, [imgRef, box]);
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (!dragging || !startRef.current || !imgRef.current) return;
       const img = imgRef.current;
       const rect = img.getBoundingClientRect();
-      const parentRect = img.parentElement?.getBoundingClientRect();
-      const oX = parentRect ? rect.left - parentRect.left : 0;
-      const oY = parentRect ? rect.top - parentRect.top : 0;
-      const imgScaleX = img.naturalWidth / rect.width;
-      const imgScaleY = img.naturalHeight / rect.height;
-      const dx = e.clientX - startRef.current.x;
-      const dy = e.clientY - startRef.current.y;
+      const toNatX = img.naturalWidth / rect.width;
+      const toNatY = img.naturalHeight / rect.height;
+      const dx = (e.clientX - startRef.current.mx) * toNatX;
+      const dy = (e.clientY - startRef.current.my) * toNatY;
+      const s = startRef.current.box;
 
-      let x = startRef.current.boxX;
-      let y = startRef.current.boxY;
-      let w = startRef.current.boxW;
-      let h = startRef.current.boxH;
+      let x = s.x;
+      let y = s.y;
+      let w = s.width;
+      let h = s.height;
 
       if (dragging === "move") {
-        x = Math.max(oX, Math.min(oX + rect.width - w, x + dx));
-        y = Math.max(oY, Math.min(oY + rect.height - h, y + dy));
+        x = Math.max(0, Math.min(img.naturalWidth - w, x + dx));
+        y = Math.max(0, Math.min(img.naturalHeight - h, y + dy));
       } else {
-        if (dragging.includes("e")) w = Math.max(MIN_SIZE, w + dx);
+        if (dragging.includes("e")) w = Math.max(MIN_NAT, w + dx);
         if (dragging.includes("w")) {
           const nx = x + dx;
-          if (nx >= oX) {
+          if (nx >= 0) {
             x = nx;
-            w = Math.max(MIN_SIZE, w - dx);
+            w = Math.max(MIN_NAT, w - dx);
           }
         }
-        if (dragging.includes("s")) h = Math.max(MIN_SIZE, h + dy);
+        if (dragging.includes("s")) h = Math.max(MIN_NAT, h + dy);
         if (dragging.includes("n")) {
           const ny = y + dy;
-          if (ny >= oY) {
+          if (ny >= 0) {
             y = ny;
-            h = Math.max(MIN_SIZE, h - dy);
+            h = Math.max(MIN_NAT, h - dy);
           }
         }
       }
 
-      onBoxChange({
-        x: Math.max(0, (x - oX) * imgScaleX),
-        y: Math.max(0, (y - oY) * imgScaleY),
-        width: Math.max(MIN_SIZE * imgScaleX, w * imgScaleX),
-        height: Math.max(MIN_SIZE * imgScaleY, h * imgScaleY),
-      });
+      onBoxChange({ x, y, width: w, height: h });
     },
     [dragging, imgRef, onBoxChange],
   );
@@ -133,17 +112,13 @@ export function ResizableFaceBox({
       e.preventDefault();
       e.stopPropagation();
       setDragging(handle);
-      startRef.current = {
-        x: e.clientX,
-        y: e.clientY,
-        boxX: scaled.x,
-        boxY: scaled.y,
-        boxW: scaled.width,
-        boxH: scaled.height,
-      };
+      startRef.current = { mx: e.clientX, my: e.clientY, box: { ...box } };
     },
-    [scaled],
+    [box],
   );
+
+  const nw = imgRef.current?.naturalWidth || 1;
+  const nh = imgRef.current?.naturalHeight || 1;
 
   return (
     <>
@@ -152,10 +127,10 @@ export function ResizableFaceBox({
         onMouseDown={(e) => handleMouseDown(e, "move")}
         style={{
           position: "absolute",
-          left: scaled.x,
-          top: scaled.y,
-          width: scaled.width,
-          height: scaled.height,
+          left: pct(box.x, nw),
+          top: pct(box.y, nh),
+          width: pct(box.width, nw),
+          height: pct(box.height, nh),
           cursor: dragging === "move" ? "grabbing" : "grab",
           zIndex: 10,
           pointerEvents: "auto",

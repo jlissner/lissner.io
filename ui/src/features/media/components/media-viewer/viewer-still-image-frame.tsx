@@ -12,9 +12,13 @@ export function ViewerStillImageFrame({
   return (
     <div className="viewer-content__image-wrap">
       <div className="viewer-content__image-inner">
-        {children}
-        {faceOverlay && (
-          <div className="viewer-content__face-overlay">{faceOverlay}</div>
+        {faceOverlay ? (
+          <div className="viewer-content__face-wrap">
+            {children}
+            {faceOverlay}
+          </div>
+        ) : (
+          children
         )}
       </div>
     </div>

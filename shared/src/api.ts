@@ -137,6 +137,7 @@ export type FaceMatchReviewItem = {
   otherMatches: Array<{ personId: number; name: string; score: number }>;
   previewMediaId: string | null;
   previewFaceCrop: boolean;
+  previewBox?: { x: number; y: number; width: number; height: number } | null;
 };
 
 export type FaceMatchRunResponse = {

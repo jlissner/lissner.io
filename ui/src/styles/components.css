@@ -2318,12 +2318,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  container-type: size;
 }
 
-.viewer-content__face-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
+.viewer-content__face-wrap {
+  position: relative;
+}
+
+.viewer-content__face-wrap > .viewer-content__image {
+  max-width: 100cqw;
+  max-height: 100cqh;
 }
 
 .viewer-content__image,
