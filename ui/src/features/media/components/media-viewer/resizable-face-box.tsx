@@ -51,9 +51,12 @@ export function ResizableFaceBox({
     const img = imgRef.current;
     if (!img) return box;
     const rect = img.getBoundingClientRect();
+    const parentRect = img.parentElement?.getBoundingClientRect();
+    const oX = parentRect ? rect.left - parentRect.left : 0;
+    const oY = parentRect ? rect.top - parentRect.top : 0;
     return {
-      x: box.x * (rect.width / img.naturalWidth),
-      y: box.y * (rect.height / img.naturalHeight),
+      x: oX + box.x * (rect.width / img.naturalWidth),
+      y: oY + box.y * (rect.height / img.naturalHeight),
       width: box.width * (rect.width / img.naturalWidth),
       height: box.height * (rect.height / img.naturalHeight),
     };
@@ -64,6 +67,9 @@ export function ResizableFaceBox({
       if (!dragging || !startRef.current || !imgRef.current) return;
       const img = imgRef.current;
       const rect = img.getBoundingClientRect();
+      const parentRect = img.parentElement?.getBoundingClientRect();
+      const oX = parentRect ? rect.left - parentRect.left : 0;
+      const oY = parentRect ? rect.top - parentRect.top : 0;
       const imgScaleX = img.naturalWidth / rect.width;
       const imgScaleY = img.naturalHeight / rect.height;
       const dx = e.clientX - startRef.current.x;
@@ -75,13 +81,13 @@ export function ResizableFaceBox({
       let h = startRef.current.boxH;
 
       if (dragging === "move") {
-        x = Math.max(0, Math.min(rect.width - w, x + dx));
-        y = Math.max(0, Math.min(rect.height - h, y + dy));
+        x = Math.max(oX, Math.min(oX + rect.width - w, x + dx));
+        y = Math.max(oY, Math.min(oY + rect.height - h, y + dy));
       } else {
         if (dragging.includes("e")) w = Math.max(MIN_SIZE, w + dx);
         if (dragging.includes("w")) {
           const nx = x + dx;
-          if (nx >= 0) {
+          if (nx >= oX) {
             x = nx;
             w = Math.max(MIN_SIZE, w - dx);
           }
@@ -89,7 +95,7 @@ export function ResizableFaceBox({
         if (dragging.includes("s")) h = Math.max(MIN_SIZE, h + dy);
         if (dragging.includes("n")) {
           const ny = y + dy;
-          if (ny >= 0) {
+          if (ny >= oY) {
             y = ny;
             h = Math.max(MIN_SIZE, h - dy);
           }
@@ -97,8 +103,8 @@ export function ResizableFaceBox({
       }
 
       onBoxChange({
-        x: Math.max(0, x * imgScaleX),
-        y: Math.max(0, y * imgScaleY),
+        x: Math.max(0, (x - oX) * imgScaleX),
+        y: Math.max(0, (y - oY) * imgScaleY),
         width: Math.max(MIN_SIZE * imgScaleX, w * imgScaleX),
         height: Math.max(MIN_SIZE * imgScaleY, h * imgScaleY),
       });

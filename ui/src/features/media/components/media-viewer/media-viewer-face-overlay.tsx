@@ -30,6 +30,10 @@ export function MediaViewerFaceOverlay({
   const scaleX = rect.width / naturalWidth;
   const scaleY = rect.height / naturalHeight;
 
+  const parentRect = img.parentElement?.getBoundingClientRect();
+  const offsetX = parentRect ? rect.left - parentRect.left : 0;
+  const offsetY = parentRect ? rect.top - parentRect.top : 0;
+
   return (
     <>
       {assigningFace && onAssigningFaceChange && (
@@ -41,8 +45,8 @@ export function MediaViewerFaceOverlay({
           <div
             style={{
               position: "absolute",
-              left: assigningFace.x * scaleX,
-              top: assigningFace.y * scaleY,
+              left: offsetX + assigningFace.x * scaleX,
+              top: offsetY + assigningFace.y * scaleY,
               width: assigningFace.width * scaleX,
               height: assigningFace.height * scaleY,
               border: "2px solid #f59e0b",
@@ -68,8 +72,8 @@ export function MediaViewerFaceOverlay({
             key={`t-${i}-${t.personId}`}
             style={{
               position: "absolute",
-              left: t.x * scaleX,
-              top: t.y * scaleY,
+              left: offsetX + t.x * scaleX,
+              top: offsetY + t.y * scaleY,
               width: t.width * scaleX,
               minHeight: t.height * scaleY,
               border: `2px solid ${borderColor}`,
@@ -128,8 +132,8 @@ export function MediaViewerFaceOverlay({
             key={`d-${i}`}
             style={{
               position: "absolute",
-              left: d.x * scaleX,
-              top: d.y * scaleY,
+              left: offsetX + d.x * scaleX,
+              top: offsetY + d.y * scaleY,
               width: d.width * scaleX,
               height: d.height * scaleY,
               border: "2px dashed rgba(255,255,255,0.6)",
