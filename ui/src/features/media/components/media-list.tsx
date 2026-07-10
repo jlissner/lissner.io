@@ -15,6 +15,8 @@ interface MediaListProps {
   onToggleSelectAllForDay: (groupItems: MediaItem[]) => void;
   onUpdate?: () => void;
   onDelete?: (id: string) => Promise<void>;
+  hasMoreItems?: boolean;
+  onLoadMore?: () => Promise<void>;
 }
 
 export function MediaList({
@@ -28,6 +30,8 @@ export function MediaList({
   onToggleSelectAllForDay,
   onUpdate,
   onDelete,
+  hasMoreItems,
+  onLoadMore,
 }: MediaListProps) {
   const [viewing, setViewing] = useState<MediaItem | null>(null);
   const { dismissViewing } = useMediaViewerUrlSync({
@@ -55,6 +59,8 @@ export function MediaList({
         onClose={dismissViewing}
         onUpdate={onUpdate}
         onDelete={onDelete}
+        hasMoreItems={hasMoreItems}
+        onLoadMore={onLoadMore}
       />
       {groups.map(({ dateKey, dateLabel, items: groupItems }) => {
         const ids = groupItems.map((i) => i.id);

@@ -35,7 +35,7 @@ import { useIsMobile } from "@/hooks/use-is-mobile";
 interface MediaViewerContentProps {
   item: MediaItem;
   prevItem: MediaItem | null;
-  nextItem: MediaItem | null;
+  hasNext: boolean;
   goPrev: () => void;
   goNext: () => void;
   textContent: string | null;
@@ -50,7 +50,7 @@ interface MediaViewerContentProps {
 export function MediaViewerContent({
   item,
   prevItem,
-  nextItem,
+  hasNext,
   goPrev,
   goNext,
   textContent,
@@ -179,7 +179,7 @@ export function MediaViewerContent({
     assigningFace,
     reassigningFace,
     hasPrev: prevItem != null,
-    hasNext: nextItem != null,
+    hasNext,
     goPrev,
     goNext,
     onClose,
@@ -219,7 +219,7 @@ export function MediaViewerContent({
   useViewerGestures(swipeRef, {
     enabled: gesturesEnabled,
     onPrev: prevItem ? goPrev : null,
-    onNext: nextItem ? goNext : null,
+    onNext: hasNext ? goNext : null,
   });
 
   const showDetails = !isMobile || detailsOpen;
@@ -271,7 +271,7 @@ export function MediaViewerContent({
           </svg>
         </button>
       )}
-      {nextItem && (
+      {hasNext && (
         <button
           type="button"
           className="viewer-nav viewer-nav--next"

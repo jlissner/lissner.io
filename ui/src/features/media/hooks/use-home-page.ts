@@ -108,6 +108,12 @@ export function useHomePage() {
     topSentinelRef: mediaList.topSentinelRef,
     loadingPrevious: mediaList.loadingPrevious,
     hasPreviousPage: mediaList.hasPreviousPage,
+    hasMoreItems: mediaSearch.isSearchMode
+      ? mediaSearch.hasNextPage
+      : mediaList.hasNextPage,
+    loadMore: mediaSearch.isSearchMode
+      ? mediaSearch.loadMore
+      : mediaList.loadMore,
     refetchSearch: mediaSearch.refetchSearch,
   };
 }

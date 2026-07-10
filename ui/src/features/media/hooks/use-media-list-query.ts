@@ -188,6 +188,8 @@ export function useMediaListQuery({
     loadingMore,
     loadingPrevious: mediaQuery.isFetchingPreviousPage,
     hasPreviousPage: startOffset > 0 && (mediaQuery.hasPreviousPage ?? false),
+    hasNextPage: mediaQuery.hasNextPage ?? false,
+    loadMore,
     sentinelRef,
     topSentinelRef,
     scrollContainerRef,

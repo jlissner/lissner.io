@@ -133,6 +133,8 @@ export function useMediaSearch({
     searching,
     loading,
     loadingMore,
+    hasNextPage: searchQueryResult.hasNextPage ?? false,
+    loadMore,
     toolbarError,
     setToolbarError,
     refetchSearch,

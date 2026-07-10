@@ -8,6 +8,7 @@ on:
 env:
   AWS_ACCESS_KEY_ID: ${{ vars.AWS_ACCESS_KEY_ID }}
   AWS_REGION: ${{ vars.AWS_REGION }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   DATA_DIR: ${{ vars.DATA_DIR }}
   FIRST_ADMIN_EMAIL: ${{ vars.FIRST_ADMIN_EMAIL }}
   OLLAMA_HOST: ${{ vars.OLLAMA_HOST }}
@@ -15,10 +16,10 @@ env:
   S3_BUCKET: ${{ vars.S3_BUCKET }}
   SERVER_HOST: ${{ vars.SERVER_HOST }}
   SERVER_PORT: ${{ vars.SERVER_PORT }}
-  SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL }}
-  UI_PORT: ${{ vars.UI_PORT }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+  SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL }}
+  UI_HOST: ${{ vars.UI_HOST }}
+  UI_PORT: ${{ vars.UI_PORT }}
   VITE_API_HOST: ${{ vars.VITE_API_HOST }}
 
 jobs:
