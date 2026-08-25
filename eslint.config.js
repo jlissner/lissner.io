@@ -58,9 +58,24 @@ export default tseslint.config(
   },
 
   {
-    files: ["server/**/*.ts", "scripts/**/*.ts"],
+    files: ["server/**/*.ts", "graphql/**/*.ts", "scripts/**/*.ts"],
     languageOptions: {
       globals: globals.node,
+    },
+  },
+
+  {
+    files: ["graphql/**/*.ts"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[computed=false][object.object.name='process'][object.property.name='env'][property.name!=/^(NODE_ENV)$/]",
+          message:
+            "Read validated config from graphql/src/env.ts, not process.env directly.",
+        },
+      ],
     },
   },
 

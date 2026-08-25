@@ -19,11 +19,13 @@ npm run build              # Full build: tsc + vite
 ### Development
 
 ```bash
-npm run dev               # Start all: ollama + server + ui
+npm run dev               # Start all: ollama + server + ui + graphql
 npm run dev:server        # Server only (tsx watch)
 npm run dev:ui            # UI only (vite)
 npm run dev:web           # Server + UI (no ollama)
+npm run dev:graphql       # PostGraphile GraphQL server only (tsx watch)
 npm run start             # Production server
+npm run start:graphql     # Production GraphQL server (after build)
 ```
 
 ### Quality
@@ -47,7 +49,7 @@ npm run nuke               # Delete all data (dangerous!)
 
 ### Docker / deploy
 
-The **`api`** image copies pre-built **`server/dist`** only; the **`ui`** image copies **`ui/dist`** (nginx). **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
+The **`api`** image copies pre-built **`server/dist`** only; the **`ui`** image copies **`ui/dist`** (nginx); the **`graphql`** image copies **`graphql/dist`**. **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
 
 ```bash
 npm run validate           # lint + test + docker compose config -q (host:config)

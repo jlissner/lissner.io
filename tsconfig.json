@@ -3,6 +3,7 @@
   "references": [
     { "path": "./shared" },
     { "path": "./server" },
-    { "path": "./ui" }
+    { "path": "./ui" },
+    { "path": "./graphql" }
   ]
 }

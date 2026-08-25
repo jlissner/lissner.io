@@ -1,14 +1,16 @@
 # Database Overview
 
 Postgres v16.13
-Postgraphile v3
+Postgraphile v5 (see `graphql/`)
 
-- would like to update to v5
+- hosted at https://query.lissner.io via Traefik
 
 There are two databases:
 
 - dev: test-db-test.lissner.io:5432
 - prod: db.lissner.io:5432
+
+Both require TLS. In `DATABASE_URL`, use `sslmode=no-verify` for local/dev clients (pg native), or `sslmode=verify-full` with the RDS CA bundle in production.
 
 ## Getting started
 

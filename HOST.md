@@ -1,12 +1,13 @@
 # Hosting Guide
 
-Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** (nginx static SPA) + **Ollama on NVIDIA GPU**. Compose file: `docker-compose.yml` reserves a GPU for Ollama; **CPU-only hosts cannot run this stack as-is**.
+Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** (nginx static SPA) + **`graphql`** (PostGraphile) + **Ollama on NVIDIA GPU**. Compose file: `docker-compose.yml` reserves a GPU for Ollama; **CPU-only hosts cannot run this stack as-is**.
 
 ### Public hostnames (example: Lissner)
 
 - **`API_HOST`** — e.g. `api.lissner.io` (Traefik routes TLS here to the **`api`** service).
 - **`UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
-- The API allows browser **CORS** from `https://lissner.io` and `https://*.lissner.io` when **`NODE_ENV=production`** (and whenever **`BDD_STRICT_CORS=1`** is set for tests).
+- **`GRAPHQL_HOST`** — e.g. `query.lissner.io` (Traefik routes TLS here to the **`graphql`** PostGraphile service).
+- The API and GraphQL services allow browser **CORS** from `https://lissner.io` and `https://*.lissner.io` when **`NODE_ENV=production`** (and whenever **`BDD_STRICT_CORS=1`** is set for tests).
 
 ## Prerequisites
 
@@ -39,13 +40,18 @@ If you run **`docker compose`** yourself, add **`--env-file .env.prod`** when th
 
 At minimum in **`.env`** and/or **`.env.prod`** (for compose **variable substitution**):
 
-| Variable     | Required                        | Purpose                                                                                          |
-| ------------ | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `ACME_EMAIL` | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                               |
-| `API_HOST`   | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                     |
-| `UI_HOST`    | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly |
+| Variable       | Required                        | Purpose                                                                                          |
+| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `ACME_EMAIL`   | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                               |
+| `API_HOST`     | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                     |
+| `UI_HOST`      | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly |
+| `GRAPHQL_HOST` | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                              |
+| `GRAPHQL_PORT` | Yes for graphql service         | Container listen port (default **5678**)                                                         |
+| `DATABASE_URL` | Yes in **`.env.prod`**          | PostgreSQL connection string for PostGraphile (not used by **`api`**)                            |
 
 The **`api`** service uses **`env_file: .env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
+
+The **`graphql`** service also uses **`env_file: .env.prod`** for **`DATABASE_URL`**, **`PG_SCHEMAS`**, and related Postgres settings.
 
 **Compose `${VAR}` substitution** (used in **`docker-compose.yml`** for Traefik’s **`ACME_EMAIL`**, router rules, ports, etc.) comes **only** from: the project **`.env`** file, your **shell environment**, and files passed as **`docker compose --env-file …`**. It does **not** read **`env_file:`** on services — those keys are injected **into containers** at runtime, not used to replace **`${…}`** in the compose file.
 
@@ -68,7 +74,7 @@ Keep app secrets in **`.env.prod`** (do not commit). See **`.env.prod.example`**
 
 ## Build and deploy
 
-The Docker images **do not compile** TypeScript or Vite on their own: **`server/Dockerfile`** copies **`server/dist`**; **`ui/Dockerfile`** copies **`ui/dist`**. Always run **`npm run build`** on the host first.
+The Docker images **do not compile** TypeScript or Vite on their own: **`server/Dockerfile`** copies **`server/dist`**; **`ui/Dockerfile`** copies **`ui/dist`**; **`graphql/Dockerfile`** copies **`graphql/dist`**. Always run **`npm run build`** on the host first.
 
 | Command               | Description                                                                                                                         |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -89,7 +95,7 @@ The Docker images **do not compile** TypeScript or Vite on their own: **`server/
 2. Run **`npm run host`** (includes `npm run build`). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
 3. Check **`npm run host:status`**
 
-The site is reachable on **`UI_HOST`** (static **`ui`** container) and **`API_HOST`** (**`api`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
+The site is reachable on **`UI_HOST`** (static **`ui`** container), **`API_HOST`** (**`api`** container), and **`GRAPHQL_HOST`** (**`graphql`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
 
 ## Manual commands
 
@@ -99,6 +105,7 @@ Prefer **`bash scripts/docker-compose.sh …`** (or **`npm run host:status`** / 
 bash scripts/docker-compose.sh ps
 bash scripts/docker-compose.sh logs -f api
 bash scripts/docker-compose.sh logs -f ui
+bash scripts/docker-compose.sh logs -f graphql
 bash scripts/docker-compose.sh logs -f ollama
 bash scripts/docker-compose.sh logs -f traefik
 bash scripts/docker-compose.sh restart api

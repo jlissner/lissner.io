@@ -13,10 +13,7 @@ import {
 import { requireAuth, jwtMiddleware } from "../auth/middleware.js";
 import { errorHandler } from "../middleware/error-handler.js";
 import { logRequests } from "../middleware/logRequests.js";
-import {
-  corsStrictHttpsEnabled,
-  isAllowedLissnerCorsOrigin,
-} from "../lib/lissner-cors.js";
+import { corsStrictHttpsEnabled, isAllowedLissnerCorsOrigin } from "@shared";
 
 export function createConfiguredApp() {
   const app = express();

@@ -17,6 +17,7 @@ export default defineConfig({
       "server/src/**/*.test.ts",
       "ui/src/**/*.test.ts",
       "shared/src/**/*.test.ts",
+      "graphql/src/**/*.test.ts",
     ],
     /** Quiet TensorFlow native INFO logs when tests import `faces` → tfjs-node. */
     env: {

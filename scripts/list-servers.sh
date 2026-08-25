@@ -9,7 +9,7 @@ echo ""
 
 echo "=== Matching command lines (PID and args) ==="
 # Bracket trick avoids grep matching itself
-if ps -eo pid=,args= 2>/dev/null | grep -E '[t]sx watch server/src/index|[t]sx server/src/index|[v]ite.*ui/vite\.config|[n]ode .*server/dist/index|[o]llama serve|[c]oncurrently' | sed 's/^/  /'; then
+if ps -eo pid=,args= 2>/dev/null | grep -E '[t]sx watch server/src/index|[t]sx watch graphql/src/index|[t]sx server/src/index|[v]ite.*ui/vite\.config|[n]ode .*server/dist/index|[n]ode scripts/dev-graphql|[o]llama serve|[c]oncurrently' | sed 's/^/  /'; then
   :
 else
   echo "  (none matched)"
