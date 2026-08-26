@@ -195,3 +195,11 @@ export function restoreDbFromBackup(
     body: JSON.stringify({ key }),
   });
 }
+
+export function bulkDeleteUntaggedPlaceholders(): Promise<{
+  deleted: number[];
+}> {
+  return apiJson<{ deleted: number[] }>("admin/people/untagged-placeholders", {
+    method: "DELETE",
+  });
+}

@@ -493,6 +493,19 @@ export function updateFaceGeometryForMediaPerson(
   );
 }
 
+export function getUntaggedPlaceholderPersonIds(): number[] {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT pn.person_id
+       FROM person_names pn
+       WHERE pn.name LIKE 'Person %'
+         AND NOT EXISTS (SELECT 1 FROM image_people ip WHERE ip.person_id = pn.person_id)`,
+    )
+    .all() as Array<{ person_id: number }>;
+  return rows.map((r) => r.person_id);
+}
+
 export function getRepresentativeMediaId(personId: number): string | null {
   const row = peopleStmts().getRepresentativeMediaId.get(personId) as
     | { mediaId: string }

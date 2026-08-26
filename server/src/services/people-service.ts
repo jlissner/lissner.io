@@ -5,7 +5,7 @@ import {
   UpdatePersonResponse,
 } from "@shared";
 import * as db from "../db/media.js";
-import { ServiceFailure } from "./service-result.js";
+import { type ServiceFailure } from "./service-result.js";
 
 export function getPersonMediaPreview(
   personId: number,
@@ -96,4 +96,12 @@ export function renamePerson(
 ): UpdatePersonResponse {
   db.setPersonName(personId, name.trim());
   return { id: personId, name: name.trim() };
+}
+
+export function bulkDeleteUntaggedPlaceholders(): { deleted: number[] } {
+  const ids = db.getUntaggedPlaceholderPersonIds();
+  for (const id of ids) {
+    db.deletePersonSafe(id);
+  }
+  return { deleted: ids };
 }

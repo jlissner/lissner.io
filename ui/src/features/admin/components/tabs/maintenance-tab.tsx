@@ -5,7 +5,11 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useActivity } from "@/components/activity/activity-provider";
 import { triggerIndex } from "@/features/media/api";
-import { computeAllHashes, repairAdminThumbnails } from "../../api";
+import {
+  bulkDeleteUntaggedPlaceholders,
+  computeAllHashes,
+  repairAdminThumbnails,
+} from "../../api";
 
 export function MaintenanceTab() {
   const activity = useActivity();
@@ -24,6 +28,9 @@ export function MaintenanceTab() {
     failed: number;
     total: number;
   } | null>(null);
+  const [cleanupRunning, setCleanupRunning] = useState(false);
+  const [cleanupError, setCleanupError] = useState<string | null>(null);
+  const [cleanupResult, setCleanupResult] = useState<number | null>(null);
 
   const handleReindex = () => {
     setLibraryReindexError(null);
@@ -49,6 +56,20 @@ export function MaintenanceTab() {
       setHashError(errorMessage(err, "Failed to compute hashes"));
     } finally {
       setComputingHashes(false);
+    }
+  };
+
+  const handleCleanupPlaceholders = async () => {
+    setCleanupRunning(true);
+    setCleanupError(null);
+    setCleanupResult(null);
+    try {
+      const result = await bulkDeleteUntaggedPlaceholders();
+      setCleanupResult(result.deleted.length);
+    } catch (err) {
+      setCleanupError(errorMessage(err, "Cleanup failed"));
+    } finally {
+      setCleanupRunning(false);
     }
   };
 
@@ -236,6 +257,35 @@ export function MaintenanceTab() {
         {hashError && (
           <Alert variant="danger" role="alert">
             <p>{hashError}</p>
+          </Alert>
+        )}
+      </section>
+
+      <section className="admin-page__section">
+        <h3>People cleanup</h3>
+        <p className="admin-page__desc">
+          Delete all unnamed placeholder people (e.g. &ldquo;Person 42&rdquo;)
+          that have zero face tags. These are empty entries left over from
+          previous indexing runs.
+        </p>
+        <div className="admin-page__form">
+          <Button
+            onClick={() => void handleCleanupPlaceholders()}
+            disabled={cleanupRunning}
+            variant="danger"
+          >
+            {cleanupRunning ? "Deleting…" : "Delete untagged placeholders"}
+          </Button>
+          {cleanupResult != null && (
+            <p className="admin-page__meta">
+              Deleted {cleanupResult} placeholder
+              {cleanupResult === 1 ? "" : "s"}
+            </p>
+          )}
+        </div>
+        {cleanupError && (
+          <Alert variant="danger" role="alert">
+            <p>{cleanupError}</p>
           </Alert>
         )}
       </section>

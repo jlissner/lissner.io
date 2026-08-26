@@ -13,6 +13,7 @@ import {
   listDirectory,
   updateDirectoryPerson,
 } from "../../services/people-directory-admin-service.js";
+import { bulkDeleteUntaggedPlaceholders } from "../../services/people-service.js";
 import { sendAdminResult } from "./response.js";
 
 export const adminPeopleDirectoryRouter = Router();
@@ -118,5 +119,13 @@ adminPeopleDirectoryRouter.delete(
       res,
       next,
     );
+  },
+);
+
+adminPeopleDirectoryRouter.delete(
+  "/people/untagged-placeholders",
+  (_req, res) => {
+    const result = bulkDeleteUntaggedPlaceholders();
+    res.json(result);
   },
 );
