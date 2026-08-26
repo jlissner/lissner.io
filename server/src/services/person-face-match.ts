@@ -68,10 +68,13 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
   const sim = await getFaceSimilarityFn();
   const names = db.getPersonNames();
   const allIds = db.getAllPersonIds();
-  const placeholders = allIds.filter((id) => {
-    const n = names.get(id) ?? `Person ${id}`;
-    return isPlaceholderPersonName(n);
-  });
+  const BATCH_LIMIT = 100;
+  const placeholders = allIds
+    .filter((id) => {
+      const n = names.get(id) ?? `Person ${id}`;
+      return isPlaceholderPersonName(n);
+    })
+    .slice(0, BATCH_LIMIT);
   const namedIds = allIds.filter((id) => {
     const n = names.get(id) ?? `Person ${id}`;
     return !isPlaceholderPersonName(n);
