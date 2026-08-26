@@ -1,5 +1,6 @@
 import path from "path";
 import { readFile, stat } from "fs/promises";
+import sharp from "sharp";
 import "@tensorflow/tfjs-node";
 import { Human } from "@vladmandic/human";
 import { createRequire } from "module";
@@ -76,13 +77,55 @@ function facesFromDetectResult(
   return faces;
 }
 
+const SUPPORTED_IMAGE_MAGIC = [
+  { prefix: [0xff, 0xd8], type: "jpeg" },
+  { prefix: [0x89, 0x50, 0x4e, 0x47], type: "png" },
+  { prefix: [0x47, 0x49, 0x46], type: "gif" },
+  { prefix: [0x42, 0x4d], type: "bmp" },
+] as const;
+
+function isWebp(buffer: Buffer): boolean {
+  return (
+    buffer.length >= 12 &&
+    buffer[0] === 0x52 &&
+    buffer[1] === 0x49 &&
+    buffer[2] === 0x46 &&
+    buffer[3] === 0x46 &&
+    buffer[8] === 0x57 &&
+    buffer[9] === 0x45 &&
+    buffer[10] === 0x42 &&
+    buffer[11] === 0x50
+  );
+}
+
+function isSupportedImageBuffer(buffer: Buffer): boolean {
+  return (
+    isWebp(buffer) ||
+    SUPPORTED_IMAGE_MAGIC.some(({ prefix }) =>
+      prefix.every((byte, i) => buffer[i] === byte),
+    )
+  );
+}
+
+async function toDecodableBuffer(buffer: Buffer): Promise<Buffer> {
+  if (isWebp(buffer)) {
+    return Buffer.from(await sharp(buffer).png().toBuffer());
+  }
+  return buffer;
+}
+
 async function detectFacesFromBuffer(
   human: HumanInstance,
   buffer: Buffer,
   imageId: string,
 ): Promise<FaceInImage[]> {
+  if (!isSupportedImageBuffer(buffer)) {
+    logger.warn({ imageId }, "Face extraction skipped: unsupported image type");
+    return [];
+  }
+  const decoded = await toDecodableBuffer(buffer);
   const tf = human.tf;
-  const tensor = tf.node.decodeImage(buffer, 3);
+  const tensor = tf.node.decodeImage(decoded, 3);
 
   try {
     const result = await human.detect(tensor);
