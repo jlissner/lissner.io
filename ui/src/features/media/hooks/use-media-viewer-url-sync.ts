@@ -38,7 +38,6 @@ export function useMediaViewerUrlSync({
 }: UseMediaViewerUrlSyncArgs): { dismissViewing: () => void } {
   const skipNextUrlWrite = useRef(false);
   const viewingIdRef = useRef<string | null>(null);
-  const viewerExplicitDismissRef = useRef(false);
 
   useEffect(() => {
     viewingIdRef.current = viewing?.id ?? null;
@@ -53,31 +52,17 @@ export function useMediaViewerUrlSync({
     const prevMedia = params.get(MEDIA_URL_QUERY_KEY);
     const nextId = viewing?.id ?? null;
 
-    if (nextId != null && prevMedia === nextId) {
-      return;
-    }
-    if (nextId == null && (prevMedia == null || prevMedia === "")) {
-      return;
-    }
+    if (nextId == null) return;
+    if (prevMedia === nextId) return;
 
-    if (nextId != null) {
-      viewerExplicitDismissRef.current = false;
-      params.set(MEDIA_URL_QUERY_KEY, nextId);
-    } else {
-      if (!viewerExplicitDismissRef.current) {
-        return;
-      }
-      viewerExplicitDismissRef.current = false;
-      params.delete(MEDIA_URL_QUERY_KEY);
-    }
+    params.set(MEDIA_URL_QUERY_KEY, nextId);
     const path = window.location.pathname;
     const qs = params.toString();
     const full = qs === "" ? path : `${path}?${qs}`;
     const currentFull = window.location.pathname + window.location.search;
     if (full === currentFull) return;
 
-    const openingFirstTime =
-      nextId != null && (prevMedia == null || prevMedia === "");
+    const openingFirstTime = prevMedia == null || prevMedia === "";
     if (openingFirstTime) {
       window.history.pushState({}, "", full);
     } else {
@@ -128,7 +113,8 @@ export function useMediaViewerUrlSync({
   }, [syncFromUrl]);
 
   const dismissViewing = useCallback(() => {
-    viewerExplicitDismissRef.current = true;
+    removeMediaParamFromUrl();
+    skipNextUrlWrite.current = true;
     setViewing(null);
   }, [setViewing]);
 
