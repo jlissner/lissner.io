@@ -44,6 +44,10 @@ describe("Gherkin: Home media gallery and viewer (features/media/home-gallery.fe
   );
 
   it.todo(
+    "Scenario: Bulk download saves each selected file — see ui/src/features/media/lib/download-media-file.test.ts",
+  );
+
+  it.todo(
     "Scenario: Timeline navigation on wide layout — see ui/src/features/media/components/TimelineScrubber.tsx",
   );
 });
