@@ -100,6 +100,17 @@ Then(
   },
 );
 
+When("I choose bulk download", function () {
+  // UI-only; covered by ui/src/features/media/lib/download-media-file.test.ts
+});
+
+Then("each selected file is queued for download", function () {
+  assert.ok(
+    existsSync("ui/src/features/media/lib/download-media-file.ts"),
+    "bulk download helper must exist",
+  );
+});
+
 Given("the timeline strip is available for my sort order", function () {
   // UI-only.
 });

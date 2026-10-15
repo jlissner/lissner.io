@@ -6,7 +6,7 @@ import {
 } from "react";
 import { errorMessage } from "@/api";
 import type { MediaItem } from "@/features/media/components/media-viewer/media-utils";
-import { downloadMediaFile } from "../lib/download-media-file";
+import { downloadMediaFiles } from "../lib/download-media-file";
 import { deleteMediaById, runBulkIndex, triggerIndex } from "../api";
 
 interface UseMediaBulkActionsOptions {
@@ -79,12 +79,12 @@ export function useMediaBulkActions({
   );
 
   const handleBulkDownload = useCallback(() => {
-    const ids = Array.from(selected);
-    ids.forEach((id) => {
+    const files = Array.from(selected).flatMap((id) => {
       const item = displayItems.find((entry) => entry.id === id);
-      if (!item) return;
-      downloadMediaFile(id, item.originalName);
+      if (!item) return [];
+      return [{ mediaId: id, filename: item.originalName }];
     });
+    downloadMediaFiles(files);
   }, [selected, displayItems]);
 
   const handleBulkDeleteWrapped = useCallback(async () => {

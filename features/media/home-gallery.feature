@@ -36,6 +36,13 @@ Feature: Home media gallery and viewer
     When I enter selection mode and select multiple items
     Then I can trigger at least one bulk action offered by the app (e.g. download or delete) subject to permissions
 
+  # Bug: browsers cancel concurrent programmatic downloads in the same tick
+  Scenario: Bulk download saves each selected file
+    Given several media items are visible in the gallery
+    When I enter selection mode and select multiple items
+    And I choose bulk download
+    Then each selected file is queued for download
+
   Scenario: Timeline navigation on wide layout
     Given the timeline strip is available for my sort order
     When I choose a month from the timeline

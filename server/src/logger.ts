@@ -15,7 +15,7 @@
  */
 import { gray, green, red, white, yellow } from "yoctocolors";
 
-export type LogMeta = Record<string, unknown>;
+type LogMeta = Record<string, unknown>;
 
 type LogLevel = "error" | "warn" | "info" | "debug";
 
