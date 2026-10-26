@@ -1,6 +1,6 @@
 # Hosting Guide
 
-Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** (nginx static SPA) + **`graphql`** (PostGraphile) + **Ollama on NVIDIA GPU**. Compose file: `docker-compose.yml` reserves a GPU for Ollama; **CPU-only hosts cannot run this stack as-is**.
+Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** (nginx static SPA) + **`graphql`** (PostGraphile) + **Ollama on NVIDIA GPU**. Compose file: `config/docker-compose.yml` reserves a GPU for Ollama; **CPU-only hosts cannot run this stack as-is**.
 
 ### Public hostnames (example: Lissner)
 
@@ -34,11 +34,11 @@ Or use `sudo` with Docker commands.
 
 ## Environment before deploy
 
-Create a **`.env`** file in the repo root (Compose reads it automatically for **variable substitution** in **`docker-compose.yml`**). **`npm run host:*`** scripts use **`scripts/docker-compose.sh`**, which passes **`--env-file .env.prod`** when that file exists so the same substitution can read **`ACME_EMAIL`**, **`TRAEFIK_RULE`**, **`SERVER_PORT`**, etc. from **`.env.prod`**.
+Create a **`config/.env`** file (and/or **`config/.env.prod`**). **`npm run host:*`** uses **`scripts/docker-compose.sh`**, which runs Compose with **`-f config/docker-compose.yml --project-directory <repo>`** and passes **`--env-file config/.env`** / **`config/.env.prod`** when those files exist so **`${ACME_EMAIL}`**, **`TRAEFIK_RULE`**, **`SERVER_PORT`**, etc. resolve.
 
-If you run **`docker compose`** yourself, add **`--env-file .env.prod`** when those variables live only in **`.env.prod`**, e.g. **`docker compose --env-file .env.prod config`**.
+If you run **`docker compose`** yourself, prefer **`bash scripts/docker-compose.sh …`**, or pass **`-f config/docker-compose.yml --project-directory . --env-file config/.env.prod`**.
 
-At minimum in **`.env`** and/or **`.env.prod`** (for compose **variable substitution**):
+At minimum in **`config/.env`** and/or **`config/.env.prod`** (for compose **variable substitution**):
 
 | Variable       | Required                        | Purpose                                                                                          |
 | -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -47,34 +47,34 @@ At minimum in **`.env`** and/or **`.env.prod`** (for compose **variable substitu
 | `UI_HOST`      | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly |
 | `GRAPHQL_HOST` | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                              |
 | `GRAPHQL_PORT` | Yes for graphql service         | Container listen port (default **5678**)                                                         |
-| `DATABASE_URL` | Yes in **`.env.prod`**          | PostgreSQL connection string for PostGraphile (not used by **`api`**)                            |
+| `DATABASE_URL` | Yes in **`config/.env.prod`**   | PostgreSQL connection string for PostGraphile (not used by **`api`**)                            |
 
-The **`api`** service uses **`env_file: .env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
+The **`api`** service uses **`env_file: config/.env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
 
-The **`graphql`** service also uses **`env_file: .env.prod`** for **`DATABASE_URL`**, **`PG_SCHEMAS`**, and related Postgres settings.
+The **`graphql`** service also uses **`env_file: config/.env.prod`** for **`DATABASE_URL`**, **`PG_SCHEMAS`**, and related Postgres settings.
 
-**Compose `${VAR}` substitution** (used in **`docker-compose.yml`** for Traefik’s **`ACME_EMAIL`**, router rules, ports, etc.) comes **only** from: the project **`.env`** file, your **shell environment**, and files passed as **`docker compose --env-file …`**. It does **not** read **`env_file:`** on services — those keys are injected **into containers** at runtime, not used to replace **`${…}`** in the compose file.
+**Compose `${VAR}` substitution** (used in **`config/docker-compose.yml`** for Traefik’s **`ACME_EMAIL`**, router rules, ports, etc.) comes **only** from: **`config/.env`** (via **`--env-file`**), your **shell environment**, and files passed as **`docker compose --env-file …`**. It does **not** read **`env_file:`** on services — those keys are injected **into containers** at runtime, not used to replace **`${…}`** in the compose file.
 
-So **`ACME_EMAIL` in `.env.prod` alone** is enough **only** when Compose also sees it for substitution: e.g. run **`bash scripts/docker-compose.sh …`** (adds **`--env-file .env.prod`** when present), or **`docker compose --env-file .env.prod …`**, **or** put **`ACME_EMAIL=…`** in **`.env`** in the repo root.
+So **`ACME_EMAIL` in `config/.env.prod` alone** is enough when you use **`bash scripts/docker-compose.sh …`** (passes **`--env-file config/.env.prod`**), or put **`ACME_EMAIL=…`** in **`config/.env`**.
 
-### Where to put `ACME_EMAIL` (if you do not want it in `.env.prod`)
+### Where to put `ACME_EMAIL` (if you do not want it in `config/.env.prod`)
 
-Put it in **`.env`** at the repo root (same level as **`docker-compose.yml`**). Compose **loads `.env` automatically** for **`${ACME_EMAIL}`** — no **`--env-file`** needed. **`npm run deploy`** runs **`host:config`**, which uses **`scripts/docker-compose.sh`**, so interpolation sees **`.env`** even when **`.env.prod`** is missing or does not define **`ACME_EMAIL`**.
+Put it in **`config/.env`**. **`scripts/docker-compose.sh`** passes **`--env-file config/.env`** when that file exists. **`npm run deploy`** / **`host:config`** use that wrapper.
 
 **Either** is valid for deploy:
 
-| Location        | When it applies                                                                                                                                              |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`.env`**      | Always used for compose substitution (Traefik **`ACME_EMAIL`**, optional **`TRAEFIK_RULE`**, ports, …).                                                      |
-| **`.env.prod`** | Used for substitution **when** **`scripts/docker-compose.sh`** runs and **`--env-file .env.prod`** is added (e.g. **`npm run host`**, **`npm run deploy`**). |
+| Location               | When it applies                                                                                                      |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| **`config/.env`**      | Used for compose substitution when present (Traefik **`ACME_EMAIL`**, optional **`TRAEFIK_RULE`**, ports, …).        |
+| **`config/.env.prod`** | Used for substitution **when** **`scripts/docker-compose.sh`** runs (e.g. **`npm run host`**, **`npm run deploy`**). |
 
-You only need **`ACME_EMAIL`** in **one** of those files for **`docker-compose.yml`**; avoid duplicating unless you keep them in sync on purpose.
+You only need **`ACME_EMAIL`** in **one** of those files for **`config/docker-compose.yml`**; avoid duplicating unless you keep them in sync on purpose.
 
-Keep app secrets in **`.env.prod`** (do not commit). See **`.env.prod.example`**.
+Keep app secrets in **`config/.env.prod`** (do not commit). See **`config/.env.example`**.
 
 ## Build and deploy
 
-The Docker images **do not compile** TypeScript or Vite on their own: **`server/Dockerfile`** copies **`server/dist`**; **`ui/Dockerfile`** copies **`ui/dist`**; **`graphql/Dockerfile`** copies **`graphql/dist`**. Always run **`npm run build`** on the host first.
+The Docker images **do not compile** TypeScript or Vite on their own: **`packages/server/Dockerfile`** copies **`packages/server/dist`**; **`packages/pics/Dockerfile`** copies **`packages/pics/dist`**; **`packages/graphql/Dockerfile`** copies **`packages/graphql/dist`**. Always run **`npm run build`** on the host first.
 
 | Command               | Description                                                                                                                         |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
@@ -91,7 +91,7 @@ The Docker images **do not compile** TypeScript or Vite on their own: **`server/
 
 ## First-time setup
 
-1. Configure **`.env`** (see above), especially **`ACME_EMAIL`** and **`TRAEFIK_RULE`** for your hostname. In **`.env.prod`**, set **`OLLAMA_VISION_MODEL`** (and optionally **`OLLAMA_EMBED_MODEL`**) if you do not want the defaults (**`llava`** and **`nomic-embed-text`**).
+1. Configure **`config/.env`** (see above), especially **`ACME_EMAIL`** and **`TRAEFIK_RULE`** for your hostname. In **`config/.env.prod`**, set **`OLLAMA_VISION_MODEL`** (and optionally **`OLLAMA_EMBED_MODEL`**) if you do not want the defaults (**`llava`** and **`nomic-embed-text`**).
 2. Run **`npm run host`** (includes `npm run build`). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
 3. Check **`npm run host:status`**
 
@@ -99,7 +99,7 @@ The site is reachable on **`UI_HOST`** (static **`ui`** container), **`API_HOST`
 
 ## Manual commands
 
-Prefer **`bash scripts/docker-compose.sh …`** (or **`npm run host:status`** / **`host:logs`**) so **`.env.prod`** is included for interpolation. Otherwise pass **`--env-file .env.prod`** yourself.
+Prefer **`bash scripts/docker-compose.sh …`** (or **`npm run host:status`** / **`host:logs`**) so **`config/.env.prod`** is included for interpolation. Otherwise pass the same flags yourself.
 
 ```bash
 bash scripts/docker-compose.sh ps
@@ -145,11 +145,11 @@ Error: model 'nomic-embed-text' not found
 Error: listen EADDRINUSE: address already in use
 ```
 
-→ Stop a local dev server (e.g. `pkill -f "tsx watch"`) or change **`HOST_PORT`** / **`HTTPS_PORT`** / **`HTTP_PORT`** in `.env`.
+→ Stop a local dev server (e.g. `pkill -f "tsx watch"`) or change **`HOST_PORT`** / **`HTTPS_PORT`** / **`HTTP_PORT`** in `config/.env`.
 
 ### Traefik ACME email empty / TLS fails
 
-Compose warns if **`ACME_EMAIL`** is unset for **`${ACME_EMAIL}`** in **`docker-compose.yml`**. Set **`ACME_EMAIL`** in **`.env`** (repo root), **or** run Compose with **`--env-file .env.prod`** (e.g. **`bash scripts/docker-compose.sh up -d traefik`** when **`.env.prod`** exists), then recreate Traefik.
+Compose warns if **`ACME_EMAIL`** is unset for **`${ACME_EMAIL}`** in **`config/docker-compose.yml`**. Set **`ACME_EMAIL`** in **`config/.env`** or **`config/.env.prod`**, then **`bash scripts/docker-compose.sh up -d traefik`**.
 
 ### Traefik `EntryPoint doesn't exist` / `No valid entryPoint`
 
@@ -161,9 +161,9 @@ Repeated failed validations (wrong DNS, wrong port 443, bad router before the fi
 
 ### App cannot reach Ollama
 
-The **`api`** service joins both the **`traefik`** and **`default`** networks so it can talk to Traefik and to the **`ollama`** service. **`docker-compose.yml` sets `OLLAMA_HOST=http://ollama:11434` on the **`api`** container** so indexing and vision use the Compose DNS name to the bundled **`ollama`** service. A value like **`ollama.internal`** in **`.env.prod`** is for Traefik-style routing on other networks and is **not** used for **`api`→Ollama** inside this stack.
+The **`api`** service joins both the **`traefik`** and **`default`** networks so it can talk to Traefik and to the **`ollama`** service. **`config/docker-compose.yml` sets `OLLAMA_HOST=http://ollama:11434` on the **`api`** container** so indexing and vision use the Compose DNS name to the bundled **`ollama`** service. A value like **`ollama.internal`** in **`config/.env.prod`** is for Traefik-style routing on other networks and is **not** used for **`api`→Ollama** inside this stack.
 
-If you change networks or use an external Ollama host, edit the **`api`** service **`environment`** in **`docker-compose.yml`** (or split overrides) so **`OLLAMA_HOST`** points at a URL the **`api`** container can resolve.
+If you change networks or use an external Ollama host, edit the **`api`** service **`environment`** in **`config/docker-compose.yml`** (or split overrides) so **`OLLAMA_HOST`** points at a URL the **`api`** container can resolve.
 
 ### Local development (no Docker UI/API split)
 

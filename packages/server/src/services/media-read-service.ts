@@ -1,0 +1,497 @@
+import { access, readFile } from "fs/promises";
+import { logger } from "../logger.js";
+import path from "path";
+import sharp from "sharp";
+import {
+  isTextDocument,
+  type AdminThumbnailRepairResponse,
+  type MediaListQueryResponse,
+} from "@lissner/shared";
+import * as db from "../db/media.js";
+import { extractFacesFromImage } from "../faces.js";
+import { mediaDir, thumbnailsDir } from "../config/paths.js";
+import {
+  effectiveImageResponseMimeType,
+  isEffectiveImageItem,
+  isPixelMotionPhotoExtension,
+  sniffAndPersistMediaMime,
+} from "../lib/effective-image.js";
+import {
+  generateVideoThumbnailWithFfmpeg,
+  isUsableVideoThumbnailFile,
+} from "../lib/video-thumbnail.js";
+import {
+  tryRestoreMediaFromBackup,
+  tryRestoreVideoThumbnailFromBackup,
+} from "../s3/sync-restore.js";
+import { isVideoMime } from "../lib/media-mime.js";
+
+type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
+
+type MediaLocalFileSource = Pick<
+  MediaItemRow,
+  "id" | "filename" | "backedUpAt"
+>;
+
+/** If the file is missing locally but the row says it was backed up, pull it from S3. */
+export async function ensureLocalMediaFile(
+  item: MediaLocalFileSource,
+): Promise<boolean> {
+  const filePath = path.join(mediaDir, item.filename);
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    if (!item.backedUpAt) return false;
+    const ok = await tryRestoreMediaFromBackup(item);
+    if (!ok) return false;
+    try {
+      await access(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
+export function listMediaEnriched(params: {
+  limit: number;
+  offset: number;
+  personId?: number;
+  sortBy: "uploaded" | "taken";
+}): MediaListQueryResponse {
+  const items =
+    params.personId != null && !isNaN(params.personId)
+      ? db.listMediaPaginated(
+          params.limit,
+          params.offset,
+          params.personId,
+          params.sortBy,
+        )
+      : db.listMediaPaginated(
+          params.limit,
+          params.offset,
+          undefined,
+          params.sortBy,
+        );
+  const total =
+    params.personId != null && !isNaN(params.personId)
+      ? db.getMediaCountForPerson(params.personId)
+      : db.getMediaCount();
+  const indexedIds = db.getIndexedMediaIds();
+  const personNames = db.getPersonNames();
+  const enriched = items.map((item) => {
+    const personIds = db.getImagePeople(item.id);
+    const people = personIds.map(
+      (pid) => personNames.get(pid) ?? `Person ${pid}`,
+    );
+    return {
+      ...item,
+      indexed: indexedIds.has(item.id),
+      backedUp: !!item.backedUpAt,
+      people: people.length ? people : undefined,
+    };
+  });
+  return { items: enriched, total };
+}
+
+export async function getFacesPayloadForMedia(mediaId: string) {
+  const item = db.getMediaById(mediaId);
+  if (!item || !isEffectiveImageItem(item)) {
+    return { ok: false as const, reason: "not_found" as const };
+  }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    return { ok: false as const, reason: "file_missing" as const };
+  }
+  const filePath = path.join(mediaDir, item.filename);
+  try {
+    const faces = await extractFacesFromImage(filePath, item.id);
+    const detected = faces
+      .map((f) => {
+        const b = f.box;
+        if (!b) return null;
+        return {
+          x: b.x,
+          y: b.y,
+          width: b.width,
+          height: b.height,
+          detectorScore: f.detectorScore ?? null,
+        };
+      })
+      .filter(
+        (
+          row,
+        ): row is {
+          x: number;
+          y: number;
+          width: number;
+          height: number;
+          detectorScore: number | null;
+        } => row != null,
+      );
+    const tagged = db.getTaggedFacesInMedia(item.id);
+    const personNames = db.getPersonNames();
+    return {
+      ok: true as const,
+      body: {
+        detected,
+        tagged: tagged.map((t) => ({
+          ...t,
+          name: personNames.get(t.personId) ?? `Person ${t.personId}`,
+        })),
+      },
+    };
+  } catch (err) {
+    logger.error({ err, mediaId }, "Face detection error");
+    return { ok: false as const, reason: "detection_failed" as const };
+  }
+}
+
+export async function getFaceCropOrFullImage(
+  mediaId: string,
+  personId: number,
+) {
+  const item = db.getMediaById(mediaId);
+  if (!item || !isEffectiveImageItem(item)) {
+    return { ok: false as const, reason: "not_found" as const };
+  }
+  if (isNaN(personId) || personId < 1) {
+    return { ok: false as const, reason: "bad_request" as const };
+  }
+  const personIds = db.getImagePeople(item.id);
+  if (!personIds.includes(personId)) {
+    return { ok: false as const, reason: "person_not_in_image" as const };
+  }
+  const fileOk = await ensureLocalMediaFile(item);
+  if (!fileOk) {
+    return { ok: false as const, reason: "file_missing" as const };
+  }
+  const box = db.getFaceBox(item.id, personId);
+  const filePath = path.join(mediaDir, item.filename);
+  try {
+    if (box && box.width > 0 && box.height > 0) {
+      const left = Math.round(Math.max(0, box.x));
+      const top = Math.round(Math.max(0, box.y));
+      const width = Math.round(Math.max(1, box.width));
+      const height = Math.round(Math.max(1, box.height));
+      const buffer = await sharp(filePath)
+        .extract({ left, top, width, height })
+        .rotate()
+        .toBuffer();
+      return {
+        ok: true as const,
+        kind: "buffer" as const,
+        mimeType: effectiveImageResponseMimeType(item),
+        buffer,
+      };
+    }
+    return {
+      ok: true as const,
+      kind: "file" as const,
+      path: filePath,
+      mimeType: effectiveImageResponseMimeType(item),
+    };
+  } catch (err) {
+    logger.error({ err, mediaId, personId }, "Face crop error");
+    return { ok: false as const, reason: "crop_failed" as const };
+  }
+}
+
+export async function getMediaPreviewFile(mediaId: string) {
+  const item = db.getMediaById(mediaId);
+  if (!item) {
+    return { ok: false as const, reason: "not_found" as const };
+  }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    return { ok: false as const, reason: "file_missing" as const };
+  }
+  const filePath = path.join(mediaDir, item.filename);
+  const { mimeTypePreview, mimeTypeForKind } = await sniffAndPersistMediaMime(
+    item,
+    filePath,
+    db.updateMediaMimeType,
+  );
+  if (isVideoMime(mimeTypeForKind)) {
+    return {
+      ok: true as const,
+      kind: "file" as const,
+      mimeType: mimeTypePreview,
+      path: filePath,
+    };
+  }
+  const isImageKind =
+    mimeTypeForKind.startsWith("image/") ||
+    (isPixelMotionPhotoExtension(item.originalName) &&
+      !isVideoMime(mimeTypeForKind));
+  if (!isImageKind) {
+    return { ok: false as const, reason: "bad_type" as const };
+  }
+  try {
+    const rotated = await sharp(filePath).rotate().toBuffer();
+    return {
+      ok: true as const,
+      kind: "buffer" as const,
+      mimeType: mimeTypePreview,
+      buffer: rotated,
+    };
+  } catch (err) {
+    logger.error({ err, mediaId }, "Image preview generation error");
+    return { ok: false as const, reason: "preview_failed" as const };
+  }
+}
+
+export function getMediaDetailsEnriched(mediaId: string) {
+  const item = db.getMediaById(mediaId);
+  if (!item) {
+    return { ok: false as const, reason: "not_found" as const };
+  }
+  const personIds = db.getImagePeople(item.id);
+  const personNames = db.getPersonNames();
+  const people = personIds.map(
+    (pid) => personNames.get(pid) ?? `Person ${pid}`,
+  );
+  const indexedIds = db.getIndexedMediaIds();
+  const companion =
+    item.motionCompanionId != null && item.motionCompanionId !== ""
+      ? db.getMediaById(item.motionCompanionId)
+      : undefined;
+  const motionCompanion =
+    companion != null
+      ? {
+          id: companion.id,
+          originalName: companion.originalName,
+          mimeType: companion.mimeType,
+          size: companion.size,
+        }
+      : undefined;
+  const { hideFromGallery: _hid, ...rest } = item;
+  const tags = db.listTagsForMedia(item.id);
+  return {
+    ok: true as const,
+    body: {
+      ...rest,
+      people: people.length ? people : undefined,
+      tags: tags.length ? tags : undefined,
+      indexed: indexedIds.has(item.id),
+      backedUp: !!item.backedUpAt,
+      motionCompanion,
+    },
+  };
+}
+
+export async function readTextMediaContent(mediaId: string) {
+  const item = db.getMediaById(mediaId);
+  if (!item) {
+    return { ok: false as const, reason: "not_found" as const };
+  }
+  if (!isTextDocument(item)) {
+    return { ok: false as const, reason: "not_text" as const };
+  }
+  const ok = await ensureLocalMediaFile(item);
+  if (!ok) {
+    return { ok: false as const, reason: "file_missing" as const };
+  }
+  try {
+    const filePath = path.join(mediaDir, item.filename);
+    const content = await readFile(filePath, "utf-8");
+    return { ok: true as const, content };
+  } catch {
+    return { ok: false as const, reason: "read_failed" as const };
+  }
+}
+
+export async function getThumbnailResponse(mediaId: string): Promise<
+  | { ok: true; kind: "file"; path: string; contentType: string }
+  | {
+      ok: false;
+      reason:
+        | "not_found"
+        | "bad_type"
+        | "file_missing"
+        | "ffmpeg_missing"
+        | "thumb_failed";
+    }
+> {
+  const item = db.getMediaById(mediaId);
+  if (!item) {
+    return { ok: false, reason: "not_found" };
+  }
+  const mediaOk = await ensureLocalMediaFile(item);
+  if (!mediaOk) {
+    return { ok: false, reason: "file_missing" };
+  }
+  const filePath = path.join(mediaDir, item.filename);
+  const { mimeTypeForKind } = await sniffAndPersistMediaMime(
+    item,
+    filePath,
+    db.updateMediaMimeType,
+  );
+  const isVideoKind = mimeTypeForKind.startsWith("video/");
+  const isImageKind =
+    mimeTypeForKind.startsWith("image/") ||
+    isPixelMotionPhotoExtension(item.originalName);
+
+  if (!isVideoKind && isImageKind) {
+    const imgThumbPath = path.join(thumbnailsDir, `${item.id}_thumb.jpg`);
+    try {
+      if (!(await isUsableVideoThumbnailFile(imgThumbPath))) {
+        await sharp(filePath)
+          .rotate()
+          .resize(400, 400, { fit: "inside", withoutEnlargement: true })
+          .jpeg({ quality: 70 })
+          .toFile(imgThumbPath);
+      }
+      if (!(await isUsableVideoThumbnailFile(imgThumbPath))) {
+        logger.error(
+          { mediaId },
+          "Image thumbnail file missing or too small after Sharp write",
+        );
+        return { ok: false, reason: "thumb_failed" };
+      }
+      return {
+        ok: true,
+        kind: "file",
+        path: imgThumbPath,
+        contentType: "image/jpeg",
+      };
+    } catch (err) {
+      logger.error({ err, mediaId }, "Image thumbnail generation error");
+      return { ok: false, reason: "thumb_failed" };
+    }
+  }
+  if (!isVideoKind) {
+    return { ok: false, reason: "bad_type" };
+  }
+  const thumbPath = path.join(thumbnailsDir, `${item.id}.jpg`);
+  const srcPath = path.join(mediaDir, item.filename);
+  try {
+    if (!(await isUsableVideoThumbnailFile(thumbPath))) {
+      if (item.backedUpAt) {
+        await tryRestoreVideoThumbnailFromBackup(item.id);
+      }
+      if (!(await isUsableVideoThumbnailFile(thumbPath))) {
+        await generateVideoThumbnailWithFfmpeg(srcPath, thumbPath);
+      }
+    }
+    if (!(await isUsableVideoThumbnailFile(thumbPath))) {
+      logger.error(
+        { mediaId },
+        "Video thumbnail file missing or too small after restore/ffmpeg",
+      );
+      return { ok: false, reason: "thumb_failed" };
+    }
+    return {
+      ok: true,
+      kind: "file",
+      path: thumbPath,
+      contentType: "image/jpeg",
+    };
+  } catch (err) {
+    const code = (err as NodeJS.ErrnoException)?.code;
+    if (code === "ENOENT") {
+      return { ok: false, reason: "ffmpeg_missing" };
+    }
+    logger.error({ err, mediaId }, "Video thumbnail error");
+    return { ok: false, reason: "thumb_failed" };
+  }
+}
+
+function expectedThumbnailPathForMime(params: {
+  mediaId: string;
+  mimeTypeForKind: string;
+  originalName: string;
+}): string | null {
+  if (params.mimeTypeForKind.startsWith("video/")) {
+    return path.join(thumbnailsDir, `${params.mediaId}.jpg`);
+  }
+  const isImageKind =
+    params.mimeTypeForKind.startsWith("image/") ||
+    isPixelMotionPhotoExtension(params.originalName);
+  if (isImageKind) {
+    return path.join(thumbnailsDir, `${params.mediaId}_thumb.jpg`);
+  }
+  return null;
+}
+
+export async function repairMissingThumbnails(params: {
+  maxGenerations: number;
+}): Promise<AdminThumbnailRepairResponse> {
+  const items = db.listMedia();
+  const scanned = items.length;
+  let missingFound = 0;
+  let generated = 0;
+  let skippedAlreadyOk = 0;
+  let skippedNoLocalFile = 0;
+  let skippedIneligible = 0;
+  let skippedDueToCap = 0;
+  let repairAttempts = 0;
+  const failed: AdminThumbnailRepairResponse["failed"] = [];
+
+  for (const item of items) {
+    const mediaOk = await ensureLocalMediaFile(item);
+    if (!mediaOk) {
+      skippedNoLocalFile++;
+      continue;
+    }
+    const filePath = path.join(mediaDir, item.filename);
+    const { mimeTypeForKind } = await sniffAndPersistMediaMime(
+      item,
+      filePath,
+      db.updateMediaMimeType,
+    );
+    const expectedPath = expectedThumbnailPathForMime({
+      mediaId: item.id,
+      mimeTypeForKind,
+      originalName: item.originalName,
+    });
+    if (expectedPath == null) {
+      skippedIneligible++;
+      continue;
+    }
+    const usable = await isUsableVideoThumbnailFile(expectedPath);
+    if (usable) {
+      skippedAlreadyOk++;
+      continue;
+    }
+    missingFound++;
+    if (repairAttempts >= params.maxGenerations) {
+      skippedDueToCap++;
+      continue;
+    }
+    repairAttempts++;
+    const out = await getThumbnailResponse(item.id);
+    if (!out.ok) {
+      failed.push({ mediaId: item.id, reason: out.reason });
+      continue;
+    }
+    const verified = await isUsableVideoThumbnailFile(expectedPath);
+    if (!verified) {
+      logger.error(
+        { mediaId: item.id, expectedPath },
+        "Thumbnail repair: generation reported ok but expected JPEG is still missing or under minimum size",
+      );
+      failed.push({
+        mediaId: item.id,
+        reason: "thumb_verify_failed",
+        detail:
+          "Expected thumbnail file is still missing or too small after repair (see server logs).",
+      });
+      continue;
+    }
+    generated++;
+  }
+
+  return {
+    scanned,
+    missingFound,
+    generated,
+    skippedAlreadyOk,
+    skippedNoLocalFile,
+    skippedIneligible,
+    skippedDueToCap,
+    maxGenerations: params.maxGenerations,
+    failed,
+  };
+}

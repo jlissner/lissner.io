@@ -25,7 +25,7 @@ async function ensureServer(world: AuthWorld): Promise<void> {
     return;
   }
   const { createConfiguredApp } =
-    await import("../../server/dist/bootstrap/server.js");
+    await import("../../packages/server/dist/bootstrap/server.js");
   const server = createConfiguredApp("/nonexistent-ui-dist") as Server;
   await new Promise<void>((resolve) => {
     server.listen(0, "127.0.0.1", () => resolve());
@@ -114,7 +114,7 @@ async function ensureWhitelistedEmail(world: AuthWorld): Promise<void> {
   seq.n = next;
   const email = `user+${next}@test.local`;
   world.email = email;
-  const authDb = await import("../../server/dist/db/auth.js");
+  const authDb = await import("../../packages/server/dist/db/auth.js");
   // Ensure entry exists; ignore duplicate errors.
   try {
     authDb.addToWhitelist(email, false);
@@ -125,7 +125,7 @@ async function ensureWhitelistedEmail(world: AuthWorld): Promise<void> {
 
 async function ensureMagicCode(world: AuthWorld): Promise<void> {
   assert.ok(world.email);
-  const authDb = await import("../../server/dist/db/auth.js");
+  const authDb = await import("../../packages/server/dist/db/auth.js");
   const { code } = authDb.createMagicLinkToken(world.email);
   world.magicCode = code;
 }
@@ -459,7 +459,7 @@ Given("I have a login code that has expired", async function (this: AuthWorld) {
   assert.ok(this.email);
   assert.ok(this.magicCode);
   const codeHash = createHash("sha256").update(this.magicCode).digest("hex");
-  const mediaDb = await import("../../server/dist/db/media-db.js");
+  const mediaDb = await import("../../packages/server/dist/db/media-db.js");
   const db = mediaDb.getDb();
   db.prepare(
     "UPDATE magic_link_tokens SET expires_at = datetime('now', '-1 hour') WHERE LOWER(email) = ? AND login_code = ?",

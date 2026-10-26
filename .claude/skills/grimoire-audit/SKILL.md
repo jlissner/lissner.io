@@ -32,7 +32,8 @@ Ask the user what to audit:
 
 - **Features** — find behavioral functionality that has no `.feature` file
 - **Decisions** — find implicit architecture decisions that have no ADR
-- **Both** — full audit (default)
+- **Conventions** — find conventions files in `.grimoire/docs/conventions/` whose placement/naming rules no longer match the codebase
+- **Both** / **All** — full audit (default: features + decisions + conventions)
 
 Check what's already documented:
 
@@ -67,11 +68,36 @@ Scan for implicit architecture decisions:
 - **Deployment** — Docker, K8s, serverless? CI/CD pipeline?
 - **Data model** — multi-tenant? event-sourced? CQRS?
 
-For each pattern found, check if a corresponding ADR exists. If not, note it as undocumented.
+For each pattern found, check if a corresponding ADR exists. If not, apply the **novelty gate** before proposing one:
+
+- **Only propose an ADR for a novel decision** — one with a real, project-specific trade-off between viable alternatives. An industry-default pick on this stack (the standard test runner, CLI parser, git wrapper, linter; the ecosystem-forced module convention) is **not** novel. Test: _would a competent engineer on this stack pick differently, and need the reasoning to understand the choice?_ If no, do not backfill an ADR for it.
+- **Do NOT mint one ADR per default tooling pick.** That is the most common audit-backfill failure — it floods the register with "we used the standard tool" records. Collect the obvious tooling/convention defaults into a single `Tooling and convention baseline` ADR (one row each: choice → why), and reserve sequential ADRs for genuine trade-offs (e.g. "Huey instead of Celery", "regex over tree-sitter").
+
+### 3.5. Conventions Drift Detection
+
+Read each file in `.grimoire/docs/conventions/`. For each file:
+
+1. Use MCP `get_architecture` or `search_graph` to query the current code structure for the relevant area
+2. Compare the conventions file's placement rules, naming rules, and patterns against what MCP reports the codebase actually does
+3. Flag any conventions rule that no longer matches:
+   - "api.md says new views go in `src/api/views/` but MCP shows views now in `src/api/handlers/`"
+   - "models.md says models are prefixed with `I` but no `I`-prefixed models found in MCP graph"
+
+Present drifted conventions to the user with the same batched interview approach:
+
+> "api.md states that new views go in `src/api/views/`, but the codebase now places them in `src/api/handlers/`. Options:
+>
+> - **refresh** — update the conventions file to match current code (I'll open it for editing with MCP-sourced state)
+> - **accept-as-is** — the conventions file is intentionally ahead of the code
+> - **skip** — leave for now"
+
+Skip this step when the user's scope answer was "features only" or "decisions only".
 
 ### 4. Interview the User
 
 Do NOT dump a massive list. Present findings in batches of 3-5, grouped by area, and ask the user about each:
+
+Clearly label each batch item as one of: "undocumented feature", "undocumented decision", or "drifted convention"
 
 For features:
 
@@ -136,6 +162,7 @@ After the interview, summarize:
 - How many features are dead or stale
 - How many decisions are documented vs. undocumented
 - How many decisions are stale
+- How many conventions files drifted vs. up-to-date
 - Suggest which areas to address first (highest risk / most complex / most frequently changed)
 
 ## Important

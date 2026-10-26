@@ -21,7 +21,7 @@ async function ensureServer(world: DuplicatesWorld): Promise<void> {
     return;
   }
   const { createConfiguredApp } =
-    await import("../../server/dist/bootstrap/server.js");
+    await import("../../packages/server/dist/bootstrap/server.js");
   const server = createConfiguredApp("/nonexistent-ui-dist") as Server;
   await new Promise<void>((resolve) => {
     server.listen(0, "127.0.0.1", () => resolve());
@@ -45,7 +45,8 @@ AfterAll(async () => {
 });
 
 async function signAdminCookie(): Promise<string> {
-  const { signAccessToken } = await import("../../server/dist/auth/jwt.js");
+  const { signAccessToken } =
+    await import("../../packages/server/dist/auth/jwt.js");
   const token = await signAccessToken({
     sub: 1,
     email: "admin@test.local",

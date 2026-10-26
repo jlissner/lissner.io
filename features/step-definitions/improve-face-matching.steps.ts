@@ -27,7 +27,7 @@ async function ensureServer(world: FaceMatchWorld): Promise<string> {
     return srv.baseUrl;
   }
   const { createConfiguredApp } =
-    await import("../../server/dist/bootstrap/server.js");
+    await import("../../packages/server/dist/bootstrap/server.js");
   const server = createConfiguredApp("/nonexistent-ui-dist") as Server;
   await new Promise<void>((resolve) => {
     server.listen(0, "127.0.0.1", () => resolve());
@@ -72,7 +72,8 @@ async function fetchJson(
 Given(
   "I have an authenticated session as a gallery user",
   async function (this: FaceMatchWorld) {
-    const { signAccessToken } = await import("../../server/dist/auth/jwt.js");
+    const { signAccessToken } =
+      await import("../../packages/server/dist/auth/jwt.js");
     const token = await signAccessToken({
       sub: 2,
       email: "gallery@test.local",
@@ -85,7 +86,8 @@ Given(
 Given(
   "I am signed in as a non-admin user",
   async function (this: FaceMatchWorld) {
-    const { signAccessToken } = await import("../../server/dist/auth/jwt.js");
+    const { signAccessToken } =
+      await import("../../packages/server/dist/auth/jwt.js");
     const token = await signAccessToken({
       sub: 3,
       email: "member@test.local",
@@ -119,8 +121,9 @@ Given(
     this.fixtureMediaId = body.id;
 
     const { indexMediaItem } =
-      await import("../../server/dist/indexing/media.js");
-    const { getMediaById } = await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/indexing/media.js");
+    const { getMediaById } =
+      await import("../../packages/server/dist/db/media.js");
     const row = getMediaById(body.id);
     assert.ok(row);
     await indexMediaItem({
@@ -133,7 +136,7 @@ Given(
     });
 
     if (process.env.BDD_FACE_DETECT_OFF === "1") {
-      const mp = await import("../../server/dist/db/media-people.js");
+      const mp = await import("../../packages/server/dist/db/media-people.js");
       const pid = mp.createNewPerson();
       const conf = logicalPath.includes("no-human") ? 0.35 : 0.85;
       mp.setImagePeople(body.id, [
@@ -228,7 +231,7 @@ Given(
   async function (this: FaceMatchWorld) {
     await ensureServer(this);
     const { getAllPersonIds, getPersonNames } =
-      await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/db/media.js");
     const ids = getAllPersonIds();
     const names = getPersonNames();
     const ph = ids.find((id) => (names.get(id) ?? "").startsWith("Person"));
@@ -241,7 +244,7 @@ Given(
   "a named person exists who is a plausible match for that placeholder",
   async function () {
     const { createPerson } =
-      await import("../../server/dist/db/media-people.js");
+      await import("../../packages/server/dist/db/media-people.js");
     createPerson("Alice BDD");
   },
 );
@@ -251,7 +254,7 @@ Given(
   async function (this: FaceMatchWorld) {
     await ensureServer(this);
     const { getAllPersonIds, getPersonNames } =
-      await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/db/media.js");
     const ids = getAllPersonIds();
     const names = getPersonNames();
     const ph = ids.find((id) => (names.get(id) ?? "").startsWith("Person"));
@@ -276,7 +279,7 @@ Then(
   async function (this: FaceMatchWorld) {
     assert.equal(this.lastStatus, 200);
     const { getAllPersonIds, getPersonNames } =
-      await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/db/media.js");
     const names = getPersonNames();
     const ids = getAllPersonIds();
     const ph = this.manualLinkPersonId;
@@ -301,7 +304,7 @@ Then(
   "the placeholder is not merged into the named person until I explicitly confirm the merge",
   async function (this: FaceMatchWorld) {
     const { getAllPersonIds, getPersonNames } =
-      await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/db/media.js");
     const names = getPersonNames();
     const ids = getAllPersonIds();
     const ph = this.manualLinkPersonId;
@@ -366,10 +369,11 @@ Given(
   async function (this: FaceMatchWorld) {
     await ensureServer(this);
     const { listMedia, getEmbeddings } =
-      await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/db/media.js");
     const { indexMediaItem } =
-      await import("../../server/dist/indexing/media.js");
-    const { getMediaById } = await import("../../server/dist/db/media.js");
+      await import("../../packages/server/dist/indexing/media.js");
+    const { getMediaById } =
+      await import("../../packages/server/dist/db/media.js");
     let items = listMedia();
     if (items.length === 0) {
       const rel = "single-clear-face";
@@ -450,9 +454,10 @@ Given(
   "I have a manually assigned or confirmed face-person link on an indexed image",
   async function (this: FaceMatchWorld) {
     await ensureServer(this);
-    const { listMedia } = await import("../../server/dist/db/media.js");
+    const { listMedia } =
+      await import("../../packages/server/dist/db/media.js");
     const { createNewPerson, setPersonName, addPersonToMedia } =
-      await import("../../server/dist/db/media-people.js");
+      await import("../../packages/server/dist/db/media-people.js");
     const items = listMedia(1, 0);
     assert.ok(items[0]);
     const mediaId = items[0]!.id;
@@ -486,7 +491,7 @@ Then(
   "that face-person link remains on that image",
   async function (this: FaceMatchWorld) {
     const { getImagePeople } =
-      await import("../../server/dist/db/media-people.js");
+      await import("../../packages/server/dist/db/media-people.js");
     assert.ok(this.manualLinkMediaId && this.manualLinkPersonId);
     const ppl = getImagePeople(this.manualLinkMediaId);
     assert.ok(ppl.includes(this.manualLinkPersonId));

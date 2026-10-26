@@ -58,14 +58,18 @@ export default tseslint.config(
   },
 
   {
-    files: ["server/**/*.ts", "graphql/**/*.ts", "scripts/**/*.ts"],
+    files: [
+      "packages/server/**/*.ts",
+      "packages/graphql/**/*.ts",
+      "scripts/**/*.ts",
+    ],
     languageOptions: {
       globals: globals.node,
     },
   },
 
   {
-    files: ["graphql/**/*.ts"],
+    files: ["packages/graphql/**/*.ts"],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -73,22 +77,22 @@ export default tseslint.config(
           selector:
             "MemberExpression[computed=false][object.object.name='process'][object.property.name='env'][property.name!=/^(NODE_ENV)$/]",
           message:
-            "Read validated config from graphql/src/env.ts, not process.env directly.",
+            "Read validated config from packages/graphql/src/env.ts, not process.env directly.",
         },
       ],
     },
   },
 
   {
-    files: ["server/**/*.ts"],
+    files: ["packages/server/**/*.ts"],
     rules: {
       "no-console": "error",
     },
   },
 
   {
-    files: ["server/**/*.ts"],
-    ignores: ["server/**/*.test.ts"],
+    files: ["packages/server/**/*.ts"],
+    ignores: ["packages/server/**/*.test.ts"],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -96,14 +100,14 @@ export default tseslint.config(
           selector:
             "MemberExpression[computed=false][object.object.name='process'][object.property.name='env'][property.name!=/^(NODE_ENV|BDD_.*|DATA_EXPLORER_ENABLED)$/]",
           message:
-            "Read validated config from server/src/config/env.ts, not process.env directly. NODE_ENV, BDD_* test stubs, and explorer flags are the only allowed direct reads.",
+            "Read validated config from packages/server/src/config/env.ts, not process.env directly. NODE_ENV, BDD_* test stubs, and explorer flags are the only allowed direct reads.",
         },
       ],
     },
   },
 
   {
-    files: ["ui/**/*.{ts,tsx}"],
+    files: ["packages/pics/**/*.{ts,tsx}"],
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
@@ -116,7 +120,7 @@ export default tseslint.config(
     settings: {
       react: { version: "detect" },
       "import/resolver": {
-        typescript: { project: "./ui/tsconfig.json" },
+        typescript: { project: "./packages/pics/tsconfig.json" },
       },
     },
     rules: {
@@ -128,7 +132,7 @@ export default tseslint.config(
   },
 
   {
-    files: ["shared/**/*.ts"],
+    files: ["packages/shared/**/*.ts"],
     languageOptions: {
       globals: {
         ...globals.node,

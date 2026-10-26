@@ -1,4 +1,4 @@
-import { SERVER_PORT, API_HOST } from "../server/src/config/env.js";
+import { SERVER_PORT, API_HOST } from "../packages/server/src/config/env.js";
 
 const base = `http://${API_HOST}:${SERVER_PORT}`.replace(/\/$/, "");
 

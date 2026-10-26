@@ -1,0 +1,172 @@
+services:
+  api:
+    env_file: "config/.env.prod"
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    ports:
+      - "${SERVER_PORT}:${SERVER_PORT}"
+    volumes:
+      - app-data:${DATA_DIR}
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - SERVER_PORT=${SERVER_PORT}
+      - OLLAMA_HOST=http://ollama:11434
+      - DATA_DIR=${DATA_DIR}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.api.rule=Host(`${VITE_API_HOST}`)"
+      - "traefik.http.routers.api.entrypoints=web"
+      - "traefik.http.routers.api.service=api"
+      - "traefik.http.routers.api.tls=true"
+      - "traefik.http.routers.api.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.api-http.rule=Host(`${VITE_API_HOST}`)"
+      - "traefik.http.routers.api-http.entrypoints=webhttp"
+      - "traefik.http.routers.api-http.middlewares=api-redirect-https@docker"
+      - "traefik.http.routers.api-http.service=api"
+      - "traefik.http.middlewares.api-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.api-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.api.loadbalancer.server.port=${SERVER_PORT}"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'ffmpeg -version >/dev/null 2>&1 && node -e "fetch(''http://127.0.0.1:''+process.env.SERVER_PORT+''/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+      start_period: 300s
+    restart: unless-stopped
+    networks:
+      - traefik
+      - default
+
+  ui:
+    build:
+      context: .
+      dockerfile: packages/pics/Dockerfile
+    ports:
+      - "${UI_PORT}:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ui.rule=Host(`${UI_HOST}`)"
+      - "traefik.http.routers.ui.entrypoints=web"
+      - "traefik.http.routers.ui.service=ui"
+      - "traefik.http.routers.ui.tls=true"
+      - "traefik.http.routers.ui.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.ui-http.rule=Host(`${UI_HOST}`)"
+      - "traefik.http.routers.ui-http.entrypoints=webhttp"
+      - "traefik.http.routers.ui-http.middlewares=ui-redirect-https@docker"
+      - "traefik.http.routers.ui-http.service=ui"
+      - "traefik.http.middlewares.ui-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.ui-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.ui.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = ok']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - traefik
+
+  graphql:
+    env_file: "config/.env.prod"
+    build:
+      context: .
+      dockerfile: packages/graphql/Dockerfile
+    ports:
+      - "${GRAPHQL_PORT}:${GRAPHQL_PORT}"
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - GRAPHQL_PORT=${GRAPHQL_PORT}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.graphql.rule=Host(`${GRAPHQL_HOST}`)"
+      - "traefik.http.routers.graphql.entrypoints=web"
+      - "traefik.http.routers.graphql.service=graphql"
+      - "traefik.http.routers.graphql.tls=true"
+      - "traefik.http.routers.graphql.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.graphql-http.rule=Host(`${GRAPHQL_HOST}`)"
+      - "traefik.http.routers.graphql-http.entrypoints=webhttp"
+      - "traefik.http.routers.graphql-http.middlewares=graphql-redirect-https@docker"
+      - "traefik.http.routers.graphql-http.service=graphql"
+      - "traefik.http.middlewares.graphql-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.graphql-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.graphql.loadbalancer.server.port=${GRAPHQL_PORT}"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:''+process.env.GRAPHQL_PORT+''/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    networks:
+      - traefik
+
+  ollama:
+    build:
+      context: ./docker/ollama
+    env_file:
+      - config/.env.prod
+    volumes:
+      - ollama-models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /tmp/ollama-models-ready && ollama list >/dev/null 2>&1 || exit 1",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 1200s
+    restart: unless-stopped
+
+  traefik:
+    image: traefik:v3
+    command:
+      - "--providers.docker"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:443"
+      - "--entrypoints.webhttp.address=:80"
+      - "--providers.docker.network=lissnerio_traefik"
+      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certs:/letsencrypt
+    networks:
+      - traefik
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  ollama-models:
+  traefik-certs:
+
+networks:
+  traefik:
+    driver: bridge

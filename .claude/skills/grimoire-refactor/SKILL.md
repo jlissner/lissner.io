@@ -29,7 +29,7 @@ Systematically find, prioritize, and plan tech debt reduction. Combines automate
 
 - A grimoire-initialized project (`.grimoire/` exists)
 - Git history available (hotspot analysis needs `git log`)
-- Ideally: `grimoire map` + `/grimoire:discover` already run (area docs help contextualize findings)
+- Ideally: codebase-memory-mcp indexed (live structure/duplication intelligence) + `/grimoire:discover` run (area intent docs help contextualize findings)
 
 ## Debt Item Format
 
@@ -38,7 +38,7 @@ Each debt item in the register follows a structured format influenced by the Cod
 **Required fields:**
 
 - `id` — unique identifier (debt-NNN, monotonically increasing)
-- `category` — one of: `hotspot`, `structural_bloat`, `data_structure`, `circular_dependency`, `dependency_staleness`, `broken_promise`, `duplication`, `dead_code`, `test_debt`
+- `category` — one of: `hotspot`, `structural_bloat`, `data_structure`, `circular_dependency`, `dependency_staleness`, `broken_promise`, `duplication`, `dead_code`, `test_debt`, `pattern_divergence`, `comment_noise`
 - `severity` — `high`, `medium`, or `low`
 - `location` — file path (with optional `:line`), or `path ↔ path` for relationships
 - `title` — short human-readable summary
@@ -118,14 +118,16 @@ Run applicable scans from the categories in `../references/refactor-scan-categor
 **Key categories** (details in reference):
 
 - **Hotspots** (churn x complexity) — highest ROI, uses `git log` + `config.tools.complexity`
-- **Structural bloat** — oversized files/functions/classes
+- **Structural bloat** — oversized files/functions/classes; plus graph-powered checks for single-subclass bases, single-caller wrappers, zero-caller exports, single-implementation interfaces (requires `codebase-memory-mcp`)
 - **Data structure complexity** — over-engineered models, deep nesting
 - **Circular dependencies** — tight coupling between modules
 - **Dependency staleness** — uses `config.tools.dep_audit` or package manager outdated commands
 - **Broken promises** — aged TODO/FIXME/HACK comments via `grep` + `git blame`
-- **Duplication** — uses `.snapshot.json` duplicates or `config.tools.duplicates`
+- **Duplication** — textual clones via `config.tools.duplicates` or `grimoire health` (config-driven duplicates metric); plus semantic duplicate detection via `search_graph(semantic_query=[...])` to find re-implementations under different names (requires `codebase-memory-mcp`)
 - **Dead code** — uses `config.tools.dead_code` or `codebase-memory-mcp` graph queries
 - **Test debt** — high complexity + low coverage
+- **Pattern divergence** — code that contradicts established codebase patterns; uses `codebase-memory-mcp` peer group analysis + hallucinated reference detection (skip if graph not indexed)
+- **Comment noise** — restatement comments, task/PR references, high comment density, multi-line docstrings on private functions; grep-based, no graph required
 
 ### 3. Load Exceptions
 
@@ -226,7 +228,7 @@ For each item the user approves to fix:
 
 **Refactoring-specific guidance for the plan/apply stages:**
 
-- **All existing tests must keep passing.** A refactoring that breaks tests is not a refactoring.
+- **Capture a baseline first, then keep it.** Apply records which tests were already failing at change start (`baseline.md`, see `../references/test-baseline.md`). For a refactor this is the whole safety net: "passing" means _no new failures vs the baseline_, not "zero failures." A test red before you started is pre-existing and accepted; a test you turn red is the refactor breaking behavior — and that means it's not a refactoring. Diff against the baseline after each incremental move.
 - **Prefer incremental moves over big-bang rewrites.** Move one function at a time, run tests after each move.
 - **Add tests before refactoring if test debt is part of the item.** You need a safety net before restructuring.
 - **Update imports incrementally.** When moving code to a new module, re-export from the old location first, then update consumers, then remove the re-export.
@@ -254,11 +256,9 @@ The debt register is a living document. Recommend:
 
 ## Integration with Other Skills
 
-- **grimoire-health** — the health score reflects some debt dimensions (coverage, complexity, duplicates). Refactoring should improve health scores.
 - **grimoire-audit** — audit finds undocumented features/decisions. Refactor finds code quality issues. They're complementary — run audit first to understand what the code does, then refactor to improve how it does it.
 - **grimoire-discover** — area docs provide context for refactoring. After refactoring, run discover to update docs.
 - **grimoire-review** — the senior engineer persona already checks for simplicity and reuse. Refactor findings can inform review criteria.
-- **grimoire-check** — the commit-time checks prevent new debt. Refactor addresses existing debt.
 
 ## Important
 

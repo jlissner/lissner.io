@@ -7,11 +7,10 @@ const repoRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   "..",
 );
-const sharedHook = path.join(repoRoot, "scripts/resolve-shared.mjs");
 const devWatch = path.join(repoRoot, "scripts/dev-watch.mjs");
 const tscCli = path.join(repoRoot, "node_modules/typescript/lib/tsc.js");
 
-const tsc = spawnSync(process.execPath, [tscCli, "-b", "shared"], {
+const tsc = spawnSync(process.execPath, [tscCli, "-b", "packages/shared"], {
   cwd: repoRoot,
   stdio: "inherit",
 });
@@ -21,7 +20,7 @@ if (tsc.status !== 0) {
 
 const watch = spawnSync(
   process.execPath,
-  [devWatch, "--import", sharedHook, "server/src/index.ts"],
+  [devWatch, "packages/server/src/index.ts"],
   { cwd: repoRoot, stdio: "inherit" },
 );
 process.exit(watch.status ?? 0);

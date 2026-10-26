@@ -10,7 +10,7 @@ An image and media management solution for family use.
 
 ## Prerequisites
 
-- Ubuntu 24 (or run `./setup.sh` to install Node.js 24, the **`ollama`** system binary ([Ollama](https://ollama.ai)), and models: `nomic-embed-text`, `llava` for image search)
+- Ubuntu 24 (or run `./scripts/setup.sh` to install Node.js 24, the **`ollama`** system binary ([Ollama](https://ollama.ai)), and models: `nomic-embed-text`, `llava` for image search)
 
 ## Project State
 
@@ -24,11 +24,11 @@ Scaffolding complete. All core features implemented: upload, list, download, vie
 
 Create the directory structure and base config:
 
-- [x] Create `Shared/`, `server/`, `ui/`, `data/`, `data/media/`, `data/index/`, `data/db/`
+- [x] Create `packages/shared/`, `packages/server/`, `packages/pics/`, `data/`, `data/media/`, `data/index/`, `data/db/`
 - [x] Root `tsconfig.json` with project references to `Shared`, `server`, `ui`
 - [x] `Shared/tsconfig.json` (base config for shared code)
-- [x] `server/tsconfig.json` (extends Shared, compiles to `server/dist/` or similar)
-- [x] `ui/` — Vite + React + TypeScript (use `npm create vite@latest` as reference, then integrate)
+- [x] `packages/server/tsconfig.json` (extends shared, compiles to `packages/server/dist/`)
+- [x] `packages/pics/` — Vite + React + TypeScript (use `npm create vite@latest` as reference, then integrate)
 - [x] Add `data/` to `.gitignore`
 - [x] Root `package.json` scripts: `dev` (concurrently run server + ui), `build`, `start`
 
@@ -41,7 +41,7 @@ Create the directory structure and base config:
 
 ### 3. Key implementation details
 
-- **Server entry**: `server/src/index.ts` (or `server/index.ts`) — start Express, mount routes
+- **Server entry**: `packages/server/src/index.ts` — start Express, mount routes
 - **API base**: `/api` — e.g. `POST /api/upload`, `GET /api/media/:id`, `GET /api/search?q=...`
 - **UI dev**: Vite dev server with proxy to Express (e.g. `/api` → `http://localhost:3000`)
 - **Database**: SQLite in `data/db/` is sufficient for metadata (file paths, IDs, indexing status)
@@ -84,7 +84,7 @@ Create the directory structure and base config:
 **First-time setup (Ubuntu 24):**
 
 ```sh
-./setup.sh
+./scripts/setup.sh
 ```
 
 **Run the app:**
@@ -111,7 +111,7 @@ Config: root `eslint.config.js`, `prettier.config.js`, `.prettierignore`. VS Cod
 The UI proxies `/api` to **port 3000**. That error means the **Express API is not listening** (not running, exited on startup, or port conflict)—it is **not** caused by `npm run nuke` by itself.
 
 1. **Full stack:** Run `npm run dev` and wait until you see **`Server running at http://localhost:3000`** in the **`[server]`** log. If you only started the UI (`npm run dev:ui` / Vite alone), start the API in another terminal: `npm run dev:server` (or use `npm run dev` / `npm run dev:web`).
-2. **Port in use:** If something else holds port 3000, stop it or change the port in `server/src/index.ts` and the `proxy` target in `ui/vite.config.ts`.
+2. **Port in use:** If something else holds port 3000, stop it or change the port in `packages/server/src/index.ts` and the `proxy` target in `packages/pics/vite.config.ts`.
 3. **Crash on startup:** Read **`[server]`** output for stack traces (e.g. DB locked—stop all server processes before `npm run nuke`).
 
 ---
@@ -136,15 +136,15 @@ If S3 variables are missing, the server logs a warning on startup and the UI sho
 
 **S3 sync behavior:** Only uploads files not already in S3. Downloads files that exist in S3 but are missing locally. Merges media from the latest DB backup in S3 (e.g. from another device) into the local database. After each **upload**, a full sync is **scheduled automatically** (debounced ~3.5s so bursts of files don’t start many syncs); you can still run **Sync** manually from **Admin → S3 sync** in the UI (admins only).
 
-**Backfill:** Run `npm run backfill` to assign any media with null `owner_id` to the `FIRST_ADMIN_EMAIL` user. Requires `FIRST_ADMIN_EMAIL` in `.env` or `.env.local`.
+**Backfill:** Run `npm run backfill` to assign any media with null `owner_id` to the `FIRST_ADMIN_EMAIL` user. Requires `FIRST_ADMIN_EMAIL` in `config/.env` or `config/.env.local`.
 
-**Activity (index + S3 sync):** The server exposes a unified snapshot at **`GET /api/activity`** and pushes the same JSON over **`WebSocket /ws/activity`** whenever indexing or sync state changes (no client polling). The UI uses `ActivityProvider` + `useActivity()`. `shared/src/activity.ts` documents the payload shape (duplicated under `server/src/activity/types.ts` and `ui/src/activity/types.ts` for TypeScript project boundaries).
+**Activity (index + S3 sync):** The server exposes a unified snapshot at **`GET /api/activity`** and pushes the same JSON over **`WebSocket /ws/activity`** whenever indexing or sync state changes (no client polling). The UI uses `ActivityProvider` + `useActivity()`. `packages/shared/src/activity.ts` documents the payload shape (duplicated under `packages/server/src/activity/types.ts` and `packages/pics/src/activity/types.ts` for TypeScript project boundaries).
 
 **Nuclear reset:** `npm run nuke` permanently removes local media and thumbnails (`data/media/`, `data/thumbnails/`), deletes all rows in the SQLite database (schema kept), clears the S3 `backup/` prefix when AWS env vars are set, and removes `data/.sync_temp_db.db` if present. It prints counts/sizes first and requires typing a **random 6-digit code** to confirm. **Stop the server** before running so the database is not locked.
 
 **Auth (magic link):** Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage access from the Directory tab (which maintains the allowlist) and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
 
-The server loads environment variables from `.env` and `.env.local` (the latter overrides the former). Create `.env.local` for local development; it is gitignored.
+The server loads environment variables from `config/.env.local` (or `config/.env.prod` in production). Create `config/.env.local` for local development; it is gitignored.
 
 **Planned** (for future features):
 
@@ -161,39 +161,38 @@ The codebase today assumes a **trusted, single-machine** setup (local disk, opti
 
 ### MUST change (before or at launch)
 
-| Area                             | Why                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **TLS (HTTPS)**                  | Session cookies use `secure` when `NODE_ENV=production`; users must reach the app over HTTPS. Terminate TLS at a reverse proxy or load balancer with valid certificates.                                                                                                                                                                                |
-| **`NODE_ENV=production`**        | Required for secure cookies and to keep dev-only features (SQL/Data explorer) disabled.                                                                                                                                                                                                                                                                 |
-| **`SESSION_SECRET`**             | Must be a long, random secret in production. The dev default in `server/src/auth/middleware.ts` is not acceptable for a public or shared deployment.                                                                                                                                                                                                    |
-| **Reverse proxy: `trust proxy`** | Behind nginx, Caddy, ALB, etc., Express must trust `X-Forwarded-*` so `req.protocol` and client IP are correct (magic links, logging). **Not implemented** in `server/src/index.ts` today — add `app.set("trust proxy", …)` appropriately.                                                                                                              |
-| **CORS**                         | `cors({ origin: true })` reflects any `Origin` with credentials — unsafe for a hosted app. Restrict to your real UI origin(s).                                                                                                                                                                                                                          |
-| **Session store**                | Sessions use the default **in-memory** store (`express-session`). Restarts log everyone out; **multiple Node processes** (horizontal scaling) do not share sessions. Use a shared store (e.g. Redis) or a single instance with sticky sessions and accepted downtime on deploy.                                                                         |
-| **Ollama / AI stack**            | Embeddings (`server/src/embeddings.ts`) and vision (`server/src/vision.ts`) call **`OLLAMA_HOST` (default localhost)**. A typical PaaS container **does not** run Ollama beside the app. You need a **reachable** embedding/vision service (dedicated Ollama host, or swap to a hosted API) and capacity planning for ~100 users’ indexing/search load. |
-| **AWS SES**                      | Magic links need a **verified** sender (`SES_FROM_EMAIL`). New SES accounts are in **sandbox** — request production access (or equivalent) so you can mail all intended users.                                                                                                                                                                          |
-| **Upload limits**                | `multer` in `server/src/routes/media.ts` has **no explicit file size cap**. Add limits to avoid disk exhaustion and DoS.                                                                                                                                                                                                                                |
-| **Secrets & IAM**                | Use short-lived or scoped credentials where possible; never commit `.env`. S3 sync uses the same AWS credentials as SES in practice — scope IAM to least privilege (S3 prefix, SES send).                                                                                                                                                               |
+| Area                             | Why                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **TLS (HTTPS)**                  | Session cookies use `secure` when `NODE_ENV=production`; users must reach the app over HTTPS. Terminate TLS at a reverse proxy or load balancer with valid certificates.                                                                                                                                                                                                  |
+| **`NODE_ENV=production`**        | Required for secure cookies and to keep dev-only features (SQL/Data explorer) disabled.                                                                                                                                                                                                                                                                                   |
+| **`SESSION_SECRET`**             | Must be a long, random secret in production. The dev default in `packages/server/src/auth/middleware.ts` is not acceptable for a public or shared deployment.                                                                                                                                                                                                             |
+| **Reverse proxy: `trust proxy`** | Behind nginx, Caddy, ALB, etc., Express must trust `X-Forwarded-*` so `req.protocol` and client IP are correct (magic links, logging). **Not implemented** in `packages/server/src/index.ts` today — add `app.set("trust proxy", …)` appropriately.                                                                                                                       |
+| **CORS**                         | `cors({ origin: true })` reflects any `Origin` with credentials — unsafe for a hosted app. Restrict to your real UI origin(s).                                                                                                                                                                                                                                            |
+| **Session store**                | Sessions use the default **in-memory** store (`express-session`). Restarts log everyone out; **multiple Node processes** (horizontal scaling) do not share sessions. Use a shared store (e.g. Redis) or a single instance with sticky sessions and accepted downtime on deploy.                                                                                           |
+| **Ollama / AI stack**            | Embeddings (`packages/server/src/embeddings.ts`) and vision (`packages/server/src/vision.ts`) call **`OLLAMA_HOST` (default localhost)**. A typical PaaS container **does not** run Ollama beside the app. You need a **reachable** embedding/vision service (dedicated Ollama host, or swap to a hosted API) and capacity planning for ~100 users’ indexing/search load. |
+| **AWS SES**                      | Magic links need a **verified** sender (`SES_FROM_EMAIL`). New SES accounts are in **sandbox** — request production access (or equivalent) so you can mail all intended users.                                                                                                                                                                                            |
+| **Upload limits**                | `multer` in `packages/server/src/routes/media.ts` has **no explicit file size cap**. Add limits to avoid disk exhaustion and DoS.                                                                                                                                                                                                                                         |
+| **Secrets & IAM**                | Use short-lived or scoped credentials where possible; never commit `.env`. S3 sync uses the same AWS credentials as SES in practice — scope IAM to least privilege (S3 prefix, SES send).                                                                                                                                                                                 |
 
 ### SHOULD change (reliability, abuse, scale)
 
-| Area                           | Why                                                                                                                                                                                                 |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`SERVER_PORT` / `DATA_DIR`** | Port and data paths are **hardcoded** (`SERVER_PORT = 3000` in `server/src/index.ts`, paths in `server/src/config/paths.ts`). Environment-driven values simplify PaaS and mounted volumes.          |
-| **Rate limiting**              | Protect `POST /api/auth/magic-link`, uploads, and expensive routes from abuse and accidents.                                                                                                        |
-| **Security headers**           | Add something like **Helmet** (CSP, HSTS, etc.) in front of or on Express.                                                                                                                          |
-| **WebSocket `/ws/activity`**   | Upgrades in `server/src/activity/broadcast.ts` are **not authenticated** — anyone who can reach the host can subscribe to activity snapshots. Tie upgrades to the session cookie or a token.        |
-| **SQLite concurrency**         | **better-sqlite3** is synchronous; heavy concurrent writes can block. For ~100 active users, monitor lock contention; **PostgreSQL** (or another server DB) may be warranted if write volume grows. |
-| **Indexing & ML load**         | Face pipeline uses **TensorFlow.js on Node** (`server/src/faces.ts`) — CPU/RAM heavy. Consider background workers, queues, or larger instances so uploads don’t stall the API.                      |
-| **Observability**              | Structured logging, error tracking, uptime checks, alerts, and log aggregation for production.                                                                                                      |
-| **Backups & DR**               | Define RPO/RTO; automate DB + object storage backups; test restore. S3 sync is not a substitute for a full backup strategy.                                                                         |
-| **Privacy / compliance**       | Photos and email addresses are sensitive; document who can access data, retention, and (if needed) consent for your group.                                                                          |
-| **Tests & CI**                 | `npm test` is a placeholder; add smoke tests and a CI pipeline before you rely on deploys at scale.                                                                                                 |
+| Area                           | Why                                                                                                                                                                                                          |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **`SERVER_PORT` / `DATA_DIR`** | Port and data paths are **hardcoded** (`SERVER_PORT = 3000` in `packages/server/src/index.ts`, paths in `packages/server/src/config/paths.ts`). Environment-driven values simplify PaaS and mounted volumes. |
+| **Rate limiting**              | Protect `POST /api/auth/magic-link`, uploads, and expensive routes from abuse and accidents.                                                                                                                 |
+| **Security headers**           | Add something like **Helmet** (CSP, HSTS, etc.) in front of or on Express.                                                                                                                                   |
+| **SQLite concurrency**         | **better-sqlite3** is synchronous; heavy concurrent writes can block. For ~100 active users, monitor lock contention; **PostgreSQL** (or another server DB) may be warranted if write volume grows.          |
+| **Indexing & ML load**         | Face pipeline uses **TensorFlow.js on Node** (`packages/server/src/faces.ts`) — CPU/RAM heavy. Consider background workers, queues, or larger instances so uploads don’t stall the API.                      |
+| **Observability**              | Structured logging, error tracking, uptime checks, alerts, and log aggregation for production.                                                                                                               |
+| **Backups & DR**               | Define RPO/RTO; automate DB + object storage backups; test restore. S3 sync is not a substitute for a full backup strategy.                                                                                  |
+| **Privacy / compliance**       | Photos and email addresses are sensitive; document who can access data, retention, and (if needed) consent for your group.                                                                                   |
+| **Tests & CI**                 | `npm test` is a placeholder; add smoke tests and a CI pipeline before you rely on deploys at scale.                                                                                                          |
 
 ### Checklist: publishing (getting live)
 
 Use this as a practical gate before pointing ~100 people at a URL.
 
-1. **Build** — `npm run build`; run `npm run start` (or your process manager) with `server/dist` + `ui/dist` as documented.
+1. **Build** — `npm run build`; run `npm run start` (or your process manager) with `packages/server/dist` + `packages/pics/dist` as documented.
 2. **Environment** — Set `NODE_ENV=production`, `SESSION_SECRET`, `FIRST_ADMIN_EMAIL`, Ollama (or replacement) URLs/models, AWS vars for S3 and SES, `SES_FROM_EMAIL`.
 3. **DNS & TLS** — Domain points to your host; HTTPS certificates installed and auto-renewed.
 4. **Proxy** — Configure reverse proxy to the Node port; enable **`trust proxy`** in Express when appropriate.
@@ -203,7 +202,7 @@ Use this as a practical gate before pointing ~100 people at a URL.
 8. **Capacity** — Confirm Ollama (or replacement) and Node have enough CPU/RAM for indexing; plan for peak upload/search.
 9. **Limits** — Request size, upload size, and rate limits in place.
 10. **Operational** — Health check, logs, backups, and an incident runbook (who can reset accounts, rotate secrets).
-11. **Hardening** — WebSocket auth, security headers, dependency audit (`npm audit`) on a schedule.
+11. **Hardening** — Security headers, dependency audit (`npm audit`) on a schedule. (`/ws/activity` already requires a valid session cookie.)
 
 ---
 
@@ -216,26 +215,26 @@ Desired directory structure:
 - `./Shared/`
   - TypeScript
   - Anything shared between the server and UI lives here. Commonly shared things include: type definitions, common utils, configuration options, shared tsconfig/eslint/prettier rules.
-- `./server/`
+- `./packages/server/`
   - TypeScript, Express v5.
   - **`src/index.ts`** — HTTP entry (the only `index` at `src/` root).
   - **`src/routes/`** — Thin routers: parse requests, call **`src/services/`**, send responses.
-  - **`src/services/`** — Application/use-case layer (orchestration; **no** `req`/`res` here). See **`server/README.md`** and **`.cursor/rules/server-architecture.mdc`**.
+  - **`src/services/`** — Application/use-case layer (orchestration; **no** `req`/`res` here). See **`packages/server/README.md`** and **`.cursor/rules/server-architecture.mdc`**.
   - **`src/config/`** — `paths.ts` (data dirs, DB path, UI dist).
   - **`src/db/`** — `media.ts` (main SQLite schema/API), `auth.ts` (auth tables).
   - **`src/indexing/`** — `media.ts` (embeddings + faces pipeline); `job.ts` (pure index-job state transitions); `job-store.ts` (singleton that applies those transitions for the running server).
   - **`src/activity/`** — `types.ts`, `snapshot.ts` (build unified index+sync snapshot), `broadcast.ts` (WebSocket + broadcast on change).
   - **`src/s3/`** — `sync.ts` (backup / two-way sync; notifies activity listeners on progress).
   - **`src/auth/`** — `middleware.ts` (session, `requireAuth`, etc.).
-- `./ui/`
+- `./packages/pics/`
   - TypeScript, Vite, React
-  - **Structure** follows [bulletproof-react](https://github.com/alan2207/bulletproof-react)–style layering (see `ui/README.md` and `.cursor/rules/ui-bulletproof-react.mdc`).
+  - **Structure** follows [bulletproof-react](https://github.com/alan2207/bulletproof-react)–style layering (see `packages/pics/README.md` and `.cursor/rules/ui-bulletproof-react.mdc`).
   - **`src/app/`** — Shell: root `App`, `AppProvider`, authenticated layout (compose features here).
   - **`src/config/`** — Route IDs, nav config, env-style constants (no feature imports).
   - **`src/components/`** — Shared UI used by multiple features (e.g. activity provider/overlay).
   - **`src/features/<name>/`** — Feature modules (`components/`, `hooks/`, `types/`, `utils/` as needed). Avoid cross-feature imports; compose in `app/`.
   - **`src/hooks/`**, **`src/lib/`**, **`src/types/`**, **`src/utils/`** — Shared helpers (add files when needed).
-  - Imports use the **`@/`** alias → `ui/src/` (see `ui/tsconfig.json` and `ui/vite.config.ts`).
+  - Imports use the **`@/`** alias → `packages/pics/src/` (see `packages/pics/tsconfig.json` and `packages/pics/vite.config.ts`).
 - `./data/`
   - Runtime data (gitignored).
   - `./data/media/` — uploaded documents and media files.
@@ -247,6 +246,6 @@ Desired directory structure:
 ## Conventions
 
 - **File naming**: kebab-case for files, PascalCase for React components.
-- **New code**: HTTP handlers in `server/routes/`; business logic in `server/src/services/` (see `server/README.md`); UI features in `ui/src/features/<feature>/` (see `ui/README.md`), composed in `ui/src/app/`.
+- **New code**: HTTP handlers in `server/routes/`; business logic in `packages/server/src/services/` (see `server/README.md`); UI features in `packages/pics/src/features/<feature>/` (see `packages/pics/README.md`), composed in `packages/pics/src/app/`.
 - **React**: Functional components only.
 - **Async**: Use async/await over raw promises.

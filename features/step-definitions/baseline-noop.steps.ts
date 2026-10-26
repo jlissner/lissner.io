@@ -48,7 +48,9 @@ Then(
   "the media viewer shows that item without losing the query parameter prematurely",
   function () {
     assert.ok(
-      existsSync("ui/src/features/media/hooks/use-media-viewer-url-sync.ts"),
+      existsSync(
+        "packages/pics/src/features/media/hooks/use-media-viewer-url-sync.ts",
+      ),
     );
   },
 );
@@ -63,7 +65,9 @@ When("I dismiss the viewer explicitly", function () {
 
 Then("the media query parameter is removed from the address bar", function () {
   assert.ok(
-    existsSync("ui/src/features/media/hooks/use-media-viewer-url-sync.ts"),
+    existsSync(
+      "packages/pics/src/features/media/hooks/use-media-viewer-url-sync.ts",
+    ),
   );
 });
 
@@ -81,7 +85,9 @@ When("I choose rotate 90°", function () {
 Then(
   "the image is re-oriented and I can continue viewing or close the viewer",
   function () {
-    assert.ok(existsSync("server/src/services/media-rotate-service.test.ts"));
+    assert.ok(
+      existsSync("packages/server/src/services/media-rotate-service.test.ts"),
+    );
   },
 );
 
@@ -101,12 +107,12 @@ Then(
 );
 
 When("I choose bulk download", function () {
-  // UI-only; covered by ui/src/features/media/lib/download-media-file.test.ts
+  // UI-only; covered by packages/pics/src/features/media/lib/download-media-file.test.ts
 });
 
 Then("each selected file is queued for download", function () {
   assert.ok(
-    existsSync("ui/src/features/media/lib/download-media-file.ts"),
+    existsSync("packages/pics/src/features/media/lib/download-media-file.ts"),
     "bulk download helper must exist",
   );
 });
@@ -121,7 +127,9 @@ When("I choose a month from the timeline", function () {
 
 Then("the gallery scrolls or loads to show that time range", function () {
   assert.ok(
-    existsSync("ui/src/features/media/components/TimelineScrubber.tsx"),
+    existsSync(
+      "packages/pics/src/features/media/components/TimelineScrubber.tsx",
+    ),
   );
 });
 
@@ -143,7 +151,7 @@ Then("that person appears in the people list", function () {
 
 When("I open the admin people directory", function () {
   assert.ok(
-    existsSync("server/src/routes/admin/people-directory-routes.ts"),
+    existsSync("packages/server/src/routes/admin/people-directory-routes.ts"),
     "Expected admin directory route module to exist",
   );
 });
@@ -152,7 +160,9 @@ Then(
   "I see people that can log in and people that cannot log in yet",
   function () {
     assert.ok(
-      existsSync("server/src/services/people-directory-admin-service.ts"),
+      existsSync(
+        "packages/server/src/services/people-directory-admin-service.ts",
+      ),
       "Expected admin directory service module to exist",
     );
   },
@@ -160,7 +170,9 @@ Then(
 
 Then("I can see whether each person is an admin", function () {
   assert.ok(
-    existsSync("server/src/services/people-directory-admin-service.test.ts"),
+    existsSync(
+      "packages/server/src/services/people-directory-admin-service.test.ts",
+    ),
     "Expected admin directory service unit tests to exist",
   );
 });
@@ -169,7 +181,9 @@ Then(
   "I can see whether each person is linked to an email identity",
   function () {
     assert.ok(
-      existsSync("server/src/routes/admin/people-directory-routes.test.ts"),
+      existsSync(
+        "packages/server/src/routes/admin/people-directory-routes.test.ts",
+      ),
       "Expected admin directory route tests to exist",
     );
   },
@@ -177,100 +191,106 @@ Then(
 
 Then("that person appears in the people directory", function () {
   assert.ok(
-    existsSync("server/src/routes/admin/people-directory-routes.ts"),
+    existsSync("packages/server/src/routes/admin/people-directory-routes.ts"),
     "Expected admin directory list route to exist",
   );
 });
 
 Then("that person does not have an email identity yet", function () {
   assert.ok(
-    existsSync("server/src/services/people-directory-admin-service.ts"),
+    existsSync(
+      "packages/server/src/services/people-directory-admin-service.ts",
+    ),
     "Expected admin directory service to exist",
   );
 });
 
 When("I create a new person with a name and email", function () {
   assert.ok(
-    existsSync("server/src/routes/admin/people-directory-routes.ts"),
+    existsSync("packages/server/src/routes/admin/people-directory-routes.ts"),
     "Expected admin people-directory CRUD routes to exist",
   );
 });
 
 Then("that person can receive a login link", function () {
-  assert.ok(existsSync("server/src/routes/admin.ts"));
+  assert.ok(existsSync("packages/server/src/routes/admin.ts"));
 });
 
 Given("a person exists in the directory", function () {
-  assert.ok(existsSync("server/src/routes/admin/people-directory-routes.ts"));
+  assert.ok(
+    existsSync("packages/server/src/routes/admin/people-directory-routes.ts"),
+  );
 });
 
 Given("a person exists in the directory and can log in", function () {
   assert.ok(
-    existsSync("server/src/db/auth.ts"),
+    existsSync("packages/server/src/db/auth.ts"),
     "Expected auth persistence module to exist for login eligibility",
   );
   assert.ok(
-    existsSync("server/src/services/people-directory-admin-service.ts"),
+    existsSync(
+      "packages/server/src/services/people-directory-admin-service.ts",
+    ),
     "Expected directory admin service to exist for admin deletion behavior",
   );
 });
 
 When("I update their name and email", function () {
-  assert.ok(existsSync("server/src/routes/admin.ts"));
+  assert.ok(existsSync("packages/server/src/routes/admin.ts"));
 });
 
 Then("the directory shows the updated name and email", function () {
-  assert.ok(existsSync("server/src/routes/admin.ts"));
+  assert.ok(existsSync("packages/server/src/routes/admin.ts"));
 });
 
 When("I toggle admin status for that person", function () {
-  assert.ok(existsSync("server/src/routes/admin.ts"));
+  assert.ok(existsSync("packages/server/src/routes/admin.ts"));
 });
 
 Then("the directory reflects the updated admin status", function () {
-  assert.ok(existsSync("server/src/routes/admin.ts"));
+  assert.ok(existsSync("packages/server/src/routes/admin.ts"));
 });
 
 When("I delete that person", function () {
-  assert.ok(existsSync("server/src/db/media-people.ts"));
+  assert.ok(existsSync("packages/server/src/db/media-people.ts"));
 });
 
 Then("that person is removed from the directory", function () {
-  assert.ok(existsSync("server/src/db/media-people.ts"));
+  assert.ok(existsSync("packages/server/src/db/media-people.ts"));
 });
 
 Then("that person can no longer receive a login link", function () {
   assert.ok(
-    existsSync("server/src/db/auth.ts"),
+    existsSync("packages/server/src/db/auth.ts"),
     "Expected auth module to exist for login-link eligibility changes",
   );
 });
 
 Then("the system removes that person's tags from media", function () {
-  assert.ok(existsSync("server/src/db/media-people.ts"));
+  assert.ok(existsSync("packages/server/src/db/media-people.ts"));
 });
 
 Then("I receive an error explaining the email is invalid", function () {
-  assert.ok(existsSync("server/src/validation/admin-schemas.ts"));
+  assert.ok(existsSync("packages/server/src/validation/admin-schemas.ts"));
 });
 
 Then("I receive an error explaining the email is already in use", function () {
-  assert.ok(existsSync("server/src/db/auth.ts"));
+  assert.ok(existsSync("packages/server/src/db/auth.ts"));
 });
 
 Given(
   "a person exists in the directory and has media tagged to them",
   function () {
-    assert.ok(existsSync("server/src/db/media-people.ts"));
+    assert.ok(existsSync("packages/server/src/db/media-people.ts"));
   },
 );
 
 When("the email is invalid", function () {
-  assert.ok(existsSync("server/src/validation/admin-schemas.ts"));
+  assert.ok(existsSync("packages/server/src/validation/admin-schemas.ts"));
 });
 
 Given("an email already exists in the directory", function () {
-  assert.ok(existsSync("server/src/db/auth.ts"));
+  assert.ok(existsSync("packages/server/src/db/auth.ts"));
 });
 
 Given("a person exists", function () {
@@ -295,25 +315,27 @@ When("I merge one person into the other", function () {
 
 Given("two distinct people exist in the directory", function () {
   assert.ok(
-    existsSync("server/src/routes/admin/people-directory-routes.ts"),
+    existsSync("packages/server/src/routes/admin/people-directory-routes.ts"),
     "Expected admin people-directory routes to exist",
   );
   assert.ok(
-    existsSync("server/src/services/people-directory-admin-service.ts"),
+    existsSync(
+      "packages/server/src/services/people-directory-admin-service.ts",
+    ),
     "Expected admin directory service to exist",
   );
 });
 
 Then("the merged person is removed from the directory", function () {
   assert.ok(
-    existsSync("server/src/routes/people.ts"),
+    existsSync("packages/server/src/routes/people.ts"),
     "Expected people merge API to exist",
   );
 });
 
 Then("tagged media is attributed to the remaining person", function () {
   assert.ok(
-    existsSync("server/src/db/media-people.ts"),
+    existsSync("packages/server/src/db/media-people.ts"),
     "Expected media↔person tagging persistence to exist",
   );
 });
@@ -321,7 +343,9 @@ Then("tagged media is attributed to the remaining person", function () {
 Then(
   "there is a single combined person record and media counts reflect the merge",
   function () {
-    assert.ok(existsSync("server/src/services/people-service.test.ts"));
+    assert.ok(
+      existsSync("packages/server/src/services/people-service.test.ts"),
+    );
   },
 );
 
@@ -389,7 +413,7 @@ When("I observe the global activity area", function () {
 });
 
 Then("I see progress or status for that job", function () {
-  assert.ok(existsSync("server/src/routes/activity.ts"));
+  assert.ok(existsSync("packages/server/src/routes/activity.ts"));
 });
 
 Given("indexing is in progress and cancellation is available", function () {
@@ -428,11 +452,11 @@ Then(
 );
 
 Given("the app is starting in a production deployment", function () {
-  // Startup behavior is covered by unit tests under server/src/s3.
+  // Startup behavior is covered by unit tests under packages/server/src/s3.
 });
 
 Given("S3 backup is configured", function () {
-  assert.ok(existsSync("server/src/s3/startup-db-restore.test.ts"));
+  assert.ok(existsSync("packages/server/src/s3/startup-db-restore.test.ts"));
 });
 
 Given("S3 backup is not configured", function () {
@@ -475,7 +499,9 @@ Given(
 );
 
 Given("the app stores custom tags per media item", function () {
-  assert.ok(existsSync("server/src/services/media-tags-service.test.ts"));
+  assert.ok(
+    existsSync("packages/server/src/services/media-tags-service.test.ts"),
+  );
 });
 
 Given(
@@ -549,9 +575,9 @@ Given("media M includes person {string}", function (_name: string) {
 
 Given("video V includes person {string}", function (_name: string) {
   // Placeholder: this scenario is backed by server-level search + media↔person association behavior.
-  assert.ok(existsSync("server/src/services/search-service.ts"));
-  assert.ok(existsSync("server/src/services/search-service.test.ts"));
-  assert.ok(existsSync("server/src/db/media-people.ts"));
+  assert.ok(existsSync("packages/server/src/services/search-service.ts"));
+  assert.ok(existsSync("packages/server/src/services/search-service.test.ts"));
+  assert.ok(existsSync("packages/server/src/db/media-people.ts"));
 });
 
 Given(
@@ -568,13 +594,15 @@ Then("results include media M", function () {
 Then("results include video V", function () {
   // Placeholder: the intended guarantee is that @handle evaluation returns video ids
   // when a person↔media association exists (covered by unit tests).
-  assert.ok(existsSync("server/src/services/search-service.test.ts"));
+  assert.ok(existsSync("packages/server/src/services/search-service.test.ts"));
 });
 
 Then(
   "I receive an error explaining the query could not be parsed",
   function () {
-    assert.ok(existsSync("server/src/lib/search-query-parser.test.ts"));
+    assert.ok(
+      existsSync("packages/server/src/lib/search-query-parser.test.ts"),
+    );
   },
 );
 
@@ -672,7 +700,7 @@ Given("I am viewing the app in a mobile browser", function () {
 });
 
 When("the browser detects the web app manifest", function () {
-  assert.ok(existsSync("ui/dist/manifest.webmanifest"));
+  assert.ok(existsSync("packages/pics/dist/manifest.webmanifest"));
 });
 
 Then("I should see an {string} prompt", function (_text: string) {
