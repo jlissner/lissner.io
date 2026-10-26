@@ -5,7 +5,7 @@ import {
   UpdatePersonResponse,
 } from "@lissner/shared";
 import * as db from "../db/media.js";
-import { type ServiceFailure } from "./service-result.js";
+import type { ServiceFailure } from "./service-result.js";
 
 export function getPersonMediaPreview(
   personId: number,

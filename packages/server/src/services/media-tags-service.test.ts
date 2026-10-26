@@ -18,7 +18,6 @@ import {
   addMediaTags,
   bulkAddMediaTags,
   removeMediaTags,
-  bulkRemoveMediaTags,
 } from "./media-tags-service.js";
 
 describe("media-tags-service", () => {

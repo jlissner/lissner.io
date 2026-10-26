@@ -7,8 +7,8 @@ import {
   type RefObject,
 } from "react";
 import { apiJson } from "@/api";
-import { MediaListQueryResponse } from "@lissner/shared";
-import { type GallerySortBy } from "../lib/gallery-url";
+import type { MediaListQueryResponse } from "@lissner/shared";
+import type { GallerySortBy } from "../lib/gallery-url";
 
 interface UseMediaListQueryOptions {
   personFilter: number | null;

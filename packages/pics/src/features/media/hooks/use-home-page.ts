@@ -14,31 +14,43 @@ export function useHomePage() {
     scrollContainerRef,
     activeQuery: galleryUrl.q,
   });
+  const {
+    isSearchMode,
+    refetchSearch,
+    items: searchItems,
+    loading: searchLoading,
+    loadingMore: searchLoadingMore,
+    total: searchTotal,
+    sentinelRef: searchSentinelRef,
+    jumpToOffset: searchJumpToOffset,
+    hasNextPage: searchHasNextPage,
+    loadMore: searchLoadMore,
+    activeQuery: activeSearchQuery,
+    searching,
+    toolbarError,
+    setToolbarError,
+  } = mediaSearch;
   const mediaList = useMediaListQuery({
     personFilter: galleryUrl.personId,
     sortBy: galleryUrl.sortBy,
-    isSearchMode: mediaSearch.isSearchMode,
+    isSearchMode,
     scrollContainerRef,
   });
   const fetchItems = mediaList.fetchItems;
   const mediaSelection = useMediaSelection();
   const bulkActions = useMediaBulkActions({
     fetchItems: mediaList.fetchItems,
-    displayItems: mediaSearch.isSearchMode
-      ? mediaSearch.items
-      : mediaList.items,
+    displayItems: isSearchMode ? searchItems : mediaList.items,
     selected: mediaSelection.selected,
     clearSelection: mediaSelection.clearSelection,
-    isSearchMode: mediaSearch.isSearchMode,
-    refetchSearch: mediaSearch.refetchSearch,
-    setToolbarError: mediaSearch.setToolbarError,
+    isSearchMode,
+    refetchSearch,
+    setToolbarError,
   });
   const prevActivityBusy = useRef(false);
 
   const indexPolling = activity?.index.inProgress ?? false;
-  const displayItems = mediaSearch.isSearchMode
-    ? mediaSearch.items
-    : mediaList.items;
+  const displayItems = isSearchMode ? searchItems : mediaList.items;
   const hasUnindexed = displayItems.some((item) => !item.indexed);
 
   useEffect(() => {
@@ -51,39 +63,30 @@ export function useHomePage() {
     const busy = indexBusy || syncBusy;
     if (prevActivityBusy.current && !busy) {
       fetchItems();
-      if (mediaSearch.isSearchMode) mediaSearch.refetchSearch();
+      if (isSearchMode) refetchSearch();
     }
     prevActivityBusy.current = busy;
-  }, [
-    activity,
-    fetchItems,
-    mediaSearch.isSearchMode,
-    mediaSearch.refetchSearch,
-  ]);
+  }, [activity, fetchItems, isSearchMode, refetchSearch]);
 
   return {
     fetchItems,
     displayItems,
     hasUnindexed,
-    loading: mediaSearch.isSearchMode ? mediaSearch.loading : mediaList.loading,
-    loadingMore: mediaSearch.isSearchMode
-      ? mediaSearch.loadingMore
-      : mediaList.loadingMore,
-    isSearchMode: mediaSearch.isSearchMode,
-    searchTotal: mediaSearch.total,
+    loading: isSearchMode ? searchLoading : mediaList.loading,
+    loadingMore: isSearchMode ? searchLoadingMore : mediaList.loadingMore,
+    isSearchMode,
+    searchTotal,
     items: mediaList.items,
     total: mediaList.total,
-    sentinelRef: mediaSearch.isSearchMode
-      ? mediaSearch.sentinelRef
-      : mediaList.sentinelRef,
+    sentinelRef: isSearchMode ? searchSentinelRef : mediaList.sentinelRef,
     scrollContainerRef,
     committedSearchQuery: galleryUrl.q ?? "",
     onCommitSearch: galleryUrl.setQ,
-    activeSearchQuery: mediaSearch.activeQuery,
-    searching: mediaSearch.searching,
+    activeSearchQuery,
+    searching,
     handleIndex: bulkActions.handleIndex,
     indexPolling,
-    toolbarError: mediaSearch.toolbarError,
+    toolbarError,
     sortBy: galleryUrl.sortBy,
     setSortBy: galleryUrl.setSortBy,
     personFilter: galleryUrl.personId,
@@ -101,19 +104,13 @@ export function useHomePage() {
     handleBulkDeleteWrapped: bulkActions.handleBulkDeleteWrapped,
     handleBulkIndexWrapped: bulkActions.handleBulkIndexWrapped,
     bulkAction: bulkActions.bulkAction,
-    jumpToOffset: mediaSearch.isSearchMode
-      ? mediaSearch.jumpToOffset
-      : mediaList.jumpToOffset,
+    jumpToOffset: isSearchMode ? searchJumpToOffset : mediaList.jumpToOffset,
     startOffset: mediaList.startOffset,
     topSentinelRef: mediaList.topSentinelRef,
     loadingPrevious: mediaList.loadingPrevious,
     hasPreviousPage: mediaList.hasPreviousPage,
-    hasMoreItems: mediaSearch.isSearchMode
-      ? mediaSearch.hasNextPage
-      : mediaList.hasNextPage,
-    loadMore: mediaSearch.isSearchMode
-      ? mediaSearch.loadMore
-      : mediaList.loadMore,
-    refetchSearch: mediaSearch.refetchSearch,
+    hasMoreItems: isSearchMode ? searchHasNextPage : mediaList.hasNextPage,
+    loadMore: isSearchMode ? searchLoadMore : mediaList.loadMore,
+    refetchSearch,
   };
 }
