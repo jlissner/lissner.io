@@ -3,5 +3,25 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Postgres docs/ops (schema migrations land here after SQLite convergence)"
+  "description": "Local Postgres ops, media SQL migrations, and SQLite→Postgres ETL",
+  "exports": {
+    "./env": "./src/env.ts"
+  },
+  "scripts": {
+    "checkpoint": "bash scripts/checkpoint.sh",
+    "dump-remote": "bash scripts/dump-remote.sh",
+    "restore-local": "bash scripts/restore-local.sh",
+    "migrate:media": "tsx src/migrate.ts media",
+    "etl": "tsx src/etl-sqlite-to-pg.ts",
+    "verify-etl": "tsx src/verify-etl.ts"
+  },
+  "dependencies": {
+    "better-sqlite3": "12.6.2",
+    "dotenv": "17.3.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "7.6.13",
+    "@types/pg": "^8.15.5"
+  }
 }

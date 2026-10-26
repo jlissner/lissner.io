@@ -40,14 +40,17 @@ If you run **`docker compose`** yourself, prefer **`bash scripts/docker-compose.
 
 At minimum in **`config/.env`** and/or **`config/.env.prod`** (for compose **variable substitution**):
 
-| Variable       | Required                        | Purpose                                                                                          |
-| -------------- | ------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `ACME_EMAIL`   | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                               |
-| `API_HOST`     | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                     |
-| `UI_HOST`      | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly |
-| `GRAPHQL_HOST` | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                              |
-| `GRAPHQL_PORT` | Yes for graphql service         | Container listen port (default **5678**)                                                         |
-| `DATABASE_URL` | Yes in **`config/.env.prod`**   | PostgreSQL connection string for PostGraphile (not used by **`api`**)                            |
+| Variable                              | Required                        | Purpose                                                                                               |
+| ------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                    |
+| `API_HOST`                            | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                          |
+| `UI_HOST`                             | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly      |
+| `GRAPHQL_HOST`                        | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                   |
+| `GRAPHQL_PORT`                        | Yes for graphql service         | Container listen port (default **5678**)                                                              |
+| `DATABASE_URL`                        | Yes in **`config/.env.prod`**   | PostgreSQL for PostGraphile (`lissner` DB). Local: `npm run db:up` then point at `127.0.0.1/lissner`. |
+| `MEDIA_DATABASE_URL`                  | No (cutover)                    | Postgres `media` DB for API; unset keeps SQLite. See **`packages/db/README.md`**.                     |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes for local Postgres          | Required for Compose `postgres` (gitignored `.env` / `.env.prod`). No defaults.                       |
+| `POSTGRES_PORT`                       | No                              | Host bind port (default `5433`)                                                                       |
 
 The **`api`** service uses **`env_file: config/.env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
 
@@ -71,6 +74,17 @@ Put it in **`config/.env`**. **`scripts/docker-compose.sh`** passes **`--env-fil
 You only need **`ACME_EMAIL`** in **one** of those files for **`config/docker-compose.yml`**; avoid duplicating unless you keep them in sync on purpose.
 
 Keep app secrets in **`config/.env.prod`** (do not commit). See **`config/.env.example`**.
+
+## Local Postgres
+
+Compose service **`postgres`** (Postgres 16) creates databases **`lissner`** (GraphQL) and **`media`** (future API). Data volume: **`postgres-data`**.
+
+```bash
+npm run db:up          # start Postgres only
+npm run db:checkpoint  # A1: version + both DBs exist
+```
+
+GraphQL cutover: dump remote → restore local → set **`DATABASE_URL`** to local `lissner` (`sslmode=disable`). Media cutover: **`npm run db:migrate:media`**, **`db:etl`**, **`db:verify-etl`**, then set **`MEDIA_DATABASE_URL`**. Details: **`packages/db/README.md`** and ADR **0007**.
 
 ## Build and deploy
 

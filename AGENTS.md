@@ -199,10 +199,11 @@ components/, config/, hooks/ → features/ → app/
 
 ## Database
 
-- **SQLite** via `better-sqlite3`
-- **Migrations** in `db/*-migrations.ts` with version tracking
-- Use **prepared statements** for queries (defined in `db/*.ts`)
-- **Transactions** for multi-step writes
+- **Media API (current):** SQLite via `better-sqlite3` under `DATA_DIR` — migrations in `packages/server/src/db/*-migrations.ts`
+- **GraphQL:** Postgres via `DATABASE_URL` (local Compose or RDS)
+- **Local Postgres:** `npm run db:up` — DBs `lissner` + `media`; ops in `packages/db` (see README + ADR 0007)
+- **Cutover:** set `MEDIA_DATABASE_URL` when API moves off SQLite; until then leave it unset
+- Use **prepared statements** for queries; **transactions** for multi-step writes
 
 ---
 

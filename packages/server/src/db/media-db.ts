@@ -1,10 +1,16 @@
 import Database from "better-sqlite3";
+import { mediaUsesPostgres } from "../config/env.js";
 import { dbPath } from "../config/paths.js";
 import { runMediaMigrations } from "./media-migrations.js";
 
 const state = { db: null as InstanceType<typeof Database> | null };
 
 export function getDb(): InstanceType<typeof Database> {
+  if (mediaUsesPostgres()) {
+    throw new Error(
+      "MEDIA_DATABASE_URL is set; SQLite getDb() is retired — use getMediaPool()",
+    );
+  }
   if (state.db?.open) return state.db;
 
   const db = new Database(dbPath);

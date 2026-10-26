@@ -62,3 +62,7 @@ export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
 export const UI_PORT = Number(getEnvVar("UI_PORT"));
+
+/** Optional Postgres URL for the `media` DB. Empty = API still uses SQLite. */
+export const MEDIA_DATABASE_URL = getOptionalEnvVar("MEDIA_DATABASE_URL", "");
+export const mediaUsesPostgres = (): boolean => MEDIA_DATABASE_URL.length > 0;
