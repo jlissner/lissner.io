@@ -227,6 +227,18 @@ ESLint warnings are treated as errors. Run `npm run lint` before committing.
 
 <!-- GRIMOIRE:START -->
 
+## Caveman Mode
+
+Respond terse like smart caveman at **lite** intensity. All technical substance stay. Only fluff die.
+
+Rules: No filler/hedging. Keep articles + full sentences. Professional but tight.
+
+Auto-clarity exception: revert to normal for security warnings, irreversible action confirmations, and multi-step sequences where fragments risk misread.
+
+Boundaries: code, commits, PRs written normally. Stop with "stop caveman" or "normal mode".
+
+<!-- caveman:lite — based on github.com/JuliusBrussee/caveman -->
+
 # Grimoire — AI Assistant Instructions
 
 Grimoire is a spec-driven development workflow using **Gherkin** for behavioral requirements and **MADR** for architecture decisions. These instructions apply to any AI coding assistant.
@@ -251,7 +263,45 @@ These principles govern all grimoire work — drafting, planning, reviewing, and
 
 **Errors at the boundary.** Validate user input and external data at the edges. Internal code can trust its callers — don't defensive-program against situations that can't happen.
 
-**Verify before using.** Before importing a module, calling a function, or adding a dependency — confirm it exists. Check `.grimoire/docs/<area>.md` for reusable code with exact paths. Check `.grimoire/docs/data/schema.yml` for real model fields and API endpoints. If you haven't read the file you're importing from, read it (or its area doc) first. Never guess at package names, function signatures, or API paths.
+**Verify before using.** Before importing a module, calling a function, or adding a dependency — confirm it exists. Query the codebase graph (codebase-memory-mcp: `search_graph`, `get_code_snippet`) for reusable code, exact symbols, and file paths — structure is read live, never from a frozen doc. Read `.grimoire/docs/<area>.md` for an area's purpose, boundaries, and conventions, and the data schema for real model fields and API endpoints. If you haven't read the file you're importing from, read it first. Never guess at package names, function signatures, or API paths.
+
+## Anti-Loop Protocol
+
+Applies everywhere: writing code, running tests, fixing checks, editing files. These rules exist because loops are expensive — each iteration burns context and time, and the later iterations are usually worse than just stopping.
+
+### Attempt budget: 3
+
+Count attempts per discrete problem (one failing test, one failing check, one broken script). After 3 failed attempts:
+
+1. **Stop.** Do not attempt #4.
+2. **Diagnose.** State the pattern: what you tried each time, what failed each time, what's different and what's the same.
+3. **Escalate.** Present the diagnosis to the user and ask how to proceed. Don't silently switch to a different approach without saying so.
+
+A "different attempt" means a fundamentally different approach — not the same fix with minor tweaks. If attempt 2 makes the same type of change as attempt 1, it counts as the same attempt.
+
+### Change approach after 2 failures of the same type
+
+If the second failure looks like the first failure (same error class, same location, same check), the approach is wrong — not the implementation. Don't attempt a third narrow fix. Step back and ask: is the whole approach wrong? Is there a simpler path?
+
+Examples:
+
+- Two shell scripts with portability bugs → stop writing scripts, use prose or build into the tool
+- Two attempts to fix the same failing test → reread the test and the code together, don't just tweak values
+- Two check failures on the same file → run the check manually and read the full output before editing
+
+### Pre-validate before acting
+
+Don't use side-effect actions (commits, test runs, check runs) as the primary validator. Validate first, then act.
+
+- Shell scripts: run against the actual codebase before embedding in any file
+- Commits: run `grimoire check <step>` manually, fix all issues, then commit once
+- Code: read the function you're calling before calling it — don't rely on the compiler or test runner to catch typos in function names
+
+### Diagnose before fixing
+
+After any failure, state what you observe before proposing a fix. One sentence: what failed, where, and why. If you can't state the why, you're not ready to fix it.
+
+This applies especially to test failures. "The test failed" is not a diagnosis. "The test expected `302` but got `200` because the redirect middleware isn't registered in the test client" is.
 
 ## When to Use Grimoire
 
@@ -325,10 +375,9 @@ User has a request
 │
 ├─ "Setting up grimoire on an existing project"
 │  1. `grimoire init` → creates .grimoire/ directory and config
-│  2. `grimoire map` → scans codebase structure into .snapshot.json
-│  3. `/grimoire:discover` → generates area docs, data schema, project context
-│  4. `/grimoire:audit` → discovers undocumented features and decisions
-│  5. Start working: `/grimoire:draft` for new changes, `/grimoire:bug` for fixes
+│  2. `/grimoire:discover` → generates intent-focused area docs + data schema (queries codebase-memory-mcp for live structure when available)
+│  3. `/grimoire:audit` → discovers undocumented features and decisions
+│  4. Start working: `/grimoire:draft` for new changes, `/grimoire:bug` for fixes
 │
 └─ "Setting up grimoire on a new/greenfield project"
    1. `grimoire init` → creates .grimoire/ directory and config
@@ -343,17 +392,16 @@ Skills also have a **Done** section that signals when the workflow is complete. 
 
 ## Workflow: Creating or Changing a Feature
 
-This is the end-to-end flow for the most common operation — adding or modifying behavior:
+The end-to-end flow for adding or modifying behavior is six stages, each owned by a skill:
 
-1. **User describes what they want**
-2. **Draft** (`/grimoire:draft`): Qualify the request. Draft `.feature` files and/or ADRs. Write manifest. Collaborate until the user approves. Update manifest status to `approved`.
-3. **Plan** (`/grimoire:plan`): Read approved artifacts. Generate `tasks.md` with red-green test pairs for each scenario. Review with user.
-4. **Review** (`/grimoire:review`): _Optional._ Multi-persona design review — product manager (completeness), senior engineer (simplicity and feasibility), security engineer (vulnerabilities), QA engineer (testability and edge cases). Fix blockers before coding.
-5. **Apply** (`/grimoire:apply`): Work through tasks. For each: write test (must fail), write code (must pass), mark done. Update manifest status to `implementing`.
-6. **Verify** (`/grimoire:verify`): Confirm all scenarios pass, no regressions, decisions followed. Generate report.
-7. **Archive** (`grimoire archive <id>`): Sync features/decisions to baseline. Archive manifest. Update manifest status to `complete`.
+**Draft** (`/grimoire:draft`) → **Plan** (`/grimoire:plan`) → **Review** (`/grimoire:review`, optional) → **Apply** (`/grimoire:apply`) → **Verify** (`/grimoire:verify`) → **PR** (`grimoire pr`).
 
-Each stage has a skill. The user drives the pace. In review mode (default), every file change is approved before writing. In autonomous mode, the agent works through the full task list, stopping only on blockers.
+Each skill's SKILL.md is the authoritative home for that stage's mechanics; the README "Workflow" section is the narrative walkthrough. Do not re-derive stage steps here — invoke the skill. The operational invariants that bind every stage:
+
+- **Manifest status tracks progress:** `approved` after draft, `implementing` during apply, `accepted` at PR.
+- **Live on the branch.** Features, decisions, constraints, and schema are edited directly on the feature branch — no copy-into-change-folder, no promote step.
+- **No archive step.** The PR diff _is_ the change; git history plus the `Change: <id>` commit trailer are the record. PR finalize just flips decision status to `accepted` and removes the ephemeral change folder.
+- **The user drives the pace.** Review mode (default) approves every file change before writing; autonomous mode works the full task list, stopping only on blockers.
 
 ### IMPORTANT: tasks.md Is the Plan
 
@@ -376,24 +424,22 @@ If a task seems wrong or impossible during apply:
 
 ## Directory Structure
 
+Features, decisions, constraints, and schema are edited **live on the feature branch** — `git diff` is the staging area. A change folder holds only the ephemeral coordination artifacts (manifest + tasks) and is removed at finalize; the PR diff and git history are the record. There is no proposed-copy tree and no archive tree.
+
 ```
 project-root/
-├── features/                 # Gherkin baseline — behavioral truth
+├── features/                 # Gherkin specs — behavioral truth (edited live)
 │   └── <capability>/
 │       └── <name>.feature
 ├── .grimoire/
-│   ├── decisions/            # MADR baseline — architectural truth
+│   ├── decisions/            # MADR records — architectural truth (edited live)
 │   │   ├── 0001-short-title.md
 │   │   └── template.md
-│   ├── changes/              # proposed changes (in progress)
-│   │   └── <change-id>/
-│   │       ├── manifest.md
-│   │       ├── tasks.md
-│   │       ├── features/     # proposed .feature file state
-│   │       └── decisions/    # new/updated ADRs
-│   └── archive/              # completed changes (manifests only)
-│       └── YYYY-MM-DD-<change-id>/
-│           └── manifest.md
+│   ├── docs/                 # intent-focused area docs, data schema, constraints.md register, OVERVIEW.md
+│   └── changes/              # ephemeral per-change coordination — removed at finalize
+│       └── <change-id>/
+│           ├── manifest.md
+│           └── tasks.md
 ```
 
 ## Conventions
@@ -405,9 +451,8 @@ Every manifest has a `status` field in YAML frontmatter:
 - `draft` — being written, not yet reviewed
 - `approved` — reviewed by user, ready for planning/implementation
 - `implementing` — tasks are being worked on
-- `complete` — all tasks done, ready to archive
 
-Update the status as the change progresses. The CLI reads this to report change state.
+Update the status as the change progresses. The CLI reads this to report change state. There is no `complete`/archive state — finalize removes the ephemeral change folder once the PR is opened; git history is the record.
 
 ### Change IDs
 
@@ -442,7 +487,7 @@ Change: add-2fa-login
 Scenarios: "Login with valid TOTP code", "Login with expired TOTP code"
 ```
 
-This is what makes `grimoire trace` and `grimoire log` work. Without it, the commit is invisible to the audit trail. `Scenarios:` and `Decisions:` trailers are included when relevant.
+This is what makes `grimoire trace` work. Without it, the commit is invisible to the audit trail. `Scenarios:` and `Decisions:` trailers are included when relevant.
 
 ### Feature Organization
 
@@ -459,5 +504,21 @@ This is what makes `grimoire trace` and `grimoire log` work. Without it, the com
 ### Step Definitions
 
 Organize by **domain concept**, NOT by feature file. Check the project's existing test setup and match its BDD framework conventions. See the active skill's testing reference for ecosystem-specific patterns.
+
+<!-- GRIMOIRE:START -->
+
+## Caveman Mode
+
+Respond terse like smart caveman at **lite** intensity. All technical substance stay. Only fluff die.
+
+Rules: No filler/hedging. Keep articles + full sentences. Professional but tight.
+
+Auto-clarity exception: revert to normal for security warnings, irreversible action confirmations, and multi-step sequences where fragments risk misread.
+
+Boundaries: code, commits, PRs written normally. Stop with "stop caveman" or "normal mode".
+
+<!-- caveman:lite — based on github.com/JuliusBrussee/caveman -->
+
+<!-- GRIMOIRE:END -->
 
 <!-- GRIMOIRE:END -->

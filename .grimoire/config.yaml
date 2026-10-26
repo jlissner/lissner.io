@@ -1,10 +1,11 @@
-version: 1
+version: 2
 project:
   commit_style: conventional
   language: typescript
   package_manager: npm
   doc_tool: jsdoc
   comment_style: jsdoc
+  caveman: lite
 features_dir: features
 decisions_dir: .grimoire/decisions
 tools:
@@ -43,10 +44,7 @@ tools:
     prompt: Review these changed files for best practices violations
   duplicates:
     name: jscpd
-    command: >-
-      npx jscpd@4 --reporters console
-      --gitignore
-      --ignore "**/package-lock.json"
+    command: npx jscpd@4 --reporters console --gitignore --ignore "**/package-lock.json"
 checks:
   - lint
   - format

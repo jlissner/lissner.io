@@ -21,7 +21,8 @@ Write a commit message from staged changes and active grimoire context. Never au
 
 - No changes to commit → nothing to do
 - Want to create a PR → `grimoire-pr` (commit first, then PR)
-- Want to review changes before committing → show the diff first
+- Want a multi-persona review of the staged diff before committing → `grimoire-precommit-review`
+- Just want to eyeball the diff → show the diff first
 
 ## Workflow
 
@@ -74,7 +75,7 @@ If `commit_style` in config is anything else, read it as a format hint and adapt
 
 ### 5. Git Trailers (mandatory for audit trail)
 
-When a grimoire change is active, the commit **MUST** include `Change:` as a git trailer. This is what makes `grimoire trace` and `grimoire log` work — without it, the commit is invisible to the audit trail.
+When a grimoire change is active, the commit **MUST** include `Change:` as a git trailer. This git-native anchor links the commit to its change — `grimoire trace` and `git log --grep "Change: <id>"` both rely on it. Without it, the commit is invisible to the audit trail.
 
 ```
 Change: add-2fa-login

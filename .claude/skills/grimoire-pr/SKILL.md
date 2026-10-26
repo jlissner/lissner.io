@@ -19,17 +19,15 @@ Generate a pull request description from grimoire change artifacts and optionall
 
 ## Routing
 
-- Tasks incomplete → `grimoire-apply` first (or create a draft PR)
+- Tasks incomplete or finalize not done → `grimoire-apply` first. Do not create a PR before the change is finalized — the PR reflects the finished branch state (decisions accepted, change folder removed).
 - Haven't committed yet → `grimoire-commit` first
 - Want a pre-merge design review → this skill includes optional post-implementation review
 
 ## Prerequisites
 
-- A change exists in `.grimoire/changes/<change-id>/` with:
-  - `manifest.md`
-  - `tasks.md` with all (or most) tasks checked
-  - Feature files and/or decision records
-- The change should be on a feature branch (created during apply)
+- Change has been finalized: `.grimoire/changes/<change-id>/` is removed (manifest/tasks were ephemeral scaffolding)
+- Decision records are live in `.grimoire/decisions/` with status `accepted`
+- The change is on a feature branch (created during draft/apply); its diff vs. `main` is the change
 
 ## Workflow
 
@@ -141,9 +139,8 @@ Check that the branch is pushed to the remote before creating. If not, offer to 
 
 After PR creation:
 
-- Update manifest's status to `complete` if not already
-- Add the PR URL to the manifest as a comment or field
-- Suggest running `grimoire archive <change-id>` to complete the lifecycle
+- The `Change: <change-id>` trailer on the commits links them to the change; the PR body + git log are the durable record (the change folder was already removed at finalize).
+- Suggest merging the PR to complete the change. There is no archive step — git history is the history.
 
 ## Important
 
@@ -155,4 +152,4 @@ After PR creation:
 
 ## Done
 
-When the PR is created (or description is presented for manual creation), the workflow is complete. Suggest `grimoire archive <change-id>` to complete the lifecycle.
+When the PR is created (or description is presented for manual creation), the workflow is complete. Suggest merging the PR to complete the change — git history + the `Change:` trailer are the record; there is no separate archive step.

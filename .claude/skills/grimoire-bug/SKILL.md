@@ -50,6 +50,10 @@ If the user's report is vague, ask one clarifying question. Don't start fixing u
 
 **Scenario is wrong** → Rare, but possible. The spec itself describes incorrect behavior. Flag this to the user — it may need a grimoire draft to update the feature properly.
 
+### 2b. Capture Test Baseline
+
+Before you write the reproduction test, run the configured suites once and note which tests are **already** failing. A bug fix has no change folder, so record this inline — in the repro test's note and the eventual commit — and present pre-existing failures to the user. This is what lets step 4/7's "no regressions" mean something: a failure already red here is not yours. Capture this _before_ the repro test exists, so the repro's intended red isn't mistaken for a pre-existing failure. Skippable if no test command is configured (say so). Full protocol: `../references/test-baseline.md`.
+
 ### 3. Write a Reproduction Test
 
 Before touching any production code:
@@ -93,32 +97,63 @@ generation, causing user lookup to fail on the reset page.
 Added scenario: "Password reset with plus-sign email"
 ```
 
-### 5. Create Fix Branch
+### 5. Decide the Branch
 
-Before writing any code, create a branch for the fix:
+Default bias: **stay on the current branch if the bug is related to in-flight work.** Only create a new branch when the bug is clearly a separate concern from whatever the current branch is doing.
+
+Snapshot state first:
 
 ```
-fix/<short-description>
+git branch --show-current
+git status --porcelain
+grimoire list --changes --json
 ```
 
-For example: `fix/special-chars-password-reset`, `fix/null-pricing-response`.
+Find any active change whose `manifest.md` `branch:` matches the current branch.
+
+| Current state                                                    | Bug relation                                            | Action                                                                                  |
+| ---------------------------------------------------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Protected branch (`main`/`master`/`develop`/`trunk`), clean tree | any                                                     | Create `fix/<short-description>` and switch                                             |
+| Feature branch + active change on it                             | Bug is in the same feature/code path the change touches | **Stay on the branch.** Fix in place. The repro test and fix become part of that change |
+| Feature branch + active change on it                             | Bug is unrelated to that change                         | Ask the user. Default: stash/commit, switch to default branch, create `fix/...` off it  |
+| Feature branch + no matching active change                       | any                                                     | Create `fix/<short-description>` off the default branch                                 |
+| Dirty tree, no clear owner                                       | any                                                     | Block. Commit, stash, or discard before proceeding                                      |
+
+How to judge "related vs separate":
+
+- **Related** — the bug lives in files the in-flight change is modifying, or the bug is a direct consequence of the in-flight work (e.g. tests added by the change reveal it, the new code path crashes on an edge case). Fixing it on the same branch keeps the change coherent and the PR self-contained.
+- **Separate** — the bug exists on `main` independent of the in-flight change, touches unrelated code, or would still need to ship if the in-flight change were abandoned. Mixing it in pollutes the diff and the `Change:` trailer.
+
+When in doubt, ask the user one question: "This bug looks like it's [in / outside] the scope of the current `<branch>` work — fix it here, or branch off main?"
+
+Branch name format when creating new: `fix/<short-description>` (e.g. `fix/special-chars-password-reset`, `fix/null-pricing-response`).
 
 ### 6. Fix the Bug
 
-Now — and only now — modify production code:
+Now — and only now — modify production code. **Apply `../references/code-quality.md` while writing the fix, not after.** Inline rules:
+
+- Reuse existing utilities — grep / check the area doc before adding new helpers.
+- No new defensive guards inside the trust boundary — fix the real bug, don't paper over it with `if x is None` / `try-except`.
+- Specific names — no `data` / `result` / `temp` when a concrete name fits.
+- No new abstraction layer for a one-line bug fix.
+- Comments only for non-obvious _why_ — one short note linking the bug + reproduction test is enough.
+
+Then:
 
 1. Make the smallest change that fixes the failing test
-2. Run the reproduction test — it should pass
-3. Run ALL existing tests — no regressions
-4. If the fix is more than a few lines, pause and consider whether the approach is the simplest one
+2. **Hallucination check:** Before running tests, verify every external function/method the fix calls actually exists: `search_graph(name_pattern="<name>")` for each new call. If not found: locate the correct function or stop and flag to user. (Full instructions in `../references/pattern-guard.md` Step 6. Skip if graph not indexed.)
+3. Run the reproduction test — it should pass
+4. Run ALL existing tests — no _new_ failures vs the step 2b baseline. A test already failing in the baseline is pre-existing and accepted; a test failing now that wasn't then is a regression you introduced — fix it.
+5. If the fix is more than a few lines, pause and consider whether the approach is the simplest one
+6. **Code quality check:** Walk the seven-point checklist in `../references/code-quality.md` against every file you changed. Any fail → fix and re-run tests.
 
 **Escalation guard:** If the fix requires changes to more than 3 files, introduces new abstractions, modifies data models, or crosses service boundaries — STOP. This is not a bug fix, it's a change that needs design. Tell the user: "This fix is larger than a typical bug fix. I recommend routing to `grimoire-draft` to handle this as a proper change with specs and a plan." The user can override.
 
 ### 7. Verify
 
 - Reproduction test passes (`config.tools.bdd_test`)
-- All existing feature scenarios pass (`config.tools.bdd_test`)
-- All existing unit/integration tests pass (`config.tools.unit_test`)
+- No _new_ failures vs the step 2b baseline — pre-existing failures stay pre-existing; anything newly red is the fix's fault
+- All existing unit/integration tests pass (`config.tools.unit_test`), baseline-failures aside
 - If a new scenario was added in step 2, it passes with the fix
 
 ### 8. Tester Verification Checklist
@@ -137,7 +172,7 @@ After the fix, generate a checklist for testers to verify the fix and check for 
 ```markdown
 ## Verification Checklist: <bug-id>
 
-Fix branch: `fix/<name>`
+Branch: `<current-branch>` (new `fix/...` branch, or the in-flight feature branch if fixed in place)
 
 ### Original Bug
 
@@ -171,6 +206,14 @@ Report to the user:
 - **Performance issues** — these usually need profiling, not a repro test. Handle directly.
 - **Configuration errors** — wrong env vars, missing dependencies, bad setup. Just fix the config.
 
+## References
+
+**Before writing the fix**, read both:
+
+- `../references/code-quality.md` — anti-slop rules to apply _while writing_: reuse before write, trust callers, names reveal intent, branching budget, function size, no premature abstraction, comments only for non-obvious why. Includes a seven-point quality gate to run before declaring the fix done.
+- `../references/pattern-guard.md` Step 6 only — after writing the fix, verify every new external function call exists in the graph via `search_graph`. Skip the full pattern brief (over-constrains bug fixes). Skip entirely if graph not indexed.
+- `../references/test-baseline.md` — capture which tests were already failing before the fix (step 2b), so "no regressions" means "no _new_ failures," not "zero failures."
+
 ## Important
 
 - **Reproduce before you fix.** No exceptions. If you can't reproduce it, you don't understand it, and your fix is a guess.
@@ -178,6 +221,7 @@ Report to the user:
 - **Don't over-document.** The test is the documentation. A one-line comment in the test explaining the bug is enough. Don't create tracking files, bug reports, or manifests for a bug fix.
 - **The feature file is truth.** If a scenario describes behavior the user now says is wrong, that's a spec change, not a bug. Handle it through `grimoire-draft`.
 - **One bug, one fix.** Don't bundle "while I'm in here" improvements with a bug fix. Fix the bug, nothing more.
+- **Don't reflexively branch.** A bug related to in-flight work belongs on the in-flight branch — splitting it into a separate PR fragments the change and breaks the `Change:` trailer audit trail. Branch only when the bug is genuinely a separate concern. See step 5.
 
 ## Done
 

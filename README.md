@@ -181,7 +181,6 @@ The codebase today assumes a **trusted, single-machine** setup (local disk, opti
 | **`SERVER_PORT` / `DATA_DIR`** | Port and data paths are **hardcoded** (`SERVER_PORT = 3000` in `server/src/index.ts`, paths in `server/src/config/paths.ts`). Environment-driven values simplify PaaS and mounted volumes.          |
 | **Rate limiting**              | Protect `POST /api/auth/magic-link`, uploads, and expensive routes from abuse and accidents.                                                                                                        |
 | **Security headers**           | Add something like **Helmet** (CSP, HSTS, etc.) in front of or on Express.                                                                                                                          |
-| **WebSocket `/ws/activity`**   | Upgrades in `server/src/activity/broadcast.ts` are **not authenticated** — anyone who can reach the host can subscribe to activity snapshots. Tie upgrades to the session cookie or a token.        |
 | **SQLite concurrency**         | **better-sqlite3** is synchronous; heavy concurrent writes can block. For ~100 active users, monitor lock contention; **PostgreSQL** (or another server DB) may be warranted if write volume grows. |
 | **Indexing & ML load**         | Face pipeline uses **TensorFlow.js on Node** (`server/src/faces.ts`) — CPU/RAM heavy. Consider background workers, queues, or larger instances so uploads don’t stall the API.                      |
 | **Observability**              | Structured logging, error tracking, uptime checks, alerts, and log aggregation for production.                                                                                                      |
@@ -203,7 +202,7 @@ Use this as a practical gate before pointing ~100 people at a URL.
 8. **Capacity** — Confirm Ollama (or replacement) and Node have enough CPU/RAM for indexing; plan for peak upload/search.
 9. **Limits** — Request size, upload size, and rate limits in place.
 10. **Operational** — Health check, logs, backups, and an incident runbook (who can reset accounts, rotate secrets).
-11. **Hardening** — WebSocket auth, security headers, dependency audit (`npm audit`) on a schedule.
+11. **Hardening** — Security headers, dependency audit (`npm audit`) on a schedule. (`/ws/activity` already requires a valid session cookie.)
 
 ---
 

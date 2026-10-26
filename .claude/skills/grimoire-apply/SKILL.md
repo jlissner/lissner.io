@@ -1,6 +1,6 @@
 ---
 name: grimoire-apply
-description: Implement tasks from a planned grimoire change with strict red-green BDD. Use when tasks.md exists and is ready for implementation.
+description: Implement tasks from a planned grimoire change, test-first at the right level (BDD scenario, unit-invariant, or characterization). Use when tasks.md exists and is ready for implementation.
 compatibility: Designed for Claude Code (or similar products)
 metadata:
   author: kiwi-data
@@ -9,7 +9,19 @@ metadata:
 
 # grimoire-apply
 
-Implement tasks from a planned grimoire change. Write production code AND tests. A task is not complete until its scenarios pass.
+Implement tasks from a planned grimoire change using **test-first discipline at the right level**: write the failing test first, then the production code that makes it pass. A task is not complete until its test passes.
+
+**Red-green is the discipline; the test vehicle matches the artifact the task came from** (set by `grimoire-plan` as each task's `verify:` tag):
+
+| `verify:`          | Task came from                                        | Test vehicle                                  |
+| ------------------ | ----------------------------------------------------- | --------------------------------------------- |
+| `scenario`         | a `.feature` (actor-observable behavior)              | Gherkin scenario + step definitions           |
+| `unit-invariant`   | the constraints register (security/NFR/observability) | unit/integration test asserting the invariant |
+| `characterization` | internal change / refactor (no spec)                  | unit / characterization test                  |
+
+Do NOT write a `.feature` scenario for a `unit-invariant` or `characterization` task — forcing Gherkin where a unit test is correct is the antipattern that fills feature files with slop. One right way: behavior → scenario, everything else → unit test.
+
+**Artifacts are edited live on the feature branch.** Features, decisions, constraints, and schema are real files in `features/`, `.grimoire/decisions/`, `.grimoire/docs/`. There is no copy-into-change-folder and no promote step — `git diff` is the staging area. The change folder holds only ephemeral process scaffolding (`manifest.md`, `tasks.md`).
 
 ## CRITICAL: Two Rules That Must Not Be Broken
 
@@ -44,8 +56,8 @@ This applies to all LLMs: Claude, Codex, Cursor, Copilot, etc. The task list is 
 
 - A change exists in `.grimoire/changes/<change-id>/` with:
   - `manifest.md`
-  - `tasks.md` (from plan stage)
-  - At least one `.feature` file or decision record
+  - `tasks.md` (from plan stage, each task carrying a `verify:` tag)
+- The change's live artifacts exist on the branch — at least one `.feature` (in `features/`), constraint (in `.grimoire/docs/constraints.md`), or decision record (in `.grimoire/decisions/`)
 
 ## Workflow
 
@@ -125,13 +137,30 @@ The parent agent is the **orchestrator only** — it does NOT implement tasks it
 
 1. Parent reads `tasks.md`, finds the first unchecked section
 2. Parent spawns a **subagent** (Agent tool) with this prompt:
+
    ```
    You are implementing grimoire tasks. Read `.grimoire/changes/<change-id>/tasks.md`,
    find section <N>, and implement all unchecked tasks in that section.
    Follow the red-green BDD cycle for each task. Mark tasks [x] when done.
+
+   Before writing any production code, read `../references/code-quality.md`,
+   `../references/testing-contracts.md`, and `../references/pattern-guard.md`.
+   Apply the code-quality rules WHILE you write (not after) — reuse before write,
+   trust callers (no defensive guards inside the trust boundary), specific names
+   (no `data`/`result`/`temp`), branching budget ~7, function size ~30 lines,
+   no premature abstraction, comments only for non-obvious WHY.
+   Before writing the test for each task, run the pattern-guard brief (Steps 1–1b–2–4):
+   classify the code type (Step 1), run reuse discovery — two search_graph calls
+   by concept and by name to find existing code to call instead of writing (Step 1b),
+   find 3–5 peers via search_graph (Step 2), extract the modal pattern, write a brief.
+   Write code that matches the brief. After writing production code, run the
+   hallucination check (Step 6): verify every called external function exists in
+   the graph before running tests.
+
    When the section is complete, write a <!-- SESSION: ... --> handoff note
    under the last task and exit.
    ```
+
 3. Subagent reads `tasks.md` and the context files for that section
 4. Subagent implements, marks tasks `[x]`, writes handoff note, exits
 5. Parent reads updated `tasks.md`, spawns next subagent for next section
@@ -182,9 +211,17 @@ Before writing any code, ensure you're on a feature branch for this change:
 git checkout -b <type>/<change-id>
 ```
 
-Where `<type>` is `feat`, `fix`, `refactor`, or `chore` based on the change. If a branch already exists (resuming work), switch to it. Update the manifest's `branch:` field with the branch name.
+Where `<type>` is `feat`, `fix`, `refactor`, or `chore` based on the change. If a branch already exists (`grimoire-branch-guard` or `grimoire-draft` usually created it), switch to it. Update the manifest's `branch:` field with the branch name.
 
-This links the git history to the grimoire change — `grimoire trace` and `grimoire log` depend on it.
+The branch links the git history to the change via the `Change: <change-id>` commit trailer. The branch IS the isolation and `git diff` IS the staging — there is no separate promote step.
+
+### 3b. Capture Test Baseline
+
+Before writing the first test, run the configured suites once to record the starting state, then **present any pre-existing failures to the user and get acceptance before proceeding**. This is the run you'd do anyway to understand where you're starting — just save the result. Write it to `.grimoire/changes/<change-id>/baseline.md` so `grimoire-verify` can tell a regression you introduced from a failure that was already red. Skippable when no test command is configured or the user opts out (record the skip — don't leave it silent). Full protocol: `../references/test-baseline.md`.
+
+The point: a failure is "pre-existing" only if it's in `baseline.md`. This replaces end-of-run "that's a pre-existing failure" surprises with a start-of-run acceptance the user signed off on.
+
+> **No promote.** Feature files, decisions, and constraints were drafted directly into their live locations (`features/`, `.grimoire/decisions/`, `.grimoire/docs/constraints.md`) on this branch. BDD runners already discover the scenarios from `features/`. Do not copy anything out of `.grimoire/changes/` — that folder holds only `manifest.md` and `tasks.md`.
 
 ### 4. Load Context
 
@@ -194,7 +231,7 @@ This links the git history to the grimoire change — `grimoire trace` and `grim
 
 1. `tasks.md` — your checklist (load once at start, find the current section)
 2. Read the `<!-- context: ... -->` block for the current section
-3. Load each file listed in the context block
+3. Load each file listed in the context block — this includes relevant `.grimoire/docs/conventions/<area>.md` files for directories touched by the diff (placement/naming guidance)
 4. If a listed file doesn't exist, it may need to be created as part of the task — that's fine
 
 **If the context window fills up** (degraded output quality, forgotten context, repeated mistakes):
@@ -205,28 +242,39 @@ This links the git history to the grimoire change — `grimoire trace` and `grim
 
 ### 5. Implement Tasks
 
-Work through `tasks.md` sequentially. **Every task follows the same cycle: code → test → green → next.**
+Work through `tasks.md` sequentially. **Every task follows the same cycle: test → red → code → green → next.** The cycle is identical at every level; only the _test vehicle_ changes per the task's `verify:` tag (`scenario` → step definitions; `unit-invariant` / `characterization` → unit/integration test). "Step definitions" below means _the failing test at the task's level_ — for non-`scenario` tasks, write a unit test, not a `.feature`.
 
 **For each task:**
 
 1. Announce which task you're working on
-2. Write the step definitions FIRST (the test that will verify this task)
-3. Run the step definitions — **they MUST FAIL (red)**
-4. If the test passes immediately, STOP. The test is broken — it's not actually testing anything. Fix the step definition so it makes a real assertion that fails without production code. Common causes:
+   - Read the task's `verify:` tag — it decides the test vehicle. `scenario` → write/extend step definitions for the named scenario. `unit-invariant` → write a unit/integration test asserting the constraint. `characterization` → write a unit test pinning current/intended behavior. If a `unit-invariant` task has no matching constraint in `.grimoire/docs/constraints.md`, STOP and flag — don't invent a scenario to fill the gap.
+   - **Pattern brief** (before writing anything): classify code type → `search_graph` for 3–5 peers (excluding last 60 days) → `get_code_snippet` → extract modal pattern across the four critical seams (error handling, dependency access, abstraction depth, return shape) → write a 5–8 rule brief. Skip if graph not indexed or < 3 peers. Full instructions in `../references/pattern-guard.md`.
+2. Write the test FIRST, at the task's level (step definitions for `scenario`; unit/integration test for `unit-invariant`/`characterization`)
+3. Run the test — **it MUST FAIL (red)**
+4. If the test passes immediately, STOP. The test is broken — it's not actually testing anything. Fix it so it makes a real assertion that fails without production code. Common causes:
    - Empty step definition body (passes by default)
    - Assertion against a mock/fixture that already satisfies the condition
    - Step wired to wrong function or missing the actual check
    - Overly broad assertion that matches anything
-5. Once confirmed red: write the production code to make it pass
+5. Once confirmed red: write the production code to make it pass. **While writing — not after — apply the rules in `../references/code-quality.md` and the pattern brief from step 1. Do not write the slop version first and clean up later.** Inline rules:
+   - **Reuse first — search before write.** Before writing any new function or class, run two searches: `search_graph(semantic_query=["<concept>", "<verb>", "<domain_noun>"])` to find it by concept, then `search_graph(name_pattern="<likely_prefix_or_suffix>")` to find it by name. If either returns something that does the job → call it. If something almost fits → use it directly; don't generalize for a hypothetical second caller. Write new code only when both searches return nothing usable. No one-line wrappers. No re-implementations. Full instructions: `../references/pattern-guard.md` Step 1b.
+   - **Trust your callers.** No `if x is None` / `isinstance` / `try-except` guards inside the trust boundary. Validate at edges (user input, external APIs, file/network) only.
+   - **Names reveal intent.** No `data` / `result` / `temp` / `info` / `obj` when a specific name fits. Booleans read as yes/no questions (`is_expired`, `has_admin_role`).
+   - **Branching budget ~7.** If a function has more `if` / `else` / `case` / `&&` than that, split or drop dead guards.
+   - **Function size ~30 lines.** One job per function. If the name needs "and", split.
+   - **No premature abstraction.** Three near-identical copies is fine. No new `BaseX` / factory / strategy / config object for a single caller.
+   - **Comments: terse, self-contained, no essays** (`../references/code-quality.md` §7). Default to none; add only a one-line non-obvious _why_. Terse voice — drop "this function", filler, restated types. **Self-contained:** never name an external artifact that moves independently — no feature/scenario/`.feature`, MADR/ADR number, change-id, ticket/PR, test name, or tag code (`LOG-OBS-003`) in a comment; describe the behavior, not where it's specced. **No paragraphs:** summary is 1–2 lines, then the `comment_style` params if the project requires them — no prose block before them. No comments restating the code (`# loop over users`). If removing it wouldn't confuse a future reader, don't write it.
 6. Run the step definitions again — they should PASS (green)
 7. If still red, fix the production code (not the test)
-8. **Test quality check:** Before marking done, verify your step definitions have strong assertions:
+8. **Hallucination check:** Before running tests, verify every external function/method your new code calls actually exists in the graph: `search_graph(name_pattern="<name>")` for each. If not found: find the correct function or stop and flag to user. Do not run tests against calls to non-existent functions. (Full instructions in `../references/pattern-guard.md` Step 6.)
+9. **Test quality check:** Before marking done, verify your step definitions have strong assertions:
    - Every Then step has a specific `assert` or `expect` with an exact expected value (not `assert True`, not `toBeDefined()`)
    - No empty function bodies (`pass`, `...`, or no-op)
    - Assertions check behavior, not just types or existence — "response status is 302 and redirect URL is /dashboard/" not "response is not None"
    - If you wrote a test that would pass against a null/trivial implementation, strengthen it
-9. Mark complete: `- [ ]` → `- [x]`
-10. Move to next task
+10. **Code quality check:** Walk the seven-point checklist in `../references/code-quality.md` against every file you changed. Any fail → fix code, re-run tests, re-check. Do not mark `[x]` while a check fails.
+11. Mark complete: `- [ ]` → `- [x]`
+12. Move to next task
 
 **This is strict red-green BDD.** A test that has never been red has never proven it can catch a failure. The red step is NOT a formality — it is the proof that the test works. If you skip it or the test passes immediately, you have a false positive that provides zero safety.
 
@@ -254,21 +302,45 @@ When all implementation tasks are complete:
 - If existing scenarios break, you've introduced a regression — fix it before proceeding
 - Check ADR confirmation criteria if applicable
 - Run the project's full test suite (`config.tools.unit_test`) if configured — grimoire tests don't replace existing tests
+- **Diff against the baseline** (`baseline.md` from step 3b): a failure already in the baseline is pre-existing and accepted; a failure NOT in the baseline is a regression you introduced — fix it before finalize. If the baseline was skipped, say so and list all failures for the user rather than claiming "existing tests pass."
 
 **The verify step is not optional. Do not proceed to finalize with failing tests.**
 
 ### 7. Finalize
 
-When all tests are green:
+When all tests are green. Features, decisions, and constraints were edited live on the branch — finalize flips states, applies the schema delta, and clears the ephemeral scaffolding:
 
-1. Copy proposed `.feature` files from `.grimoire/changes/<change-id>/features/` to `features/` (replacing baseline)
-2. Move new decision records to `.grimoire/decisions/` with proper sequential numbering
-3. Update MADR status from `proposed` to `accepted` and set the date
-4. If `data.yml` exists, merge the changes into `.grimoire/docs/data/schema.yml` — apply adds/modifies/removes so the baseline schema stays current
-5. Move `manifest.md` to `.grimoire/archive/YYYY-MM-DD-<change-id>/`
-6. Remove the change directory from `.grimoire/changes/`
+1. Decision records already live in `.grimoire/decisions/` (drafted there, numbered at draft time). Flip MADR status from `proposed` to `accepted` and set the date.
+2. Constraints (`.grimoire/docs/constraints.md`) were edited in place — nothing to move.
+3. If the change has a `data.yml` (schema delta), apply its `add`/`modify`/`remove` entries to the live `.grimoire/docs/data/schema.yml` so the baseline schema stays current. `data.yml` is a migration-delta spec (ephemeral scaffolding carrying nullability/safety/ordering intent a raw diff wouldn't), not a copy of the schema — `schema.yml` is the live target; the delta is discarded with the change folder.
+4. Refresh the project overview: run `grimoire docs`. It regenerates `.grimoire/docs/OVERVIEW.md` (the human entry point) from the now-current features, constraints, decisions, and schema — superseded decisions drop out automatically. This is the existing `docs` command, not a new one.
+5. Remove the change directory `.grimoire/changes/<change-id>/`. Its `manifest.md` + `tasks.md` (+ any `data.yml`) are ephemeral process scaffolding. The durable record is the branch, the PR, and `git log` — linked by the `Change: <change-id>` trailer. **There is no archive tree** (don't reinvent git history).
 
-### 8. Summary
+### 8. Commit
+
+Finalize must be complete before committing — the commit captures the finished state (accepted decisions, cleared scaffolding), not mid-flight change artefacts.
+
+Stage the live artifacts and the scaffolding removal:
+
+```
+git add features/ .grimoire/decisions/ .grimoire/docs/ src/ tests/
+git add -u  # picks up the removed change directory
+```
+
+Then commit using `/grimoire:commit` (reads change context for the message) or write a manual message following `AGENTS.md` commit trailer conventions:
+
+```
+feat(<change-id>): <short description>
+
+<body if needed>
+
+Change: <change-id>
+Scenarios: "<scenario 1>", "<scenario 2>"
+```
+
+Mid-task commits are fine — commit whenever it makes sense during implementation. **Do not open a PR before finalize is complete.** The PR should represent the finished, archived state of the change.
+
+### 9. Summary
 
 Present a brief summary:
 
@@ -279,7 +351,12 @@ Present a brief summary:
 
 ## References
 
-**Before writing code**, read `../references/testing-contracts.md` — covers: verify-before-using rules (imports, packages, APIs), mocking strategy (HTTP boundary not client), fixture management, contract tests, and step definition quality checks.
+**Before writing code**, read all three:
+
+- `../references/pattern-guard.md` — run before each task: (1) classify code type, (1b) reuse discovery — two `search_graph` calls (semantic_query by concept + name_pattern by likely name) to find existing code to call instead of writing new code, (2) find 3–5 peers, extract modal pattern across four seams (error handling, dependency, abstraction depth, return shape), write a pattern brief. Apply the brief while writing. Run hallucination check after writing (verify called functions exist in graph). Skip if graph not indexed.
+- `../references/code-quality.md` — anti-slop rules to apply _while writing_: reuse before write, trust callers, names reveal intent, branching budget, function size, no premature abstraction, zero comments by default (only non-obvious _why_, never _what_). Includes a seven-point quality gate to run before marking each task `[x]`.
+- `../references/testing-contracts.md` — verify-before-using rules (imports, packages, APIs), mocking strategy (HTTP boundary not client), fixture management, contract tests, and step definition quality checks.
+- `../references/test-baseline.md` — capture which tests were already failing at change start, save to `baseline.md`, get user acceptance; verify diffs against it so only new failures count as regressions.
 
 ## Important
 
