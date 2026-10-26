@@ -21,8 +21,8 @@ import {
   mediaDir,
   syncTempDbPath,
   thumbnailsDir,
-} from "../server/src/config/paths.js";
-import { unlinkBestEffort } from "../server/src/lib/fs-best-effort.js";
+} from "../packages/server/src/config/paths.js";
+import { unlinkBestEffort } from "../packages/server/src/lib/fs-best-effort.js";
 
 const S3_PREFIX = "backup";
 

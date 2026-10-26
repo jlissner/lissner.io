@@ -1,12 +1,12 @@
 ---
 description: UI folder layout (bulletproof-react); app vs features vs shared components
-globs: ui/**/*.{ts,tsx}
+globs: packages/pics/**/*.{ts,tsx}
 alwaysApply: false
 ---
 
 # UI architecture (bulletproof-react)
 
-Follow the layout documented in `ui/README.md`.
+Follow the layout documented in `packages/pics/README.md`.
 
 ## Layers (dependency direction)
 
@@ -18,19 +18,19 @@ app/*                                        →  may import features + shared l
 
 ## Do
 
-- Add new screens under `ui/src/features/<feature>/` with `components/`, `hooks/`, etc. as needed.
-- Wire routes, nav, and multi-feature layout in `ui/src/app/` (e.g. `authenticated-app.tsx`).
-- Put **cross-cutting UI** (used by multiple features) under `ui/src/components/` (e.g. activity overlay).
-- Put **routing constants and nav** in `ui/src/config/`.
-- Use **`@/`** imports for everything under `ui/src/` (see `ui/tsconfig.json`).
+- Add new screens under `packages/pics/src/features/<feature>/` with `components/`, `hooks/`, etc. as needed.
+- Wire routes, nav, and multi-feature layout in `packages/pics/src/app/` (e.g. `authenticated-app.tsx`).
+- Put **cross-cutting UI** (used by multiple features) under `packages/pics/src/components/` (e.g. activity overlay).
+- Put **routing constants and nav** in `packages/pics/src/config/`.
+- Use **`@/`** imports for everything under `packages/pics/src/` (see `packages/pics/tsconfig.json`).
 - Prefer **`@/components/ui/*`** for buttons, modals, alerts, nav items, cards, and dropdown menus instead of raw `className="btn …"` / duplicated modal markup. New global patterns belong in `components/ui/` with styles in `styles/components.css`.
 
 ## Don’t
 
-- Import from `ui/src/app/` inside `ui/src/features/` (compose the other way).
+- Import from `packages/pics/src/app/` inside `packages/pics/src/features/` (compose the other way).
 - Import one feature from another; lift shared bits to `components/`, `hooks/`, or `lib/`, or pass props from `app/`.
 - Add barrel `index.ts` files that re-export whole features (hurts tree-shaking in Vite).
 
 ## ESLint
 
-Root `eslint.config.js` enforces some of this via `import/no-restricted-paths` for `ui/src`. If a rule blocks a rare legitimate case, fix the dependency direction first; only then consider a narrow exception in ESLint.
+Root `eslint.config.js` enforces some of this via `import/no-restricted-paths` for `packages/pics/src`. If a rule blocks a rare legitimate case, fix the dependency direction first; only then consider a narrow exception in ESLint.

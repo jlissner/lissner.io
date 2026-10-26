@@ -27,7 +27,7 @@ Then(
   function () {
     assert.ok(
       existsSync(
-        "ui/src/features/media/components/media-viewer/inline-assign-bar.tsx",
+        "packages/pics/src/features/media/components/media-viewer/inline-assign-bar.tsx",
       ),
       "Expected InlineAssignBar to exist with PersonSelect support",
     );
@@ -43,11 +43,11 @@ When(
 
 Then("a new person is created with the typed name", function () {
   assert.ok(
-    existsSync("ui/src/features/people/components/PersonSelect.tsx"),
+    existsSync("packages/pics/src/features/people/components/PersonSelect.tsx"),
     "Expected PersonSelect component to exist",
   );
   assert.ok(
-    existsSync("ui/src/features/people/api.ts"),
+    existsSync("packages/pics/src/features/people/api.ts"),
     "Expected people API with createPerson to exist",
   );
 });
@@ -65,7 +65,7 @@ When(
 
 Then("the face association updates to the new person", function () {
   assert.ok(
-    existsSync("server/src/db/media-people.ts"),
+    existsSync("packages/server/src/db/media-people.ts"),
     "Expected media-people DB module to exist for face reassignment",
   );
 });
@@ -84,7 +84,7 @@ When(
 Then("that person appears in the video's tagged people list", function () {
   assert.ok(
     existsSync(
-      "ui/src/features/media/components/media-viewer/media-viewer-content.tsx",
+      "packages/pics/src/features/media/components/media-viewer/media-viewer-content.tsx",
     ),
     "Expected media-viewer-content with video tagging to exist",
   );

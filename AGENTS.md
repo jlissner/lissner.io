@@ -49,7 +49,7 @@ npm run nuke               # Delete all data (dangerous!)
 
 ### Docker / deploy
 
-The **`api`** image copies pre-built **`server/dist`** only; the **`ui`** image copies **`ui/dist`** (nginx); the **`graphql`** image copies **`graphql/dist`**. **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
+The **`api`** image copies pre-built **`packages/server/dist`** only; the **`ui`** image copies **`packages/pics/dist`** (nginx); the **`graphql`** image copies **`packages/graphql/dist`**. **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`config/docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
 
 ```bash
 npm run validate           # lint + test + docker compose config -q (host:config)
@@ -65,14 +65,16 @@ npm run host:config        # docker compose config -q (validate compose + env in
 npm run host:local         # ollama + server + vite --host (no Docker)
 ```
 
-See **`HOST.md`** for `.env`, Traefik, **NVIDIA GPU (required for Docker Ollama)**, and production notes. **`npm run host:*`** runs **`scripts/docker-compose.sh`**, which adds **`--env-file .env.prod`** when that file exists so **`${ACME_EMAIL}`** and other compose interpolations resolve. **`env_file:`** on a service does **not** substitute **`${…}`** in **`docker-compose.yml`** — only **`.env`**, **`--env-file`**, and the shell do. Running plain **`docker compose`** without **`--env-file .env.prod`** will not see **`ACME_EMAIL`** from **`.env.prod`**. Use **`npm run host:config`** to validate. Compose warns if **`ACME_EMAIL`** is unset for interpolation (unless it is in **`.env`** or you pass **`--env-file .env.prod`**).
+See **`HOST.md`** for **`config/.env*`**, Traefik, **NVIDIA GPU (required for Docker Ollama)**, and production notes. **`npm run host:*`** runs **`scripts/docker-compose.sh`** (`-f config/docker-compose.yml`), which adds **`--env-file config/.env`** / **`config/.env.prod`** when those files exist so **`${ACME_EMAIL}`** and other compose interpolations resolve. **`env_file:`** on a service does **not** substitute **`${…}`** in the compose file — only **`--env-file`** and the shell do. Prefer the wrapper over raw **`docker compose`**. Use **`npm run host:config`** to validate.
 
 ---
 
 ## Project Structure
 
+npm workspaces under `packages/*` (`@lissner/server`, `@lissner/pics`, `@lissner/graphql`, `@lissner/shared`, `@lissner/db`). Import shared code as `@lissner/shared`.
+
 ```
-server/src/
+packages/server/src/
   routes/           # Express Router only: parse/validate/respond
   services/         # Business logic: use-cases, orchestration
   db/              # SQLite queries, migrations
@@ -85,13 +87,13 @@ server/src/
   vision/          # Image description
   lib/             # Utilities, types, errors
 
-ui/src/
+packages/pics/src/
   app/             # Route composition, layout (no feature imports)
   features/        # Feature modules with components/, hooks/
   components/      # Shared UI (buttons, modals, etc.)
   config/          # Routing constants, nav (no feature imports)
 
-shared/src/        # Types shared between server and UI
+packages/shared/src/  # Types shared between server and UI
 ```
 
 ---

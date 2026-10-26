@@ -1,6 +1,6 @@
 ---
 description: Server layering — routes vs services vs db/infrastructure
-globs: server/**/*.ts
+globs: packages/server/**/*.ts
 alwaysApply: false
 ---
 
@@ -23,8 +23,8 @@ routes/  →  services/  →  db/, s3/, indexing/, email/, faces/, …
 
 ## Naming
 
-- `*-service.ts` in `server/src/services/` (e.g. `media-service.ts`, `search-service.ts`).
+- `*-service.ts` in `packages/server/src/services/` (e.g. `media-service.ts`, `search-service.ts`).
 
 ## Docs
 
-See **`server/README.md`** and root **`README.md`** (Architecture → `./server/`).
+See **`packages/server/README.md`** and root **`README.md`** (Architecture → `./packages/server/`).

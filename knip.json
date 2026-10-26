@@ -1,10 +1,31 @@
 {
   "$schema": "https://unpkg.com/knip@latest/schema.json",
-  "entry": ["graphql/src/index.ts", "scripts/dev-watch.mjs"],
-  "ignore": [
-    "features/step-definitions/**/*.ts",
-    "features/support/**/*.ts",
-    "scripts/resolve-shared-hooks.mjs"
-  ],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.{ts,mjs}", "vitest.config.ts"],
+      "project": ["scripts/**/*.{ts,mjs}"]
+    },
+    "packages/shared": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/server": {
+      "entry": ["src/index.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "packages/graphql": {
+      "entry": ["src/index.ts", "graphile.config.ts"],
+      "project": ["src/**/*.ts", "graphile.config.ts"]
+    },
+    "packages/pics": {
+      "entry": ["src/main.tsx", "vite.config.ts", "index.html"],
+      "project": ["src/**/*.{ts,tsx}", "vite.config.ts"]
+    },
+    "packages/db": {
+      "entry": [],
+      "project": []
+    }
+  },
+  "ignore": ["features/step-definitions/**/*.ts", "features/support/**/*.ts"],
   "ignoreBinaries": ["ollama"]
 }

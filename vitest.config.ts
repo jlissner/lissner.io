@@ -7,17 +7,17 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "ui/src"),
-      "@shared": path.resolve(__dirname, "shared/src/index.ts"),
+      "@": path.resolve(__dirname, "packages/pics/src"),
+      "@lissner/shared": path.resolve(__dirname, "packages/shared/src"),
     },
   },
   test: {
     environment: "node",
     include: [
-      "server/src/**/*.test.ts",
-      "ui/src/**/*.test.ts",
-      "shared/src/**/*.test.ts",
-      "graphql/src/**/*.test.ts",
+      "packages/server/src/**/*.test.ts",
+      "packages/pics/src/**/*.test.ts",
+      "packages/shared/src/**/*.test.ts",
+      "packages/graphql/src/**/*.test.ts",
     ],
     /** Quiet TensorFlow native INFO logs when tests import `faces` → tfjs-node. */
     env: {

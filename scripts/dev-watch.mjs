@@ -17,7 +17,7 @@ if (tsxWatchArgs.length === 0) {
 }
 
 const envFiles = [".env.local", ".env"].map((name) =>
-  path.join(repoRoot, name),
+  path.join(repoRoot, "config", name),
 );
 
 const startTsxWatch = () =>

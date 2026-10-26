@@ -1,6 +1,6 @@
 ---
 description: Default UI simplicity and clarity standards
-globs: ui/src/**/*.{ts,tsx}
+globs: packages/pics/src/**/*.{ts,tsx}
 alwaysApply: false
 ---
 

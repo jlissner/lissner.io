@@ -1,0 +1,7 @@
+{
+  "name": "@lissner/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Postgres docs/ops (schema migrations land here after SQLite convergence)"
+}

@@ -95,7 +95,10 @@ AfterAll(async () => {
 Given(
   "production hosting uses Docker Compose with Traefik in front of the application",
   function () {
-    const compose = readFileSync(join(repoRoot, "docker-compose.yml"), "utf8");
+    const compose = readFileSync(
+      join(repoRoot, "config/docker-compose.yml"),
+      "utf8",
+    );
     assert.match(compose, /^\s{2}traefik:\s*$/m);
     assert.match(compose, /^\s{2}api:\s*$/m);
     assert.match(compose, /^\s{2}ui:\s*$/m);
@@ -119,9 +122,9 @@ Given("the hosted stack is running", async function (this: HostingWorld) {
     return;
   }
   const { createConfiguredApp } =
-    await import("../../server/dist/bootstrap/server.js");
+    await import("../../packages/server/dist/bootstrap/server.js");
   const { attachActivityWebSocket } =
-    await import("../../server/dist/activity/broadcast.js");
+    await import("../../packages/server/dist/activity/broadcast.js");
   const app = createConfiguredApp("/nonexistent-path-no-ui-dist");
   attachActivityWebSocket(app);
   await new Promise<void>((resolve) => {
@@ -156,7 +159,7 @@ Then(
 
 async function loginCookieForHosting(world: HostingWorld): Promise<string> {
   assert.ok(world.hostingBaseUrl);
-  const authDb = await import("../../server/dist/db/auth.js");
+  const authDb = await import("../../packages/server/dist/db/auth.js");
   const email = "hosting-ws-bdd@test.local";
   try {
     authDb.addToWhitelist(email, false);
@@ -230,8 +233,11 @@ When(
 );
 
 Then("the response is served by the UI service", function () {
-  const compose = readFileSync(join(repoRoot, "docker-compose.yml"), "utf8");
-  assert.ok(compose.includes("dockerfile: ui/Dockerfile"));
+  const compose = readFileSync(
+    join(repoRoot, "config/docker-compose.yml"),
+    "utf8",
+  );
+  assert.ok(compose.includes("dockerfile: packages/pics/Dockerfile"));
   assert.ok(
     compose.includes("traefik.http.routers.ui.rule=Host(`${UI_HOST}`)"),
   );
@@ -321,7 +327,7 @@ Then(
   "pages load from the UI host and authenticated features that depend on the API succeed without the user manually configuring an API base URL",
   function () {
     const clientTs = readFileSync(
-      join(repoRoot, "ui/src/api/client.ts"),
+      join(repoRoot, "packages/pics/src/api/client.ts"),
       "utf8",
     );
     assert.ok(clientTs.includes("VITE_API_HOST"));
@@ -341,15 +347,18 @@ When(
 Then(
   "the UI and the API each correspond to a different service in the stack",
   function () {
-    const compose = readFileSync(join(repoRoot, "docker-compose.yml"), "utf8");
+    const compose = readFileSync(
+      join(repoRoot, "config/docker-compose.yml"),
+      "utf8",
+    );
     assert.match(compose, /^\s{2}api:\s*$/m);
     assert.match(compose, /^\s{2}ui:\s*$/m);
     assert.ok(
-      compose.includes("dockerfile: server/Dockerfile"),
+      compose.includes("dockerfile: packages/server/Dockerfile"),
       "API image should build from server Dockerfile",
     );
     assert.ok(
-      compose.includes("dockerfile: ui/Dockerfile"),
+      compose.includes("dockerfile: packages/pics/Dockerfile"),
       "UI image should build from ui Dockerfile",
     );
   },

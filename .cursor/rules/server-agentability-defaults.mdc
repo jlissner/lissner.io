@@ -1,6 +1,6 @@
 ---
 description: Server defaults for agent-friendly, low-duplication code
-globs: server/src/**/*.ts
+globs: packages/server/src/**/*.ts
 alwaysApply: false
 ---
 
@@ -27,7 +27,7 @@ alwaysApply: false
 
 ## Types and contracts
 
-- Prefer shared types (`shared/src/api.ts`) for payload contracts between server and UI.
+- Prefer shared types (`packages/shared/src/api.ts`) for payload contracts between server and UI.
 - Avoid `any`; narrow `unknown` quickly at boundaries.
 - Keep service/public return types explicit and stable.
 
