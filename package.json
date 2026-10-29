@@ -22,7 +22,7 @@
     "db:checkpoint": "npm run checkpoint -w @lissner/db",
     "db:dump-remote": "npm run dump-remote -w @lissner/db",
     "db:restore-local": "npm run restore-local -w @lissner/db",
-    "db:migrate:media": "npm run migrate:media -w @lissner/db",
+    "db:migrate:media": "npm run build -w @lissner/shared && npm run migrate:media -w @lissner/db",
     "dev": "concurrently -n ollama,server,ui,graphql -c yellow,blue,green,magenta \"ollama serve\" \"npm run dev:server\" \"npm run dev:ui\" \"npm run dev:graphql\"",
     "dev:graphql": "npm run dev -w @lissner/graphql",
     "dev:server": "npm run dev -w @lissner/server",
