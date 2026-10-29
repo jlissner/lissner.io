@@ -1,30 +1,43 @@
 #!/usr/bin/env npx tsx
 /**
- * Nuclear reset: local media, thumbnails, all DB rows, and S3 backup/ prefix (if configured).
+ * Nuclear reset: local media, thumbnails, all media DB rows, and S3 backup/ prefix (if configured).
  *
  * Run: npm run nuke
- * Stop the server first so the DB is not locked.
+ * Stop the server first so the DB pool is not holding connections.
  */
 
 import { existsSync } from "fs";
 import { readdir, stat, unlink } from "fs/promises";
 import path from "path";
 import { createInterface } from "readline";
-import Database from "better-sqlite3";
+import pg from "pg";
 import {
   S3Client,
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
+import { MEDIA_DATABASE_URL } from "../packages/server/src/config/env.js";
 import {
-  dbPath,
   mediaDir,
-  syncTempDbPath,
   thumbnailsDir,
 } from "../packages/server/src/config/paths.js";
-import { unlinkBestEffort } from "../packages/server/src/lib/fs-best-effort.js";
 
 const S3_PREFIX = "backup";
+
+const TRUNCATE_SQL = `
+  TRUNCATE TABLE
+    refresh_tokens,
+    magic_link_tokens,
+    user_people,
+    users,
+    auth_whitelist,
+    media_tags,
+    image_people,
+    embeddings,
+    media,
+    person_names
+  RESTART IDENTITY CASCADE
+`;
 
 function s3Configured(): boolean {
   return [
@@ -108,17 +121,6 @@ async function deleteS3Objects(
   }
 }
 
-function getTableNames(db: Database.Database): string[] {
-  const rows = db
-    .prepare(
-      `SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name`,
-    )
-    .all() as Array<{ name: string }>;
-  return rows
-    .map((r) => r.name)
-    .filter((n) => /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(n));
-}
-
 function ask(question: string): Promise<string> {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
@@ -127,19 +129,6 @@ function ask(question: string): Promise<string> {
       resolve(answer.trim());
     });
   });
-}
-
-function emptyAllTables(db: Database.Database): void {
-  const tables = getTableNames(db);
-  db.pragma("foreign_keys = OFF");
-  try {
-    for (const t of tables) {
-      db.prepare(`DELETE FROM "${t.replace(/"/g, '""')}"`).run();
-    }
-  } finally {
-    db.pragma("foreign_keys = ON");
-  }
-  db.prepare("VACUUM").run();
 }
 
 async function unlinkDirFiles(dir: string): Promise<number> {
@@ -157,6 +146,25 @@ async function unlinkDirFiles(dir: string): Promise<number> {
   return acc.n;
 }
 
+async function mediaTableCounts(
+  client: pg.Client,
+): Promise<Record<string, number>> {
+  const tables = await client.query<{ name: string }>(
+    `SELECT table_name as name FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+     ORDER BY table_name`,
+  );
+  const counts: Record<string, number> = {};
+  for (const { name } of tables.rows) {
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)) continue;
+    const row = await client.query<{ c: string }>(
+      `SELECT COUNT(*)::text as c FROM ${name}`,
+    );
+    counts[name] = Number(row.rows[0]?.c ?? 0);
+  }
+  return counts;
+}
+
 async function main(): Promise<void> {
   console.log(
     "\n\x1b[1;31m══════════════════════════════════════════════════════════════\x1b[0m",
@@ -170,29 +178,14 @@ async function main(): Promise<void> {
 
   const mediaStats = await dirStats(mediaDir);
   const thumbStats = await dirStats(thumbnailsDir);
-  const syncTempExists = existsSync(syncTempDbPath);
 
-  const dbExists = existsSync(dbPath);
-  const dbRowCounts: Record<string, number> = {};
-  if (dbExists) {
-    const db = new Database(dbPath);
-    try {
-      for (const t of getTableNames(db)) {
-        const c = db
-          .prepare(`SELECT COUNT(*) as c FROM "${t.replace(/"/g, '""')}"`)
-          .get() as {
-          c: number;
-        };
-        dbRowCounts[t] = c.c;
-      }
-    } finally {
-      db.close();
-    }
-  }
+  const client = new pg.Client({ connectionString: MEDIA_DATABASE_URL });
+  await client.connect();
+  const dbRowCounts = await mediaTableCounts(client);
 
   const s3List = { keys: [] as string[], bytes: 0 };
   if (s3Configured()) {
-    const client = new S3Client({
+    const s3 = new S3Client({
       region: process.env.AWS_REGION!,
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
@@ -201,10 +194,11 @@ async function main(): Promise<void> {
     });
     const bucket = process.env.S3_BUCKET!;
     try {
-      const listed = await listAllS3BackupObjects(client, bucket);
+      const listed = await listAllS3BackupObjects(s3, bucket);
       s3List.keys = listed.keys;
       s3List.bytes = listed.bytes;
     } catch (e) {
+      await client.end();
       console.error("Failed to list S3 objects (is the bucket reachable?):", e);
       process.exit(1);
     }
@@ -219,23 +213,17 @@ async function main(): Promise<void> {
   console.log(
     `    → ${thumbStats.files} file(s), ${formatBytes(thumbStats.bytes)}`,
   );
-  if (syncTempExists) {
-    console.log(`  Sync temp DB          (${syncTempDbPath})`);
-    console.log(`    → 1 file`);
-  }
-  console.log(`  SQLite database       (${dbPath})`);
-  if (!dbExists) {
-    console.log(`    → (database file missing — table wipe will be skipped)`);
-  } else {
-    const totalRows = Object.values(dbRowCounts).reduce((a, b) => a + b, 0);
-    console.log(
-      `    → ALL ROWS in ${Object.keys(dbRowCounts).length} table(s) (${totalRows} total rows):`,
-    );
-    for (const [t, c] of Object.entries(dbRowCounts).sort(([a], [b]) =>
-      a.localeCompare(b),
-    )) {
-      console.log(`        ${t}: ${c}`);
-    }
+  console.log(
+    `  Postgres media DB     (${MEDIA_DATABASE_URL.replace(/:[^:@/]+@/, ":***@")})`,
+  );
+  const totalRows = Object.values(dbRowCounts).reduce((a, b) => a + b, 0);
+  console.log(
+    `    → ALL ROWS in ${Object.keys(dbRowCounts).length} table(s) (${totalRows} total rows):`,
+  );
+  for (const [t, c] of Object.entries(dbRowCounts).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )) {
+    console.log(`        ${t}: ${c}`);
   }
   if (s3Configured()) {
     console.log(
@@ -258,6 +246,7 @@ async function main(): Promise<void> {
   );
 
   if (answer !== code) {
+    await client.end();
     console.log("\nAborted.\n");
     process.exit(0);
   }
@@ -269,34 +258,23 @@ async function main(): Promise<void> {
     `  Removed ${removedMedia} media file(s), ${removedThumbs} thumbnail file(s).`,
   );
 
-  if (syncTempExists) {
-    await unlinkBestEffort(syncTempDbPath, "[nuke] remove sync temp db");
-    console.log("  Removed sync temp DB.");
-  }
-
   if (s3Configured() && s3List.keys.length > 0) {
     console.log(`\nDeleting ${s3List.keys.length} S3 object(s)…`);
-    const client = new S3Client({
+    const s3 = new S3Client({
       region: process.env.AWS_REGION!,
       credentials: {
         accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
         secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
       },
     });
-    await deleteS3Objects(client, process.env.S3_BUCKET!, s3List.keys);
+    await deleteS3Objects(s3, process.env.S3_BUCKET!, s3List.keys);
     console.log("  S3 backup prefix cleared.");
   }
 
-  if (dbExists) {
-    console.log("\nEmptying database tables…");
-    const db = new Database(dbPath);
-    try {
-      emptyAllTables(db);
-      console.log("  All tables emptied and VACUUM completed.");
-    } finally {
-      db.close();
-    }
-  }
+  console.log("\nEmptying media database tables…");
+  await client.query(TRUNCATE_SQL);
+  await client.end();
+  console.log("  All tables truncated.");
 
   console.log(
     "\n\x1b[32mDone.\x1b[0m Restart the server before using the app.\n",

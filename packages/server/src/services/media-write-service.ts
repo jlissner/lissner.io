@@ -9,15 +9,15 @@ import type { ServiceFailure } from "./service-result.js";
 import { scheduleBackupSyncAfterUpload } from "../s3/sync-schedule.js";
 import { deleteMediaFromS3 } from "../s3/sync-restore.js";
 
-export function persistUploadedMedia(params: {
+export async function persistUploadedMedia(params: {
   id: string;
   filename: string;
   originalName: string;
   mimeType: string;
   size: number;
   ownerId: number;
-}): void {
-  db.insertMedia(
+}): Promise<void> {
+  await db.insertMedia(
     params.id,
     params.filename,
     params.originalName,
@@ -45,11 +45,11 @@ export async function deleteMediaItem(
   mediaId: string,
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
 ): Promise<DeleteMediaResult> {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
-  const ownerId = db.getMediaOwnerId(item.id);
+  const ownerId = await db.getMediaOwnerId(item.id);
   const canDelete = ctx.isAdmin || (ownerId != null && ctx.userId === ownerId);
   if (!canDelete) {
     return { ok: false, reason: "forbidden" };
@@ -67,8 +67,8 @@ export async function deleteMediaItem(
       );
     }
     const s3Target = { id: item.id, filename: item.filename };
-    db.clearMotionPairForPeer(item.id);
-    db.deleteMedia(item.id);
+    await db.clearMotionPairForPeer(item.id);
+    await db.deleteMedia(item.id);
     await deleteMediaFromS3(s3Target);
     scheduleBackupSyncAfterUpload();
     return { ok: true };
@@ -95,16 +95,16 @@ type UpdateMediaDateTakenResult =
   | ServiceFailure<"not_found" | "forbidden" | "bad_request" | "invalid_date">;
 
 /** Owner or admin may set `dateTaken` to an ISO timestamp string or `null` to clear. */
-export function updateMediaDateTaken(
+export async function updateMediaDateTaken(
   mediaId: string,
   body: unknown,
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-): UpdateMediaDateTakenResult {
-  const item = db.getMediaById(mediaId);
+): Promise<UpdateMediaDateTakenResult> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
-  const ownerId = db.getMediaOwnerId(item.id);
+  const ownerId = await db.getMediaOwnerId(item.id);
   const canEdit = ctx.isAdmin || (ownerId != null && ctx.userId === ownerId);
   if (!canEdit) {
     return { ok: false, reason: "forbidden" };
@@ -120,7 +120,7 @@ export function updateMediaDateTaken(
   if (parsed === "invalid") {
     return { ok: false, reason: "invalid_date" };
   }
-  db.setMediaDateTaken(mediaId, parsed);
+  await db.setMediaDateTaken(mediaId, parsed);
   scheduleBackupSyncAfterUpload();
   return { ok: true, dateTaken: parsed };
 }

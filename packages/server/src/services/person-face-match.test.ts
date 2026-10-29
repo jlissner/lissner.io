@@ -30,20 +30,20 @@ describe("runFaceMatchBatch", () => {
   });
 
   it("never auto-merges and returns review queue entries", async () => {
-    vi.mocked(db.getPersonNames).mockReturnValue(
+    vi.mocked(db.getPersonNames).mockResolvedValue(
       new Map([
         [1, "Person 1"],
         [2, "Alice"],
       ]),
     );
-    vi.mocked(db.getAllPersonIds).mockReturnValue([1, 2]);
+    vi.mocked(db.getAllPersonIds).mockResolvedValue([1, 2]);
     vi.mocked(pms.collectDescriptorsForPerson).mockImplementation(
       async (id: number) => (id === 1 ? [[0.1, 0.2]] : [[0.3, 0.4]]),
     );
     vi.mocked(pms.mergeSuggestionsFromDescriptors).mockReturnValue([
       { personId: 2, name: "Alice", score: 0.999 },
     ]);
-    vi.mocked(db.getMediaForPerson).mockReturnValue([
+    vi.mocked(db.getMediaForPerson).mockResolvedValue([
       {
         id: "m1",
         filename: "a.jpg",

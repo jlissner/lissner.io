@@ -26,7 +26,7 @@ authRouter.post("/magic-link", async (req, res) => {
   const { email } = magicLinkBodySchema.parse(req.body);
   const normalized = email.toLowerCase();
 
-  if (!authDb.isEmailWhitelisted(normalized)) {
+  if (!(await authDb.isEmailWhitelisted(normalized))) {
     sendApiError(
       res,
       403,
@@ -36,7 +36,7 @@ authRouter.post("/magic-link", async (req, res) => {
     return;
   }
 
-  const { code } = authDb.createMagicLinkToken(normalized);
+  const { code } = await authDb.createMagicLinkToken(normalized);
   const baseUrl = getMagicLinkBaseUrl();
   const link = `${baseUrl}/?code=${code}`;
 
@@ -67,14 +67,14 @@ authRouter.post("/verify-code", async (req, res) => {
   }
 
   const codeHash = createHash("sha256").update(code).digest("hex");
-  const result = authDb.consumeLoginCode(normalizedEmail, codeHash);
+  const result = await authDb.consumeLoginCode(normalizedEmail, codeHash);
   if (!result) {
     sendApiError(res, 401, "Invalid or expired code", "invalid_code");
     return;
   }
 
-  const isAdmin = authDb.isEmailAdmin(result.email);
-  const user = authDb.getOrCreateUser(result.email, isAdmin);
+  const isAdmin = await authDb.isEmailAdmin(result.email);
+  const user = await authDb.getOrCreateUser(result.email, isAdmin);
 
   const tokens = await issueTokens(user);
   setTokenCookies(res, tokens.accessToken, tokens.refreshToken);
@@ -124,19 +124,19 @@ authRouter.get("/me", (req, res) => {
   res.json({ id: user.id, email: user.email, isAdmin: user.isAdmin });
 });
 
-authRouter.get("/me/people", requireAuth, (req, res) => {
+authRouter.get("/me/people", requireAuth, async (req, res) => {
   const userId = req.jwtUser!.id;
-  const personIds = authDb.getUserPeople(userId);
+  const personIds = await authDb.getUserPeople(userId);
   res.json({ personIds });
 });
 
-authRouter.put("/me/people", requireAuth, (req, res) => {
+authRouter.put("/me/people", requireAuth, async (req, res) => {
   const userId = req.jwtUser!.id;
   const { personIds } = updateMyPeopleBodySchema.parse(req.body);
   const ids = personIds ?? [];
 
-  authDb.setUserPeople(userId, ids);
-  const stored = authDb.getUserPeople(userId);
+  await authDb.setUserPeople(userId, ids);
+  const stored = await authDb.getUserPeople(userId);
   res.json({ personIds: stored });
 });
 

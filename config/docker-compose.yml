@@ -30,6 +30,8 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
         [

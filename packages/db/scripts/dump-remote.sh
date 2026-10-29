@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Phase A2: dump remote GraphQL Postgres (data + cluster roles) into data/db-dumps/.
-# Requires: REMOTE_DATABASE_URL (or DATABASE_URL pointing at RDS).
+# Requires: REMOTE_DATABASE_URL (full URL including remote database name).
 # Roles are cluster-level (e.g. PostGraphile `unauthorized`) and are not in pg_dump alone.
 # RDS often denies pg_dumpall (pg_authid); we fall back to pg_roles (no passwords).
 set -euo pipefail
@@ -12,7 +12,7 @@ cd "$ROOT"
 source "$SCRIPT_DIR/load-pg-env.sh"
 require_remote_url
 
-URL="${REMOTE_DATABASE_URL:-$DATABASE_URL}"
+URL="${REMOTE_DATABASE_URL}"
 
 mkdir -p data/db-dumps
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"

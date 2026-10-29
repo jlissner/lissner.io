@@ -15,7 +15,7 @@ export function ensureServerDirectories(paths: {
 
 export async function runStartupMaintenance(): Promise<void> {
   try {
-    mediaDb.relinkAllMotionPairs();
+    await mediaDb.relinkAllMotionPairs();
   } catch (err) {
     logger.error(
       { err },

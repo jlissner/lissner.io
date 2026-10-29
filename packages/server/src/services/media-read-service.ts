@@ -26,7 +26,7 @@ import {
 } from "../s3/sync-restore.js";
 import { isVideoMime } from "../lib/media-mime.js";
 
-type MediaItemRow = NonNullable<ReturnType<typeof db.getMediaById>>;
+type MediaItemRow = NonNullable<Awaited<ReturnType<typeof db.getMediaById>>>;
 
 type MediaLocalFileSource = Pick<
   MediaItemRow,
@@ -54,21 +54,21 @@ export async function ensureLocalMediaFile(
   }
 }
 
-export function listMediaEnriched(params: {
+export async function listMediaEnriched(params: {
   limit: number;
   offset: number;
   personId?: number;
   sortBy: "uploaded" | "taken";
-}): MediaListQueryResponse {
+}): Promise<MediaListQueryResponse> {
   const items =
     params.personId != null && !isNaN(params.personId)
-      ? db.listMediaPaginated(
+      ? await db.listMediaPaginated(
           params.limit,
           params.offset,
           params.personId,
           params.sortBy,
         )
-      : db.listMediaPaginated(
+      : await db.listMediaPaginated(
           params.limit,
           params.offset,
           undefined,
@@ -76,27 +76,29 @@ export function listMediaEnriched(params: {
         );
   const total =
     params.personId != null && !isNaN(params.personId)
-      ? db.getMediaCountForPerson(params.personId)
-      : db.getMediaCount();
-  const indexedIds = db.getIndexedMediaIds();
-  const personNames = db.getPersonNames();
-  const enriched = items.map((item) => {
-    const personIds = db.getImagePeople(item.id);
-    const people = personIds.map(
-      (pid) => personNames.get(pid) ?? `Person ${pid}`,
-    );
-    return {
-      ...item,
-      indexed: indexedIds.has(item.id),
-      backedUp: !!item.backedUpAt,
-      people: people.length ? people : undefined,
-    };
-  });
+      ? await db.getMediaCountForPerson(params.personId)
+      : await db.getMediaCount();
+  const indexedIds = await db.getIndexedMediaIds();
+  const personNames = await db.getPersonNames();
+  const enriched = await Promise.all(
+    items.map(async (item) => {
+      const personIds = await db.getImagePeople(item.id);
+      const people = personIds.map(
+        (pid) => personNames.get(pid) ?? `Person ${pid}`,
+      );
+      return {
+        ...item,
+        indexed: indexedIds.has(item.id),
+        backedUp: !!item.backedUpAt,
+        people: people.length ? people : undefined,
+      };
+    }),
+  );
   return { items: enriched, total };
 }
 
 export async function getFacesPayloadForMedia(mediaId: string) {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item || !isEffectiveImageItem(item)) {
     return { ok: false as const, reason: "not_found" as const };
   }
@@ -130,8 +132,8 @@ export async function getFacesPayloadForMedia(mediaId: string) {
           detectorScore: number | null;
         } => row != null,
       );
-    const tagged = db.getTaggedFacesInMedia(item.id);
-    const personNames = db.getPersonNames();
+    const tagged = await db.getTaggedFacesInMedia(item.id);
+    const personNames = await db.getPersonNames();
     return {
       ok: true as const,
       body: {
@@ -152,14 +154,14 @@ export async function getFaceCropOrFullImage(
   mediaId: string,
   personId: number,
 ) {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item || !isEffectiveImageItem(item)) {
     return { ok: false as const, reason: "not_found" as const };
   }
   if (isNaN(personId) || personId < 1) {
     return { ok: false as const, reason: "bad_request" as const };
   }
-  const personIds = db.getImagePeople(item.id);
+  const personIds = await db.getImagePeople(item.id);
   if (!personIds.includes(personId)) {
     return { ok: false as const, reason: "person_not_in_image" as const };
   }
@@ -167,7 +169,7 @@ export async function getFaceCropOrFullImage(
   if (!fileOk) {
     return { ok: false as const, reason: "file_missing" as const };
   }
-  const box = db.getFaceBox(item.id, personId);
+  const box = await db.getFaceBox(item.id, personId);
   const filePath = path.join(mediaDir, item.filename);
   try {
     if (box && box.width > 0 && box.height > 0) {
@@ -199,7 +201,7 @@ export async function getFaceCropOrFullImage(
 }
 
 export async function getMediaPreviewFile(mediaId: string) {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
@@ -242,20 +244,20 @@ export async function getMediaPreviewFile(mediaId: string) {
   }
 }
 
-export function getMediaDetailsEnriched(mediaId: string) {
-  const item = db.getMediaById(mediaId);
+export async function getMediaDetailsEnriched(mediaId: string) {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
-  const personIds = db.getImagePeople(item.id);
-  const personNames = db.getPersonNames();
+  const personIds = await db.getImagePeople(item.id);
+  const personNames = await db.getPersonNames();
   const people = personIds.map(
     (pid) => personNames.get(pid) ?? `Person ${pid}`,
   );
-  const indexedIds = db.getIndexedMediaIds();
+  const indexedIds = await db.getIndexedMediaIds();
   const companion =
     item.motionCompanionId != null && item.motionCompanionId !== ""
-      ? db.getMediaById(item.motionCompanionId)
+      ? await db.getMediaById(item.motionCompanionId)
       : undefined;
   const motionCompanion =
     companion != null
@@ -267,7 +269,7 @@ export function getMediaDetailsEnriched(mediaId: string) {
         }
       : undefined;
   const { hideFromGallery: _hid, ...rest } = item;
-  const tags = db.listTagsForMedia(item.id);
+  const tags = await db.listTagsForMedia(item.id);
   return {
     ok: true as const,
     body: {
@@ -282,7 +284,7 @@ export function getMediaDetailsEnriched(mediaId: string) {
 }
 
 export async function readTextMediaContent(mediaId: string) {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
@@ -314,7 +316,7 @@ export async function getThumbnailResponse(mediaId: string): Promise<
         | "thumb_failed";
     }
 > {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
@@ -418,7 +420,7 @@ function expectedThumbnailPathForMime(params: {
 export async function repairMissingThumbnails(params: {
   maxGenerations: number;
 }): Promise<AdminThumbnailRepairResponse> {
-  const items = db.listMedia();
+  const items = await db.listMedia();
   const scanned = items.length;
   let missingFound = 0;
   let generated = 0;

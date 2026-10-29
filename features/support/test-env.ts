@@ -32,3 +32,5 @@ setIfMissing("SERVER_PORT", "0");
 setIfMissing("SESSION_SECRET", "bdd-session-secret");
 setIfMissing("SES_FROM_EMAIL", "ses@test.local");
 setIfMissing("UI_PORT", "0");
+// Isolate BDD from the live media DB (env.ts dotenv uses override:false).
+process.env.MEDIA_DATABASE_NAME = "media_test";

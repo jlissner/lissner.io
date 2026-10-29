@@ -43,24 +43,24 @@ describe("searchMediaByQuery", () => {
   });
 
   it("bare query merges person-name-substring matches with text embedding results", async () => {
-    vi.mocked(db.getPersonNames).mockReturnValue(
+    vi.mocked(db.getPersonNames).mockResolvedValue(
       new Map([
         [1, "Joe Holiday"],
         [2, "Other"],
       ]),
     );
-    vi.mocked(db.getMediaForPerson).mockImplementation((pid: number) => {
+    vi.mocked(db.getMediaForPerson).mockImplementation(async (pid: number) => {
       if (pid === 1) {
         return [{ id: "m-person", hideFromGallery: 0 } as never];
       }
       return [];
     });
-    vi.mocked(db.getEmbeddings).mockReturnValue([
+    vi.mocked(db.getEmbeddings).mockResolvedValue([
       { mediaId: "m-emb", embedding: JSON.stringify([1, 0, 0]) },
     ]);
     vi.mocked(embeddings.getEmbedding).mockResolvedValue([1, 0, 0]);
     vi.mocked(embeddings.cosineSimilarity).mockReturnValue(0.99);
-    vi.mocked(db.getMediaByIds).mockImplementation((ids: string[]) =>
+    vi.mocked(db.getMediaByIds).mockImplementation(async (ids: string[]) =>
       ids.map((id) => ({
         id,
         filename: `${id}.jpg`,
@@ -71,8 +71,8 @@ describe("searchMediaByQuery", () => {
         hideFromGallery: 0,
       })),
     );
-    vi.mocked(db.getImagePeople).mockReturnValue([]);
-    vi.mocked(db.getIndexedMediaIds).mockReturnValue(
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(
       new Set(["m-person", "m-emb"]),
     );
 
@@ -86,12 +86,12 @@ describe("searchMediaByQuery", () => {
   });
 
   it("structured (#a OR #b) unions tag results", async () => {
-    vi.mocked(db.getMediaIdsForTag).mockImplementation((tag: string) => {
+    vi.mocked(db.getMediaIdsForTag).mockImplementation(async (tag: string) => {
       if (tag === "a") return ["m1"];
       if (tag === "b") return ["m2"];
       return [];
     });
-    vi.mocked(db.getMediaByIds).mockImplementation((ids: string[]) =>
+    vi.mocked(db.getMediaByIds).mockImplementation(async (ids: string[]) =>
       ids.map((id) => ({
         id,
         filename: `${id}.jpg`,
@@ -102,8 +102,8 @@ describe("searchMediaByQuery", () => {
         hideFromGallery: 0,
       })),
     );
-    vi.mocked(db.getImagePeople).mockReturnValue([]);
-    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
 
     const r = await searchMediaByQuery("(#a OR #b)", { limit: 50, offset: 0 });
     expect(r.ok).toBe(true);
@@ -111,6 +111,29 @@ describe("searchMediaByQuery", () => {
     const ids = r.items.map((i) => i.id).sort();
     expect(ids).toEqual(["m1", "m2"]);
     expect(embeddings.getEmbedding).not.toHaveBeenCalled();
+  });
+
+  // Bug: Postgres returns hide_from_gallery as boolean false; `=== 0` dropped all hits.
+  it("keeps visible hits when hideFromGallery is boolean false (Postgres)", async () => {
+    vi.mocked(db.getMediaIdsForTag).mockResolvedValue(["m1"]);
+    vi.mocked(db.getMediaByIds).mockResolvedValue([
+      {
+        id: "m1",
+        filename: "m1.jpg",
+        originalName: "m1.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "t",
+        hideFromGallery: false,
+      },
+    ]);
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
+
+    const r = await searchMediaByQuery("#summer", { limit: 50, offset: 0 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.items.map((i) => i.id)).toEqual(["m1"]);
   });
 
   it("returns invalid_query for broken structured syntax", async () => {
@@ -121,11 +144,13 @@ describe("searchMediaByQuery", () => {
   });
 
   it("person handle leaf returns video ids from getMediaForPerson", async () => {
-    vi.mocked(db.getPersonNames).mockReturnValue(new Map([[7, "Joe Lissner"]]));
-    vi.mocked(db.getMediaForPerson).mockReturnValue([
+    vi.mocked(db.getPersonNames).mockResolvedValue(
+      new Map([[7, "Joe Lissner"]]),
+    );
+    vi.mocked(db.getMediaForPerson).mockResolvedValue([
       { id: "v1", mimeType: "video/mp4", hideFromGallery: 0 } as never,
     ]);
-    vi.mocked(db.getMediaByIds).mockReturnValue([
+    vi.mocked(db.getMediaByIds).mockResolvedValue([
       {
         id: "v1",
         filename: "v1.mp4",
@@ -136,8 +161,8 @@ describe("searchMediaByQuery", () => {
         hideFromGallery: 0,
       },
     ]);
-    vi.mocked(db.getImagePeople).mockReturnValue([7]);
-    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+    vi.mocked(db.getImagePeople).mockResolvedValue([7]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
 
     const r = await searchMediaByQuery("@joelissner", { limit: 50, offset: 0 });
     expect(r.ok).toBe(true);
@@ -147,18 +172,18 @@ describe("searchMediaByQuery", () => {
   });
 
   it("AND NOT excludes second person from first within visible universe", async () => {
-    vi.mocked(db.listVisibleGalleryMediaIds).mockReturnValue([
+    vi.mocked(db.listVisibleGalleryMediaIds).mockResolvedValue([
       "m1",
       "m2",
       "m3",
     ]);
-    vi.mocked(db.getPersonNames).mockReturnValue(
+    vi.mocked(db.getPersonNames).mockResolvedValue(
       new Map([
         [1, "Alpha"],
         [2, "Beta"],
       ]),
     );
-    vi.mocked(db.getMediaForPerson).mockImplementation((pid: number) => {
+    vi.mocked(db.getMediaForPerson).mockImplementation(async (pid: number) => {
       if (pid === 1) {
         return [{ id: "m1", hideFromGallery: 0 } as never];
       }
@@ -167,7 +192,7 @@ describe("searchMediaByQuery", () => {
       }
       return [];
     });
-    vi.mocked(db.getMediaByIds).mockImplementation((ids: string[]) =>
+    vi.mocked(db.getMediaByIds).mockImplementation(async (ids: string[]) =>
       ids.map((id) => ({
         id,
         filename: `${id}.jpg`,
@@ -178,8 +203,8 @@ describe("searchMediaByQuery", () => {
         hideFromGallery: 0,
       })),
     );
-    vi.mocked(db.getImagePeople).mockReturnValue([]);
-    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
 
     const r = await searchMediaByQuery("@alpha AND NOT @beta", {
       limit: 50,
@@ -191,8 +216,8 @@ describe("searchMediaByQuery", () => {
   });
 
   it("paginates tag search results", async () => {
-    vi.mocked(db.getMediaIdsForTag).mockReturnValue(["m1", "m2", "m3"]);
-    vi.mocked(db.getMediaByIds).mockImplementation((ids: string[]) =>
+    vi.mocked(db.getMediaIdsForTag).mockResolvedValue(["m1", "m2", "m3"]);
+    vi.mocked(db.getMediaByIds).mockImplementation(async (ids: string[]) =>
       ids.map((id) => ({
         id,
         filename: `${id}.jpg`,
@@ -204,8 +229,8 @@ describe("searchMediaByQuery", () => {
         hideFromGallery: 0,
       })),
     );
-    vi.mocked(db.getImagePeople).mockReturnValue([]);
-    vi.mocked(db.getIndexedMediaIds).mockReturnValue(new Set());
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
 
     const page1 = await searchMediaByQuery("#tag", { limit: 2, offset: 0 });
     expect(page1.ok).toBe(true);
@@ -220,8 +245,8 @@ describe("searchMediaByQuery", () => {
   });
 
   it("searchTimelineMonths returns months for all matches", async () => {
-    vi.mocked(db.getMediaIdsForTag).mockReturnValue(["m1", "m2"]);
-    vi.mocked(db.getMediaByIds).mockReturnValue([
+    vi.mocked(db.getMediaIdsForTag).mockResolvedValue(["m1", "m2"]);
+    vi.mocked(db.getMediaByIds).mockResolvedValue([
       {
         id: "m1",
         filename: "m1.jpg",
@@ -246,5 +271,64 @@ describe("searchMediaByQuery", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.months).toEqual(["2024-01", "2023-12"]);
+  });
+
+  // Bug: search kept tag/media_id order; UI day groups + timeline need chronology.
+  it("orders tag search results by date taken descending", async () => {
+    vi.mocked(db.getMediaIdsForTag).mockResolvedValue(["old", "new"]);
+    vi.mocked(db.getMediaByIds).mockResolvedValue([
+      {
+        id: "old",
+        filename: "old.jpg",
+        originalName: "old.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "2023-01-01T12:00:00.000Z",
+        dateTaken: "2023-01-15T12:00:00.000Z",
+        hideFromGallery: 0,
+      },
+      {
+        id: "new",
+        filename: "new.jpg",
+        originalName: "new.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "2024-06-01T12:00:00.000Z",
+        dateTaken: "2024-06-15T12:00:00.000Z",
+        hideFromGallery: 0,
+      },
+    ]);
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
+
+    const r = await searchMediaByQuery("#trip", {
+      limit: 50,
+      offset: 0,
+      sortBy: "taken",
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.items.map((i) => i.id)).toEqual(["new", "old"]);
+  });
+
+  // Bug: pg returns TIMESTAMPTZ as Date; monthKeyForItem called .slice on it.
+  it("searchTimelineMonths accepts Date timestamps from Postgres", async () => {
+    vi.mocked(db.getMediaIdsForTag).mockResolvedValue(["m1"]);
+    vi.mocked(db.getMediaByIds).mockResolvedValue([
+      {
+        id: "m1",
+        filename: "m1.jpg",
+        originalName: "m1.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: new Date("2024-03-15T12:00:00.000Z") as unknown as string,
+        dateTaken: new Date("2024-01-10T12:00:00.000Z") as unknown as string,
+        hideFromGallery: 0,
+      },
+    ]);
+    const r = await searchTimelineMonths("#tag", "taken");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.months).toEqual(["2024-01"]);
   });
 });

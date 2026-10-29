@@ -8,6 +8,7 @@ import {
 } from "react";
 import { apiJson, errorMessage } from "@/api";
 import { SearchMediaResponse } from "@lissner/shared";
+import type { GallerySortBy } from "../lib/gallery-url";
 
 const PAGE_SIZE = 50;
 
@@ -16,11 +17,13 @@ type SearchPage = SearchMediaResponse & { __offset: number };
 interface UseMediaSearchOptions {
   scrollContainerRef: RefObject<HTMLElement | null>;
   activeQuery: string | null;
+  sortBy: GallerySortBy;
 }
 
 export function useMediaSearch({
   scrollContainerRef,
   activeQuery,
+  sortBy,
 }: UseMediaSearchOptions) {
   const queryClient = useQueryClient();
   const [toolbarError, setToolbarError] = useState<string | null>(null);
@@ -29,7 +32,7 @@ export function useMediaSearch({
   const loadingMoreRef = useRef(false);
 
   const searchQueryResult = useInfiniteQuery({
-    queryKey: ["media", "search", { q: activeQuery, startOffset }],
+    queryKey: ["media", "search", { q: activeQuery, sortBy, startOffset }],
     enabled: activeQuery != null,
     initialPageParam: startOffset,
     queryFn: async ({ pageParam }) => {
@@ -37,6 +40,7 @@ export function useMediaSearch({
         q: activeQuery!,
         limit: String(PAGE_SIZE),
         offset: String(pageParam),
+        sortBy,
       });
       const data = await apiJson<SearchMediaResponse>(`search?${params}`);
       return { ...data, __offset: pageParam } as SearchPage;
@@ -67,7 +71,7 @@ export function useMediaSearch({
 
   useEffect(() => {
     setStartOffset(0);
-  }, [activeQuery]);
+  }, [activeQuery, sortBy]);
 
   useEffect(() => {
     if (searchQueryResult.isError) {

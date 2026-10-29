@@ -20,15 +20,15 @@ describe("addPersonToMediaTag (video tagging)", () => {
     vi.mocked(db.addPersonToMedia).mockReset();
   });
 
-  it("video + missing personId + createNew false → person_required", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("video + missing personId + createNew false → person_required", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m1",
       mimeType: "video/mp4",
       originalName: "m1.mp4",
     } as never);
 
     expect(
-      addPersonToMediaTag({
+      await addPersonToMediaTag({
         mediaId: "m1",
         personId: undefined,
         box: undefined,
@@ -37,16 +37,16 @@ describe("addPersonToMediaTag (video tagging)", () => {
     ).toEqual({ ok: false, reason: "person_required" });
   });
 
-  it("video + personId unknown → person_not_found", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("video + personId unknown → person_not_found", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m1",
       mimeType: "video/mp4",
       originalName: "m1.mp4",
     } as never);
-    vi.mocked(db.getAllPersonIds).mockReturnValue([1, 2]);
+    vi.mocked(db.getAllPersonIds).mockResolvedValue([1, 2]);
 
     expect(
-      addPersonToMediaTag({
+      await addPersonToMediaTag({
         mediaId: "m1",
         personId: 3,
         box: undefined,
@@ -55,16 +55,16 @@ describe("addPersonToMediaTag (video tagging)", () => {
     ).toEqual({ ok: false, reason: "person_not_found" });
   });
 
-  it("video + personId known → ok true; calls addPersonToMediaNoBox(mediaId, personId)", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("video + personId known → ok true; calls addPersonToMediaNoBox(mediaId, personId)", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m1",
       mimeType: "video/mp4",
       originalName: "m1.mp4",
     } as never);
-    vi.mocked(db.getAllPersonIds).mockReturnValue([2, 3]);
+    vi.mocked(db.getAllPersonIds).mockResolvedValue([2, 3]);
 
     expect(
-      addPersonToMediaTag({
+      await addPersonToMediaTag({
         mediaId: "m1",
         personId: 2,
         box: undefined,
@@ -75,16 +75,16 @@ describe("addPersonToMediaTag (video tagging)", () => {
     expect(db.addPersonToMedia).not.toHaveBeenCalled();
   });
 
-  it("video + createNew true → ok true; calls createNewPerson and addPersonToMediaNoBox with new id", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("video + createNew true → ok true; calls createNewPerson and addPersonToMediaNoBox with new id", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m1",
       mimeType: "video/mp4",
       originalName: "m1.mp4",
     } as never);
-    vi.mocked(db.createNewPerson).mockReturnValue(9);
+    vi.mocked(db.createNewPerson).mockResolvedValue(9);
 
     expect(
-      addPersonToMediaTag({
+      await addPersonToMediaTag({
         mediaId: "m1",
         personId: undefined,
         box: undefined,

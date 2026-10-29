@@ -40,21 +40,22 @@ If you run **`docker compose`** yourself, prefer **`bash scripts/docker-compose.
 
 At minimum in **`config/.env`** and/or **`config/.env.prod`** (for compose **variable substitution**):
 
-| Variable                              | Required                        | Purpose                                                                                               |
-| ------------------------------------- | ------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                    |
-| `API_HOST`                            | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                          |
-| `UI_HOST`                             | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly      |
-| `GRAPHQL_HOST`                        | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                   |
-| `GRAPHQL_PORT`                        | Yes for graphql service         | Container listen port (default **5678**)                                                              |
-| `DATABASE_URL`                        | Yes in **`config/.env.prod`**   | PostgreSQL for PostGraphile (`lissner` DB). Local: `npm run db:up` then point at `127.0.0.1/lissner`. |
-| `MEDIA_DATABASE_URL`                  | No (cutover)                    | Postgres `media` DB for API; unset keeps SQLite. See **`packages/db/README.md`**.                     |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes for local Postgres          | Required for Compose `postgres` (gitignored `.env` / `.env.prod`). No defaults.                       |
-| `POSTGRES_PORT`                       | No                              | Host bind port (default `5433`)                                                                       |
+| Variable                              | Required                        | Purpose                                                                                                              |
+| ------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                                   |
+| `API_HOST`                            | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                                         |
+| `UI_HOST`                             | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly                     |
+| `GRAPHQL_HOST`                        | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                                  |
+| `GRAPHQL_PORT`                        | Yes for graphql service         | Container listen port (default **5678**)                                                                             |
+| `POSTGRES_SERVER_URL`                 | Yes (GraphQL; prod media)       | Host/user/password/port + `sslmode` — **no** database name in the path.                                              |
+| `GRAPHQL_DATABASE_NAME`               | Yes for GraphQL                 | Database name for PostGraphile (e.g. `lissner`).                                                                     |
+| `MEDIA_DATABASE_NAME`                 | Yes                             | Media API DB name (e.g. `media`). Required with `POSTGRES_SERVER_URL` in all environments. Vitest uses `media_test`. |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes for local Postgres          | Required for Compose `postgres` (gitignored `.env` / `.env.prod`). No defaults.                                      |
+| `POSTGRES_PORT`                       | No                              | Host bind port (default `5433`)                                                                                      |
 
 The **`api`** service uses **`env_file: config/.env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
 
-The **`graphql`** service also uses **`env_file: config/.env.prod`** for **`DATABASE_URL`**, **`PG_SCHEMAS`**, and related Postgres settings.
+The **`graphql`** service uses **`env_file: config/.env.prod`** for **`POSTGRES_SERVER_URL`**, **`GRAPHQL_DATABASE_NAME`**, **`PG_SCHEMAS`**, and related settings.
 
 **Compose `${VAR}` substitution** (used in **`config/docker-compose.yml`** for Traefik’s **`ACME_EMAIL`**, router rules, ports, etc.) comes **only** from: **`config/.env`** (via **`--env-file`**), your **shell environment**, and files passed as **`docker compose --env-file …`**. It does **not** read **`env_file:`** on services — those keys are injected **into containers** at runtime, not used to replace **`${…}`** in the compose file.
 
@@ -84,7 +85,7 @@ npm run db:up          # start Postgres only
 npm run db:checkpoint  # A1: version + both DBs exist
 ```
 
-GraphQL cutover: dump remote → restore local → set **`DATABASE_URL`** to local `lissner` (`sslmode=disable`). Media cutover: **`npm run db:migrate:media`**, **`db:etl`**, **`db:verify-etl`**, then set **`MEDIA_DATABASE_URL`**. Details: **`packages/db/README.md`** and ADR **0007**.
+GraphQL: dump remote → restore local → set **`POSTGRES_SERVER_URL`** + **`GRAPHQL_DATABASE_NAME=lissner`**. Media: **`npm run db:migrate:media`**, then set **`POSTGRES_SERVER_URL`** + **`MEDIA_DATABASE_NAME=media`**. Details: **`packages/db/README.md`** and ADR **0007**.
 
 ## Build and deploy
 

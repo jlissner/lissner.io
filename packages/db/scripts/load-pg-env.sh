@@ -6,7 +6,7 @@
 # Usage:
 #   ROOT=... source packages/db/scripts/load-pg-env.sh
 #   require_postgres_creds   # POSTGRES_USER + POSTGRES_PASSWORD
-#   require_remote_url       # REMOTE_DATABASE_URL or DATABASE_URL
+#   require_remote_url       # REMOTE_DATABASE_URL (full URL for RDS dump)
 
 _db_load_env_file() {
   local file="$1"
@@ -89,13 +89,13 @@ require_postgres_creds() {
 require_remote_url() {
   _db_load_config_env
 
-  if [[ -z "${REMOTE_DATABASE_URL:-}" && -z "${DATABASE_URL:-}" ]]; then
+  if [[ -z "${REMOTE_DATABASE_URL:-}" ]]; then
     _db_prompt REMOTE_DATABASE_URL \
-      "Remote DATABASE_URL (use sslmode=require for pg_dump, not no-verify): " || true
+      "REMOTE_DATABASE_URL (full URL; sslmode=require for pg_dump): " || true
   fi
 
-  if [[ -z "${REMOTE_DATABASE_URL:-}" && -z "${DATABASE_URL:-}" ]]; then
-    echo "REMOTE_DATABASE_URL (or DATABASE_URL) is required for dump-remote." >&2
+  if [[ -z "${REMOTE_DATABASE_URL:-}" ]]; then
+    echo "REMOTE_DATABASE_URL is required for dump-remote." >&2
     echo "Set it in a gitignored env file, export it, or enter when prompted." >&2
     echo "Note: libpq/pg_dump rejects sslmode=no-verify — use sslmode=require." >&2
     return 1

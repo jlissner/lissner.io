@@ -23,12 +23,12 @@ describe("Gherkin: People and face assignment (features/people/people-and-faces.
 
   describe("Scenario: Merge two people", () => {
     beforeEach(() => {
-      vi.mocked(db.getAllPersonIds).mockReturnValue([1, 2]);
+      vi.mocked(db.getAllPersonIds).mockResolvedValue([1, 2]);
       vi.mocked(db.mergePeople).mockClear();
     });
 
-    it("merges and calls db (aligns with people-service coverage)", () => {
-      expect(mergePeople(1, 2)).toEqual({ ok: true, merged: 1, into: 2 });
+    it("merges and calls db (aligns with people-service coverage)", async () => {
+      expect(await mergePeople(1, 2)).toEqual({ ok: true, merged: 1, into: 2 });
       expect(db.mergePeople).toHaveBeenCalledWith(2, 1);
     });
   });

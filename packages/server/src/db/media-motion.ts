@@ -1,111 +1,92 @@
-import { getDb } from "./media-db.js";
+import { execute, queryAll, queryOne } from "./client.js";
 import {
   findMediaByOriginalNameCaseInsensitive,
   getMediaById,
 } from "./media-read.js";
 
-function buildMotionStmts() {
-  const db = getDb();
-  return {
-    selectCompanionId: db.prepare(
-      `SELECT motion_companion_id FROM media WHERE id = ?`,
-    ),
-    clearPair: db.prepare(
-      `UPDATE media SET motion_companion_id = NULL, hide_from_gallery = 0 WHERE id = ?`,
-    ),
-    setCompanionStill: db.prepare(
-      `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 0 WHERE id = ?`,
-    ),
-    setCompanionVideo: db.prepare(
-      `UPDATE media SET motion_companion_id = ?, hide_from_gallery = 1 WHERE id = ?`,
-    ),
-    listAllMediaIds: db.prepare("SELECT id FROM media"),
-  };
-}
+/** No statement cache remains; kept so backup restore can still call it. */
+export function resetMediaMotionStatementCache(): void {}
 
-const motionState = {
-  stmts: null as null | ReturnType<typeof buildMotionStmts>,
-};
-
-export function resetMediaMotionStatementCache(): void {
-  motionState.stmts = null;
-}
-
-function motionStmts() {
-  if (motionState.stmts) return motionState.stmts;
-  const stmts = buildMotionStmts();
-  motionState.stmts = stmts;
-  return stmts;
-}
-
-function isPixelMotionVideoBasename(originalName: string): boolean {
+const isPixelMotionVideoBasename = (originalName: string): boolean => {
   const lower = originalName.toLowerCase();
   return lower.endsWith(".mp") && !lower.endsWith(".mp.jpg");
+};
+
+const getCompanionId = async (mediaId: string): Promise<string | null> => {
+  const row = await queryOne<{ motion_companion_id: string | null }>(
+    "SELECT motion_companion_id FROM media WHERE id = ?",
+    [mediaId],
+  );
+  return row?.motion_companion_id ?? null;
+};
+
+const clearPair = (mediaId: string): Promise<unknown> =>
+  execute(
+    "UPDATE media SET motion_companion_id = NULL, hide_from_gallery = ? WHERE id = ?",
+    [0, mediaId],
+  );
+
+const setCompanion = (
+  mediaId: string,
+  companionId: string,
+  hidden: 0 | 1,
+): Promise<unknown> =>
+  execute(
+    "UPDATE media SET motion_companion_id = ?, hide_from_gallery = ? WHERE id = ?",
+    [companionId, hidden, mediaId],
+  );
+
+async function breakMotionPairForMedia(mediaId: string): Promise<void> {
+  const cid = await getCompanionId(mediaId);
+  if (!cid) return;
+  await clearPair(mediaId);
+  await clearPair(cid);
 }
 
-function breakMotionPairForMedia(mediaId: string): void {
-  const row = motionStmts().selectCompanionId.get(mediaId) as
-    | { motion_companion_id: string | null }
-    | undefined;
-  const cid = row?.motion_companion_id;
-  if (!cid) return;
-  motionStmts().clearPair.run(mediaId);
-  motionStmts().clearPair.run(cid);
+async function setMotionPair(stillId: string, videoId: string): Promise<void> {
+  if (stillId === videoId) return;
+  await breakMotionPairForMedia(stillId);
+  await breakMotionPairForMedia(videoId);
+  await setCompanion(stillId, videoId, 0);
+  await setCompanion(videoId, stillId, 1);
 }
 
 /** Link `image.mp.jpg` ↔ `image.mp` so only the still appears in gallery grids. */
-export function linkMotionPairForMedia(mediaId: string): void {
-  const row = getMediaById(mediaId);
+export async function linkMotionPairForMedia(mediaId: string): Promise<void> {
+  const row = await getMediaById(mediaId);
   if (!row) return;
   const name = row.originalName;
-  const lower = name.toLowerCase();
-  if (lower.endsWith(".mp.jpg")) {
-    const videoName = name.slice(0, -4);
-    const video = findMediaByOriginalNameCaseInsensitive(videoName);
-    if (
-      video &&
+  if (name.toLowerCase().endsWith(".mp.jpg")) {
+    const video = await findMediaByOriginalNameCaseInsensitive(
+      name.slice(0, -4),
+    );
+    return video &&
       video.id !== mediaId &&
       isPixelMotionVideoBasename(video.originalName)
-    ) {
-      setMotionPair(mediaId, video.id);
-    } else {
-      breakMotionPairForMedia(mediaId);
-    }
-  } else if (isPixelMotionVideoBasename(name)) {
-    const stillName = `${name}.jpg`;
-    const still = findMediaByOriginalNameCaseInsensitive(stillName);
-    if (still && still.id !== mediaId) {
-      setMotionPair(still.id, mediaId);
-    } else {
-      breakMotionPairForMedia(mediaId);
-    }
-  } else {
-    breakMotionPairForMedia(mediaId);
+      ? setMotionPair(mediaId, video.id)
+      : breakMotionPairForMedia(mediaId);
   }
-}
-
-function setMotionPair(stillId: string, videoId: string): void {
-  if (stillId === videoId) return;
-  breakMotionPairForMedia(stillId);
-  breakMotionPairForMedia(videoId);
-  motionStmts().setCompanionStill.run(videoId, stillId);
-  motionStmts().setCompanionVideo.run(stillId, videoId);
+  if (isPixelMotionVideoBasename(name)) {
+    const still = await findMediaByOriginalNameCaseInsensitive(`${name}.jpg`);
+    return still && still.id !== mediaId
+      ? setMotionPair(still.id, mediaId)
+      : breakMotionPairForMedia(mediaId);
+  }
+  return breakMotionPairForMedia(mediaId);
 }
 
 /** Clear the other half of a motion pair before deleting a row (caller deletes `mediaId` after). */
-export function clearMotionPairForPeer(mediaId: string): void {
-  const row = motionStmts().selectCompanionId.get(mediaId) as
-    | { motion_companion_id: string | null }
-    | undefined;
-  const cid = row?.motion_companion_id;
+export async function clearMotionPairForPeer(mediaId: string): Promise<void> {
+  const cid = await getCompanionId(mediaId);
   if (!cid) return;
-  motionStmts().clearPair.run(cid);
+  await clearPair(cid);
 }
 
 /** Re-run pairing for every row (e.g. after restore). Idempotent. */
-export function relinkAllMotionPairs(): void {
-  const rows = motionStmts().listAllMediaIds.all() as Array<{ id: string }>;
-  for (const { id } of rows) {
-    linkMotionPairForMedia(id);
-  }
+export async function relinkAllMotionPairs(): Promise<void> {
+  const rows = await queryAll<{ id: string }>("SELECT id FROM media");
+  await rows.reduce(
+    (chain, { id }) => chain.then(() => linkMotionPairForMedia(id)),
+    Promise.resolve(),
+  );
 }

@@ -33,15 +33,9 @@ async function ensureServer(world: DuplicatesWorld): Promise<void> {
 }
 
 AfterAll(async () => {
-  await new Promise<void>((resolve) => {
-    if (!state.server) {
-      resolve();
-      return;
-    }
-    state.server.close(() => resolve());
-    state.server = null;
-    state.baseUrl = null;
-  });
+  const { closeBddServer } = await import("../support/close-bdd-server.ts");
+  state.server = await closeBddServer(state.server);
+  state.baseUrl = null;
 });
 
 async function signAdminCookie(): Promise<string> {

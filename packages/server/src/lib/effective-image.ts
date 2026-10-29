@@ -132,7 +132,7 @@ type SniffMediaMimePersistResult = {
 export async function sniffAndPersistMediaMime(
   item: { id: string; mimeType: string; originalName: string },
   absoluteFilePath: string,
-  persist: (mediaId: string, mime: string) => void,
+  persist: (mediaId: string, mime: string) => void | Promise<void>,
 ): Promise<SniffMediaMimePersistResult> {
   const shouldSniff =
     isPixelMotionPhotoExtension(item.originalName) ||
@@ -156,7 +156,7 @@ export async function sniffAndPersistMediaMime(
     };
   }
   if (sniffed !== item.mimeType) {
-    persist(item.id, sniffed);
+    await persist(item.id, sniffed);
     return {
       sniffed,
       persistedUpdate: true,

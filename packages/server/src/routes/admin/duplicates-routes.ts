@@ -69,7 +69,7 @@ adminDuplicatesRouter.post(
 );
 
 adminDuplicatesRouter.get("/duplicates", async (_req, res) => {
-  const allWithHashes = db.getAllMediaWithHashes();
+  const allWithHashes = await db.getAllMediaWithHashes();
   const matches: Array<{
     mediaId: string;
     duplicateOfId: string;
@@ -104,7 +104,7 @@ adminDuplicatesRouter.post(
 adminDuplicatesRouter.post(
   "/duplicates/compute-all-hashes",
   async (_req, res) => {
-    const allMedia = db.listMedia();
+    const allMedia = await db.listMedia();
     const imageMedia = allMedia.filter((m) => {
       const mt = m.mimeType.toLowerCase();
       return mt.startsWith("image/") && !mt.includes("gif");
@@ -114,7 +114,7 @@ adminDuplicatesRouter.post(
     let failed = 0;
 
     for (const media of imageMedia) {
-      const existingHash = db.getMediaPerceptualHash(media.id);
+      const existingHash = await db.getMediaPerceptualHash(media.id);
       if (existingHash) continue;
 
       const success = await computeAndStoreHash(media.id);

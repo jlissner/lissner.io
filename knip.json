@@ -10,7 +10,12 @@
       "project": ["src/**/*.ts"]
     },
     "packages/server": {
-      "entry": ["src/index.ts", "src/db/pg-media.ts"],
+      "entry": [
+        "src/index.ts",
+        "src/db/pg-media.ts",
+        "src/db/pg-backup.ts",
+        "src/db/test-media-db.ts"
+      ],
       "project": ["src/**/*.ts"]
     },
     "packages/graphql": {
@@ -22,12 +27,7 @@
       "project": ["src/**/*.{ts,tsx}", "vite.config.ts"]
     },
     "packages/db": {
-      "entry": [
-        "src/migrate.ts",
-        "src/etl-sqlite-to-pg.ts",
-        "src/verify-etl.ts",
-        "src/env.ts"
-      ],
+      "entry": ["src/migrate.ts", "src/env.ts"],
       "project": ["src/**/*.ts"]
     }
   },

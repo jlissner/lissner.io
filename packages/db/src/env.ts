@@ -1,3 +1,4 @@
+import { buildDatabaseUrl } from "@lissner/shared";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import path from "path";
@@ -35,25 +36,29 @@ const requireEnv = (name: string): string => {
 const host = process.env.POSTGRES_HOST?.trim() || "127.0.0.1";
 const port = process.env.POSTGRES_PORT?.trim() || "5433";
 
-/** Local Compose URL. Does not use GraphQL `DATABASE_URL` (may still be RDS). */
-export const localUrl = (database: "lissner" | "media"): string => {
-  const override =
-    database === "media"
-      ? process.env.MEDIA_DATABASE_URL?.trim()
-      : process.env.LOCAL_DATABASE_URL?.trim();
-  if (override) return override;
+const graphqlDatabaseName = (): string =>
+  process.env.GRAPHQL_DATABASE_NAME?.trim() || "lissner";
+
+const mediaDatabaseName = (): string =>
+  process.env.MEDIA_DATABASE_NAME?.trim() || "media";
+
+/**
+ * Local / app Postgres URL for a named database.
+ * Prefers POSTGRES_SERVER_URL + GRAPHQL_DATABASE_NAME / MEDIA_DATABASE_NAME;
+ * falls back to POSTGRES_USER/PASSWORD/HOST/PORT for scripts.
+ */
+export const localUrl = (kind: "lissner" | "media"): string => {
+  const dbName = kind === "media" ? mediaDatabaseName() : graphqlDatabaseName();
+  const serverUrl = process.env.POSTGRES_SERVER_URL?.trim();
+  if (serverUrl) {
+    return buildDatabaseUrl(serverUrl, dbName);
+  }
   const user = encodeURIComponent(requireEnv("POSTGRES_USER"));
   const pass = encodeURIComponent(requireEnv("POSTGRES_PASSWORD"));
-  return `postgres://${user}:${pass}@${host}:${port}/${database}?sslmode=disable`;
+  return `postgres://${user}:${pass}@${host}:${port}/${dbName}?sslmode=disable`;
 };
 
 export const mediaDatabaseUrl = (): string => localUrl("media");
 export const lissnerDatabaseUrl = (): string => localUrl("lissner");
 
-export const sqliteDbPath = (): string => {
-  const raw = process.env.DATA_DIR ?? "data";
-  const dataDir = path.isAbsolute(raw) ? raw : path.resolve(repoRoot, raw);
-  return path.join(dataDir, "db", "media.db");
-};
-
-export { repoRoot };
+export { buildDatabaseUrl, repoRoot };

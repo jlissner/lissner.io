@@ -21,7 +21,7 @@ export function thumbnailFilenameToMediaId(filename: string): string | null {
  * Remove thumbnail JPEGs when no `media` row exists for the derived id.
  */
 export async function deleteOrphanedLocalThumbnailFiles(): Promise<number> {
-  const ids = db.getAllMediaIds();
+  const ids = await db.getAllMediaIds();
   const acc = { removed: 0 };
   const entries = await readdirOrEmptyWithWarn(
     thumbnailsDir,

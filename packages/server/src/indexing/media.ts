@@ -35,8 +35,8 @@ interface MediaItem {
   uploadedAt: string;
 }
 
-function formatPersonLabel(personId: number): string {
-  const name = db.getPersonName(personId);
+async function formatPersonLabel(personId: number): Promise<string> {
+  const name = await db.getPersonName(personId);
   return name ?? `Person ${personId}`;
 }
 
@@ -56,7 +56,7 @@ async function getTextForItem(
       const personIds = imagePersonIds?.get(item.id);
       const suffix =
         personIds?.length && personIds.length > 0
-          ? ` People in photo: ${personIds.map(formatPersonLabel).join(", ")}.`
+          ? ` People in photo: ${(await Promise.all(personIds.map(formatPersonLabel))).join(", ")}.`
           : "";
       return `${base}${suffix}`.trim();
     } catch (err) {
@@ -106,9 +106,9 @@ async function extractExifData(filePath: string): Promise<ExifData> {
  * `clusterAllFaces` assigns local cluster ids (1..n). For upload-time indexing we map each
  * cluster to a new `person_id` via `createNewPerson()` so we never collide with existing people.
  */
-function remapClusterPersonIdsToNewDbPeople(
+async function remapClusterPersonIdsToNewDbPeople(
   entriesMap: Map<string, ImagePersonEntry[]>,
-): Map<string, ImagePersonEntry[]> {
+): Promise<Map<string, ImagePersonEntry[]>> {
   const localIds = new Set<number>();
   for (const entries of entriesMap.values()) {
     for (const e of entries) localIds.add(e.personId);
@@ -116,7 +116,7 @@ function remapClusterPersonIdsToNewDbPeople(
   const sorted = [...localIds].sort((a, b) => a - b);
   const localToGlobal = new Map<number, number>();
   for (const localId of sorted) {
-    localToGlobal.set(localId, db.createNewPerson());
+    localToGlobal.set(localId, await db.createNewPerson());
   }
   const out = new Map<string, ImagePersonEntry[]>();
   for (const [mediaId, entries] of entriesMap) {
@@ -227,19 +227,23 @@ async function extractVideoMetadata(
   filePath: string,
   ctx?: { mediaId?: string; originalName?: string },
 ): Promise<{ dateTaken: string | null }> {
-  const recordIssue = (code: string, detail: string): void => {
+  const recordIssue = async (code: string, detail: string): Promise<void> => {
     if (ctx?.mediaId) {
-      db.setMediaFileIssue(ctx.mediaId, code, truncateFileIssueDetail(detail));
+      await db.setMediaFileIssue(
+        ctx.mediaId,
+        code,
+        truncateFileIssueDetail(detail),
+      );
     }
   };
-  const clearIssue = (): void => {
+  const clearIssue = async (): Promise<void> => {
     if (ctx?.mediaId) {
-      db.clearMediaFileIssue(ctx.mediaId);
+      await db.clearMediaFileIssue(ctx.mediaId);
     }
   };
 
   if (!existsSync(filePath)) {
-    recordIssue(
+    await recordIssue(
       "file_missing",
       `Media file not found on disk (wrong path, not synced yet, or removed): ${filePath}`,
     );
@@ -270,7 +274,7 @@ async function extractVideoMetadata(
     ]
       .filter(Boolean)
       .join(" · ");
-    recordIssue(issueCode, detail);
+    await recordIssue(issueCode, detail);
     const logMessage = fileStillMissing
       ? "Video date skipped — file missing on disk (see Admin → File issues)"
       : "ffprobe could not read video (date skipped); flagged for admin review";
@@ -297,13 +301,13 @@ async function extractVideoMetadata(
     };
   } catch (err) {
     const parseMsg = err instanceof Error ? err.message : String(err);
-    recordIssue(
+    await recordIssue(
       "ffprobe_bad_response",
       `JSON parse error: ${parseMsg}; stdout: ${stdout.slice(0, 200)}`,
     );
     return { dateTaken: null };
   }
-  clearIssue();
+  await clearIssue();
   const formatDate = data.format?.tags?.creation_time;
   const streamDate = data.streams?.[0]?.tags?.creation_time;
   const dateStr = formatDate ?? streamDate;
@@ -331,15 +335,17 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
               return [] as FaceInImage[];
             }),
           ]);
-          if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
+          if (exif.dateTaken)
+            await db.setMediaDateTaken(item.id, exif.dateTaken);
           if (exif.latitude != null && exif.longitude != null) {
-            db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+            await db.setMediaLocation(item.id, exif.latitude, exif.longitude);
           }
           if (faces.length > 0) {
             const entriesMap = await clusterAllFaces(faces);
-            const remapped = remapClusterPersonIdsToNewDbPeople(entriesMap);
+            const remapped =
+              await remapClusterPersonIdsToNewDbPeople(entriesMap);
             const entriesForItem = remapped.get(item.id) ?? [];
-            db.setImagePeople(item.id, entriesForItem);
+            await db.setImagePeople(item.id, entriesForItem);
             imagePersonIds.set(
               item.id,
               entriesForItem.map((e) => e.personId),
@@ -356,13 +362,13 @@ export async function indexMediaItem(item: MediaItem): Promise<boolean> {
           mediaId: item.id,
           originalName: item.originalName,
         });
-        if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
+        if (meta.dateTaken) await db.setMediaDateTaken(item.id, meta.dateTaken);
       }
       const text = await getTextForItem(item, imagePersonIds);
       if (!text.trim()) return false;
       const embedding = await getEmbedding(text.slice(0, 8000));
       if (embedding) {
-        db.upsertEmbedding(item.id, embedding);
+        await db.upsertEmbedding(item.id, embedding);
       }
       if (isEffectiveImageItem(item)) {
         await computeAndStoreHash(item.id);
@@ -386,7 +392,9 @@ export async function indexMediaItems(
 ): Promise<{ indexed: number; skipped: number; cancelled?: boolean }> {
   const signal = options.signal;
   const skipIndexed = options.skipIndexed ?? true;
-  const indexedIds = skipIndexed ? db.getIndexedMediaIds() : new Set<string>();
+  const indexedIds = skipIndexed
+    ? await db.getIndexedMediaIds()
+    : new Set<string>();
 
   const toIndex = items.filter((i) => !skipIndexed || !indexedIds.has(i.id));
   setIndexProgress(0, toIndex.length);
@@ -404,12 +412,12 @@ export async function indexMediaItems(
       mediaId: item.id,
       originalName: item.originalName,
     });
-    if (meta.dateTaken) db.setMediaDateTaken(item.id, meta.dateTaken);
+    if (meta.dateTaken) await db.setMediaDateTaken(item.id, meta.dateTaken);
   }
 
   // Clear existing auto tags for images we're re-indexing (manual tags are preserved).
   for (const id of imageIds) {
-    db.setImagePeople(id, []);
+    await db.setImagePeople(id, []);
   }
 
   const imagePersonIds = new Map<string, number[]>();
@@ -432,9 +440,9 @@ export async function indexMediaItems(
           extractFacesFromImage(filePath, item.id),
           extractExifData(filePath),
         ]);
-        if (exif.dateTaken) db.setMediaDateTaken(item.id, exif.dateTaken);
+        if (exif.dateTaken) await db.setMediaDateTaken(item.id, exif.dateTaken);
         if (exif.latitude != null && exif.longitude != null) {
-          db.setMediaLocation(item.id, exif.latitude, exif.longitude);
+          await db.setMediaLocation(item.id, exif.latitude, exif.longitude);
         }
         allFaces.push(...faces);
       } catch (err) {
@@ -451,12 +459,12 @@ export async function indexMediaItems(
         for (const e of entries) personIds.add(e.personId);
       }
       for (const pid of personIds) {
-        if (!db.getPersonName(pid)) {
-          db.setPersonName(pid, `Person ${pid}`);
+        if (!(await db.getPersonName(pid))) {
+          await db.setPersonName(pid, `Person ${pid}`);
         }
       }
       for (const [mediaId, entries] of entriesMap) {
-        db.setImagePeople(mediaId, entries);
+        await db.setImagePeople(mediaId, entries);
         imagePersonEntries.set(mediaId, entries);
         imagePersonIds.set(
           mediaId,
@@ -482,7 +490,7 @@ export async function indexMediaItems(
       }
       const embedding = await getEmbedding(text.slice(0, 8000));
       if (embedding) {
-        db.upsertEmbedding(item.id, embedding);
+        await db.upsertEmbedding(item.id, embedding);
         progress.indexed++;
       }
     } catch (err) {

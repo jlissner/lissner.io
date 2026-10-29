@@ -1,19 +1,12 @@
 /**
- * Postgres client scaffolding for the media DB cutover (Phase B4).
- * While MEDIA_DATABASE_URL is unset, the API continues to use better-sqlite3.
- * When set, call sites can gradually move onto this pool; full cutover removes SQLite.
+ * Postgres pool for the media API database.
  */
 import pg from "pg";
-import { MEDIA_DATABASE_URL, mediaUsesPostgres } from "../config/env.js";
+import { MEDIA_DATABASE_URL } from "../config/env.js";
 
 const state: { pool: pg.Pool | null } = { pool: null };
 
 export const getMediaPool = (): pg.Pool => {
-  if (!mediaUsesPostgres()) {
-    throw new Error(
-      "MEDIA_DATABASE_URL is not set; media API is still on SQLite",
-    );
-  }
   if (state.pool == null) {
     state.pool = new pg.Pool({ connectionString: MEDIA_DATABASE_URL });
   }

@@ -31,13 +31,13 @@ describe("media-tags-service", () => {
     vi.mocked(db.listDistinctTags).mockReset();
   });
 
-  it("getMediaTags returns not_found when missing", () => {
-    vi.mocked(db.getMediaById).mockReturnValue(undefined);
-    expect(getMediaTags("x")).toEqual({ ok: false, reason: "not_found" });
+  it("getMediaTags returns not_found when missing", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue(undefined);
+    expect(await getMediaTags("x")).toEqual({ ok: false, reason: "not_found" });
   });
 
-  it("getMediaTags returns sorted tags", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("getMediaTags returns sorted tags", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "a",
       filename: "f",
       originalName: "o",
@@ -45,12 +45,12 @@ describe("media-tags-service", () => {
       size: 1,
       uploadedAt: "t",
     });
-    vi.mocked(db.listTagsForMedia).mockReturnValue(["a", "b"]);
-    expect(getMediaTags("a")).toEqual({ ok: true, tags: ["a", "b"] });
+    vi.mocked(db.listTagsForMedia).mockResolvedValue(["a", "b"]);
+    expect(await getMediaTags("a")).toEqual({ ok: true, tags: ["a", "b"] });
   });
 
-  it("setMediaTags forbids non-owner non-admin", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("setMediaTags forbids non-owner non-admin", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m",
       filename: "f",
       originalName: "o",
@@ -58,16 +58,18 @@ describe("media-tags-service", () => {
       size: 1,
       uploadedAt: "t",
     });
-    vi.mocked(db.getMediaOwnerId).mockReturnValue(2);
-    expect(setMediaTags("m", ["t"], { userId: 1, isAdmin: false })).toEqual({
+    vi.mocked(db.getMediaOwnerId).mockResolvedValue(2);
+    expect(
+      await setMediaTags("m", ["t"], { userId: 1, isAdmin: false }),
+    ).toEqual({
       ok: false,
       reason: "forbidden",
     });
     expect(db.setTagsForMedia).not.toHaveBeenCalled();
   });
 
-  it("setMediaTags writes when owner matches", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("setMediaTags writes when owner matches", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m",
       filename: "f",
       originalName: "o",
@@ -75,20 +77,22 @@ describe("media-tags-service", () => {
       size: 1,
       uploadedAt: "t",
     });
-    vi.mocked(db.getMediaOwnerId).mockReturnValue(2);
-    expect(setMediaTags("m", ["x"], { userId: 2, isAdmin: false })).toEqual({
+    vi.mocked(db.getMediaOwnerId).mockResolvedValue(2);
+    expect(
+      await setMediaTags("m", ["x"], { userId: 2, isAdmin: false }),
+    ).toEqual({
       ok: true,
     });
     expect(db.setTagsForMedia).toHaveBeenCalledWith("m", ["x"]);
   });
 
-  it("listDistinctMediaTags proxies db", () => {
-    vi.mocked(db.listDistinctTags).mockReturnValue(["a"]);
-    expect(listDistinctMediaTags()).toEqual(["a"]);
+  it("listDistinctMediaTags proxies db", async () => {
+    vi.mocked(db.listDistinctTags).mockResolvedValue(["a"]);
+    expect(await listDistinctMediaTags()).toEqual(["a"]);
   });
 
-  it("addMediaTags merges without replacing existing tags", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("addMediaTags merges without replacing existing tags", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m",
       filename: "f",
       originalName: "o",
@@ -96,16 +100,18 @@ describe("media-tags-service", () => {
       size: 1,
       uploadedAt: "t",
     });
-    vi.mocked(db.getMediaOwnerId).mockReturnValue(2);
-    expect(addMediaTags("m", ["new"], { userId: 2, isAdmin: false })).toEqual({
+    vi.mocked(db.getMediaOwnerId).mockResolvedValue(2);
+    expect(
+      await addMediaTags("m", ["new"], { userId: 2, isAdmin: false }),
+    ).toEqual({
       ok: true,
     });
     expect(db.addTagsForMedia).toHaveBeenCalledWith("m", ["new"]);
     expect(db.setTagsForMedia).not.toHaveBeenCalled();
   });
 
-  it("bulkAddMediaTags counts successes and failures", () => {
-    vi.mocked(db.getMediaById).mockImplementation((id) =>
+  it("bulkAddMediaTags counts successes and failures", async () => {
+    vi.mocked(db.getMediaById).mockImplementation(async (id) =>
       id === "missing"
         ? undefined
         : {
@@ -117,17 +123,17 @@ describe("media-tags-service", () => {
             uploadedAt: "t",
           },
     );
-    vi.mocked(db.getMediaOwnerId).mockReturnValue(1);
+    vi.mocked(db.getMediaOwnerId).mockResolvedValue(1);
     expect(
-      bulkAddMediaTags(["a", "missing"], ["trip"], {
+      await bulkAddMediaTags(["a", "missing"], ["trip"], {
         userId: 1,
         isAdmin: false,
       }),
     ).toEqual({ succeeded: 1, failed: 1 });
   });
 
-  it("removeMediaTags deletes tags when owner matches", () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+  it("removeMediaTags deletes tags when owner matches", async () => {
+    vi.mocked(db.getMediaById).mockResolvedValue({
       id: "m",
       filename: "f",
       originalName: "o",
@@ -135,9 +141,9 @@ describe("media-tags-service", () => {
       size: 1,
       uploadedAt: "t",
     });
-    vi.mocked(db.getMediaOwnerId).mockReturnValue(2);
+    vi.mocked(db.getMediaOwnerId).mockResolvedValue(2);
     expect(
-      removeMediaTags("m", ["old"], { userId: 2, isAdmin: false }),
+      await removeMediaTags("m", ["old"], { userId: 2, isAdmin: false }),
     ).toEqual({ ok: true });
     expect(db.removeTagsFromMedia).toHaveBeenCalledWith("m", ["old"]);
   });

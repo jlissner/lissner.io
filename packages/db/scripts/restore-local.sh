@@ -99,4 +99,4 @@ run_psql lissner -c \
 run_psql postgres -c \
   "SELECT 1 AS unauthorized_ok FROM pg_roles WHERE rolname = 'unauthorized';"
 
-echo "OK: restore finished. Point DATABASE_URL at local lissner and smoke GraphQL."
+echo "OK: restore finished. Set POSTGRES_SERVER_URL + GRAPHQL_DATABASE_NAME and smoke GraphQL."

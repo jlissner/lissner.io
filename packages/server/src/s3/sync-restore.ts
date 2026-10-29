@@ -58,7 +58,7 @@ export async function tryRestoreMediaFromBackup(item: {
     return true;
   } catch (err) {
     if (isS3NoSuchKey(err)) {
-      db.clearMediaBackedUpAt(item.id);
+      await db.clearMediaBackedUpAt(item.id);
       return false;
     }
     logger.error(

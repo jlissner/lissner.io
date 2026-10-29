@@ -33,22 +33,22 @@ export function getIndexStatusBody(): IndexActivitySlice {
   };
 }
 
-export function clearAllSearchIndexData(): void {
-  db.clearAllIndexingData();
+export async function clearAllSearchIndexData(): Promise<void> {
+  await db.clearAllIndexingData();
 }
 
 type StartBulkIndexingJobResult =
   | { ok: true; jobId: string }
   | ServiceFailure<"index_in_progress">;
 
-export function startBulkIndexingJob(params: {
+export async function startBulkIndexingJob(params: {
   force: boolean;
   mediaIds?: string[];
-}): StartBulkIndexingJobResult {
+}): Promise<StartBulkIndexingJobResult> {
   const started = startIndexJob();
   if (!started.ok) return { ok: false, reason: "index_in_progress" };
 
-  const allItems = db.listMedia();
+  const allItems = await db.listMedia();
   const items =
     Array.isArray(params.mediaIds) && params.mediaIds.length > 0
       ? allItems.filter((i) => params.mediaIds!.includes(i.id))
@@ -76,8 +76,10 @@ export function startBulkIndexingJob(params: {
 
 const EMBEDDING_TOP = 20;
 
-function resolvePersonIdForHandle(handle: string): number | null {
-  const personNames = db.getPersonNames();
+async function resolvePersonIdForHandle(
+  handle: string,
+): Promise<number | null> {
+  const personNames = await db.getPersonNames();
   const matching = [...personNames.entries()].filter(
     ([, name]) => normalizePersonHandle(name) === handle,
   );
@@ -88,7 +90,7 @@ function resolvePersonIdForHandle(handle: string): number | null {
 }
 
 async function textSearchOrderedIds(text: string): Promise<string[]> {
-  const stored = db.getEmbeddings();
+  const stored = await db.getEmbeddings();
   if (stored.length === 0 || !text.trim()) {
     return [];
   }
@@ -105,9 +107,9 @@ async function textSearchOrderedIds(text: string): Promise<string[]> {
 }
 
 /** Media of every person whose display name contains the query as a substring. */
-function personNameSearchOrderedIds(query: string): string[] {
+async function personNameSearchOrderedIds(query: string): Promise<string[]> {
   const queryLower = query.toLowerCase();
-  const personNames = db.getPersonNames();
+  const personNames = await db.getPersonNames();
   const matchingPersonIds = [...personNames.entries()]
     .filter(([, name]) => name.toLowerCase().includes(queryLower))
     .map(([id]) => id)
@@ -115,7 +117,9 @@ function personNameSearchOrderedIds(query: string): string[] {
   const seen = new Set<string>();
   const mediaIds: string[] = [];
   for (const personId of matchingPersonIds) {
-    for (const id of db.getMediaForPerson(personId, 10000).map((m) => m.id)) {
+    for (const id of (await db.getMediaForPerson(personId, 10000)).map(
+      (m) => m.id,
+    )) {
       if (!seen.has(id)) {
         mediaIds.push(id);
         seen.add(id);
@@ -130,18 +134,18 @@ async function evalAstOrdered(ast: SearchQueryAst): Promise<string[]> {
     case "tag":
       return db.getMediaIdsForTag(ast.tag);
     case "person": {
-      const personId = resolvePersonIdForHandle(ast.handle);
+      const personId = await resolvePersonIdForHandle(ast.handle);
       if (personId == null) {
         return [];
       }
-      return db.getMediaForPerson(personId, 10000).map((m) => m.id);
+      return (await db.getMediaForPerson(personId, 10000)).map((m) => m.id);
     }
     case "personName":
       return personNameSearchOrderedIds(ast.text);
     case "text":
       return textSearchOrderedIds(ast.text);
     case "not": {
-      const universe = db.listVisibleGalleryMediaIds();
+      const universe = await db.listVisibleGalleryMediaIds();
       const inner = await evalAstOrdered(ast.child);
       const exclude = new Set(inner);
       return universe.filter((id) => !exclude.has(id));
@@ -188,27 +192,47 @@ type SearchTimelineOffsetResult =
 
 type MediaSortBy = "uploaded" | "taken";
 
+type Instant = string | Date;
+type MediaRow = Awaited<ReturnType<typeof db.getMediaByIds>>[number];
+
+const toIsoString = (v: Instant): string =>
+  v instanceof Date ? v.toISOString() : v;
+
+const instantMs = (v: Instant): number => {
+  const t = v instanceof Date ? v.getTime() : Date.parse(v);
+  return Number.isFinite(t) ? t : 0;
+};
+
+const sortInstant = (
+  item: { uploadedAt: Instant; dateTaken?: Instant | null },
+  sortBy: MediaSortBy,
+): Instant =>
+  sortBy === "uploaded" ? item.uploadedAt : (item.dateTaken ?? item.uploadedAt);
+
 function monthKeyForItem(
-  item: { uploadedAt: string; dateTaken?: string | null },
+  item: { uploadedAt: Instant; dateTaken?: Instant | null },
   sortBy: MediaSortBy,
 ): string {
-  const iso =
-    sortBy === "uploaded"
-      ? item.uploadedAt
-      : (item.dateTaken ?? item.uploadedAt);
-  return iso.slice(0, 7);
+  return toIsoString(sortInstant(item, sortBy)).slice(0, 7);
 }
 
-function visibleItemsInSearchOrder(
+/** Newest first, then filename — matches gallery list order. */
+const compareMediaChrono =
+  (sortBy: MediaSortBy) =>
+  (a: MediaRow, b: MediaRow): number => {
+    const byDate =
+      instantMs(sortInstant(b, sortBy)) - instantMs(sortInstant(a, sortBy));
+    return byDate !== 0 ? byDate : a.filename.localeCompare(b.filename);
+  };
+
+async function visibleItemsChronological(
   mediaIds: string[],
-): ReturnType<typeof db.getMediaByIds> {
-  const items = db
-    .getMediaByIds(mediaIds)
-    .filter((x) => (x.hideFromGallery ?? 0) === 0);
-  const order = new Map(mediaIds.map((id, i) => [id, i]));
-  return [...items].sort(
-    (a, b) => (order.get(a.id) ?? 999) - (order.get(b.id) ?? 999),
+  sortBy: MediaSortBy,
+): Promise<MediaRow[]> {
+  const items = (await db.getMediaByIds(mediaIds)).filter(
+    (x) => !x.hideFromGallery,
   );
+  return [...items].sort(compareMediaChrono(sortBy));
 }
 
 async function resolveSearchMediaIds(
@@ -236,8 +260,9 @@ async function resolveSearchMediaIds(
 
 export async function searchMediaByQuery(
   q: string,
-  pagination: { limit: number; offset: number },
+  pagination: { limit: number; offset: number; sortBy?: MediaSortBy },
 ): Promise<SearchMediaByQueryResult> {
+  const sortBy = pagination.sortBy ?? "taken";
   const resolved = await resolveSearchMediaIds(q);
   if (!resolved.ok) return resolved;
 
@@ -246,15 +271,15 @@ export async function searchMediaByQuery(
     return { ok: true, items: [], total: 0 };
   }
 
-  const ordered = visibleItemsInSearchOrder(mediaIds);
+  const ordered = await visibleItemsChronological(mediaIds, sortBy);
   const page = ordered.slice(
     pagination.offset,
     pagination.offset + pagination.limit,
   );
-  const personNames = db.getPersonNames();
+  const personNames = await db.getPersonNames();
   return {
     ok: true,
-    items: mapSearchItems(page, personNames),
+    items: await mapSearchItems(page, personNames),
     total: ordered.length,
   };
 }
@@ -270,13 +295,12 @@ export async function searchTimelineMonths(
     return { ok: true, months: [] };
   }
 
-  const monthSet = visibleItemsInSearchOrder(resolved.mediaIds).reduce(
-    (acc, item) => {
-      acc.add(monthKeyForItem(item, sortBy));
-      return acc;
-    },
-    new Set<string>(),
-  );
+  const monthSet = (
+    await visibleItemsChronological(resolved.mediaIds, sortBy)
+  ).reduce((acc, item) => {
+    acc.add(monthKeyForItem(item, sortBy));
+    return acc;
+  }, new Set<string>());
   return {
     ok: true,
     months: [...monthSet].sort((a, b) => b.localeCompare(a)),
@@ -291,29 +315,31 @@ export async function searchTimelineOffset(
   const resolved = await resolveSearchMediaIds(q);
   if (!resolved.ok) return resolved;
 
-  const ordered = visibleItemsInSearchOrder(resolved.mediaIds);
+  const ordered = await visibleItemsChronological(resolved.mediaIds, sortBy);
   const index = ordered.findIndex(
     (item) => monthKeyForItem(item, sortBy) === monthKey,
   );
   return { ok: true, offset: index >= 0 ? index : 0 };
 }
 
-function mapSearchItems(
-  items: ReturnType<typeof db.getMediaByIds>,
+async function mapSearchItems(
+  items: Awaited<ReturnType<typeof db.getMediaByIds>>,
   personNames: Map<number, string>,
-): SearchResultItem[] {
-  const indexedIds = db.getIndexedMediaIds();
-  return items.map((item) => {
-    const { hideFromGallery: _h, ...rest } = item;
-    const personIds = db.getImagePeople(rest.id);
-    const people = personIds.map(
-      (pid) => personNames.get(pid) ?? `Person ${pid}`,
-    );
-    return {
-      ...rest,
-      indexed: indexedIds.has(item.id),
-      backedUp: !!rest.backedUpAt,
-      people: people.length ? people : undefined,
-    };
-  });
+): Promise<SearchResultItem[]> {
+  const indexedIds = await db.getIndexedMediaIds();
+  return Promise.all(
+    items.map(async (item) => {
+      const { hideFromGallery: _h, ...rest } = item;
+      const personIds = await db.getImagePeople(rest.id);
+      const people = personIds.map(
+        (pid) => personNames.get(pid) ?? `Person ${pid}`,
+      );
+      return {
+        ...rest,
+        indexed: indexedIds.has(item.id),
+        backedUp: !!rest.backedUpAt,
+        people: people.length ? people : undefined,
+      };
+    }),
+  );
 }
