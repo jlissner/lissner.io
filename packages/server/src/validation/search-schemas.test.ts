@@ -15,6 +15,7 @@ describe("searchListQuerySchema", () => {
       q: "cats",
       limit: 50,
       offset: 0,
+      sortBy: "taken",
     });
   });
 
@@ -25,6 +26,7 @@ describe("searchListQuerySchema", () => {
       q: "cats",
       limit: 10,
       offset: 50,
+      sortBy: "taken",
     });
   });
 });

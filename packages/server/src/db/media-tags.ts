@@ -1,107 +1,90 @@
-import { getDb } from "./media-db.js";
+import { execute, queryAll, withTransaction } from "./client.js";
 
-function buildStmts() {
-  const db = getDb();
-  return {
-    listForMedia: db.prepare(
-      "SELECT tag FROM media_tags WHERE media_id = ? ORDER BY tag ASC",
-    ),
-    deleteAllForMedia: db.prepare("DELETE FROM media_tags WHERE media_id = ?"),
-    insertTag: db.prepare(
-      "INSERT OR IGNORE INTO media_tags (media_id, tag) VALUES (?, ?)",
-    ),
-    deleteTag: db.prepare(
-      "DELETE FROM media_tags WHERE media_id = ? AND tag = ?",
-    ),
-    listDistinct: db.prepare(
-      "SELECT DISTINCT tag FROM media_tags ORDER BY tag ASC",
-    ),
-    idsForTag: db.prepare(
-      "SELECT media_id FROM media_tags WHERE tag = ? ORDER BY media_id ASC",
-    ),
-  };
-}
-
-const state = { stmts: null as null | ReturnType<typeof buildStmts> };
-
-function stmts() {
-  if (state.stmts) return state.stmts;
-  state.stmts = buildStmts();
-  return state.stmts;
-}
-
-function normalizeTagForStorage(raw: string): string | null {
+const normalizeTagForStorage = (raw: string): string | null => {
   const t = raw.trim().toLowerCase();
   return t.length > 0 ? t : null;
-}
+};
 
-export function listTagsForMedia(mediaId: string): string[] {
-  const rows = stmts().listForMedia.all(mediaId) as Array<{ tag: string }>;
+const normalizeTags = (tags: string[]): string[] => [
+  ...new Set(
+    tags.map(normalizeTagForStorage).filter((t): t is string => t != null),
+  ),
+];
+
+const runSequentially = (tasks: Array<() => Promise<unknown>>): Promise<void> =>
+  tasks
+    .reduce(
+      (chain, task) => chain.then(task),
+      Promise.resolve<unknown>(undefined),
+    )
+    .then(() => undefined);
+
+const insertTag = (mediaId: string) => (tag: string) => (): Promise<unknown> =>
+  execute(
+    "INSERT INTO media_tags (media_id, tag) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    [mediaId, tag],
+  );
+
+const deleteTag = (mediaId: string) => (tag: string) => (): Promise<unknown> =>
+  execute("DELETE FROM media_tags WHERE media_id = ? AND tag = ?", [
+    mediaId,
+    tag,
+  ]);
+
+export async function listTagsForMedia(mediaId: string): Promise<string[]> {
+  const rows = await queryAll<{ tag: string }>(
+    "SELECT tag FROM media_tags WHERE media_id = ? ORDER BY tag ASC",
+    [mediaId],
+  );
   return rows.map((r) => r.tag);
 }
 
-export function setTagsForMedia(mediaId: string, tags: string[]): void {
-  const db = getDb();
-  const normalized = [
-    ...new Set(
-      tags
-        .map((t) => normalizeTagForStorage(t))
-        .filter((t): t is string => t != null),
-    ),
-  ];
-  const tx = db.transaction(() => {
-    stmts().deleteAllForMedia.run(mediaId);
-    for (const tag of normalized) {
-      stmts().insertTag.run(mediaId, tag);
-    }
+export async function setTagsForMedia(
+  mediaId: string,
+  tags: string[],
+): Promise<void> {
+  const normalized = normalizeTags(tags);
+  await withTransaction(async () => {
+    await execute("DELETE FROM media_tags WHERE media_id = ?", [mediaId]);
+    await runSequentially(normalized.map(insertTag(mediaId)));
   });
-  tx();
 }
 
-export function addTagsForMedia(mediaId: string, tags: string[]): void {
-  const normalized = [
-    ...new Set(
-      tags
-        .map((t) => normalizeTagForStorage(t))
-        .filter((t): t is string => t != null),
-    ),
-  ];
+export async function addTagsForMedia(
+  mediaId: string,
+  tags: string[],
+): Promise<void> {
+  const normalized = normalizeTags(tags);
   if (normalized.length === 0) return;
-  const db = getDb();
-  const tx = db.transaction(() => {
-    for (const tag of normalized) {
-      stmts().insertTag.run(mediaId, tag);
-    }
-  });
-  tx();
+  await withTransaction(() =>
+    runSequentially(normalized.map(insertTag(mediaId))),
+  );
 }
 
-export function removeTagsFromMedia(mediaId: string, tags: string[]): void {
-  const normalized = [
-    ...new Set(
-      tags
-        .map((t) => normalizeTagForStorage(t))
-        .filter((t): t is string => t != null),
-    ),
-  ];
+export async function removeTagsFromMedia(
+  mediaId: string,
+  tags: string[],
+): Promise<void> {
+  const normalized = normalizeTags(tags);
   if (normalized.length === 0) return;
-  const db = getDb();
-  const tx = db.transaction(() => {
-    for (const tag of normalized) {
-      stmts().deleteTag.run(mediaId, tag);
-    }
-  });
-  tx();
+  await withTransaction(() =>
+    runSequentially(normalized.map(deleteTag(mediaId))),
+  );
 }
 
-export function listDistinctTags(): string[] {
-  const rows = stmts().listDistinct.all() as Array<{ tag: string }>;
+export async function listDistinctTags(): Promise<string[]> {
+  const rows = await queryAll<{ tag: string }>(
+    "SELECT DISTINCT tag FROM media_tags ORDER BY tag ASC",
+  );
   return rows.map((r) => r.tag);
 }
 
-export function getMediaIdsForTag(normalizedTag: string): string[] {
-  const rows = stmts().idsForTag.all(normalizedTag) as Array<{
-    media_id: string;
-  }>;
+export async function getMediaIdsForTag(
+  normalizedTag: string,
+): Promise<string[]> {
+  const rows = await queryAll<{ media_id: string }>(
+    "SELECT media_id FROM media_tags WHERE tag = ? ORDER BY media_id ASC",
+    [normalizedTag],
+  );
   return rows.map((r) => r.media_id);
 }

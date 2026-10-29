@@ -36,15 +36,9 @@ async function ensureServerRunning(world: BddWorld): Promise<void> {
 }
 
 AfterAll(async () => {
-  await new Promise<void>((resolve) => {
-    if (!state.server) {
-      resolve();
-      return;
-    }
-    state.server.close(() => resolve());
-    state.server = null;
-    state.baseUrl = null;
-  });
+  const { closeBddServer } = await import("../support/close-bdd-server.ts");
+  state.server = await closeBddServer(state.server);
+  state.baseUrl = null;
 });
 
 async function signAdminCookie(): Promise<string> {
@@ -90,7 +84,7 @@ Given("data explorer is available", function () {
 
 Given("a valid backup key is selected", function (this: BddWorld) {
   // This is a baseline/admin UX scenario; for API-level BDD we accept any non-empty key.
-  this.selectedBackupKey = "backup/db/media_test.db";
+  this.selectedBackupKey = "backup/db/media_test.dump";
 });
 
 When(

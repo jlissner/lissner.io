@@ -1,5 +1,5 @@
 /**
- * Media database — single connection in `./media-db.ts`; domain helpers split for navigation.
+ * Media database — Postgres via `./client.ts`; domain helpers split for navigation.
  * Import `../db/media.js` for a stable aggregate API.
  */
 

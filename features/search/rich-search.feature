@@ -46,3 +46,10 @@ Feature: Rich media search with tags and people
     Given at least one media item has tag "summer2025"
     When I request the tag list
     Then the response includes "summer2025"
+
+  # Added to cover discovered bug: search kept tag/id order; gallery day groups + timeline need chronology
+  Scenario: Search results scroll in chronological order
+    Given media Old has tag "trip" and was taken in "2023-01"
+    And media New has tag "trip" and was taken in "2024-06"
+    When I search for "#trip" sorted by date taken
+    Then results list media New before media Old

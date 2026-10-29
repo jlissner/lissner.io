@@ -27,32 +27,32 @@ type ConfirmFaceTagResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "bad_person" | "not_tagged">;
 
-export function addPersonToMediaTag(params: {
+export async function addPersonToMediaTag(params: {
   mediaId: string;
   personId: unknown;
   box: unknown;
   createNew: boolean;
-}): AddPersonToMediaTagResult {
-  const item = db.getMediaById(params.mediaId);
+}): Promise<AddPersonToMediaTagResult> {
+  const item = await db.getMediaById(params.mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
 
   if (isVideoMime(item.mimeType)) {
     if (params.createNew) {
-      const targetPersonId = db.createNewPerson();
-      db.addPersonToMediaNoBox(item.id, targetPersonId);
+      const targetPersonId = await db.createNewPerson();
+      await db.addPersonToMediaNoBox(item.id, targetPersonId);
       return { ok: true, personId: targetPersonId, created: "new" };
     }
     const id = parseInt(String(params.personId ?? ""), 10);
     if (isNaN(id) || id < 1) {
       return { ok: false, reason: "person_required" };
     }
-    const allIds = db.getAllPersonIds();
+    const allIds = await db.getAllPersonIds();
     if (!allIds.includes(id)) {
       return { ok: false, reason: "person_not_found" };
     }
-    db.addPersonToMediaNoBox(item.id, id);
+    await db.addPersonToMediaNoBox(item.id, id);
     return { ok: true, personId: id, created: "existing" };
   }
 
@@ -72,46 +72,46 @@ export function addPersonToMediaTag(params: {
   }
   const b = box as { x: number; y: number; width: number; height: number };
   if (params.createNew) {
-    const targetPersonId = db.createNewPerson();
-    db.addPersonToMedia(item.id, targetPersonId, b);
+    const targetPersonId = await db.createNewPerson();
+    await db.addPersonToMedia(item.id, targetPersonId, b);
     return { ok: true, personId: targetPersonId, created: "new" };
   }
   const id = parseInt(String(params.personId ?? ""), 10);
   if (isNaN(id) || id < 1) {
     return { ok: false, reason: "person_required" };
   }
-  const allIds = db.getAllPersonIds();
+  const allIds = await db.getAllPersonIds();
   if (!allIds.includes(id)) {
     return { ok: false, reason: "person_not_found" };
   }
-  db.addPersonToMedia(item.id, id, b);
+  await db.addPersonToMedia(item.id, id, b);
   return { ok: true, personId: id, created: "existing" };
 }
 
-export function removePersonFromMediaTag(
+export async function removePersonFromMediaTag(
   mediaId: string,
   personId: number,
-): RemovePersonFromMediaTagResult {
-  const item = db.getMediaById(mediaId);
+): Promise<RemovePersonFromMediaTagResult> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
   if (isNaN(personId) || personId < 1) {
     return { ok: false as const, reason: "bad_person" as const };
   }
-  const removed = db.removePersonFromMedia(item.id, personId);
+  const removed = await db.removePersonFromMedia(item.id, personId);
   if (!removed) {
     return { ok: false as const, reason: "not_tagged" as const };
   }
   return { ok: true as const };
 }
 
-export function reassignPersonInMediaTag(
+export async function reassignPersonInMediaTag(
   mediaId: string,
   fromPersonId: number,
   toPersonId: number,
-): ReassignPersonInMediaTagResult {
-  const item = db.getMediaById(mediaId);
+): Promise<ReassignPersonInMediaTagResult> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
@@ -126,11 +126,11 @@ export function reassignPersonInMediaTag(
   if (fromPersonId === toPersonId) {
     return { ok: false as const, reason: "same_person" as const };
   }
-  const allIds = db.getAllPersonIds();
+  const allIds = await db.getAllPersonIds();
   if (!allIds.includes(toPersonId)) {
     return { ok: false as const, reason: "target_missing" as const };
   }
-  const ok = db.reassignPersonInMedia(item.id, fromPersonId, toPersonId);
+  const ok = await db.reassignPersonInMedia(item.id, fromPersonId, toPersonId);
   if (!ok) {
     return { ok: false as const, reason: "not_tagged" as const };
   }
@@ -140,39 +140,39 @@ export function reassignPersonInMediaTag(
   };
 }
 
-export function reassignToNewPerson(
+export async function reassignToNewPerson(
   mediaId: string,
   fromPersonId: number,
-): ReassignToNewPersonResult {
-  const item = db.getMediaById(mediaId);
+): Promise<ReassignToNewPersonResult> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
   if (isNaN(fromPersonId) || fromPersonId < 1) {
     return { ok: false as const, reason: "bad_person" as const };
   }
-  const newId = db.createNewPersonForMedia(item.id, fromPersonId);
+  const newId = await db.createNewPersonForMedia(item.id, fromPersonId);
   if (newId === null) {
     return { ok: false as const, reason: "not_tagged" as const };
   }
   return { ok: true as const, body: { newPersonId: newId } };
 }
 
-export function confirmFaceTag(
+export async function confirmFaceTag(
   mediaId: string,
   personId: number,
-): ConfirmFaceTagResult {
-  const item = db.getMediaById(mediaId);
+): Promise<ConfirmFaceTagResult> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false as const, reason: "not_found" as const };
   }
   if (isNaN(personId) || personId < 1) {
     return { ok: false as const, reason: "bad_person" as const };
   }
-  const hasTag = db.getImagePeople(item.id).includes(personId);
+  const hasTag = (await db.getImagePeople(item.id)).includes(personId);
   if (!hasTag) {
     return { ok: false as const, reason: "not_tagged" as const };
   }
-  db.confirmFace(item.id, personId);
+  await db.confirmFace(item.id, personId);
   return { ok: true as const };
 }

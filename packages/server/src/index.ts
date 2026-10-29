@@ -1,7 +1,6 @@
 import "./polyfill.js";
 import { VITE_API_HOST, SERVER_PORT } from "./config/env.js";
 import { dbDir, mediaDir, thumbnailsDir } from "./config/paths.js";
-import { maybeRestoreDbFromLatestS3BackupOnStartup } from "./s3/startup-db-restore.js";
 import {
   ensureServerDirectories,
   runServerStartedTasks,
@@ -18,10 +17,7 @@ import { setSyncChangeListener } from "./s3/sync-state.js";
 
 ensureServerDirectories({ mediaDir, dbDir, thumbnailsDir });
 
-// Must happen before any DB modules are imported (DB opens at first `getDb()` call).
-await maybeRestoreDbFromLatestS3BackupOnStartup();
-
-runStartupMaintenance();
+await runStartupMaintenance();
 
 const app = createConfiguredApp();
 

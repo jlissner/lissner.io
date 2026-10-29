@@ -13,6 +13,7 @@
  * intentionally read directly at their call sites (they must observe runtime/test
  * overrides and not trigger this module's `dotenv` load), so they live elsewhere.
  */
+import { buildDatabaseUrl } from "@lissner/shared";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import path from "path";
@@ -41,7 +42,8 @@ const envFileName =
 const envPath = path.join(PROJECT_ROOT, "config", envFileName);
 
 if (existsSync(envPath)) {
-  config({ path: envPath, override: true });
+  // Do not override vars already set (Vitest sets MEDIA_DATABASE_NAME=media_test).
+  config({ path: envPath, override: false });
 }
 
 export const AWS_ACCESS_KEY_ID = getEnvVar("AWS_ACCESS_KEY_ID");
@@ -62,3 +64,16 @@ export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
 export const UI_PORT = Number(getEnvVar("UI_PORT"));
+
+/**
+ * Shared Postgres server URL (no database path). With MEDIA_DATABASE_NAME,
+ * builds the media API connection. Required in all environments.
+ */
+const POSTGRES_SERVER_URL = getEnvVar("POSTGRES_SERVER_URL");
+export const MEDIA_DATABASE_NAME = getEnvVar("MEDIA_DATABASE_NAME");
+
+/** Full connection string for the media DB. */
+export const MEDIA_DATABASE_URL = buildDatabaseUrl(
+  POSTGRES_SERVER_URL,
+  MEDIA_DATABASE_NAME,
+);

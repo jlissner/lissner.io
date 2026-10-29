@@ -10,7 +10,7 @@ describe("Gherkin: Admin tools beyond duplicate detection (features/admin/admin-
   );
 
   it.todo(
-    "Scenario: Restore database from a backup — see packages/server/src/routes/admin/db-backup-routes.ts, packages/server/src/s3/startup-db-restore.test.ts",
+    "Scenario: Restore database from a backup — see packages/server/src/routes/admin/db-backup-routes.ts, packages/server/src/services/db-backup-admin-service.ts",
   );
 
   it.todo(

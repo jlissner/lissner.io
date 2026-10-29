@@ -23,8 +23,11 @@ adminPeopleDirectoryRouter.use(requireAdmin);
 export function createAdminPeopleDirectoryListHandler(deps: {
   listDirectory: typeof listDirectory;
 }) {
-  return (_req: unknown, res: { json: (body: unknown) => unknown }) => {
-    const result = sendAdminResult(res as never, deps.listDirectory());
+  return async (
+    _req: unknown,
+    res: { json: (body: unknown) => unknown },
+  ): Promise<void> => {
+    const result = sendAdminResult(res as never, await deps.listDirectory());
     if (result == null) return;
     res.json(result);
   };
@@ -39,7 +42,7 @@ function createAdminPeopleDirectoryCreateHandler(deps: {
     const user = getAuthUser(req);
     const result = sendAdminResult(
       res,
-      deps.createDirectoryPerson({
+      await deps.createDirectoryPerson({
         name: body.name,
         email: body.email,
         isAdmin: body.isAdmin,
@@ -60,7 +63,7 @@ function createAdminPeopleDirectoryUpdateHandler(deps: {
     const user = getAuthUser(req);
     const result = sendAdminResult(
       res,
-      deps.updateDirectoryPerson({
+      await deps.updateDirectoryPerson({
         personId,
         name: body.name,
         email: body.email,
@@ -81,15 +84,15 @@ function createAdminPeopleDirectoryDeleteHandler(deps: {
     const user = getAuthUser(req);
     const result = sendAdminResult(
       res,
-      deps.deleteDirectoryPerson({ personId, actorUserId: user?.id }),
+      await deps.deleteDirectoryPerson({ personId, actorUserId: user?.id }),
     );
 
     res.json(result);
   });
 }
 
-adminPeopleDirectoryRouter.get("/people-directory", (_req, res) => {
-  createAdminPeopleDirectoryListHandler({ listDirectory })(_req, res);
+adminPeopleDirectoryRouter.get("/people-directory", async (_req, res) => {
+  await createAdminPeopleDirectoryListHandler({ listDirectory })(_req, res);
 });
 
 adminPeopleDirectoryRouter.post("/people-directory", (req, res, next) => {
@@ -124,8 +127,8 @@ adminPeopleDirectoryRouter.delete(
 
 adminPeopleDirectoryRouter.delete(
   "/people/untagged-placeholders",
-  (_req, res) => {
-    const result = bulkDeleteUntaggedPlaceholders();
+  async (_req, res) => {
+    const result = await bulkDeleteUntaggedPlaceholders();
     res.json(result);
   },
 );

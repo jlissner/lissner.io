@@ -30,6 +30,8 @@ services:
     depends_on:
       ollama:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -75,6 +77,29 @@ services:
     networks:
       - traefik
 
+  postgres:
+    image: postgres:16.13-bookworm
+    environment:
+      # Required via config/.env.prod or config/.env (no defaults — never commit secrets).
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in config/.env.prod or config/.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in config/.env.prod or config/.env}
+      POSTGRES_DB: postgres
+    ports:
+      # Host 5433 by default — avoids clash with a system Postgres on 5432.
+      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./packages/db/docker/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - default
+
   graphql:
     env_file: "config/.env.prod"
     build:
@@ -85,6 +110,9 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV}
       - GRAPHQL_PORT=${GRAPHQL_PORT}
+    depends_on:
+      postgres:
+        condition: service_healthy
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.graphql.rule=Host(`${GRAPHQL_HOST}`)"
@@ -112,6 +140,7 @@ services:
     restart: unless-stopped
     networks:
       - traefik
+      - default
 
   ollama:
     build:
@@ -166,6 +195,7 @@ volumes:
   app-data:
   ollama-models:
   traefik-certs:
+  postgres-data:
 
 networks:
   traefik:

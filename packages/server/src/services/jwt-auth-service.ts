@@ -29,7 +29,12 @@ export async function issueTokens(
   });
   const refreshToken = await signRefreshToken({ sub: user.id, familyId: fid });
   const expiresAt = new Date(Date.now() + REFRESH_MAX_AGE * 1000).toISOString();
-  authDb.createRefreshToken(hashToken(refreshToken), user.id, fid, expiresAt);
+  await authDb.createRefreshToken(
+    hashToken(refreshToken),
+    user.id,
+    fid,
+    expiresAt,
+  );
   return { accessToken, refreshToken };
 }
 
@@ -44,17 +49,17 @@ export async function refreshTokens(
   if (!claims) return { error: "invalid" };
 
   const tokenHash = hashToken(rawRefreshToken);
-  const row = authDb.consumeRefreshToken(tokenHash);
+  const row = await authDb.consumeRefreshToken(tokenHash);
 
   if (!row) {
-    if (authDb.isRefreshTokenRevoked(tokenHash)) {
-      authDb.revokeTokenFamily(claims.familyId);
+    if (await authDb.isRefreshTokenRevoked(tokenHash)) {
+      await authDb.revokeTokenFamily(claims.familyId);
       return { error: "reused" };
     }
     return { error: "invalid" };
   }
 
-  const user = authDb.getUserById(row.userId);
+  const user = await authDb.getUserById(row.userId);
   if (!user) return { error: "invalid" };
 
   const tokens = await issueTokens(user, row.familyId);
@@ -64,7 +69,7 @@ export async function refreshTokens(
 export async function revokeSession(rawRefreshToken: string): Promise<void> {
   const claims = await verifyRefreshToken(rawRefreshToken);
   if (!claims) return;
-  authDb.revokeTokenFamily(claims.familyId);
+  await authDb.revokeTokenFamily(claims.familyId);
 }
 
 export function setTokenCookies(

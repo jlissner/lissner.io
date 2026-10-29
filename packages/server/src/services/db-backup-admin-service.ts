@@ -1,21 +1,17 @@
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { mkdir, rename } from "fs/promises";
+import { mkdir } from "fs/promises";
 import path from "path";
-import { closeMediaDb, getDb } from "../db/media-db.js";
+import { S3_BUCKET } from "../config/env.js";
+import { closeMediaPool } from "../db/pg-media.js";
+import { restoreMediaDatabaseFromFile } from "../db/pg-backup.js";
 import { unlinkBestEffort } from "../lib/fs-best-effort.js";
-import { resetMediaMotionStatementCache } from "../db/media-motion.js";
-import { resetMediaPeopleStatementCache } from "../db/media-people.js";
-import { resetMediaReadStatementCache } from "../db/media-read.js";
-import { resetMediaWriteStatementCache } from "../db/media-write.js";
-import { dbDir, dbPath } from "../config/paths.js";
-import { validateSqliteDbFile } from "../s3/startup-db-restore.js";
+import { dbDir } from "../config/paths.js";
 import { S3_PREFIX } from "../s3/sync-constants.js";
 import {
   downloadS3ObjectToFile,
   listS3ObjectsWithMetadata,
 } from "../s3/sync-transfer.js";
 import { isSyncInProgress } from "../s3/sync-state.js";
-import { S3_BUCKET } from "../config/env.js";
 import { s3Client } from "../s3/client.js";
 import { logger } from "../logger.js";
 
@@ -24,6 +20,8 @@ type DbBackupListItem = {
   size: number;
   lastModified: string;
 };
+
+const isBackupObjectKey = (key: string): boolean => key.endsWith(".dump");
 
 export async function listDbBackupsForAdmin(): Promise<
   | { ok: true; backups: DbBackupListItem[] }
@@ -36,7 +34,7 @@ export async function listDbBackupsForAdmin(): Promise<
     `${S3_PREFIX}/db/`,
   );
   const backups = objects
-    .filter((o) => o.key.endsWith(".db"))
+    .filter((o) => isBackupObjectKey(o.key))
     .map((o) => ({ key: o.key, size: o.size, lastModified: o.lastModified }))
     .sort((a, b) => a.key.localeCompare(b.key));
   return { ok: true, backups };
@@ -44,7 +42,7 @@ export async function listDbBackupsForAdmin(): Promise<
 
 function isValidDbBackupKey(key: string): boolean {
   if (!key.startsWith(`${S3_PREFIX}/db/`)) return false;
-  if (!key.endsWith(".db")) return false;
+  if (!isBackupObjectKey(key)) return false;
   if (key.includes("..")) return false;
   return true;
 }
@@ -66,50 +64,24 @@ export async function restoreDbFromS3BackupKey(
 ): Promise<RestoreDbResult> {
   if (!isValidDbBackupKey(key)) return { ok: false, reason: "invalid_key" };
   if (isSyncInProgress()) return { ok: false, reason: "sync_in_progress" };
-  const bucket = S3_BUCKET!;
+  const bucket = S3_BUCKET;
 
-  closeMediaDb();
-  resetMediaReadStatementCache();
-  resetMediaWriteStatementCache();
-  resetMediaMotionStatementCache();
-  resetMediaPeopleStatementCache();
-
-  const tempPath = path.join(dbDir, `.admin_restore_${Date.now()}.db`);
-
-  const outcome = await (async (): Promise<RestoreDbResult> => {
-    try {
-      await mkdir(dbDir, { recursive: true });
-      const getRes = await s3Client.send(
-        new GetObjectCommand({ Bucket: bucket, Key: key }),
-      );
-      const body = getRes.Body;
-      if (!body) {
-        return { ok: false, reason: "download_failed" };
-      }
-      await downloadS3ObjectToFile(body, tempPath);
-      if (!validateSqliteDbFile(tempPath)) {
-        await unlinkBestEffort(tempPath, "remove invalid temp db");
-        return { ok: false, reason: "invalid_db" };
-      }
-      await unlinkBestEffort(dbPath, "replace live db");
-      await rename(tempPath, dbPath);
-      return { ok: true };
-    } catch (err) {
-      logger.error({ err }, "[admin-db-restore] restore failed");
-
-      await unlinkBestEffort(tempPath, "cleanup temp db after failure");
-      return { ok: false, reason: "download_failed" };
-    }
-  })();
-
+  await closeMediaPool();
+  const tempPath = path.join(dbDir, `.admin_restore_${Date.now()}.dump`);
   try {
-    getDb();
-  } catch (err) {
-    logger.error(
-      { err },
-      "[admin-db-restore] failed to reopen DB after restore attempt",
+    await mkdir(dbDir, { recursive: true });
+    const getRes = await s3Client.send(
+      new GetObjectCommand({ Bucket: bucket, Key: key }),
     );
-    throw err;
+    const body = getRes.Body;
+    if (!body) return { ok: false, reason: "download_failed" };
+    await downloadS3ObjectToFile(body, tempPath);
+    await restoreMediaDatabaseFromFile(tempPath);
+    return { ok: true };
+  } catch (err) {
+    logger.error({ err }, "[admin-db-restore] pg restore failed");
+    return { ok: false, reason: "download_failed" };
+  } finally {
+    await unlinkBestEffort(tempPath, "cleanup temp pg dump");
   }
-  return outcome;
 }

@@ -5,12 +5,14 @@ type GetMediaTagsResult =
   | { ok: true; tags: string[] }
   | ServiceFailure<"not_found">;
 
-export function getMediaTags(mediaId: string): GetMediaTagsResult {
-  const item = db.getMediaById(mediaId);
+export async function getMediaTags(
+  mediaId: string,
+): Promise<GetMediaTagsResult> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
-  return { ok: true, tags: db.listTagsForMedia(mediaId) };
+  return { ok: true, tags: await db.listTagsForMedia(mediaId) };
 }
 
 type SetMediaTagsResult =
@@ -19,17 +21,21 @@ type SetMediaTagsResult =
 
 type AddMediaTagsResult = SetMediaTagsResult;
 
-function canEditMediaTags(
+async function canEditMediaTags(
   mediaId: string,
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-):
-  | { ok: true; item: NonNullable<ReturnType<typeof db.getMediaById>> }
-  | ServiceFailure<"not_found" | "forbidden"> {
-  const item = db.getMediaById(mediaId);
+): Promise<
+  | {
+      ok: true;
+      item: NonNullable<Awaited<ReturnType<typeof db.getMediaById>>>;
+    }
+  | ServiceFailure<"not_found" | "forbidden">
+> {
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
-  const ownerId = db.getMediaOwnerId(item.id);
+  const ownerId = await db.getMediaOwnerId(item.id);
   const canEdit = ctx.isAdmin || (ownerId != null && ctx.userId === ownerId);
   if (!canEdit) {
     return { ok: false, reason: "forbidden" };
@@ -37,79 +43,69 @@ function canEditMediaTags(
   return { ok: true, item };
 }
 
-export function setMediaTags(
+export async function setMediaTags(
   mediaId: string,
   tags: string[],
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-): SetMediaTagsResult {
-  const access = canEditMediaTags(mediaId, ctx);
+): Promise<SetMediaTagsResult> {
+  const access = await canEditMediaTags(mediaId, ctx);
   if (!access.ok) {
     return access;
   }
-  db.setTagsForMedia(mediaId, tags);
+  await db.setTagsForMedia(mediaId, tags);
   return { ok: true };
 }
 
-export function addMediaTags(
+export async function addMediaTags(
   mediaId: string,
   tags: string[],
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-): AddMediaTagsResult {
-  const access = canEditMediaTags(mediaId, ctx);
+): Promise<AddMediaTagsResult> {
+  const access = await canEditMediaTags(mediaId, ctx);
   if (!access.ok) {
     return access;
   }
-  db.addTagsForMedia(mediaId, tags);
+  await db.addTagsForMedia(mediaId, tags);
   return { ok: true };
 }
 
-export function bulkAddMediaTags(
+export async function bulkAddMediaTags(
   mediaIds: string[],
   tags: string[],
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-): { succeeded: number; failed: number } {
-  return mediaIds.reduce(
-    (acc, mediaId) => {
-      const result = addMediaTags(mediaId, tags, ctx);
-      if (result.ok) {
-        return { succeeded: acc.succeeded + 1, failed: acc.failed };
-      }
-      return { succeeded: acc.succeeded, failed: acc.failed + 1 };
-    },
-    { succeeded: 0, failed: 0 },
+): Promise<{ succeeded: number; failed: number }> {
+  const results = await Promise.all(
+    mediaIds.map((mediaId) => addMediaTags(mediaId, tags, ctx)),
   );
+  const succeeded = results.filter((r) => r.ok).length;
+  return { succeeded, failed: results.length - succeeded };
 }
 
-export function removeMediaTags(
+export async function removeMediaTags(
   mediaId: string,
   tags: string[],
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-): AddMediaTagsResult {
-  const access = canEditMediaTags(mediaId, ctx);
+): Promise<AddMediaTagsResult> {
+  const access = await canEditMediaTags(mediaId, ctx);
   if (!access.ok) {
     return access;
   }
-  db.removeTagsFromMedia(mediaId, tags);
+  await db.removeTagsFromMedia(mediaId, tags);
   return { ok: true };
 }
 
-export function bulkRemoveMediaTags(
+export async function bulkRemoveMediaTags(
   mediaIds: string[],
   tags: string[],
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
-): { succeeded: number; failed: number } {
-  return mediaIds.reduce(
-    (acc, mediaId) => {
-      const result = removeMediaTags(mediaId, tags, ctx);
-      if (result.ok) {
-        return { succeeded: acc.succeeded + 1, failed: acc.failed };
-      }
-      return { succeeded: acc.succeeded, failed: acc.failed + 1 };
-    },
-    { succeeded: 0, failed: 0 },
+): Promise<{ succeeded: number; failed: number }> {
+  const results = await Promise.all(
+    mediaIds.map((mediaId) => removeMediaTags(mediaId, tags, ctx)),
   );
+  const succeeded = results.filter((r) => r.ok).length;
+  return { succeeded, failed: results.length - succeeded };
 }
 
-export function listDistinctMediaTags(): string[] {
+export async function listDistinctMediaTags(): Promise<string[]> {
   return db.listDistinctTags();
 }

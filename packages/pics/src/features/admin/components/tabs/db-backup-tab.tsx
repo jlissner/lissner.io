@@ -70,9 +70,9 @@ export function DbBackupTab() {
       <section className="admin-page__section">
         <h3>Database backup (S3)</h3>
         <p className="admin-page__desc">
-          Restore the SQLite database from a file previously uploaded to{" "}
-          <code>backup/db/</code> in your bucket. Wait until S3 sync has
-          finished before restoring.
+          Restore the media Postgres database from a <code>.dump</code>{" "}
+          previously uploaded to <code>backup/db/</code> in your bucket. Wait
+          until S3 sync has finished before restoring.
         </p>
         <div className="admin-page__form">
           <Button
@@ -97,7 +97,7 @@ export function DbBackupTab() {
           sortedDbBackups.length === 0 &&
           !dbBackupsLoading && (
             <p className="admin-page__meta">
-              No <code>.db</code> backups found under backup/db/.
+              No <code>.dump</code> backups found under backup/db/.
             </p>
           )}
         {sortedDbBackups.length > 0 && (

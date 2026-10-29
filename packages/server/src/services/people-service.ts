@@ -7,11 +7,11 @@ import {
 import * as db from "../db/media.js";
 import type { ServiceFailure } from "./service-result.js";
 
-export function getPersonMediaPreview(
+export async function getPersonMediaPreview(
   personId: number,
   limit: number,
-): PersonMediaPreviewItem[] {
-  const media = db.getMediaForPerson(personId, limit);
+): Promise<PersonMediaPreviewItem[]> {
+  const media = await db.getMediaForPerson(personId, limit);
   return media.map((m) => ({
     id: m.id,
     filename: m.filename,
@@ -33,19 +33,23 @@ export function getPersonMediaPreview(
   }));
 }
 
-export function listPeopleSummary(): PersonSummary[] {
-  const ids = db.getAllPersonIds();
-  const names = db.getPersonNames();
-  return ids.map((id) => ({
-    id,
-    name: names.get(id) ?? `Person ${id}`,
-    photoCount: db.getMediaCountForPerson(id),
-    representativeMediaId: db.getRepresentativeMediaId(id),
-  }));
+export async function listPeopleSummary(): Promise<PersonSummary[]> {
+  const ids = await db.getAllPersonIds();
+  const names = await db.getPersonNames();
+  return Promise.all(
+    ids.map(async (id) => ({
+      id,
+      name: names.get(id) ?? `Person ${id}`,
+      photoCount: await db.getMediaCountForPerson(id),
+      representativeMediaId: await db.getRepresentativeMediaId(id),
+    })),
+  );
 }
 
-export function createPersonNamed(name: string): CreatePersonResponse {
-  const id = db.createPerson(name.trim());
+export async function createPersonNamed(
+  name: string,
+): Promise<CreatePersonResponse> {
+  const id = await db.createPerson(name.trim());
   return { id, name: name.trim() };
 }
 
@@ -53,12 +57,14 @@ type DeletePersonResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "linked_to_user">;
 
-export function deletePersonById(personId: number): DeletePersonResult {
-  const allIds = db.getAllPersonIds();
+export async function deletePersonById(
+  personId: number,
+): Promise<DeletePersonResult> {
+  const allIds = await db.getAllPersonIds();
   if (!allIds.includes(personId)) {
     return { ok: false, reason: "not_found" };
   }
-  const deleted = db.deletePersonSafe(personId);
+  const deleted = await db.deletePersonSafe(personId);
   if (!deleted.ok) return deleted;
   return { ok: true as const };
 }
@@ -67,10 +73,10 @@ type MergePeopleResult =
   | { ok: true; merged: number; into: number }
   | ServiceFailure<"invalid_ids" | "merge_into_self" | "not_found">;
 
-export function mergePeople(
+export async function mergePeople(
   mergeFromId: number,
   mergeIntoId: number,
-): MergePeopleResult {
+): Promise<MergePeopleResult> {
   if (
     isNaN(mergeFromId) ||
     mergeFromId < 1 ||
@@ -82,26 +88,26 @@ export function mergePeople(
   if (mergeFromId === mergeIntoId) {
     return { ok: false, reason: "merge_into_self" };
   }
-  const allIds = db.getAllPersonIds();
+  const allIds = await db.getAllPersonIds();
   if (!allIds.includes(mergeFromId) || !allIds.includes(mergeIntoId)) {
     return { ok: false, reason: "not_found" };
   }
-  db.mergePeople(mergeIntoId, mergeFromId);
+  await db.mergePeople(mergeIntoId, mergeFromId);
   return { ok: true, merged: mergeFromId, into: mergeIntoId };
 }
 
-export function renamePerson(
+export async function renamePerson(
   personId: number,
   name: string,
-): UpdatePersonResponse {
-  db.setPersonName(personId, name.trim());
+): Promise<UpdatePersonResponse> {
+  await db.setPersonName(personId, name.trim());
   return { id: personId, name: name.trim() };
 }
 
-export function bulkDeleteUntaggedPlaceholders(): { deleted: number[] } {
-  const ids = db.getUntaggedPlaceholderPersonIds();
-  for (const id of ids) {
-    db.deletePersonSafe(id);
-  }
+export async function bulkDeleteUntaggedPlaceholders(): Promise<{
+  deleted: number[];
+}> {
+  const ids = await db.getUntaggedPlaceholderPersonIds();
+  await Promise.all(ids.map((id) => db.deletePersonSafe(id)));
   return { deleted: ids };
 }

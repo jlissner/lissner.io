@@ -16,9 +16,9 @@ import {
 
 export const mediaFacesRouter = Router();
 
-mediaFacesRouter.delete("/:id/people/:personId", (req, res) => {
+mediaFacesRouter.delete("/:id/people/:personId", async (req, res) => {
   const { id, personId } = mediaIdPersonIdParamSchema.parse(req.params);
-  const result = removePersonFromMediaTag(id, personId);
+  const result = await removePersonFromMediaTag(id, personId);
 
   if (result.ok) {
     res.status(204).send();
@@ -48,12 +48,12 @@ mediaFacesRouter.delete("/:id/people/:personId", (req, res) => {
   sendApiError(res, 404, "Not found", "not_found");
 });
 
-mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
+mediaFacesRouter.put("/:id/people/:personId", async (req, res) => {
   const { id, personId: fromPersonId } = mediaIdPersonIdParamSchema.parse(
     req.params,
   );
   const { assignTo: toPersonId } = reassignFaceBodySchema.parse(req.body);
-  const result = reassignPersonInMediaTag(id, fromPersonId, toPersonId);
+  const result = await reassignPersonInMediaTag(id, fromPersonId, toPersonId);
 
   if (result.ok) {
     res.json(result.body);
@@ -93,33 +93,41 @@ mediaFacesRouter.put("/:id/people/:personId", (req, res) => {
   sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
 });
 
-mediaFacesRouter.post("/:id/people/:personId/reassign-new", (req, res) => {
-  const { id, personId: fromPersonId } = mediaIdPersonIdParamSchema.parse(
-    req.params,
-  );
-  const result = reassignToNewPerson(id, fromPersonId);
+mediaFacesRouter.post(
+  "/:id/people/:personId/reassign-new",
+  async (req, res) => {
+    const { id, personId: fromPersonId } = mediaIdPersonIdParamSchema.parse(
+      req.params,
+    );
+    const result = await reassignToNewPerson(id, fromPersonId);
 
-  if (result.ok) {
-    res.json(result.body);
-    return;
-  }
+    if (result.ok) {
+      res.json(result.body);
+      return;
+    }
 
-  if (result.reason === "not_found") {
-    sendApiError(res, 404, "Not found", "not_found");
-    return;
-  }
+    if (result.reason === "not_found") {
+      sendApiError(res, 404, "Not found", "not_found");
+      return;
+    }
 
-  if (result.reason === "bad_person") {
-    sendApiError(res, 400, "Invalid person ID", "face_invalid_person");
-    return;
-  }
+    if (result.reason === "bad_person") {
+      sendApiError(res, 400, "Invalid person ID", "face_invalid_person");
+      return;
+    }
 
-  sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
-});
+    sendApiError(
+      res,
+      404,
+      "Person not tagged in this image",
+      "face_not_tagged",
+    );
+  },
+);
 
-mediaFacesRouter.post("/:id/people/:personId/confirm", (req, res) => {
+mediaFacesRouter.post("/:id/people/:personId/confirm", async (req, res) => {
   const { id, personId } = mediaIdPersonIdParamSchema.parse(req.params);
-  const result = confirmFaceTag(id, personId);
+  const result = await confirmFaceTag(id, personId);
 
   if (result.ok) {
     res.json({ confirmed: true });
@@ -139,10 +147,10 @@ mediaFacesRouter.post("/:id/people/:personId/confirm", (req, res) => {
   sendApiError(res, 404, "Person not tagged in this image", "face_not_tagged");
 });
 
-mediaFacesRouter.post("/:id/people", (req, res) => {
+mediaFacesRouter.post("/:id/people", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
   const body = addPersonToMediaBodySchema.parse(req.body);
-  const result = addPersonToMediaTag({
+  const result = await addPersonToMediaTag({
     mediaId: id,
     personId: body.personId,
     box: body.box,

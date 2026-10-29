@@ -24,8 +24,11 @@ export default defineConfig({
       TF_CPP_MIN_LOG_LEVEL: "3",
       TF_ENABLE_ONEDNN_OPTS: "0",
       API_HOST: "localhost",
+      MEDIA_DATABASE_NAME: "media_test",
+      FIRST_ADMIN_EMAIL: "first-admin@example.com",
     },
     /** Suppress Node DEP0169 from a transitive `url.parse()` user (tfjs dependency chain). */
     execArgv: ["--disable-warning=DEP0169"],
+    fileParallelism: false,
   },
 });

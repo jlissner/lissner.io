@@ -59,7 +59,7 @@ mediaWriteRouter.post(
         file.mimetype,
         absolutePath,
       );
-      persistUploadedMedia({
+      await persistUploadedMedia({
         id,
         filename: file.filename,
         originalName: file.originalname,
@@ -96,7 +96,7 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
     req.file.mimetype,
     absolutePath,
   );
-  persistUploadedMedia({
+  await persistUploadedMedia({
     id,
     filename: req.file.filename,
     originalName: req.file.originalname,
@@ -113,7 +113,7 @@ mediaWriteRouter.post("/upload", upload.single("file"), async (req, res) => {
   });
 });
 
-mediaWriteRouter.post("/upload/check-names", (req, res) => {
+mediaWriteRouter.post("/upload/check-names", async (req, res) => {
   const { names } = uploadCheckNamesBodySchema.parse(req.body);
   const conflicts: Array<{
     requestedName: string;
@@ -121,7 +121,7 @@ mediaWriteRouter.post("/upload/check-names", (req, res) => {
   }> = [];
 
   for (const requestedName of names) {
-    const existing = db.findExistingMediaByOriginalName(requestedName);
+    const existing = await db.findExistingMediaByOriginalName(requestedName);
     if (existing) {
       conflicts.push({ requestedName, existing });
     }
@@ -130,28 +130,28 @@ mediaWriteRouter.post("/upload/check-names", (req, res) => {
   res.json({ conflicts });
 });
 
-mediaWriteRouter.post("/tags/bulk-add", (req, res) => {
+mediaWriteRouter.post("/tags/bulk-add", async (req, res) => {
   const body = bulkMediaTagsBodySchema.parse(req.body);
-  const result = bulkAddMediaTags(body.mediaIds, body.tags, {
+  const result = await bulkAddMediaTags(body.mediaIds, body.tags, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
   res.json(result);
 });
 
-mediaWriteRouter.post("/tags/bulk-remove", (req, res) => {
+mediaWriteRouter.post("/tags/bulk-remove", async (req, res) => {
   const body = bulkMediaTagsBodySchema.parse(req.body);
-  const result = bulkRemoveMediaTags(body.mediaIds, body.tags, {
+  const result = await bulkRemoveMediaTags(body.mediaIds, body.tags, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
   res.json(result);
 });
 
-mediaWriteRouter.put("/:id/tags", (req, res) => {
+mediaWriteRouter.put("/:id/tags", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
   const body = mediaTagsBodySchema.parse(req.body);
-  const result = setMediaTags(id, body.tags, {
+  const result = await setMediaTags(id, body.tags, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });
@@ -259,9 +259,9 @@ mediaWriteRouter.post("/:id/rotate", async (req, res) => {
   sendApiError(res, 500, "Could not rotate this image", "rotate_failed");
 });
 
-mediaWriteRouter.patch("/:id", (req, res) => {
+mediaWriteRouter.patch("/:id", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
-  const result = updateMediaDateTaken(id, req.body, {
+  const result = await updateMediaDateTaken(id, req.body, {
     userId: req.jwtUser?.id,
     isAdmin: req.jwtUser?.isAdmin,
   });

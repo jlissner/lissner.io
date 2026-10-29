@@ -14,7 +14,7 @@ describe("Gherkin: Search indexing, activity, and manual backup (features/indexi
   );
 
   it.todo(
-    "Scenario: Manual backup run — see packages/server/src/routes/backup.ts; related: packages/server/src/s3/startup-db-restore.test.ts",
+    "Scenario: Manual backup run — see packages/server/src/routes/backup.ts; related: packages/server/src/db/pg-backup.test.ts",
   );
 
   it.todo(
