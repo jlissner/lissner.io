@@ -4,7 +4,7 @@
 
 A TypeScript monorepo for family media management with AI indexing, face recognition, and S3 sync.
 
-**Tech Stack:** Express v5 (server) + Vite + React (UI) + SQLite + Ollama (embeddings)
+**Tech Stack:** Express v5 (server) + Vite + React (UI) + Postgres + Ollama (embeddings)
 
 ---
 
@@ -77,7 +77,7 @@ npm workspaces under `packages/*` (`@lissner/server`, `@lissner/pics`, `@lissner
 packages/server/src/
   routes/           # Express Router only: parse/validate/respond
   services/         # Business logic: use-cases, orchestration
-  db/              # SQLite queries, migrations
+  db/              # Postgres queries (async client)
   activity/        # WebSocket broadcast, job state
   auth/            # Session, middleware
   s3/              # AWS sync
@@ -199,10 +199,11 @@ components/, config/, hooks/ → features/ → app/
 
 ## Database
 
-- **SQLite** via `better-sqlite3`
-- **Migrations** in `db/*-migrations.ts` with version tracking
-- Use **prepared statements** for queries (defined in `db/*.ts`)
-- **Transactions** for multi-step writes
+- **Media API:** async Postgres client in `packages/server/src/db/client.ts` — requires `POSTGRES_SERVER_URL` + `MEDIA_DATABASE_NAME`
+- **Media schema:** SQL in `packages/db/migrations/media/`; apply with `npm run db:migrate:media`
+- **GraphQL:** `POSTGRES_SERVER_URL` + `GRAPHQL_DATABASE_NAME` (built into a full URL via `buildDatabaseUrl`)
+- **Local Postgres:** `npm run db:up` — DBs named by `GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` (defaults `lissner` + `media`); Vitest uses `media_test`; ops in `packages/db` (ADR 0007)
+- **Backups:** S3 sync stores `media_*.dump` (`pg_dump`); admin restore uses `pg_restore`
 
 ---
 

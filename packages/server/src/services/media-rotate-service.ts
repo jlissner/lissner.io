@@ -41,11 +41,11 @@ export async function rotateMediaImage90Clockwise(
   mediaId: string,
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
 ): Promise<RotateMediaImageResult> {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
-  const ownerId = db.getMediaOwnerId(item.id);
+  const ownerId = await db.getMediaOwnerId(item.id);
   const canEdit = ctx.isAdmin || (ownerId != null && ctx.userId === ownerId);
   if (!canEdit) {
     return { ok: false, reason: "forbidden" };
@@ -76,8 +76,8 @@ export async function rotateMediaImage90Clockwise(
       return { ok: false, reason: "rotate_failed" };
     }
 
-    db.setImagePeople(mediaId, []);
-    const manualRows = db.listManualFaceRowsForMedia(mediaId);
+    await db.setImagePeople(mediaId, []);
+    const manualRows = await db.listManualFaceRowsForMedia(mediaId);
     const rotatedBuf = await sharp(orientedBuf).rotate(-90).toBuffer();
 
     const tmpPath = path.join(mediaDir, `${item.filename}.rotate.tmp`);
@@ -89,19 +89,19 @@ export async function rotateMediaImage90Clockwise(
         { x: row.x, y: row.y, width: row.width, height: row.height },
         H,
       );
-      db.updateFaceGeometryForMediaPerson(mediaId, row.personId, next);
+      await db.updateFaceGeometryForMediaPerson(mediaId, row.personId, next);
     }
 
-    db.setMediaFileSize(mediaId, rotatedBuf.length);
-    db.clearMediaBackedUpAt(mediaId);
+    await db.setMediaFileSize(mediaId, rotatedBuf.length);
+    await db.clearMediaBackedUpAt(mediaId);
     const imageThumbPath = path.join(thumbnailsDir, `${mediaId}_thumb.jpg`);
     await unlinkBestEffort(
       imageThumbPath,
       "[rotate] remove image thumbnail before reindex",
     );
 
-    db.deleteEmbeddingsForMedia(mediaId);
-    const updated = db.getMediaById(mediaId);
+    await db.deleteEmbeddingsForMedia(mediaId);
+    const updated = await db.getMediaById(mediaId);
     if (!updated) {
       return { ok: false, reason: "not_found" };
     }

@@ -43,20 +43,22 @@ function throwEmailInUse(): never {
   );
 }
 
-function getDirectoryRowByPersonId(
+async function getDirectoryRowByPersonId(
   personId: number,
-): PeopleDirectoryRow | null {
-  const listed = listDirectory();
+): Promise<PeopleDirectoryRow | null> {
+  const listed = await listDirectory();
   if (!listed.ok) return null;
   return listed.value.find((r) => r.personId === personId) ?? null;
 }
 
-export function listDirectory(): AdminServiceResult<PeopleDirectoryRow[]> {
+export async function listDirectory(): Promise<
+  AdminServiceResult<PeopleDirectoryRow[]>
+> {
   try {
-    const personIds = mediaDb.getAllPersonIds();
-    const personNames = mediaDb.getPersonNames();
-    const users = authDb.getUsers();
-    const whitelist = authDb.getWhitelist();
+    const personIds = await mediaDb.getAllPersonIds();
+    const personNames = await mediaDb.getPersonNames();
+    const users = await authDb.getUsers();
+    const whitelist = await authDb.getWhitelist();
 
     const usersByPersonId = new Map(
       users
@@ -123,26 +125,26 @@ export function listDirectory(): AdminServiceResult<PeopleDirectoryRow[]> {
   }
 }
 
-export function createDirectoryPerson(input: {
+export async function createDirectoryPerson(input: {
   name: string;
   email?: string;
   isAdmin?: boolean;
   actorUserId?: number;
-}): AdminServiceResult<PeopleDirectoryRow> {
-  const createdPersonId = mediaDb.createPerson(input.name.trim());
+}): Promise<AdminServiceResult<PeopleDirectoryRow>> {
+  const createdPersonId = await mediaDb.createPerson(input.name.trim());
   const normalizedEmail =
     input.email == null ? null : normalizeAndValidateEmail(input.email);
 
   if (normalizedEmail != null) {
-    const users = authDb.getUsers();
+    const users = await authDb.getUsers();
     const userEmailInUse = users.some(
       (u) => u.email.trim().toLowerCase() === normalizedEmail,
     );
     if (userEmailInUse) throwEmailInUse();
-    const existingWhitelist = authDb.getWhitelistByEmail(normalizedEmail);
+    const existingWhitelist = await authDb.getWhitelistByEmail(normalizedEmail);
     if (existingWhitelist != null) throwEmailInUse();
 
-    authDb.upsertWhitelistEntryByEmail({
+    await authDb.upsertWhitelistEntryByEmail({
       email: normalizedEmail,
       isAdmin: input.isAdmin ?? false,
       personId: createdPersonId,
@@ -150,22 +152,22 @@ export function createDirectoryPerson(input: {
     });
   }
 
-  const row = getDirectoryRowByPersonId(createdPersonId);
+  const row = await getDirectoryRowByPersonId(createdPersonId);
   if (row == null) return fail(500, "Failed to load created directory row");
   return ok(row);
 }
 
-export function updateDirectoryPerson(input: {
+export async function updateDirectoryPerson(input: {
   personId: number;
   name: string;
   email?: string;
   isAdmin?: boolean;
   actorUserId?: number;
-}): AdminServiceResult<PeopleDirectoryRow> {
-  const existing = getDirectoryRowByPersonId(input.personId);
+}): Promise<AdminServiceResult<PeopleDirectoryRow>> {
+  const existing = await getDirectoryRowByPersonId(input.personId);
   if (existing == null) return fail(404, "Person not found");
 
-  mediaDb.setPersonName(input.personId, input.name.trim());
+  await mediaDb.setPersonName(input.personId, input.name.trim());
 
   const normalizedEmail =
     input.email == null ? null : normalizeAndValidateEmail(input.email);
@@ -173,17 +175,17 @@ export function updateDirectoryPerson(input: {
     existing.email == null ? null : existing.email.trim().toLowerCase();
 
   if (normalizedEmail != null && normalizedEmail !== currentEmailNormalized) {
-    const users = authDb.getUsers();
+    const users = await authDb.getUsers();
     const userEmailInUse = users.some((u) => {
       const uEmail = u.email.trim().toLowerCase();
       if (uEmail !== normalizedEmail) return false;
       return u.personId != null && u.personId !== input.personId;
     });
     if (userEmailInUse) throwEmailInUse();
-    const wl = authDb.getWhitelistByEmail(normalizedEmail);
+    const wl = await authDb.getWhitelistByEmail(normalizedEmail);
     if (wl != null) throwEmailInUse();
 
-    authDb.upsertWhitelistEntryByEmail({
+    await authDb.upsertWhitelistEntryByEmail({
       email: normalizedEmail,
       isAdmin: input.isAdmin ?? existing.isAdmin,
       personId: input.personId,
@@ -193,12 +195,12 @@ export function updateDirectoryPerson(input: {
 
   const emailForAdminToggle = normalizedEmail ?? currentEmailNormalized ?? null;
   if (emailForAdminToggle != null && input.isAdmin != null) {
-    const hasIdentityUser = authDb
-      .getUsers()
-      .some((u) => u.personId === input.personId);
+    const hasIdentityUser = (await authDb.getUsers()).some(
+      (u) => u.personId === input.personId,
+    );
     const effectivePersonId = hasIdentityUser ? input.personId : input.personId;
 
-    authDb.upsertWhitelistEntryByEmail({
+    await authDb.upsertWhitelistEntryByEmail({
       email: emailForAdminToggle,
       isAdmin: input.isAdmin,
       personId: effectivePersonId,
@@ -206,20 +208,20 @@ export function updateDirectoryPerson(input: {
     });
   }
 
-  const updated = getDirectoryRowByPersonId(input.personId);
+  const updated = await getDirectoryRowByPersonId(input.personId);
   if (updated == null) return fail(500, "Failed to load updated directory row");
   return ok(updated);
 }
 
-export function deleteDirectoryPerson(input: {
+export async function deleteDirectoryPerson(input: {
   personId: number;
   actorUserId?: number;
-}): AdminServiceResult<{ deleted: number }> {
-  const userIds = authDb.getUserIdsByPersonId(input.personId);
-  authDb.deleteRefreshTokensByUserIds(userIds);
-  authDb.deleteUsersByPersonId(input.personId);
-  authDb.deleteWhitelistByPersonId(input.personId);
-  mediaDb.deletePersonSafe(input.personId);
+}): Promise<AdminServiceResult<{ deleted: number }>> {
+  const userIds = await authDb.getUserIdsByPersonId(input.personId);
+  await authDb.deleteRefreshTokensByUserIds(userIds);
+  await authDb.deleteUsersByPersonId(input.personId);
+  await authDb.deleteWhitelistByPersonId(input.personId);
+  await mediaDb.deletePersonSafe(input.personId);
 
   return ok({ deleted: input.personId });
 }

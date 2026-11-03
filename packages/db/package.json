@@ -3,5 +3,22 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Postgres docs/ops (schema migrations land here after SQLite convergence)"
+  "description": "Local Postgres ops and media SQL migrations",
+  "exports": {
+    "./env": "./src/env.ts"
+  },
+  "scripts": {
+    "checkpoint": "bash scripts/checkpoint.sh",
+    "dump-remote": "bash scripts/dump-remote.sh",
+    "restore-local": "bash scripts/restore-local.sh",
+    "migrate:media": "tsx src/migrate.ts media"
+  },
+  "dependencies": {
+    "@lissner/shared": "*",
+    "dotenv": "17.3.1",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.15.5"
+  }
 }

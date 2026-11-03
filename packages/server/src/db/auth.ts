@@ -1,364 +1,247 @@
-import { randomInt, createHash } from "crypto";
+import { randomInt, randomUUID, createHash } from "crypto";
 import { FIRST_ADMIN_EMAIL } from "../config/env.js";
-import { getDb } from "./media-db.js";
+import { execute, queryAll, queryOne, withTransaction } from "./client.js";
 
-function initAuthDb(): void {
-  const db = getDb();
+type Timestamp = string | Date;
+type AuthUser = {
+  id: number;
+  email: string;
+  isAdmin: boolean;
+  personId: number;
+};
 
-  db.exec(`
-  CREATE TABLE IF NOT EXISTS auth_whitelist (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL UNIQUE,
-    is_admin INTEGER NOT NULL DEFAULT 0,
-    invited_at TEXT NOT NULL DEFAULT (datetime('now')),
-    invited_by_user_id INTEGER,
-    person_id INTEGER REFERENCES person_names(person_id)
-  )
-`);
-
-  // Migration: add person_id to auth_whitelist if missing
-  const whitelistCols = (
-    db.prepare("PRAGMA table_info(auth_whitelist)").all() as Array<{
-      name: string;
-    }>
-  ).map((c) => c.name);
-  if (!whitelistCols.includes("person_id")) {
-    db.exec(
-      "ALTER TABLE auth_whitelist ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)",
-    );
-  }
-
-  db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT NOT NULL UNIQUE,
-    is_admin INTEGER NOT NULL DEFAULT 0,
-    created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    person_id INTEGER REFERENCES person_names(person_id)
-  )
-`);
-
-  db.exec(`
-  CREATE TABLE IF NOT EXISTS user_people (
-    user_id INTEGER NOT NULL,
-    person_id INTEGER NOT NULL,
-    PRIMARY KEY (user_id, person_id),
-    FOREIGN KEY (user_id) REFERENCES users(id),
-    FOREIGN KEY (person_id) REFERENCES person_names(person_id)
-  )
-`);
-
-  // Migration: add person_id to users if missing (legacy schema)
-  const userCols = (
-    db.prepare("PRAGMA table_info(users)").all() as Array<{ name: string }>
-  ).map((c) => c.name);
-  if (!userCols.includes("person_id")) {
-    db.exec(
-      "ALTER TABLE users ADD COLUMN person_id INTEGER REFERENCES person_names(person_id)",
-    );
-  }
-  // Backfill: create a person for each user with null person_id
-  const usersToBackfill = db
-    .prepare("SELECT id, email FROM users WHERE person_id IS NULL")
-    .all() as Array<{
-    id: number;
-    email: string;
-  }>;
-  for (const u of usersToBackfill) {
-    const maxRow = db
-      .prepare(
-        "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)",
-      )
-      .get() as { m: number | null };
-    const newPersonId = (maxRow?.m ?? 0) + 1;
-    db.prepare(
-      "INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)",
-    ).run(newPersonId, u.email);
-    db.prepare("UPDATE users SET person_id = ? WHERE id = ?").run(
-      newPersonId,
-      u.id,
-    );
-    db.prepare(
-      "INSERT OR IGNORE INTO user_people (user_id, person_id) VALUES (?, ?)",
-    ).run(u.id, newPersonId);
-  }
-
-  db.exec(`
-  CREATE TABLE IF NOT EXISTS magic_link_tokens (
-    token_hash TEXT PRIMARY KEY,
-    email TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    used_at TEXT
-  )
-`);
-
-  const mlCols = (
-    db.prepare("PRAGMA table_info(magic_link_tokens)").all() as Array<{
-      name: string;
-    }>
-  ).map((c) => c.name);
-  if (!mlCols.includes("login_code")) {
-    db.exec("ALTER TABLE magic_link_tokens ADD COLUMN login_code TEXT");
-  }
-
-  db.exec(`
-  CREATE TABLE IF NOT EXISTS refresh_tokens (
-    token_hash TEXT PRIMARY KEY,
-    user_id INTEGER NOT NULL REFERENCES users(id),
-    family_id TEXT NOT NULL,
-    expires_at TEXT NOT NULL,
-    revoked_at TEXT
-  )
-`);
-  db.exec(
-    "CREATE INDEX IF NOT EXISTS idx_refresh_tokens_family ON refresh_tokens(family_id)",
-  );
-  db.exec(
-    "CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user ON refresh_tokens(user_id)",
+const toIso = (v: Timestamp): string =>
+  v instanceof Date ? v.toISOString() : v;
+const placeholders = (ids: unknown[]): string => ids.map(() => "?").join(", ");
+const sequence = <T>(
+  items: Iterable<T>,
+  fn: (item: T) => Promise<unknown>,
+): Promise<void> =>
+  [...items].reduce<Promise<void>>(
+    (prev, item) => prev.then(() => fn(item)).then(() => undefined),
+    Promise.resolve(),
   );
 
-  deleteExpiredMagicLinkTokens();
-  deleteExpiredRefreshTokens();
+const seedFirstAdmin = async (): Promise<void> => {
+  const defaultUser = await getOrCreateUser(FIRST_ADMIN_EMAIL, true);
+  const whitelisted = await queryOne(
+    "SELECT 1 FROM auth_whitelist WHERE email = ?",
+    [FIRST_ADMIN_EMAIL],
+  );
+  if (whitelisted) return;
+  await execute(
+    "INSERT INTO auth_whitelist (email, is_admin, person_id) VALUES (?, ?, ?)",
+    [FIRST_ADMIN_EMAIL, true, defaultUser.personId],
+  );
+};
 
-  const defaultUser = getOrCreateUser(FIRST_ADMIN_EMAIL, true);
-  const defaultUserWhitelisted = db
-    .prepare("SELECT 1 FROM auth_whitelist WHERE email = ?")
-    .get(FIRST_ADMIN_EMAIL);
+/** Schema from packages/db migrations; cleanup expired tokens and seed first admin. */
+export const initAuthDb = async (): Promise<void> => {
+  await deleteExpiredMagicLinkTokens();
+  await deleteExpiredRefreshTokens();
+  await seedFirstAdmin();
+};
 
-  if (!defaultUserWhitelisted) {
-    db.prepare(
-      `
-      INSERT INTO auth_whitelist (email, is_admin, person_id)
-      VALUES (?, ?, ?)
-    `,
-    ).run(FIRST_ADMIN_EMAIL, 1, defaultUser.personId);
-  }
-}
+const deleteExpiredMagicLinkTokens = async (): Promise<void> => {
+  await execute("DELETE FROM magic_link_tokens WHERE expires_at < NOW()");
+};
 
-function deleteExpiredMagicLinkTokens(): void {
-  const db = getDb();
+const deleteExpiredRefreshTokens = async (): Promise<void> => {
+  await execute("DELETE FROM refresh_tokens WHERE expires_at < NOW()");
+};
 
-  db.prepare(
-    "DELETE FROM magic_link_tokens WHERE expires_at < datetime('now')",
-  ).run();
-}
-
-function deleteExpiredRefreshTokens(): void {
-  const db = getDb();
-
-  db.prepare(
-    "DELETE FROM refresh_tokens WHERE expires_at < datetime('now')",
-  ).run();
-}
-
-export function isEmailWhitelisted(email: string): boolean {
-  const normalizedEmail = email.trim().toLowerCase();
-  const db = getDb();
-  const row = db
-    .prepare("SELECT 1 FROM auth_whitelist WHERE LOWER(email) = ?")
-    .get(normalizedEmail) as { "1": number } | undefined;
-
+export async function isEmailWhitelisted(email: string): Promise<boolean> {
+  const row = await queryOne(
+    "SELECT 1 FROM auth_whitelist WHERE LOWER(email) = ?",
+    [email.trim().toLowerCase()],
+  );
   return Boolean(row);
 }
 
-export function isEmailAdmin(email: string): boolean {
-  const normalizedEmail = email.trim().toLowerCase();
-  const db = getDb();
-  const row = db
-    .prepare("SELECT is_admin FROM auth_whitelist WHERE LOWER(email) = ?")
-    .get(normalizedEmail) as { is_admin: number } | undefined;
-
-  return row?.is_admin === 1;
+export async function isEmailAdmin(email: string): Promise<boolean> {
+  const row = await queryOne<{ is_admin: boolean }>(
+    "SELECT is_admin FROM auth_whitelist WHERE LOWER(email) = ?",
+    [email.trim().toLowerCase()],
+  );
+  return row != null && Boolean(row.is_admin);
 }
 
-function getUserByEmail(
-  email: string,
-): { id: number; email: string; isAdmin: boolean; personId: number } | null {
-  const db = getDb();
-  const row = db
-    .prepare(
-      "SELECT id, email, is_admin as isAdmin, person_id as personId FROM users WHERE LOWER(email) = ?",
-    )
-    .get(email) as
-    | { id: number; email: string; isAdmin: number; personId: number | null }
-    | undefined;
+async function getUserByEmail(email: string): Promise<AuthUser | null> {
+  const row = await queryOne<{
+    id: number;
+    email: string;
+    isAdmin: boolean;
+    personId: number | null;
+  }>(
+    `SELECT id, email, is_admin as "isAdmin", person_id as "personId" FROM users WHERE LOWER(email) = ?`,
+    [email],
+  );
   if (!row || row.personId == null) return null;
-  return { ...row, isAdmin: row.isAdmin === 1, personId: row.personId };
+  return { ...row, isAdmin: Boolean(row.isAdmin), personId: row.personId };
 }
 
-function createPersonForUser(email: string): number {
-  const db = getDb();
-  const maxRow = db
-    .prepare(
-      "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names)",
-    )
-    .get() as { m: number | null };
+async function createPersonForUser(email: string): Promise<number> {
+  const maxRow = await queryOne<{ m: number | null }>(
+    "SELECT MAX(person_id) as m FROM (SELECT person_id FROM image_people UNION SELECT person_id FROM person_names) AS t",
+  );
   const newPersonId = (maxRow?.m ?? 0) + 1;
-  db.prepare(
-    "INSERT OR IGNORE INTO person_names (person_id, name) VALUES (?, ?)",
-  ).run(newPersonId, email);
+  await execute(
+    "INSERT INTO person_names (person_id, name) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    [newPersonId, email],
+  );
   return newPersonId;
 }
 
-function getWhitelistPersonIdForEmail(email: string): number | null {
-  const db = getDb();
-  const row = db
-    .prepare(
-      "SELECT person_id as personId FROM auth_whitelist WHERE LOWER(email) = ?",
-    )
-    .get(email) as { personId: number | null } | undefined;
-
+async function getWhitelistPersonIdForEmail(
+  email: string,
+): Promise<number | null> {
+  const row = await queryOne<{ personId: number | null }>(
+    `SELECT person_id as "personId" FROM auth_whitelist WHERE LOWER(email) = ?`,
+    [email],
+  );
   return row?.personId ?? null;
 }
 
-export function getOrCreateUser(
+const insertUser = async (
   email: string,
   isAdmin: boolean,
-): { id: number; email: string; isAdmin: boolean; personId: number } {
+  personId: number,
+): Promise<AuthUser> => {
+  const result = await execute(
+    "INSERT INTO users (email, is_admin, person_id) VALUES (?, ?, ?)",
+    [email, isAdmin, personId],
+  );
+  if (result.lastId == null) throw new Error("users insert returned no id");
+  await execute(
+    "INSERT INTO user_people (user_id, person_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+    [result.lastId, personId],
+  );
+  return { id: result.lastId, email, isAdmin, personId };
+};
+
+export async function getOrCreateUser(
+  email: string,
+  isAdmin: boolean,
+): Promise<AuthUser> {
   const normalizedEmail = email.trim().toLowerCase();
-  const existing = getUserByEmail(normalizedEmail);
+  const existing = await getUserByEmail(normalizedEmail);
+  if (existing) return existing;
 
-  if (existing) return { ...existing, personId: existing.personId };
-
-  const whitelistPersonId = getWhitelistPersonIdForEmail(normalizedEmail);
-  const personId = whitelistPersonId ?? createPersonForUser(normalizedEmail);
-  const db = getDb();
-  const result = db
-    .prepare("INSERT INTO users (email, is_admin, person_id) VALUES (?, ?, ?)")
-    .run(normalizedEmail, isAdmin ? 1 : 0, personId);
-  const id = result.lastInsertRowid as number;
-  db.prepare(
-    "INSERT OR IGNORE INTO user_people (user_id, person_id) VALUES (?, ?)",
-  ).run(id, personId);
-  return { id, email: normalizedEmail, isAdmin, personId };
+  const whitelistPersonId = await getWhitelistPersonIdForEmail(normalizedEmail);
+  const personId =
+    whitelistPersonId ?? (await createPersonForUser(normalizedEmail));
+  return insertUser(normalizedEmail, isAdmin, personId);
 }
 
 /** The person this user IS (their identity). Required for every user. */
-function getUserPersonId(userId: number): number | null {
-  const db = getDb();
-  const row = db
-    .prepare("SELECT person_id as personId FROM users WHERE id = ?")
-    .get(userId) as { personId: number | null } | undefined;
+async function getUserPersonId(userId: number): Promise<number | null> {
+  const row = await queryOne<{ personId: number | null }>(
+    `SELECT person_id as "personId" FROM users WHERE id = ?`,
+    [userId],
+  );
   return row?.personId ?? null;
 }
 
-/* TODO: see if we can get rid of this */
-/** Returns the user ID for FIRST_ADMIN_EMAIL (creates user if needed). Used when AUTH_ENABLED=false. */
-export function getDefaultOwnerId(): number {
-  const email = FIRST_ADMIN_EMAIL.trim();
-  const user = getOrCreateUser(email, true);
-
-  return user.id;
-}
-
-export function createMagicLinkToken(email: string): {
+export async function createMagicLinkToken(email: string): Promise<{
   code: string;
   expiresAt: string;
-} {
-  deleteExpiredMagicLinkTokens();
+}> {
+  await deleteExpiredMagicLinkTokens();
 
   const normalizedEmail = email.trim().toLowerCase();
   const code = String(randomInt(0, 1000000)).padStart(6, "0");
   const codeHash = createHash("sha256").update(code).digest("hex");
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
-  const db = getDb();
 
-  db.prepare(
-    "INSERT INTO magic_link_tokens (email, expires_at, login_code) VALUES (?, ?, ?)",
-  ).run(normalizedEmail, expiresAt, codeHash);
+  await execute(
+    "INSERT INTO magic_link_tokens (token_hash, email, expires_at, login_code) VALUES (?, ?, ?, ?)",
+    [randomUUID(), normalizedEmail, expiresAt, codeHash],
+  );
 
   return { code, expiresAt };
 }
 
-export function getWhitelist(): Array<{
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  invitedAt: string;
-  personId: number | null;
-}> {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT id, email, is_admin as isAdmin, invited_at as invitedAt, person_id as personId FROM auth_whitelist ORDER BY invited_at DESC",
-    )
-    .all() as Array<{
+export async function getWhitelist(): Promise<
+  Array<{
     id: number;
     email: string;
-    isAdmin: number;
+    isAdmin: boolean;
     invitedAt: string;
     personId: number | null;
-  }>;
-  return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
+  }>
+> {
+  const rows = await queryAll<{
+    id: number;
+    email: string;
+    isAdmin: boolean;
+    invitedAt: Timestamp;
+    personId: number | null;
+  }>(
+    `SELECT id, email, is_admin as "isAdmin", invited_at as "invitedAt", person_id as "personId" FROM auth_whitelist ORDER BY invited_at DESC`,
+  );
+  return rows.map((r) => ({
+    ...r,
+    isAdmin: Boolean(r.isAdmin),
+    invitedAt: toIso(r.invitedAt),
+  }));
 }
 
-export function getWhitelistByEmail(email: string): {
+export async function getWhitelistByEmail(email: string): Promise<{
   id: number;
   email: string;
   isAdmin: boolean;
   invitedAt: string;
   invitedByUserId: number | null;
   personId: number | null;
-} | null {
-  const normalized = email.trim().toLowerCase();
-  const db = getDb();
-  const row = db
-    .prepare(
-      "SELECT id, email, is_admin as isAdmin, invited_at as invitedAt, invited_by_user_id as invitedByUserId, person_id as personId FROM auth_whitelist WHERE LOWER(email) = ?",
-    )
-    .get(normalized) as
-    | {
-        id: number;
-        email: string;
-        isAdmin: number;
-        invitedAt: string;
-        invitedByUserId: number | null;
-        personId: number | null;
-      }
-    | undefined;
+} | null> {
+  const row = await queryOne<{
+    id: number;
+    email: string;
+    isAdmin: boolean;
+    invitedAt: Timestamp;
+    invitedByUserId: number | null;
+    personId: number | null;
+  }>(
+    `SELECT id, email, is_admin as "isAdmin", invited_at as "invitedAt", invited_by_user_id as "invitedByUserId", person_id as "personId" FROM auth_whitelist WHERE LOWER(email) = ?`,
+    [email.trim().toLowerCase()],
+  );
   if (!row) return null;
-  return { ...row, isAdmin: row.isAdmin === 1 };
+  return {
+    ...row,
+    isAdmin: Boolean(row.isAdmin),
+    invitedAt: toIso(row.invitedAt),
+  };
 }
 
-export function updateWhitelistEntry(
+export async function updateWhitelistEntry(
   id: number,
   input: { isAdmin?: boolean; personId?: number | null },
-): boolean {
-  const hasIsAdmin = Object.prototype.hasOwnProperty.call(input, "isAdmin");
-  const hasPersonId = Object.prototype.hasOwnProperty.call(input, "personId");
-  if (!hasIsAdmin && !hasPersonId) return false;
+): Promise<boolean> {
+  const fields = [
+    ...(Object.prototype.hasOwnProperty.call(input, "isAdmin")
+      ? [{ set: "is_admin = ?", value: Boolean(input.isAdmin) }]
+      : []),
+    ...(Object.prototype.hasOwnProperty.call(input, "personId")
+      ? [{ set: "person_id = ?", value: input.personId ?? null }]
+      : []),
+  ];
+  if (fields.length === 0) return false;
 
-  const db = getDb();
-
-  if (hasIsAdmin && hasPersonId) {
-    const result = db
-      .prepare(
-        "UPDATE auth_whitelist SET is_admin = ?, person_id = ? WHERE id = ?",
-      )
-      .run(input.isAdmin ? 1 : 0, input.personId ?? null, id);
-    return result.changes > 0;
-  }
-  if (hasIsAdmin) {
-    const result = db
-      .prepare("UPDATE auth_whitelist SET is_admin = ? WHERE id = ?")
-      .run(input.isAdmin ? 1 : 0, id);
-    return result.changes > 0;
-  }
-  const result = db
-    .prepare("UPDATE auth_whitelist SET person_id = ? WHERE id = ?")
-    .run(input.personId ?? null, id);
+  const result = await execute(
+    `UPDATE auth_whitelist SET ${fields.map((f) => f.set).join(", ")} WHERE id = ?`,
+    [...fields.map((f) => f.value), id],
+  );
   return result.changes > 0;
 }
 
-export function upsertWhitelistEntryByEmail(input: {
+export async function upsertWhitelistEntryByEmail(input: {
   email: string;
   isAdmin: boolean;
   personId: number | null;
   invitedByUserId?: number;
-}): number {
+}): Promise<number> {
   const normalized = input.email.trim().toLowerCase();
-  const db = getDb();
-  db.prepare(
+  await execute(
     `
       INSERT INTO auth_whitelist (email, is_admin, invited_by_user_id, person_id)
       VALUES (?, ?, ?, ?)
@@ -367,191 +250,200 @@ export function upsertWhitelistEntryByEmail(input: {
         person_id = excluded.person_id,
         invited_by_user_id = COALESCE(excluded.invited_by_user_id, auth_whitelist.invited_by_user_id)
     `,
-  ).run(
-    normalized,
-    input.isAdmin ? 1 : 0,
-    input.invitedByUserId ?? null,
-    input.personId,
+    [
+      normalized,
+      Boolean(input.isAdmin),
+      input.invitedByUserId ?? null,
+      input.personId,
+    ],
   );
-  const row = db
-    .prepare("SELECT id FROM auth_whitelist WHERE LOWER(email) = ?")
-    .get(normalized) as { id: number } | undefined;
+  const row = await queryOne<{ id: number }>(
+    "SELECT id FROM auth_whitelist WHERE LOWER(email) = ?",
+    [normalized],
+  );
   return row?.id ?? 0;
 }
 
-export function getUserPeople(userId: number): number[] {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT person_id FROM user_people WHERE user_id = ?")
-    .all(userId) as Array<{ person_id: number }>;
+export async function getUserPeople(userId: number): Promise<number[]> {
+  const rows = await queryAll<{ person_id: number }>(
+    "SELECT person_id FROM user_people WHERE user_id = ?",
+    [userId],
+  );
   return rows.map((r) => r.person_id);
 }
 
 /** TODO: inspect where and how this is being used */
 /** Set the people this user can act on behalf of. Always includes the user's own person (identity). */
-export function setUserPeople(userId: number, personIds: number[]): void {
-  const ownPersonId = getUserPersonId(userId);
-  const ids = new Set(personIds);
-  if (ownPersonId != null) ids.add(ownPersonId);
-
-  const db = getDb();
-
-  db.prepare("DELETE FROM user_people WHERE user_id = ?").run(userId);
-
-  const insert = db.prepare(
-    "INSERT INTO user_people (user_id, person_id) VALUES (?, ?)",
+export async function setUserPeople(
+  userId: number,
+  personIds: number[],
+): Promise<void> {
+  const ownPersonId = await getUserPersonId(userId);
+  const ids = new Set(
+    ownPersonId == null ? personIds : [...personIds, ownPersonId],
   );
-  for (const pid of ids) {
-    insert.run(userId, pid);
-  }
+
+  await withTransaction(async () => {
+    await execute("DELETE FROM user_people WHERE user_id = ?", [userId]);
+    await sequence(ids, (pid) =>
+      execute(
+        "INSERT INTO user_people (user_id, person_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+        [userId, pid],
+      ),
+    );
+  });
 }
 
-export function consumeLoginCode(
+export async function consumeLoginCode(
   email: string,
   codeHash: string,
-): { email: string } | null {
-  deleteExpiredMagicLinkTokens();
+): Promise<{ email: string } | null> {
+  await deleteExpiredMagicLinkTokens();
 
   const normalized = email.trim().toLowerCase();
-  const db = getDb();
-  const row = db
-    .prepare(
-      "SELECT email FROM magic_link_tokens WHERE login_code = ? AND LOWER(email) = ? AND used_at IS NULL AND expires_at > datetime('now')",
-    )
-    .get(codeHash, normalized) as { email: string } | undefined;
+  const row = await queryOne<{ email: string }>(
+    "SELECT email FROM magic_link_tokens WHERE login_code = ? AND LOWER(email) = ? AND used_at IS NULL AND expires_at > NOW()",
+    [codeHash, normalized],
+  );
 
   if (!row) return null;
 
-  db.prepare(
-    "UPDATE magic_link_tokens SET used_at = datetime('now') WHERE login_code = ? AND LOWER(email) = ? AND used_at IS NULL",
-  ).run(codeHash, normalized);
+  await execute(
+    "UPDATE magic_link_tokens SET used_at = NOW() WHERE login_code = ? AND LOWER(email) = ? AND used_at IS NULL",
+    [codeHash, normalized],
+  );
   return row;
 }
 
-export function createRefreshToken(
+export async function createRefreshToken(
   tokenHash: string,
   userId: number,
   familyId: string,
   expiresAt: string,
-): void {
-  const db = getDb();
+): Promise<void> {
+  await deleteExpiredRefreshTokens();
 
-  deleteExpiredRefreshTokens();
-
-  db.prepare(
+  await execute(
     "INSERT INTO refresh_tokens (token_hash, user_id, family_id, expires_at) VALUES (?, ?, ?, ?)",
-  ).run(tokenHash, userId, familyId, expiresAt);
+    [tokenHash, userId, familyId, expiresAt],
+  );
 }
 
-export function consumeRefreshToken(
+export async function consumeRefreshToken(
   tokenHash: string,
-): { userId: number; familyId: string } | null {
-  const db = getDb();
-  const row = db
-    .prepare(
-      "SELECT user_id as userId, family_id as familyId FROM refresh_tokens WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > datetime('now')",
-    )
-    .get(tokenHash) as { userId: number; familyId: string } | undefined;
+): Promise<{ userId: number; familyId: string } | null> {
+  const row = await queryOne<{ userId: number; familyId: string }>(
+    `SELECT user_id as "userId", family_id as "familyId" FROM refresh_tokens WHERE token_hash = ? AND revoked_at IS NULL AND expires_at > NOW()`,
+    [tokenHash],
+  );
 
   if (!row) return null;
 
-  db.prepare(
-    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE token_hash = ?",
-  ).run(tokenHash);
+  await execute(
+    "UPDATE refresh_tokens SET revoked_at = NOW() WHERE token_hash = ?",
+    [tokenHash],
+  );
   return row;
 }
 
-export function revokeTokenFamily(familyId: string): void {
-  const db = getDb();
-
-  db.prepare(
-    "UPDATE refresh_tokens SET revoked_at = datetime('now') WHERE family_id = ? AND revoked_at IS NULL",
-  ).run(familyId);
+export async function revokeTokenFamily(familyId: string): Promise<void> {
+  await execute(
+    "UPDATE refresh_tokens SET revoked_at = NOW() WHERE family_id = ? AND revoked_at IS NULL",
+    [familyId],
+  );
 }
 
-export function isRefreshTokenRevoked(tokenHash: string): boolean {
-  const db = getDb();
-  const row = db
-    .prepare("SELECT revoked_at FROM refresh_tokens WHERE token_hash = ?")
-    .get(tokenHash) as { revoked_at: string | null } | undefined;
-
+export async function isRefreshTokenRevoked(
+  tokenHash: string,
+): Promise<boolean> {
+  const row = await queryOne<{ revoked_at: Timestamp | null }>(
+    "SELECT revoked_at FROM refresh_tokens WHERE token_hash = ?",
+    [tokenHash],
+  );
   return row != null && row.revoked_at != null;
 }
 
-export function getUserById(
+export async function getUserById(
   userId: number,
-): { id: number; email: string; isAdmin: boolean } | null {
-  const db = getDb();
-  const row = db
-    .prepare("SELECT id, email, is_admin as isAdmin FROM users WHERE id = ?")
-    .get(userId) as { id: number; email: string; isAdmin: number } | undefined;
-
+): Promise<{ id: number; email: string; isAdmin: boolean } | null> {
+  const row = await queryOne<{ id: number; email: string; isAdmin: boolean }>(
+    `SELECT id, email, is_admin as "isAdmin" FROM users WHERE id = ?`,
+    [userId],
+  );
   if (!row) return null;
-
-  return { ...row, isAdmin: row.isAdmin === 1 };
+  return { ...row, isAdmin: Boolean(row.isAdmin) };
 }
 
-export function getUsers(): Array<{
-  id: number;
-  email: string;
-  isAdmin: boolean;
-  createdAt: string;
-  personId: number | null;
-}> {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      "SELECT id, email, is_admin as isAdmin, created_at as createdAt, person_id as personId FROM users ORDER BY created_at DESC",
-    )
-    .all() as Array<{
+export async function getUsers(): Promise<
+  Array<{
     id: number;
     email: string;
-    isAdmin: number;
+    isAdmin: boolean;
     createdAt: string;
     personId: number | null;
-  }>;
-  return rows.map((r) => ({ ...r, isAdmin: r.isAdmin === 1 }));
+  }>
+> {
+  const rows = await queryAll<{
+    id: number;
+    email: string;
+    isAdmin: boolean;
+    createdAt: Timestamp;
+    personId: number | null;
+  }>(
+    `SELECT id, email, is_admin as "isAdmin", created_at as "createdAt", person_id as "personId" FROM users ORDER BY created_at DESC`,
+  );
+  return rows.map((r) => ({
+    ...r,
+    isAdmin: Boolean(r.isAdmin),
+    createdAt: toIso(r.createdAt),
+  }));
 }
 
-export function getUserIdsByPersonId(personId: number): number[] {
-  const db = getDb();
-  const rows = db
-    .prepare("SELECT id FROM users WHERE person_id = ?")
-    .all(personId) as Array<{ id: number }>;
+export async function getUserIdsByPersonId(
+  personId: number,
+): Promise<number[]> {
+  const rows = await queryAll<{ id: number }>(
+    "SELECT id FROM users WHERE person_id = ?",
+    [personId],
+  );
   return rows.map((r) => r.id);
 }
 
-export function deleteRefreshTokensByUserIds(userIds: number[]): void {
+export async function deleteRefreshTokensByUserIds(
+  userIds: number[],
+): Promise<void> {
   if (userIds.length === 0) return;
-  const db = getDb();
-  const placeholders = userIds.map(() => "?").join(", ");
-  db.prepare(
-    `DELETE FROM refresh_tokens WHERE user_id IN (${placeholders})`,
-  ).run(...userIds);
+  await execute(
+    `DELETE FROM refresh_tokens WHERE user_id IN (${placeholders(userIds)})`,
+    userIds,
+  );
 }
 
-export function deleteUsersByPersonId(personId: number): number {
-  const db = getDb();
-  return db.transaction(() => {
-    const userIds = getUserIdsByPersonId(personId);
+export async function deleteUsersByPersonId(personId: number): Promise<number> {
+  return withTransaction(async () => {
+    const userIds = await getUserIdsByPersonId(personId);
     if (userIds.length === 0) return 0;
-    const placeholders = userIds.map(() => "?").join(", ");
-    db.prepare(
-      `DELETE FROM user_people WHERE user_id IN (${placeholders})`,
-    ).run(...userIds);
-    const result = db
-      .prepare(`DELETE FROM users WHERE id IN (${placeholders})`)
-      .run(...userIds);
+    const marks = placeholders(userIds);
+    await execute(
+      `DELETE FROM user_people WHERE user_id IN (${marks})`,
+      userIds,
+    );
+    const result = await execute(
+      `DELETE FROM users WHERE id IN (${marks})`,
+      userIds,
+    );
     return result.changes;
-  })();
+  });
 }
 
-export function deleteWhitelistByPersonId(personId: number): number {
-  const db = getDb();
-  const result = db
-    .prepare("DELETE FROM auth_whitelist WHERE person_id = ?")
-    .run(personId);
+export async function deleteWhitelistByPersonId(
+  personId: number,
+): Promise<number> {
+  const result = await execute(
+    "DELETE FROM auth_whitelist WHERE person_id = ?",
+    [personId],
+  );
   return result.changes;
 }
 
-initAuthDb();
+await initAuthDb();

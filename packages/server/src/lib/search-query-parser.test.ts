@@ -102,6 +102,27 @@ describe("parseStructuredSearchQuery", () => {
     if (r.ok) return;
     expect(r.message).toMatch(/Missing|Unexpected|Invalid/i);
   });
+
+  it("keeps hyphens in #tag identifiers", () => {
+    const r = parseStructuredSearchQuery("#road-trip");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({ kind: "tag", tag: "road-trip" });
+  });
+
+  it("lowercases hyphenated tags", () => {
+    const r = parseStructuredSearchQuery("#Summer-2025");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({ kind: "tag", tag: "summer-2025" });
+  });
+
+  it("strips hyphens from @handles after reading full ident", () => {
+    const r = parseStructuredSearchQuery("@joe-lissner");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({ kind: "person", handle: "joelissner" });
+  });
 });
 
 describe("parseSearchQuery", () => {
@@ -128,5 +149,12 @@ describe("parseSearchQuery", () => {
     expect(r.ok).toBe(true);
     if (!r.ok) return;
     expect(r.ast).toEqual({ kind: "tag", tag: "summer" });
+  });
+
+  it("parses hyphenated tags via parseSearchQuery", () => {
+    const r = parseSearchQuery("#road-trip");
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.ast).toEqual({ kind: "tag", tag: "road-trip" });
   });
 });

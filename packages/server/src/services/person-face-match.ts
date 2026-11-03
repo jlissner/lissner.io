@@ -11,12 +11,12 @@ import {
   mergeSuggestionsFromDescriptors,
 } from "./person-merge-suggestions.js";
 
-function getFirstImagePreviewForPerson(personId: number): {
+async function getFirstImagePreviewForPerson(personId: number): Promise<{
   mediaId: string | null;
   previewFaceCrop: boolean;
   previewBox?: { x: number; y: number; width: number; height: number } | null;
-} {
-  const rows = db.getMediaForPerson(personId, 10);
+}> {
+  const rows = await db.getMediaForPerson(personId, 10);
   const first = rows.find((r) => isEffectiveImageItem(r));
   if (!first) return { mediaId: null, previewFaceCrop: false };
   const hasBox =
@@ -41,8 +41,8 @@ function getFirstImagePreviewForPerson(personId: number): {
  */
 export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
   if (process.env.BDD_FACE_MATCH_STUB === "1") {
-    const names = db.getPersonNames();
-    const ids = db.getAllPersonIds();
+    const names = await db.getPersonNames();
+    const ids = await db.getAllPersonIds();
     const ph = ids.find((id) => (names.get(id) ?? "").startsWith("Person"));
     const named = ids.find((id) => !(names.get(id) ?? "").startsWith("Person"));
     if (ph == null || named == null) {
@@ -69,8 +69,8 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
   }
 
   const sim = await getFaceSimilarityFn();
-  const names = db.getPersonNames();
-  const allIds = db.getAllPersonIds();
+  const names = await db.getPersonNames();
+  const allIds = await db.getAllPersonIds();
   const BATCH_LIMIT = 100;
   const placeholders = allIds
     .filter((id) => {
@@ -111,7 +111,7 @@ export async function runFaceMatchBatch(): Promise<FaceMatchRunResponse> {
       : [];
     const topMatch = suggestions[0] ?? null;
     const otherMatches = suggestions.slice(1);
-    const preview = getFirstImagePreviewForPerson(id);
+    const preview = await getFirstImagePreviewForPerson(id);
     reviewQueue.push({
       placeholderPersonId: id,
       placeholderName,

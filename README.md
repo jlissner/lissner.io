@@ -44,7 +44,7 @@ Create the directory structure and base config:
 - **Server entry**: `packages/server/src/index.ts` — start Express, mount routes
 - **API base**: `/api` — e.g. `POST /api/upload`, `GET /api/media/:id`, `GET /api/search?q=...`
 - **UI dev**: Vite dev server with proxy to Express (e.g. `/api` → `http://localhost:3000`)
-- **Database**: SQLite in `data/db/` is sufficient for metadata (file paths, IDs, indexing status)
+- **Database**: Postgres (`media` DB) for metadata (file paths, IDs, indexing status); see `packages/db/README.md`
 
 ---
 
@@ -140,7 +140,7 @@ If S3 variables are missing, the server logs a warning on startup and the UI sho
 
 **Activity (index + S3 sync):** The server exposes a unified snapshot at **`GET /api/activity`** and pushes the same JSON over **`WebSocket /ws/activity`** whenever indexing or sync state changes (no client polling). The UI uses `ActivityProvider` + `useActivity()`. `packages/shared/src/activity.ts` documents the payload shape (duplicated under `packages/server/src/activity/types.ts` and `packages/pics/src/activity/types.ts` for TypeScript project boundaries).
 
-**Nuclear reset:** `npm run nuke` permanently removes local media and thumbnails (`data/media/`, `data/thumbnails/`), deletes all rows in the SQLite database (schema kept), clears the S3 `backup/` prefix when AWS env vars are set, and removes `data/.sync_temp_db.db` if present. It prints counts/sizes first and requires typing a **random 6-digit code** to confirm. **Stop the server** before running so the database is not locked.
+**Nuclear reset:** `npm run nuke` permanently removes local media and thumbnails (`data/media/`, `data/thumbnails/`), truncates all tables in the media Postgres database (schema kept), and clears the S3 `backup/` prefix when AWS env vars are set. It prints counts/sizes first and requires typing a **random 6-digit code** to confirm. **Stop the server** before running.
 
 **Auth (magic link):** Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage access from the Directory tab (which maintains the allowlist) and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
 
@@ -157,7 +157,7 @@ The server loads environment variables from `config/.env.local` (or `config/.env
 
 ## Production & multi-user hosting (~100 people)
 
-The codebase today assumes a **trusted, single-machine** setup (local disk, optional local Ollama, SQLite, in-memory sessions). Running it as a **hosted** app for on the order of **100 users** is feasible, but several areas are **must-fix** for safety and operability; others are **strongly recommended**.
+The codebase today assumes a **trusted, single-machine** setup (local disk, optional local Ollama, Postgres, JWT sessions). Running it as a **hosted** app for on the order of **100 users** is feasible, but several areas are **must-fix** for safety and operability; others are **strongly recommended**.
 
 ### MUST change (before or at launch)
 
@@ -181,7 +181,7 @@ The codebase today assumes a **trusted, single-machine** setup (local disk, opti
 | **`SERVER_PORT` / `DATA_DIR`** | Port and data paths are **hardcoded** (`SERVER_PORT = 3000` in `packages/server/src/index.ts`, paths in `packages/server/src/config/paths.ts`). Environment-driven values simplify PaaS and mounted volumes. |
 | **Rate limiting**              | Protect `POST /api/auth/magic-link`, uploads, and expensive routes from abuse and accidents.                                                                                                                 |
 | **Security headers**           | Add something like **Helmet** (CSP, HSTS, etc.) in front of or on Express.                                                                                                                                   |
-| **SQLite concurrency**         | **better-sqlite3** is synchronous; heavy concurrent writes can block. For ~100 active users, monitor lock contention; **PostgreSQL** (or another server DB) may be warranted if write volume grows.          |
+| **DB connection pooling**      | Media API uses a `pg` pool against Postgres. Size the pool and Postgres `max_connections` for concurrent indexing + API traffic.                                                                             |
 | **Indexing & ML load**         | Face pipeline uses **TensorFlow.js on Node** (`packages/server/src/faces.ts`) — CPU/RAM heavy. Consider background workers, queues, or larger instances so uploads don’t stall the API.                      |
 | **Observability**              | Structured logging, error tracking, uptime checks, alerts, and log aggregation for production.                                                                                                               |
 | **Backups & DR**               | Define RPO/RTO; automate DB + object storage backups; test restore. S3 sync is not a substitute for a full backup strategy.                                                                                  |
@@ -221,7 +221,7 @@ Desired directory structure:
   - **`src/routes/`** — Thin routers: parse requests, call **`src/services/`**, send responses.
   - **`src/services/`** — Application/use-case layer (orchestration; **no** `req`/`res` here). See **`packages/server/README.md`** and **`.cursor/rules/server-architecture.mdc`**.
   - **`src/config/`** — `paths.ts` (data dirs, DB path, UI dist).
-  - **`src/db/`** — `media.ts` (main SQLite schema/API), `auth.ts` (auth tables).
+  - **`src/db/`** — `client.ts` (Postgres access), `media.ts` / `auth.ts` (domain queries). Schema SQL lives in `packages/db/migrations/media/`.
   - **`src/indexing/`** — `media.ts` (embeddings + faces pipeline); `job.ts` (pure index-job state transitions); `job-store.ts` (singleton that applies those transitions for the running server).
   - **`src/activity/`** — `types.ts`, `snapshot.ts` (build unified index+sync snapshot), `broadcast.ts` (WebSocket + broadcast on change).
   - **`src/s3/`** — `sync.ts` (backup / two-way sync; notifies activity listeners on progress).
@@ -239,7 +239,7 @@ Desired directory structure:
   - Runtime data (gitignored).
   - `./data/media/` — uploaded documents and media files.
   - `./data/index/` — AI index and embeddings for search.
-  - `./data/db/` — database files (e.g. SQLite).
+  - `./data/db/` — temporary `pg_dump` files during S3 sync / admin restore.
 
 ---
 

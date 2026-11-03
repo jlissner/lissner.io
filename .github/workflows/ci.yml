@@ -21,11 +21,31 @@ env:
   UI_HOST: ${{ vars.UI_HOST }}
   UI_PORT: ${{ vars.UI_PORT }}
   VITE_API_HOST: ${{ vars.VITE_API_HOST }}
+  # Media API / Vitest (media_test). Server URL has no database path.
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_SERVER_URL: postgres://postgres:postgres@127.0.0.1:5432?sslmode=disable
+  MEDIA_DATABASE_NAME: media_test
+  GRAPHQL_DATABASE_NAME: lissner
 
 jobs:
   build:
     runs-on: ubuntu-latest
     environment: test
+    services:
+      postgres:
+        image: postgres:16.13-bookworm
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -36,6 +56,16 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Create media_test database
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE media_test;"
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE lissner;"
+
+      - name: Migrate media_test schema
+        run: MEDIA_DATABASE_NAME=media_test npm run db:migrate:media
 
       - name: Lint
         run: npm run lint

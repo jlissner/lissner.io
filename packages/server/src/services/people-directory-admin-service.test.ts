@@ -45,11 +45,14 @@ describe("people-directory-admin-service", () => {
     vi.mocked(authDb.deleteWhitelistByPersonId).mockReset();
   });
 
-  it("deletes a directory person linked to a user (auth cleanup then media delete)", () => {
-    vi.mocked(authDb.getUserIdsByPersonId).mockReturnValue([10, 11]);
-    vi.mocked(mediaDb.deletePersonSafe).mockReturnValue({ ok: true });
+  it("deletes a directory person linked to a user (auth cleanup then media delete)", async () => {
+    vi.mocked(authDb.getUserIdsByPersonId).mockResolvedValue([10, 11]);
+    vi.mocked(mediaDb.deletePersonSafe).mockResolvedValue({ ok: true });
 
-    const deleted = deleteDirectoryPerson({ personId: 555, actorUserId: 123 });
+    const deleted = await deleteDirectoryPerson({
+      personId: 555,
+      actorUserId: 123,
+    });
     expect(deleted).toEqual({ ok: true, value: { deleted: 555 } });
 
     expect(authDb.getUserIdsByPersonId).toHaveBeenCalledWith(555);
@@ -65,15 +68,15 @@ describe("people-directory-admin-service", () => {
     );
   });
 
-  it("rejects invalid email with stable error code", () => {
-    vi.mocked(mediaDb.createPerson).mockReturnValue(5);
-    vi.mocked(mediaDb.getAllPersonIds).mockReturnValue([5]);
-    vi.mocked(mediaDb.getPersonNames).mockReturnValue(new Map([[5, "New"]]));
-    vi.mocked(authDb.getUsers).mockReturnValue([]);
-    vi.mocked(authDb.getWhitelist).mockReturnValue([]);
+  it("rejects invalid email with stable error code", async () => {
+    vi.mocked(mediaDb.createPerson).mockResolvedValue(5);
+    vi.mocked(mediaDb.getAllPersonIds).mockResolvedValue([5]);
+    vi.mocked(mediaDb.getPersonNames).mockResolvedValue(new Map([[5, "New"]]));
+    vi.mocked(authDb.getUsers).mockResolvedValue([]);
+    vi.mocked(authDb.getWhitelist).mockResolvedValue([]);
 
     try {
-      createDirectoryPerson({
+      await createDirectoryPerson({
         name: "New",
         email: "not-an-email",
         actorUserId: 123,
@@ -87,11 +90,11 @@ describe("people-directory-admin-service", () => {
     }
   });
 
-  it("rejects email already in use with stable error code", () => {
-    vi.mocked(mediaDb.createPerson).mockReturnValue(5);
-    vi.mocked(mediaDb.getAllPersonIds).mockReturnValue([5]);
-    vi.mocked(mediaDb.getPersonNames).mockReturnValue(new Map([[5, "New"]]));
-    vi.mocked(authDb.getUsers).mockReturnValue([
+  it("rejects email already in use with stable error code", async () => {
+    vi.mocked(mediaDb.createPerson).mockResolvedValue(5);
+    vi.mocked(mediaDb.getAllPersonIds).mockResolvedValue([5]);
+    vi.mocked(mediaDb.getPersonNames).mockResolvedValue(new Map([[5, "New"]]));
+    vi.mocked(authDb.getUsers).mockResolvedValue([
       {
         id: 1,
         email: "used@example.com",
@@ -100,10 +103,10 @@ describe("people-directory-admin-service", () => {
         personId: 99,
       },
     ]);
-    vi.mocked(authDb.getWhitelist).mockReturnValue([]);
+    vi.mocked(authDb.getWhitelist).mockResolvedValue([]);
 
     try {
-      createDirectoryPerson({
+      await createDirectoryPerson({
         name: "New",
         email: "used@example.com",
         actorUserId: 123,
@@ -117,9 +120,9 @@ describe("people-directory-admin-service", () => {
     }
   });
 
-  it("combines person-only, whitelist, and identity people into a flattened directory", () => {
-    vi.mocked(mediaDb.getAllPersonIds).mockReturnValue([1, 2, 3]);
-    vi.mocked(mediaDb.getPersonNames).mockReturnValue(
+  it("combines person-only, whitelist, and identity people into a flattened directory", async () => {
+    vi.mocked(mediaDb.getAllPersonIds).mockResolvedValue([1, 2, 3]);
+    vi.mocked(mediaDb.getPersonNames).mockResolvedValue(
       new Map([
         [1, "Alice"],
         [2, "Bob"],
@@ -127,7 +130,7 @@ describe("people-directory-admin-service", () => {
       ]),
     );
 
-    vi.mocked(authDb.getUsers).mockReturnValue([
+    vi.mocked(authDb.getUsers).mockResolvedValue([
       {
         id: 10,
         email: "carol@example.com",
@@ -137,7 +140,7 @@ describe("people-directory-admin-service", () => {
       },
     ]);
 
-    vi.mocked(authDb.getWhitelist).mockReturnValue([
+    vi.mocked(authDb.getWhitelist).mockResolvedValue([
       {
         id: 100,
         email: "orphan@example.com",
@@ -154,7 +157,7 @@ describe("people-directory-admin-service", () => {
       },
     ]);
 
-    const result = listDirectory();
+    const result = await listDirectory();
     expect(result.ok).toBe(true);
     if (!result.ok) return;
 
@@ -189,11 +192,13 @@ describe("people-directory-admin-service", () => {
     ]);
   });
 
-  it("prefers identity email and merges admin status when both user and whitelist exist", () => {
-    vi.mocked(mediaDb.getAllPersonIds).mockReturnValue([3]);
-    vi.mocked(mediaDb.getPersonNames).mockReturnValue(new Map([[3, "Carol"]]));
+  it("prefers identity email and merges admin status when both user and whitelist exist", async () => {
+    vi.mocked(mediaDb.getAllPersonIds).mockResolvedValue([3]);
+    vi.mocked(mediaDb.getPersonNames).mockResolvedValue(
+      new Map([[3, "Carol"]]),
+    );
 
-    vi.mocked(authDb.getUsers).mockReturnValue([
+    vi.mocked(authDb.getUsers).mockResolvedValue([
       {
         id: 10,
         email: "carol@example.com",
@@ -203,7 +208,7 @@ describe("people-directory-admin-service", () => {
       },
     ]);
 
-    vi.mocked(authDb.getWhitelist).mockReturnValue([
+    vi.mocked(authDb.getWhitelist).mockResolvedValue([
       {
         id: 300,
         email: "carol@example.com",
@@ -213,7 +218,7 @@ describe("people-directory-admin-service", () => {
       },
     ]);
 
-    const result = listDirectory();
+    const result = await listDirectory();
     expect(result).toEqual({
       ok: true,
       value: [

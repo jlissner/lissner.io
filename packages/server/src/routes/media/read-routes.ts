@@ -22,11 +22,11 @@ import {
 
 export const mediaReadRouter = Router();
 
-mediaReadRouter.get("/", (req, res) => {
+mediaReadRouter.get("/", async (req, res) => {
   const { limit, offset, personId, sortBy } = mediaListQuerySchema.parse(
     req.query,
   );
-  const { items, total } = listMediaEnriched({
+  const { items, total } = await listMediaEnriched({
     limit,
     offset,
     personId,
@@ -35,32 +35,32 @@ mediaReadRouter.get("/", (req, res) => {
   res.json({ items, total });
 });
 
-mediaReadRouter.get("/timeline", (req, res) => {
+mediaReadRouter.get("/timeline", async (req, res) => {
   const { personId, sortBy } = mediaListQuerySchema.parse(req.query);
-  const months = db.getDistinctMonths(sortBy, personId);
+  const months = await db.getDistinctMonths(sortBy, personId);
 
   res.json({ months });
 });
 
-mediaReadRouter.get("/timeline/offset", (req, res) => {
+mediaReadRouter.get("/timeline/offset", async (req, res) => {
   const { personId, sortBy } = mediaListQuerySchema.parse(req.query);
   const monthKey = String(req.query.month ?? "");
   if (!/^\d{4}-\d{2}$/.test(monthKey)) {
     res.status(400).json({ error: "month must be YYYY-MM" });
     return;
   }
-  const offset = db.getOffsetForMonth(sortBy, monthKey, personId);
+  const offset = await db.getOffsetForMonth(sortBy, monthKey, personId);
 
   res.json({ offset });
 });
 
-mediaReadRouter.get("/tags", (_req, res) => {
-  res.json({ tags: listDistinctMediaTags() });
+mediaReadRouter.get("/tags", async (_req, res) => {
+  res.json({ tags: await listDistinctMediaTags() });
 });
 
 mediaReadRouter.get("/:id", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
-  const item = db.getMediaById(id);
+  const item = await db.getMediaById(id);
 
   if (!item) {
     sendApiError(res, 404, "Not found", "not_found");
@@ -178,9 +178,9 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
   res.send(out.buffer);
 });
 
-mediaReadRouter.get("/:id/details", (req, res) => {
+mediaReadRouter.get("/:id/details", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
-  const out = getMediaDetailsEnriched(id);
+  const out = await getMediaDetailsEnriched(id);
 
   if (!out.ok) {
     sendApiError(res, 404, "Not found", "not_found");

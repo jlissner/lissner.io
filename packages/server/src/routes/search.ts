@@ -70,11 +70,11 @@ export const searchRouter = Router();
 searchRouter.post(
   "/index",
   requireAdminForFullLibraryForceIndex,
-  (req, res) => {
+  async (req, res) => {
     const { force } = searchIndexQuerySchema.parse(req.query);
     const body = searchIndexBodySchema.parse(req.body);
     const mediaIds = body?.mediaIds;
-    const result = startBulkIndexingJob({ force, mediaIds });
+    const result = await startBulkIndexingJob({ force, mediaIds });
     if (!result.ok) {
       sendApiError(res, 409, "Indexing already in progress", result.reason);
       return;
@@ -98,8 +98,8 @@ searchRouter.post("/index/cancel", requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-searchRouter.post("/index/clear", requireAdmin, (_req, res) => {
-  clearAllSearchIndexData();
+searchRouter.post("/index/clear", requireAdmin, async (_req, res) => {
+  await clearAllSearchIndexData();
   res.json({ cleared: true });
 });
 
@@ -144,6 +144,7 @@ searchRouter.get(
     const searchResult = await searchMediaByQuery(query.q, {
       limit: query.limit,
       offset: query.offset,
+      sortBy: query.sortBy,
     });
     if (!searchResult.ok) {
       sendSearchFailure(res, searchResult);

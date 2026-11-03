@@ -1,3 +1,4 @@
+import { buildDatabaseUrl } from "@lissner/shared";
 import { config } from "dotenv";
 import { existsSync } from "fs";
 import path from "path";
@@ -24,18 +25,27 @@ function getOptionalEnvVar(name: string, fallback: string): string {
   return val == null || val === "" ? fallback : val;
 }
 
-export const DATABASE_URL = (() => {
-  const url = getEnvVar("DATABASE_URL");
+const assertSslMode = (url: string, label: string): void => {
   invariant(
     !/[?&]ssl=false(?:&|$)/i.test(url),
-    'DATABASE_URL must not use ssl=false — pg treats it as the string "false" and still enables TLS. For local Postgres without TLS use sslmode=disable. For RDS and other hosts that require TLS use sslmode=no-verify or sslmode=verify-full with a CA.',
+    `${label} must not use ssl=false — pg treats it as the string "false" and still enables TLS. For local Postgres without TLS use sslmode=disable. For RDS and other hosts that require TLS use sslmode=no-verify or sslmode=verify-full with a CA.`,
   );
   invariant(
     !/[?&]ssl=true(?:&|$)/i.test(url),
-    "DATABASE_URL must not use ssl=true — use sslmode=no-verify for RDS, or sslmode=verify-full with the RDS CA bundle.",
+    `${label} must not use ssl=true — use sslmode=no-verify for RDS, or sslmode=verify-full with the RDS CA bundle.`,
   );
+};
+
+const POSTGRES_SERVER_URL = getEnvVar("POSTGRES_SERVER_URL");
+const GRAPHQL_DATABASE_NAME = getEnvVar("GRAPHQL_DATABASE_NAME");
+
+export const DATABASE_URL = (() => {
+  assertSslMode(POSTGRES_SERVER_URL, "POSTGRES_SERVER_URL");
+  const url = buildDatabaseUrl(POSTGRES_SERVER_URL, GRAPHQL_DATABASE_NAME);
+  assertSslMode(url, "GRAPHQL database URL");
   return url;
 })();
+
 export const GRAPHQL_PORT = Number(getOptionalEnvVar("GRAPHQL_PORT", "5678"));
 export const GRAPHQL_HOST = getOptionalEnvVar("GRAPHQL_HOST", "localhost");
 export const IS_PRODUCTION = process.env.NODE_ENV === "production";

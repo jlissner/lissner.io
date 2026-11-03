@@ -65,12 +65,12 @@ const MAX_SUGGESTIONS = 12;
 export async function collectDescriptorsForPerson(
   personId: number,
 ): Promise<number[][]> {
-  const rows = db.getMediaForPerson(personId, SAMPLE_IMAGE_LIMIT);
+  const rows = await db.getMediaForPerson(personId, SAMPLE_IMAGE_LIMIT);
   const descriptors: number[][] = [];
   for (const row of rows) {
     if (!isEffectiveImageItem(row)) continue;
     if (descriptors.length >= MAX_DESCRIPTORS) break;
-    const item = db.getMediaById(row.id);
+    const item = await db.getMediaById(row.id);
     if (!item) continue;
     const ok = await ensureLocalMediaFile(item);
     if (!ok) continue;
@@ -148,12 +148,12 @@ export function mergeSuggestionsFromDescriptors(
 export async function getMergeSuggestionsForPerson(
   sourcePersonId: number,
 ): Promise<MergeSuggestion[]> {
-  const name = db.getPersonName(sourcePersonId);
+  const name = await db.getPersonName(sourcePersonId);
   const displayName = name ?? `Person ${sourcePersonId}`;
   if (!isPlaceholderPersonName(displayName)) {
     return [];
   }
-  const allIds = db.getAllPersonIds();
+  const allIds = await db.getAllPersonIds();
   if (!allIds.includes(sourcePersonId)) {
     return [];
   }
@@ -164,7 +164,7 @@ export async function getMergeSuggestionsForPerson(
   }
 
   const sim = await getFaceSimilarityFn();
-  const names = db.getPersonNames();
+  const names = await db.getPersonNames();
   const namedIds = allIds.filter((pid) => {
     if (pid === sourcePersonId) return false;
     const n = names.get(pid) ?? `Person ${pid}`;

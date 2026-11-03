@@ -38,26 +38,26 @@ peopleRouter.get(
   }),
 );
 
-peopleRouter.get("/:id/media", (req, res) => {
+peopleRouter.get("/:id/media", async (req, res) => {
   const { id } = personIdParamsSchema.parse(req.params);
   const q = personMediaQuerySchema.parse(req.query);
   const limit = q.limit ?? 100;
-  res.json(getPersonMediaPreview(id, limit));
+  res.json(await getPersonMediaPreview(id, limit));
 });
 
-peopleRouter.get("/", (_req, res) => {
-  res.json(listPeopleSummary());
+peopleRouter.get("/", async (_req, res) => {
+  res.json(await listPeopleSummary());
 });
 
-peopleRouter.post("/", (req, res) => {
+peopleRouter.post("/", async (req, res) => {
   const body = createPersonBodySchema.parse(req.body);
-  const created = createPersonNamed(body.name);
+  const created = await createPersonNamed(body.name);
   res.status(201).json(created);
 });
 
-peopleRouter.delete("/:id", (req, res) => {
+peopleRouter.delete("/:id", async (req, res) => {
   const { id } = personIdParamsSchema.parse(req.params);
-  const result = deletePersonById(id);
+  const result = await deletePersonById(id);
   if (!result.ok) {
     if (result.reason === "linked_to_user") {
       sendApiError(
@@ -74,10 +74,10 @@ peopleRouter.delete("/:id", (req, res) => {
   res.json({ deleted: id });
 });
 
-peopleRouter.post("/:id/merge", (req, res) => {
+peopleRouter.post("/:id/merge", async (req, res) => {
   const { id: mergeFromId } = personIdParamsSchema.parse(req.params);
   const body = mergePersonBodySchema.parse(req.body);
-  const result = mergePeople(mergeFromId, body.mergeInto);
+  const result = await mergePeople(mergeFromId, body.mergeInto);
   if (result.ok) {
     res.json({ merged: result.merged, into: result.into });
     return;
@@ -103,8 +103,8 @@ peopleRouter.post("/:id/merge", (req, res) => {
   sendApiError(res, 404, "Person not found", "person_not_found");
 });
 
-peopleRouter.put("/:id", (req, res) => {
+peopleRouter.put("/:id", async (req, res) => {
   const { id } = personIdParamsSchema.parse(req.params);
   const body = updatePersonBodySchema.parse(req.body);
-  res.json(renamePerson(id, body.name));
+  res.json(await renamePerson(id, body.name));
 });

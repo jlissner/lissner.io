@@ -40,15 +40,9 @@ async function ensureServer(world: FaceMatchWorld): Promise<string> {
 }
 
 AfterAll(async () => {
-  await new Promise<void>((resolve) => {
-    if (!srv.server) {
-      resolve();
-      return;
-    }
-    srv.server.close(() => resolve());
-    srv.server = null;
-    srv.baseUrl = null;
-  });
+  const { closeBddServer } = await import("../support/close-bdd-server.ts");
+  srv.server = await closeBddServer(srv.server);
+  srv.baseUrl = null;
 });
 
 async function fetchJson(
@@ -124,7 +118,7 @@ Given(
       await import("../../packages/server/dist/indexing/media.js");
     const { getMediaById } =
       await import("../../packages/server/dist/db/media.js");
-    const row = getMediaById(body.id);
+    const row = await getMediaById(body.id);
     assert.ok(row);
     await indexMediaItem({
       id: row.id,
@@ -137,9 +131,9 @@ Given(
 
     if (process.env.BDD_FACE_DETECT_OFF === "1") {
       const mp = await import("../../packages/server/dist/db/media-people.js");
-      const pid = mp.createNewPerson();
+      const pid = await mp.createNewPerson();
       const conf = logicalPath.includes("no-human") ? 0.35 : 0.85;
-      mp.setImagePeople(body.id, [
+      await mp.setImagePeople(body.id, [
         {
           personId: pid,
           box: { x: 0.2, y: 0.2, width: 0.35, height: 0.4 },
@@ -232,8 +226,8 @@ Given(
     await ensureServer(this);
     const { getAllPersonIds, getPersonNames } =
       await import("../../packages/server/dist/db/media.js");
-    const ids = getAllPersonIds();
-    const names = getPersonNames();
+    const ids = await getAllPersonIds();
+    const names = await getPersonNames();
     const ph = ids.find((id) => (names.get(id) ?? "").startsWith("Person"));
     assert.ok(ph != null, "Expected a placeholder person in DB");
     this.manualLinkPersonId = ph;
@@ -245,7 +239,7 @@ Given(
   async function () {
     const { createPerson } =
       await import("../../packages/server/dist/db/media-people.js");
-    createPerson("Alice BDD");
+    await createPerson("Alice BDD");
   },
 );
 
@@ -255,8 +249,8 @@ Given(
     await ensureServer(this);
     const { getAllPersonIds, getPersonNames } =
       await import("../../packages/server/dist/db/media.js");
-    const ids = getAllPersonIds();
-    const names = getPersonNames();
+    const ids = await getAllPersonIds();
+    const names = await getPersonNames();
     const ph = ids.find((id) => (names.get(id) ?? "").startsWith("Person"));
     assert.ok(ph != null);
     this.manualLinkPersonId = ph;
@@ -280,8 +274,8 @@ Then(
     assert.equal(this.lastStatus, 200);
     const { getAllPersonIds, getPersonNames } =
       await import("../../packages/server/dist/db/media.js");
-    const names = getPersonNames();
-    const ids = getAllPersonIds();
+    const names = await getPersonNames();
+    const ids = await getAllPersonIds();
     const ph = this.manualLinkPersonId;
     assert.ok(ph != null);
     assert.ok(ids.includes(ph), "Placeholder should still exist");
@@ -305,8 +299,8 @@ Then(
   async function (this: FaceMatchWorld) {
     const { getAllPersonIds, getPersonNames } =
       await import("../../packages/server/dist/db/media.js");
-    const names = getPersonNames();
-    const ids = getAllPersonIds();
+    const names = await getPersonNames();
+    const ids = await getAllPersonIds();
     const ph = this.manualLinkPersonId;
     assert.ok(ph != null);
     assert.ok(ids.includes(ph));
@@ -374,8 +368,7 @@ Given(
       await import("../../packages/server/dist/indexing/media.js");
     const { getMediaById } =
       await import("../../packages/server/dist/db/media.js");
-    let items = listMedia();
-    if (items.length === 0) {
+    if ((await listMedia()).length === 0) {
       const rel = "single-clear-face";
       const jpg = join("features/fixtures/people", `${rel}.jpg`);
       assert.ok(existsSync(jpg));
@@ -390,7 +383,7 @@ Given(
       });
       assert.equal(up.status, 201);
       const body = (await up.json()) as { id: string };
-      const row = getMediaById(body.id);
+      const row = await getMediaById(body.id);
       assert.ok(row);
       await indexMediaItem({
         id: row.id,
@@ -400,11 +393,11 @@ Given(
         size: row.size,
         uploadedAt: row.uploadedAt,
       });
-      items = listMedia();
     }
+    const items = await listMedia();
     assert.ok(items.length > 0);
     this.fixtureMediaId = items[0]!.id;
-    const emb = getEmbeddings();
+    const emb = await getEmbeddings();
     assert.ok(emb.some((e) => e.mediaId === this.fixtureMediaId));
     const row = emb.find((e) => e.mediaId === this.fixtureMediaId);
     this.searchBefore = row?.embedding ?? null;
@@ -458,12 +451,12 @@ Given(
       await import("../../packages/server/dist/db/media.js");
     const { createNewPerson, setPersonName, addPersonToMedia } =
       await import("../../packages/server/dist/db/media-people.js");
-    const items = listMedia(1, 0);
+    const items = await listMedia();
     assert.ok(items[0]);
     const mediaId = items[0]!.id;
-    const pid = createNewPerson();
-    setPersonName(pid, "BDD Manual Face");
-    addPersonToMedia(
+    const pid = await createNewPerson();
+    await setPersonName(pid, "BDD Manual Face");
+    await addPersonToMedia(
       mediaId,
       pid,
       { x: 0.1, y: 0.1, width: 0.2, height: 0.2 },
@@ -493,7 +486,7 @@ Then(
     const { getImagePeople } =
       await import("../../packages/server/dist/db/media-people.js");
     assert.ok(this.manualLinkMediaId && this.manualLinkPersonId);
-    const ppl = getImagePeople(this.manualLinkMediaId);
+    const ppl = await getImagePeople(this.manualLinkMediaId);
     assert.ok(ppl.includes(this.manualLinkPersonId));
   },
 );

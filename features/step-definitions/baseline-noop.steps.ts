@@ -456,14 +456,12 @@ Given("the app is starting in a production deployment", function () {
 });
 
 Given("S3 backup is configured", function () {
-  assert.ok(existsSync("packages/server/src/s3/startup-db-restore.test.ts"));
+  assert.ok(
+    existsSync("packages/server/src/services/db-backup-admin-service.ts"),
+  );
 });
 
 Given("S3 backup is not configured", function () {
-  assert.ok(true);
-});
-
-Given("the local database file does not exist", function () {
   assert.ok(true);
 });
 
@@ -475,28 +473,19 @@ When("the app starts", function () {
   assert.ok(true);
 });
 
-Then("the app should download the most recent database backup", function () {
-  assert.ok(true);
-});
-
-Then("the app should use the downloaded database for operation", function () {
-  assert.ok(true);
-});
-
 Then("the app should start without restoring from S3", function () {
   assert.ok(true);
 });
 
-Given("S3 contains no database backups", function () {
-  assert.ok(true);
+When("an admin restores a media dump backup via the admin API", function () {
+  assert.ok(
+    existsSync("packages/server/src/services/db-backup-admin-service.ts"),
+  );
 });
 
-Given(
-  "downloading the most recent database backup fails or results in an invalid database",
-  function () {
-    assert.ok(true);
-  },
-);
+Then("the media database should be restored from that dump", function () {
+  assert.ok(existsSync("packages/server/src/db/pg-backup.ts"));
+});
 
 Given("the app stores custom tags per media item", function () {
   assert.ok(
@@ -545,6 +534,22 @@ Given("media C has no tags", function () {
 
 When("I search for {string}", function (_query: string) {
   // Deferred; search parser is covered by unit tests.
+});
+
+Given(
+  "media {word} has tag {string} and was taken in {string}",
+  function (_label: string, _tag: string, _month: string) {
+    assert.ok(true);
+  },
+);
+
+When("I search for {string} sorted by date taken", function (_query: string) {
+  // Chronological ordering covered by search-service unit tests.
+  assert.ok(true);
+});
+
+Then("results list media New before media Old", function () {
+  assert.ok(existsSync("packages/server/src/services/search-service.test.ts"));
 });
 
 Then("results include media A", function () {

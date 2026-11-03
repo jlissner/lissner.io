@@ -17,6 +17,12 @@
     "build:graphql": "tsc -b packages/shared packages/graphql",
     "build:server": "tsc -b packages/shared packages/server",
     "clear-index": "tsx scripts/clear-search-index.ts",
+    "db:up": "bash scripts/docker-compose.sh up -d postgres",
+    "db:down": "bash scripts/docker-compose.sh stop postgres",
+    "db:checkpoint": "npm run checkpoint -w @lissner/db",
+    "db:dump-remote": "npm run dump-remote -w @lissner/db",
+    "db:restore-local": "npm run restore-local -w @lissner/db",
+    "db:migrate:media": "npm run build -w @lissner/shared && npm run migrate:media -w @lissner/db",
     "dev": "concurrently -n ollama,server,ui,graphql -c yellow,blue,green,magenta \"ollama serve\" \"npm run dev:server\" \"npm run dev:ui\" \"npm run dev:graphql\"",
     "dev:graphql": "npm run dev -w @lissner/graphql",
     "dev:server": "npm run dev -w @lissner/server",
@@ -46,10 +52,9 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "3.1033.0",
-    "better-sqlite3": "12.6.2"
+    "pg": "^8.16.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "7.6.13",
     "@cucumber/cucumber": "^12.8.2",
     "@eslint/js": "10.0.1",
     "@types/node": "24.1.0",

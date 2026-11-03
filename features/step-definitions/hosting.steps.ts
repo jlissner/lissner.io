@@ -82,14 +82,8 @@ After(function () {
 });
 
 AfterAll(async () => {
-  await new Promise<void>((resolve) => {
-    if (!hostingState.server) {
-      resolve();
-      return;
-    }
-    hostingState.server.close(() => resolve());
-    hostingState.server = null;
-  });
+  const { closeBddServer } = await import("../support/close-bdd-server.ts");
+  hostingState.server = await closeBddServer(hostingState.server);
 });
 
 Given(
@@ -162,11 +156,15 @@ async function loginCookieForHosting(world: HostingWorld): Promise<string> {
   const authDb = await import("../../packages/server/dist/db/auth.js");
   const email = "hosting-ws-bdd@test.local";
   try {
-    authDb.addToWhitelist(email, false);
+    await authDb.upsertWhitelistEntryByEmail({
+      email,
+      isAdmin: false,
+      personId: null,
+    });
   } catch {
     //
   }
-  const { code } = authDb.createMagicLinkToken(email);
+  const { code } = await authDb.createMagicLinkToken(email);
   const res = await fetch(`${world.hostingBaseUrl}/auth/verify-code`, {
     method: "POST",
     headers: { "content-type": "application/json" },

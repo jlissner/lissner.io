@@ -13,6 +13,7 @@ export function useHomePage() {
   const mediaSearch = useMediaSearch({
     scrollContainerRef,
     activeQuery: galleryUrl.q,
+    sortBy: galleryUrl.sortBy,
   });
   const {
     isSearchMode,

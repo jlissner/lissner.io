@@ -59,7 +59,7 @@ describe("getMediaPreviewFile", () => {
   });
 
   it("returns bad_type for non-image, non-video files", async () => {
-    vi.mocked(db.getMediaById).mockReturnValue(baseItem);
+    vi.mocked(db.getMediaById).mockResolvedValue(baseItem);
     vi.mocked(sniffAndPersistMediaMime).mockResolvedValue({
       sniffed: null,
       persistedUpdate: false,
@@ -74,7 +74,7 @@ describe("getMediaPreviewFile", () => {
   });
 
   it("returns preview_failed when Sharp cannot decode an image", async () => {
-    vi.mocked(db.getMediaById).mockReturnValue({
+    vi.mocked(db.getMediaById).mockResolvedValue({
       ...baseItem,
       originalName: "photo.heic",
       mimeType: "image/heic",

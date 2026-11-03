@@ -1,4 +1,4 @@
-import { getDb } from "./media-db.js";
+import { execute, queryAll, queryOne } from "./client.js";
 
 const VALID_IDENT = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -6,12 +6,12 @@ function validateTableName(name: string): void {
   if (!VALID_IDENT.test(name)) throw new Error("Invalid table name");
 }
 
-export function getDataExplorerTables(): string[] {
-  const rows = getDb()
-    .prepare(
-      "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
-    )
-    .all() as Array<{ name: string }>;
+export async function getDataExplorerTables(): Promise<string[]> {
+  const rows = await queryAll<{ name: string }>(
+    `SELECT table_name as name FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+     ORDER BY table_name`,
+  );
   return rows.map((r) => r.name);
 }
 
@@ -22,20 +22,39 @@ type DataExplorerColumn = {
   pk: number;
 };
 
-export function getDataExplorerTableSchema(
+export async function getDataExplorerTableSchema(
   tableName: string,
-): DataExplorerColumn[] {
+): Promise<DataExplorerColumn[]> {
   validateTableName(tableName);
-  const rows = getDb()
-    .prepare(`PRAGMA table_info(${tableName})`)
-    .all() as Array<{
+  const rows = await queryAll<{
     name: string;
     type: string;
-    notnull: number;
-    pk: number;
-  }>;
+    notnull: boolean | number;
+    pk: number | string;
+  }>(
+    `SELECT c.column_name as name, c.data_type as type,
+            CASE WHEN c.is_nullable = 'NO' THEN 1 ELSE 0 END as notnull,
+            CASE WHEN EXISTS (
+              SELECT 1 FROM information_schema.table_constraints tc
+              JOIN information_schema.key_column_usage kcu
+                ON tc.constraint_name = kcu.constraint_name
+               AND tc.table_schema = kcu.table_schema
+              WHERE tc.table_schema = 'public' AND tc.table_name = ?
+                AND tc.constraint_type = 'PRIMARY KEY'
+                AND kcu.column_name = c.column_name
+            ) THEN 1 ELSE 0 END as pk
+     FROM information_schema.columns c
+     WHERE c.table_schema = 'public' AND c.table_name = ?
+     ORDER BY c.ordinal_position`,
+    [tableName, tableName],
+  );
   if (rows.length === 0) throw new Error("Table not found");
-  return rows;
+  return rows.map((r) => ({
+    name: r.name,
+    type: r.type,
+    notnull: Number(r.notnull),
+    pk: Number(r.pk),
+  }));
 }
 
 const DATA_EXPLORER_SEARCH_MAX_LEN = 500;
@@ -63,53 +82,57 @@ function buildDataExplorerSearchClause(
   return { whereSql: `(${parts.join(" OR ")})`, params };
 }
 
-export function getDataExplorerRows(
+export async function getDataExplorerRows(
   tableName: string,
   limit: number,
   offset: number,
   search?: string | null,
-): Record<string, unknown>[] {
+): Promise<Record<string, unknown>[]> {
   validateTableName(tableName);
   const lim = Math.min(Math.max(1, limit), 500);
   const off = Math.max(0, offset);
   const q = normalizeDataExplorerSearch(search);
   if (!q) {
-    const stmt = getDb().prepare(`SELECT * FROM ${tableName} LIMIT ? OFFSET ?`);
-    return stmt.all(lim, off) as Record<string, unknown>[];
+    return queryAll<Record<string, unknown>>(
+      `SELECT * FROM ${tableName} LIMIT ? OFFSET ?`,
+      [lim, off],
+    );
   }
-  const schema = getDataExplorerTableSchema(tableName);
+  const schema = await getDataExplorerTableSchema(tableName);
   const { whereSql, params } = buildDataExplorerSearchClause(schema, `%${q}%`);
-  const sql = `SELECT * FROM ${tableName} WHERE ${whereSql} LIMIT ? OFFSET ?`;
-  const stmt = getDb().prepare(sql);
-  return stmt.all(...params, lim, off) as Record<string, unknown>[];
+  return queryAll<Record<string, unknown>>(
+    `SELECT * FROM ${tableName} WHERE ${whereSql} LIMIT ? OFFSET ?`,
+    [...params, lim, off],
+  );
 }
 
-export function getDataExplorerRowCount(
+export async function getDataExplorerRowCount(
   tableName: string,
   search?: string | null,
-): number {
+): Promise<number> {
   validateTableName(tableName);
   const q = normalizeDataExplorerSearch(search);
   if (!q) {
-    const row = getDb()
-      .prepare(`SELECT COUNT(*) as c FROM ${tableName}`)
-      .get() as { c: number };
-    return row.c;
+    const row = await queryOne<{ c: number | string }>(
+      `SELECT COUNT(*) as c FROM ${tableName}`,
+    );
+    return Number(row?.c ?? 0);
   }
-  const schema = getDataExplorerTableSchema(tableName);
+  const schema = await getDataExplorerTableSchema(tableName);
   const { whereSql, params } = buildDataExplorerSearchClause(schema, `%${q}%`);
-  const row = getDb()
-    .prepare(`SELECT COUNT(*) as c FROM ${tableName} WHERE ${whereSql}`)
-    .get(...params) as { c: number };
-  return row.c;
+  const row = await queryOne<{ c: number | string }>(
+    `SELECT COUNT(*) as c FROM ${tableName} WHERE ${whereSql}`,
+    params,
+  );
+  return Number(row?.c ?? 0);
 }
 
-export function insertDataExplorerRow(
+export async function insertDataExplorerRow(
   tableName: string,
   data: Record<string, unknown>,
-): number {
+): Promise<number> {
   validateTableName(tableName);
-  const schema = getDataExplorerTableSchema(tableName);
+  const schema = await getDataExplorerTableSchema(tableName);
   const cols = schema.filter(
     (c) => c.name in data && data[c.name] !== undefined && data[c.name] !== "",
   );
@@ -118,19 +141,17 @@ export function insertDataExplorerRow(
   const placeholders = colNames.map(() => "?").join(", ");
   const values = colNames.map((n) => data[n]);
   const sql = `INSERT INTO ${tableName} (${colNames.join(", ")}) VALUES (${placeholders})`;
-  const result = getDb()
-    .prepare(sql)
-    .run(...values);
-  return result.lastInsertRowid as number;
+  const result = await execute(sql, values);
+  return result.lastId ?? 0;
 }
 
-export function updateDataExplorerRow(
+export async function updateDataExplorerRow(
   tableName: string,
   pk: Record<string, unknown>,
   data: Record<string, unknown>,
-): number {
+): Promise<number> {
   validateTableName(tableName);
-  const schema = getDataExplorerTableSchema(tableName);
+  const schema = await getDataExplorerTableSchema(tableName);
   const pkCols = schema.filter((c) => c.pk).map((c) => c.name);
   if (pkCols.length === 0) throw new Error("Table has no primary key");
   for (const c of pkCols) {
@@ -143,19 +164,19 @@ export function updateDataExplorerRow(
   const setClause = setCols.map((c) => `${c} = ?`).join(", ");
   const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
   const values = [...setCols.map((n) => data[n]), ...pkCols.map((n) => pk[n])];
-  const sql = `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause}`;
-  const result = getDb()
-    .prepare(sql)
-    .run(...values);
+  const result = await execute(
+    `UPDATE ${tableName} SET ${setClause} WHERE ${whereClause}`,
+    values,
+  );
   return result.changes;
 }
 
-export function deleteDataExplorerRow(
+export async function deleteDataExplorerRow(
   tableName: string,
   pk: Record<string, unknown>,
-): number {
+): Promise<number> {
   validateTableName(tableName);
-  const schema = getDataExplorerTableSchema(tableName);
+  const schema = await getDataExplorerTableSchema(tableName);
   const pkCols = schema.filter((c) => c.pk).map((c) => c.name);
   if (pkCols.length === 0) throw new Error("Table has no primary key");
   for (const c of pkCols) {
@@ -163,9 +184,9 @@ export function deleteDataExplorerRow(
   }
   const whereClause = pkCols.map((c) => `${c} = ?`).join(" AND ");
   const values = pkCols.map((n) => pk[n]);
-  const sql = `DELETE FROM ${tableName} WHERE ${whereClause}`;
-  const result = getDb()
-    .prepare(sql)
-    .run(...values);
+  const result = await execute(
+    `DELETE FROM ${tableName} WHERE ${whereClause}`,
+    values,
+  );
   return result.changes;
 }

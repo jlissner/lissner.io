@@ -37,15 +37,9 @@ async function ensureServer(world: AuthWorld): Promise<void> {
 }
 
 AfterAll(async () => {
-  await new Promise<void>((resolve) => {
-    if (!state.server) {
-      resolve();
-      return;
-    }
-    state.server.close(() => resolve());
-    state.server = null;
-    state.baseUrl = null;
-  });
+  const { closeBddServer } = await import("../support/close-bdd-server.ts");
+  state.server = await closeBddServer(state.server);
+  state.baseUrl = null;
 });
 
 function firstSetCookie(headers: Headers, name: string): string | null {
@@ -117,7 +111,11 @@ async function ensureWhitelistedEmail(world: AuthWorld): Promise<void> {
   const authDb = await import("../../packages/server/dist/db/auth.js");
   // Ensure entry exists; ignore duplicate errors.
   try {
-    authDb.addToWhitelist(email, false);
+    await authDb.upsertWhitelistEntryByEmail({
+      email,
+      isAdmin: false,
+      personId: null,
+    });
   } catch {
     // ignore
   }
@@ -126,7 +124,7 @@ async function ensureWhitelistedEmail(world: AuthWorld): Promise<void> {
 async function ensureMagicCode(world: AuthWorld): Promise<void> {
   assert.ok(world.email);
   const authDb = await import("../../packages/server/dist/db/auth.js");
-  const { code } = authDb.createMagicLinkToken(world.email);
+  const { code } = await authDb.createMagicLinkToken(world.email);
   world.magicCode = code;
 }
 
@@ -459,11 +457,11 @@ Given("I have a login code that has expired", async function (this: AuthWorld) {
   assert.ok(this.email);
   assert.ok(this.magicCode);
   const codeHash = createHash("sha256").update(this.magicCode).digest("hex");
-  const mediaDb = await import("../../packages/server/dist/db/media-db.js");
-  const db = mediaDb.getDb();
-  db.prepare(
-    "UPDATE magic_link_tokens SET expires_at = datetime('now', '-1 hour') WHERE LOWER(email) = ? AND login_code = ?",
-  ).run(this.email.toLowerCase(), codeHash);
+  const { execute } = await import("../../packages/server/dist/db/client.js");
+  await execute(
+    "UPDATE magic_link_tokens SET expires_at = NOW() - INTERVAL '1 hour' WHERE LOWER(email) = ? AND login_code = ?",
+    [this.email.toLowerCase(), codeHash],
+  );
 });
 
 When(

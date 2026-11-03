@@ -20,67 +20,67 @@ export function isDataExplorerEnabled(): boolean {
   );
 }
 
-export function listDataExplorerTables() {
+export async function listDataExplorerTables() {
   try {
-    return ok(mediaDb.getDataExplorerTables());
+    return ok(await mediaDb.getDataExplorerTables());
   } catch (err) {
     return fail(500, err instanceof Error ? err.message : "Failed");
   }
 }
 
-export function getDataExplorerSchemaAndCount(table: string, q?: string) {
+export async function getDataExplorerSchemaAndCount(table: string, q?: string) {
   try {
     return ok({
-      schema: mediaDb.getDataExplorerTableSchema(table),
-      count: mediaDb.getDataExplorerRowCount(table, q),
+      schema: await mediaDb.getDataExplorerTableSchema(table),
+      count: await mediaDb.getDataExplorerRowCount(table, q),
     });
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }
 }
 
-export function listDataExplorerRows(
+export async function listDataExplorerRows(
   table: string,
   limit: number,
   offset: number,
   q?: string,
 ) {
   try {
-    return ok(mediaDb.getDataExplorerRows(table, limit, offset, q));
+    return ok(await mediaDb.getDataExplorerRows(table, limit, offset, q));
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }
 }
 
-export function insertDataExplorerRow(
+export async function insertDataExplorerRow(
   table: string,
   body: Record<string, unknown>,
 ) {
   try {
-    return ok(mediaDb.insertDataExplorerRow(table, body));
+    return ok(await mediaDb.insertDataExplorerRow(table, body));
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }
 }
 
-export function updateDataExplorerRow(
+export async function updateDataExplorerRow(
   table: string,
   pk: Record<string, unknown>,
   data: Record<string, unknown>,
 ) {
   try {
-    return ok(mediaDb.updateDataExplorerRow(table, pk, data));
+    return ok(await mediaDb.updateDataExplorerRow(table, pk, data));
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }
 }
 
-export function deleteDataExplorerRow(
+export async function deleteDataExplorerRow(
   table: string,
   pk: Record<string, unknown>,
 ) {
   try {
-    return ok(mediaDb.deleteDataExplorerRow(table, pk));
+    return ok(await mediaDb.deleteDataExplorerRow(table, pk));
   } catch (err) {
     return fail(400, err instanceof Error ? err.message : "Failed");
   }

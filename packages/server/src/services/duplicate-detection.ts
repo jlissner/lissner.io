@@ -19,7 +19,7 @@ type DuplicateMatch = {
 export async function findDuplicatesForMedia(
   mediaId: string,
 ): Promise<DuplicateMatch[]> {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) return [];
 
   const fileOk = await ensureLocalMediaFile(item);
@@ -34,7 +34,7 @@ export async function findDuplicatesForMedia(
     return [];
   }
 
-  const allWithHashes = db.getAllMediaWithHashes();
+  const allWithHashes = await db.getAllMediaWithHashes();
   const matches: DuplicateMatch[] = [];
 
   for (const existing of allWithHashes) {
@@ -53,7 +53,7 @@ export async function findDuplicatesForMedia(
 }
 
 export async function computeAndStoreHash(mediaId: string): Promise<boolean> {
-  const item = db.getMediaById(mediaId);
+  const item = await db.getMediaById(mediaId);
   if (!item) return false;
 
   const fileOk = await ensureLocalMediaFile(item);
@@ -62,7 +62,7 @@ export async function computeAndStoreHash(mediaId: string): Promise<boolean> {
   const filePath = path.join(mediaDir, item.filename);
   try {
     const hash = await computePerceptualHash(filePath);
-    db.setMediaPerceptualHash(mediaId, hash);
+    await db.setMediaPerceptualHash(mediaId, hash);
     return true;
   } catch (err) {
     logger.error({ err, mediaId }, "Failed to compute perceptual hash");

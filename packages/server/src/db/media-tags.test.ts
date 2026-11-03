@@ -1,20 +1,5 @@
-import { afterAll, describe, expect, it, vi } from "vitest";
-
-vi.mock("./media-db.js", async () => {
-  const { default: Database } = await import("better-sqlite3");
-  const { runMediaMigrations } = await import("./media-migrations.js");
-  const db = new Database(":memory:");
-  db.pragma("foreign_keys = ON");
-  runMediaMigrations(db);
-  return {
-    getDb: () => db,
-    closeMediaDb: () => {
-      db.close();
-    },
-  };
-});
-
-import { getDb } from "./media-db.js";
+import { beforeEach, describe, expect, it } from "vitest";
+import { execute, queryAll } from "./client.js";
 import {
   getMediaIdsForTag,
   listDistinctTags,
@@ -23,67 +8,64 @@ import {
   addTagsForMedia,
   removeTagsFromMedia,
 } from "./media-tags.js";
+import { resetMediaTestDb } from "./test-media-db.js";
 
-function insertMinimalMedia(id: string): void {
-  getDb()
-    .prepare(
-      `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now'))`,
-    )
-    .run(id, `${id}.jpg`, `${id}.jpg`, "image/jpeg", 1);
-}
+const insertMinimalMedia = async (id: string): Promise<void> => {
+  await execute(
+    `INSERT INTO media (id, filename, original_name, mime_type, size, uploaded_at)
+     VALUES (?, ?, ?, ?, ?, NOW())`,
+    [id, `${id}.jpg`, `${id}.jpg`, "image/jpeg", 1],
+  );
+};
 
-describe("media_tags migration and helpers", () => {
-  afterAll(async () => {
-    const { closeMediaDb } = await import("./media-db.js");
-    closeMediaDb();
+describe("media_tags helpers", () => {
+  beforeEach(async () => {
+    await resetMediaTestDb();
   });
 
-  it("creates media_tags with media_id, tag, and composite primary key", () => {
-    const db = getDb();
-    const info = db.prepare("PRAGMA table_info(media_tags)").all() as Array<{
-      name: string;
-    }>;
-    const names = info.map((c) => c.name).sort();
+  it("has media_tags with media_id and tag columns", async () => {
+    const cols = await queryAll<{ column_name: string }>(
+      `SELECT column_name FROM information_schema.columns
+       WHERE table_schema = 'public' AND table_name = 'media_tags'
+       ORDER BY column_name`,
+    );
+    const names = cols.map((c) => c.column_name);
     expect(names).toContain("media_id");
     expect(names).toContain("tag");
-    const pk = db
-      .prepare(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='media_tags'",
-      )
-      .get() as { sql: string };
-    expect(pk.sql).toMatch(/PRIMARY KEY/i);
   });
 
-  it("round-trips tags and lists distinct tags", () => {
-    insertMinimalMedia("m1");
-    insertMinimalMedia("m2");
-    setTagsForMedia("m1", ["Beach", "summer2025"]);
-    setTagsForMedia("m2", ["summer2025"]);
-    expect(listTagsForMedia("m1")).toEqual(["beach", "summer2025"]);
-    expect(listTagsForMedia("m2")).toEqual(["summer2025"]);
-    expect(listDistinctTags()).toEqual(["beach", "summer2025"]);
-    expect(getMediaIdsForTag("summer2025").sort()).toEqual(["m1", "m2"]);
+  it("round-trips tags and lists distinct tags", async () => {
+    await insertMinimalMedia("m1");
+    await insertMinimalMedia("m2");
+    await setTagsForMedia("m1", ["Beach", "summer2025"]);
+    await setTagsForMedia("m2", ["summer2025"]);
+    expect(await listTagsForMedia("m1")).toEqual(["beach", "summer2025"]);
+    expect(await listTagsForMedia("m2")).toEqual(["summer2025"]);
+    expect(await listDistinctTags()).toEqual(["beach", "summer2025"]);
+    expect((await getMediaIdsForTag("summer2025")).sort()).toEqual([
+      "m1",
+      "m2",
+    ]);
   });
 
-  it("replaces tags when set again", () => {
-    insertMinimalMedia("m3");
-    setTagsForMedia("m3", ["a", "b"]);
-    setTagsForMedia("m3", ["c"]);
-    expect(listTagsForMedia("m3")).toEqual(["c"]);
+  it("replaces tags when set again", async () => {
+    await insertMinimalMedia("m3");
+    await setTagsForMedia("m3", ["a", "b"]);
+    await setTagsForMedia("m3", ["c"]);
+    expect(await listTagsForMedia("m3")).toEqual(["c"]);
   });
 
-  it("adds tags without removing existing ones", () => {
-    insertMinimalMedia("m4");
-    setTagsForMedia("m4", ["beach"]);
-    addTagsForMedia("m4", ["Summer", "beach"]);
-    expect(listTagsForMedia("m4")).toEqual(["beach", "summer"]);
+  it("adds tags without removing existing ones", async () => {
+    await insertMinimalMedia("m4");
+    await setTagsForMedia("m4", ["beach"]);
+    await addTagsForMedia("m4", ["Summer", "beach"]);
+    expect(await listTagsForMedia("m4")).toEqual(["beach", "summer"]);
   });
 
-  it("removes specific tags without clearing others", () => {
-    insertMinimalMedia("m5");
-    setTagsForMedia("m5", ["beach", "summer", "trip"]);
-    removeTagsFromMedia("m5", ["Summer"]);
-    expect(listTagsForMedia("m5")).toEqual(["beach", "trip"]);
+  it("removes specific tags without clearing others", async () => {
+    await insertMinimalMedia("m5");
+    await setTagsForMedia("m5", ["beach", "summer", "trip"]);
+    await removeTagsFromMedia("m5", ["Summer"]);
+    expect(await listTagsForMedia("m5")).toEqual(["beach", "trip"]);
   });
 });

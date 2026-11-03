@@ -37,7 +37,7 @@ describe("admin people directory routes", () => {
   });
 
   it("allows admin requests and returns directory payload from service", async () => {
-    vi.mocked(listDirectory).mockReturnValue({
+    vi.mocked(listDirectory).mockResolvedValue({
       ok: true,
       value: [
         {
@@ -59,7 +59,7 @@ describe("admin people directory routes", () => {
     requireAdmin(req as never, res as never, next);
     expect(next).toHaveBeenCalledTimes(1);
 
-    createAdminPeopleDirectoryListHandler({
+    await createAdminPeopleDirectoryListHandler({
       listDirectory: listDirectory as never,
     })(req as never, res as never);
 
