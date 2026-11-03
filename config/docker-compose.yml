@@ -177,6 +177,10 @@ services:
       - "--providers.docker.exposedbydefault=false"
       - "--entrypoints.web.address=:443"
       - "--entrypoints.webhttp.address=:80"
+      # Traefik v3 defaults readTimeout to 60s (entire request incl. body). That
+      # aborts large media uploads; match the API's 30m requestTimeout.
+      - "--entrypoints.web.transport.respondingTimeouts.readTimeout=30m"
+      - "--entrypoints.webhttp.transport.respondingTimeouts.readTimeout=30m"
       - "--providers.docker.network=lissnerio_traefik"
       - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
       - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"

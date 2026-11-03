@@ -26,18 +26,24 @@ const isBackupObjectKey = (key: string): boolean => key.endsWith(".dump");
 export async function listDbBackupsForAdmin(): Promise<
   | { ok: true; backups: DbBackupListItem[] }
   | { ok: false; reason: "not_configured"; missingVars: string[] }
+  | { ok: false; reason: "list_failed" }
 > {
   const bucket = S3_BUCKET;
-  const objects = await listS3ObjectsWithMetadata(
-    s3Client,
-    bucket,
-    `${S3_PREFIX}/db/`,
-  );
-  const backups = objects
-    .filter((o) => isBackupObjectKey(o.key))
-    .map((o) => ({ key: o.key, size: o.size, lastModified: o.lastModified }))
-    .sort((a, b) => a.key.localeCompare(b.key));
-  return { ok: true, backups };
+  try {
+    const objects = await listS3ObjectsWithMetadata(
+      s3Client,
+      bucket,
+      `${S3_PREFIX}/db/`,
+    );
+    const backups = objects
+      .filter((o) => isBackupObjectKey(o.key))
+      .map((o) => ({ key: o.key, size: o.size, lastModified: o.lastModified }))
+      .sort((a, b) => a.key.localeCompare(b.key));
+    return { ok: true, backups };
+  } catch (err) {
+    logger.error({ err }, "[admin-db-backups] list from S3 failed");
+    return { ok: false, reason: "list_failed" };
+  }
 }
 
 function isValidDbBackupKey(key: string): boolean {

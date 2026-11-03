@@ -26,6 +26,7 @@ type ApiErrorCode =
   | "search_query_invalid"
   | "search_failed"
   | "backup_not_configured"
+  | "backup_list_failed"
   | "sync_in_progress"
   | "data_explorer_disabled"
   | "hash_failed"

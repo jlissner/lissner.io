@@ -35,7 +35,7 @@ function readIdent(s: string, start: number): { ident: string; end: number } {
   let out = "";
   while (i < s.length) {
     const c = s[i];
-    if (/[a-zA-Z0-9_]/.test(c)) {
+    if (/[a-zA-Z0-9_-]/.test(c)) {
       out += c;
       i += 1;
       continue;

@@ -1,6 +1,7 @@
 /**
  * Async media DB access (Postgres). SQL may use `?` placeholders; rewritten to `$n`.
  */
+import { AsyncLocalStorage } from "node:async_hooks";
 import type pg from "pg";
 import { getMediaPool } from "./pg-media.js";
 
@@ -18,7 +19,8 @@ const toPgParams = (sql: string): string => {
 
 export type ExecResult = { changes: number; lastId: number | null };
 
-const state: { tx: pg.PoolClient | null } = { tx: null };
+/** Per-async-context transaction client — never share across concurrent requests. */
+const txAls = new AsyncLocalStorage<pg.PoolClient>();
 
 /** pg returns Date for timestamptz — normalize to ISO strings for callers. */
 const pgCell = (v: unknown): unknown =>
@@ -32,7 +34,8 @@ const pgRow = <T>(row: T): T =>
     ]),
   ) as T;
 
-const querier = (): pg.Pool | pg.PoolClient => state.tx ?? getMediaPool();
+const querier = (): pg.Pool | pg.PoolClient =>
+  txAls.getStore() ?? getMediaPool();
 
 export const queryAll = async <T>(
   sql: string,
@@ -74,19 +77,22 @@ export const execScript = async (sql: string): Promise<void> => {
 };
 
 export const withTransaction = async <T>(fn: () => Promise<T>): Promise<T> => {
+  if (txAls.getStore()) return fn();
+
   const client = await getMediaPool().connect();
-  const prev = state.tx;
-  state.tx = client;
   try {
-    await client.query("BEGIN");
-    const value = await fn();
-    await client.query("COMMIT");
-    return value;
-  } catch (err) {
-    await client.query("ROLLBACK");
-    throw err;
+    return await txAls.run(client, async () => {
+      await client.query("BEGIN");
+      try {
+        const value = await fn();
+        await client.query("COMMIT");
+        return value;
+      } catch (err) {
+        await client.query("ROLLBACK");
+        throw err;
+      }
+    });
   } finally {
-    state.tx = prev;
     client.release();
   }
 };

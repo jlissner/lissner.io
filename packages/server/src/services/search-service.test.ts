@@ -136,6 +136,31 @@ describe("searchMediaByQuery", () => {
     expect(r.items.map((i) => i.id)).toEqual(["m1"]);
   });
 
+  it("finds media by hyphenated #tag", async () => {
+    vi.mocked(db.getMediaIdsForTag).mockImplementation(async (tag: string) =>
+      tag === "road-trip" ? ["m-trip"] : [],
+    );
+    vi.mocked(db.getMediaByIds).mockResolvedValue([
+      {
+        id: "m-trip",
+        filename: "m-trip.jpg",
+        originalName: "m-trip.jpg",
+        mimeType: "image/jpeg",
+        size: 1,
+        uploadedAt: "t",
+        hideFromGallery: 0,
+      },
+    ]);
+    vi.mocked(db.getImagePeople).mockResolvedValue([]);
+    vi.mocked(db.getIndexedMediaIds).mockResolvedValue(new Set());
+
+    const r = await searchMediaByQuery("#road-trip", { limit: 50, offset: 0 });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(db.getMediaIdsForTag).toHaveBeenCalledWith("road-trip");
+    expect(r.items.map((i) => i.id)).toEqual(["m-trip"]);
+  });
+
   it("returns invalid_query for broken structured syntax", async () => {
     const r = await searchMediaByQuery("(#oops", { limit: 50, offset: 0 });
     expect(r.ok).toBe(false);

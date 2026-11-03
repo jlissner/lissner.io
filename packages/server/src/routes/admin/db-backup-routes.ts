@@ -12,6 +12,15 @@ adminDbBackupRouter.get("/db-backups", async (_req, res, next) => {
   try {
     const result = await listDbBackupsForAdmin();
     if (!result.ok) {
+      if (result.reason === "list_failed") {
+        sendApiError(
+          res,
+          502,
+          "Failed to list database backups from S3",
+          "backup_list_failed",
+        );
+        return;
+      }
       sendApiError(
         res,
         400,

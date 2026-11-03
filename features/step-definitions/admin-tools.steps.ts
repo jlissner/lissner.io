@@ -98,9 +98,28 @@ Then(
   "I see available backup objects with metadata needed to choose one",
   function (this: BddWorld) {
     assert.ok(this.lastResponse);
-    // Either configured (200) or a structured not-configured error (400).
-    assert.ok([200, 400].includes(this.lastResponse.status));
     assert.ok(this.lastJson != null);
+    if (this.lastResponse.status === 200) {
+      assert.ok(
+        Array.isArray((this.lastJson as { backups?: unknown }).backups),
+      );
+      return;
+    }
+    if (this.lastResponse.status === 400) {
+      assert.equal(
+        (this.lastJson as { code?: string }).code,
+        "backup_not_configured",
+      );
+      return;
+    }
+    if (this.lastResponse.status === 502) {
+      assert.equal(
+        (this.lastJson as { code?: string }).code,
+        "backup_list_failed",
+      );
+      return;
+    }
+    assert.fail(`unexpected status ${this.lastResponse.status}`);
   },
 );
 
