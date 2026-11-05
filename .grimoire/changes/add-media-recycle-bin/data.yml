@@ -1,0 +1,11 @@
+# Proposed data changes for: add-media-recycle-bin
+
+media:
+  action: modify
+  source: packages/db/migrations/media/002_media_deleted_at.sql
+  fields:
+    deleted_at:
+      action: add
+      type: timestamptz
+      nullable: true
+      notes: Null means live library item; set on soft-delete (gallery/people delete). Cleared on restore. Permanent delete removes the row.

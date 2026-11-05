@@ -36,6 +36,12 @@ Feature: Home media gallery and viewer
     When I enter selection mode and select multiple items
     Then I can trigger at least one bulk action offered by the app (e.g. download or delete) subject to permissions
 
+  Scenario: Deleting media moves it to the recycle bin
+    Given at least one image or video exists in the gallery that I am allowed to delete
+    When I delete that item from the gallery or viewer
+    Then the item no longer appears in the home gallery
+    And the item remains recoverable from the admin recycle bin until permanently deleted
+
   # Bug: browsers cancel concurrent programmatic downloads in the same tick
   Scenario: Bulk download saves each selected file
     Given several media items are visible in the gallery

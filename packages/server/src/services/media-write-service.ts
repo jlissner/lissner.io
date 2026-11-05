@@ -41,6 +41,17 @@ type DeleteMediaResult =
   | { ok: true }
   | ServiceFailure<"not_found" | "forbidden" | "delete_failed">;
 
+type RestoreMediaResult =
+  | { ok: true }
+  | ServiceFailure<"not_found" | "delete_failed">;
+
+const canManageMedia = (
+  ownerId: number | null,
+  ctx: { userId: number | undefined; isAdmin: boolean | undefined },
+): boolean =>
+  ctx.isAdmin === true || (ownerId != null && ctx.userId === ownerId);
+
+/** Gallery / people delete: hide from live library; keep files and related rows. */
 export async function deleteMediaItem(
   mediaId: string,
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
@@ -49,9 +60,33 @@ export async function deleteMediaItem(
   if (!item) {
     return { ok: false, reason: "not_found" };
   }
+  if (item.deletedAt != null) {
+    return { ok: true };
+  }
   const ownerId = await db.getMediaOwnerId(item.id);
-  const canDelete = ctx.isAdmin || (ownerId != null && ctx.userId === ownerId);
-  if (!canDelete) {
+  if (!canManageMedia(ownerId, ctx)) {
+    return { ok: false, reason: "forbidden" };
+  }
+  try {
+    await db.softDeleteMedia(item.id);
+    return { ok: true };
+  } catch (err) {
+    logger.error({ err, mediaId }, "Soft-delete media failed");
+    return { ok: false, reason: "delete_failed" };
+  }
+}
+
+/** Admin duplicates / file-issues / recycle purge: unlink files and remove rows. */
+export async function permanentlyDeleteMediaItem(
+  mediaId: string,
+  ctx: { userId: number | undefined; isAdmin: boolean | undefined },
+): Promise<DeleteMediaResult> {
+  const item = await db.getMediaById(mediaId);
+  if (!item) {
+    return { ok: false, reason: "not_found" };
+  }
+  const ownerId = await db.getMediaOwnerId(item.id);
+  if (!canManageMedia(ownerId, ctx)) {
     return { ok: false, reason: "forbidden" };
   }
   try {
@@ -73,7 +108,26 @@ export async function deleteMediaItem(
     scheduleBackupSyncAfterUpload();
     return { ok: true };
   } catch (err) {
-    logger.error({ err, mediaId }, "Delete media failed");
+    logger.error({ err, mediaId }, "Permanent delete media failed");
+    return { ok: false, reason: "delete_failed" };
+  }
+}
+
+export async function restoreMediaItem(
+  mediaId: string,
+): Promise<RestoreMediaResult> {
+  const item = await db.getMediaById(mediaId);
+  if (!item || item.deletedAt == null) {
+    return { ok: false, reason: "not_found" };
+  }
+  try {
+    const restored = await db.restoreSoftDeletedMedia(item.id);
+    if (!restored) {
+      return { ok: false, reason: "not_found" };
+    }
+    return { ok: true };
+  } catch (err) {
+    logger.error({ err, mediaId }, "Restore media failed");
     return { ok: false, reason: "delete_failed" };
   }
 }
@@ -101,7 +155,7 @@ export async function updateMediaDateTaken(
   ctx: { userId: number | undefined; isAdmin: boolean | undefined },
 ): Promise<UpdateMediaDateTakenResult> {
   const item = await db.getMediaById(mediaId);
-  if (!item) {
+  if (!item || item.deletedAt != null) {
     return { ok: false, reason: "not_found" };
   }
   const ownerId = await db.getMediaOwnerId(item.id);

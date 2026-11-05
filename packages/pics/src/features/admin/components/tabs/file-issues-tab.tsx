@@ -3,9 +3,13 @@ import { errorMessage } from "@/api";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/toast";
-import { deleteMediaById, runBulkIndex } from "@/features/media/api";
+import { runBulkIndex } from "@/features/media/api";
 import { MEDIA_URL_QUERY_KEY } from "@/features/media/lib/media-viewer-url";
-import { clearMediaFileIssue, listMediaFileIssues } from "../../api";
+import {
+  clearMediaFileIssue,
+  listMediaFileIssues,
+  permanentlyDeleteMedia,
+} from "../../api";
 import { fileIssueCodeLabel, formatBytes } from "../../lib/format";
 
 const FILE_ISSUES_KEY = ["admin", "fileIssues"];
@@ -59,7 +63,7 @@ export function FileIssuesTab() {
       return;
     }
     try {
-      await deleteMediaById(mediaId);
+      await permanentlyDeleteMedia(mediaId);
       await invalidateFileIssues();
     } catch (err) {
       showToast(errorMessage(err, "Delete failed"));

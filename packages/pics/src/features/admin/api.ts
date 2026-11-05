@@ -4,10 +4,14 @@ import type {
   AdminDuplicatesBulkDeleteRequest,
   AdminDuplicatesBulkDeleteResponse,
   AdminMediaFileIssuesResponse,
+  AdminRecycleBinListResponse,
+  AdminRecycleBulkDeleteRequest,
+  AdminRecycleBulkDeleteResponse,
+  AdminRecycleEmptyResponse,
   AdminThumbnailRepairRequest,
   AdminThumbnailRepairResponse,
 } from "@lissner/shared";
-import { apiJson } from "@/api";
+import { apiFetch, apiJson } from "@/api";
 
 export interface PeopleDirectoryEntry {
   personId: number;
@@ -174,6 +178,49 @@ export function repairAdminThumbnails(
 
 export function listMediaFileIssues(): Promise<AdminMediaFileIssuesResponse> {
   return apiJson<AdminMediaFileIssuesResponse>("admin/media-file-issues");
+}
+
+export function listRecycleBin(params?: {
+  limit?: number;
+  offset?: number;
+}): Promise<AdminRecycleBinListResponse> {
+  const search = new URLSearchParams();
+  if (params?.limit != null) search.set("limit", String(params.limit));
+  if (params?.offset != null) search.set("offset", String(params.offset));
+  const q = search.toString();
+  return apiJson<AdminRecycleBinListResponse>(
+    q ? `admin/recycle?${q}` : "admin/recycle",
+  );
+}
+
+export function restoreRecycleBinItem(mediaId: string): Promise<{ ok: true }> {
+  return apiJson<{ ok: true }>(`admin/recycle/${mediaId}/restore`, {
+    method: "POST",
+  });
+}
+
+export async function permanentlyDeleteMedia(mediaId: string): Promise<void> {
+  const res = await apiFetch(`admin/recycle/${mediaId}`, { method: "DELETE" });
+  if (!res.ok) {
+    throw new Error(`Permanent delete failed (${res.status})`);
+  }
+}
+
+export function bulkPermanentlyDeleteMedia(
+  mediaIds: string[],
+): Promise<AdminRecycleBulkDeleteResponse> {
+  const body: AdminRecycleBulkDeleteRequest = { mediaIds };
+  return apiJson<AdminRecycleBulkDeleteResponse>("admin/recycle/bulk-delete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function emptyRecycleBin(): Promise<AdminRecycleEmptyResponse> {
+  return apiJson<AdminRecycleEmptyResponse>("admin/recycle", {
+    method: "DELETE",
+  });
 }
 
 export function clearMediaFileIssue(mediaId: string): Promise<{ ok: true }> {

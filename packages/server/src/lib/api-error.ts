@@ -36,6 +36,7 @@ type ApiErrorCode =
   | "upload_owner_config"
   | "delete_forbidden"
   | "delete_failed"
+  | "restore_failed"
   | "patch_forbidden"
   | "patch_bad_request"
   | "patch_invalid_date"

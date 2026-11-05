@@ -102,6 +102,21 @@ export async function deleteEmbeddingsForMedia(mediaId: string): Promise<void> {
   await execute("DELETE FROM embeddings WHERE media_id = ?", [mediaId]);
 }
 
+export async function softDeleteMedia(id: string): Promise<void> {
+  await execute(
+    "UPDATE media SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL",
+    [id],
+  );
+}
+
+export async function restoreSoftDeletedMedia(id: string): Promise<boolean> {
+  const result = await execute(
+    "UPDATE media SET deleted_at = NULL WHERE id = ? AND deleted_at IS NOT NULL",
+    [id],
+  );
+  return result.changes > 0;
+}
+
 export async function deleteMedia(id: string): Promise<void> {
   await withTransaction(async () => {
     await execute("DELETE FROM image_people WHERE media_id = ?", [id]);

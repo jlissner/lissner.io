@@ -1,4 +1,10 @@
-import { galleryVisibleSql, queryAll, queryOne } from "./client.js";
+import {
+  galleryVisibleSql,
+  galleryVisibleSqlAliased,
+  notDeletedSql,
+  queryAll,
+  queryOne,
+} from "./client.js";
 
 type MediaSortBy = "uploaded" | "taken";
 
@@ -22,6 +28,7 @@ type MediaPageRow = MediaListRow & {
 type MediaByIdRow = MediaPageRow & {
   ownerId?: number | null;
   hideFromGallery?: boolean | null;
+  deletedAt?: string | null;
 };
 
 type MediaFileIssueRow = {
@@ -35,8 +42,18 @@ type MediaFileIssueRow = {
   issueAt: string | null;
 };
 
-const galleryVisibleM = (): string =>
-  galleryVisibleSql().replaceAll("hide_from_gallery", "m.hide_from_gallery");
+export type RecycleBinMediaRow = {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+  deletedAt: string;
+  ownerId: number | null;
+};
+
+const galleryVisibleM = (): string => galleryVisibleSqlAliased("m");
 
 const getMediaOrderBy = (sortBy: MediaSortBy, prefix = ""): string => {
   const p = prefix ? `${prefix}.` : "";
@@ -75,11 +92,20 @@ export const findExistingMediaByOriginalName = (
   );
 
 export const getAllMediaIds = async (): Promise<Set<string>> => {
-  const rows = await queryAll<{ id: string }>("SELECT id FROM media");
+  const rows = await queryAll<{ id: string }>(
+    `SELECT id FROM media WHERE ${notDeletedSql()}`,
+  );
   return new Set(rows.map((r) => r.id));
 };
 
 export const listMedia = (): Promise<MediaListRow[]> =>
+  queryAll<MediaListRow>(
+    `SELECT id, filename, original_name as "originalName", mime_type as "mimeType", size, uploaded_at as "uploadedAt", backed_up_at as "backedUpAt"
+       FROM media WHERE ${notDeletedSql()} ORDER BY uploaded_at DESC, filename ASC`,
+  );
+
+/** Includes soft-deleted rows — used by backup sync so trash items keep S3 objects. */
+export const listMediaIncludingDeleted = (): Promise<MediaListRow[]> =>
   queryAll<MediaListRow>(
     `SELECT id, filename, original_name as "originalName", mime_type as "mimeType", size, uploaded_at as "uploadedAt", backed_up_at as "backedUpAt"
        FROM media ORDER BY uploaded_at DESC, filename ASC`,
@@ -90,9 +116,38 @@ export const listMediaWithFileIssues = (): Promise<MediaFileIssueRow[]> =>
     `SELECT id, original_name as "originalName", mime_type as "mimeType", size, uploaded_at as "uploadedAt",
               file_issue_code as "issueCode", file_issue_detail as "issueDetail", file_issue_at as "issueAt"
        FROM media
-       WHERE file_issue_code IS NOT NULL AND TRIM(file_issue_code) != ''
+       WHERE ${notDeletedSql()}
+         AND file_issue_code IS NOT NULL AND TRIM(file_issue_code) != ''
        ORDER BY COALESCE(file_issue_at, uploaded_at) DESC, uploaded_at DESC`,
   );
+
+export const listDeletedMedia = (
+  limit: number,
+  offset: number,
+): Promise<RecycleBinMediaRow[]> =>
+  queryAll<RecycleBinMediaRow>(
+    `SELECT id, filename, original_name as "originalName", mime_type as "mimeType", size,
+            uploaded_at as "uploadedAt", deleted_at as "deletedAt", owner_id as "ownerId"
+       FROM media
+       WHERE deleted_at IS NOT NULL
+       ORDER BY deleted_at DESC, filename ASC
+       LIMIT ? OFFSET ?`,
+    [limit, offset],
+  );
+
+export const getDeletedMediaCount = async (): Promise<number> => {
+  const row = await queryOne<{ count: number | string }>(
+    `SELECT COUNT(*) as count FROM media WHERE deleted_at IS NOT NULL`,
+  );
+  return Number(row?.count ?? 0);
+};
+
+export const listDeletedMediaIds = async (): Promise<string[]> => {
+  const rows = await queryAll<{ id: string }>(
+    `SELECT id FROM media WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC, filename ASC`,
+  );
+  return rows.map((r) => r.id);
+};
 
 export const getMediaCount = async (): Promise<number> => {
   const row = await queryOne<{ count: number | string }>(
@@ -162,7 +217,8 @@ export const getMediaById = (id: string): Promise<MediaByIdRow | undefined> =>
   queryOne<MediaByIdRow>(
     `SELECT id, filename, original_name as "originalName", mime_type as "mimeType", size, uploaded_at as "uploadedAt",
         date_taken as "dateTaken", latitude, longitude, owner_id as "ownerId", backed_up_at as "backedUpAt",
-        motion_companion_id as "motionCompanionId", hide_from_gallery as "hideFromGallery"
+        motion_companion_id as "motionCompanionId", hide_from_gallery as "hideFromGallery",
+        deleted_at as "deletedAt"
        FROM media WHERE id = ?`,
     [id],
   );
@@ -198,7 +254,8 @@ export const getMediaByIds = async (
     ? []
     : queryAll(
         `SELECT id, filename, original_name as "originalName", mime_type as "mimeType", size, uploaded_at as "uploadedAt", date_taken as "dateTaken", backed_up_at as "backedUpAt",
-              motion_companion_id as "motionCompanionId", hide_from_gallery as "hideFromGallery"
+              motion_companion_id as "motionCompanionId", hide_from_gallery as "hideFromGallery",
+              deleted_at as "deletedAt"
        FROM media WHERE id IN (${ids.map(() => "?").join(",")})`,
         ids,
       );
@@ -207,7 +264,8 @@ export const getAllMediaWithHashes = (): Promise<
   Array<{ id: string; perceptualHash: Buffer }>
 > =>
   queryAll<{ id: string; perceptualHash: Buffer }>(
-    'SELECT id, perceptual_hash as "perceptualHash" FROM media WHERE perceptual_hash IS NOT NULL',
+    `SELECT id, perceptual_hash as "perceptualHash" FROM media
+       WHERE perceptual_hash IS NOT NULL AND ${notDeletedSql()}`,
   );
 
 export const getMediaPerceptualHash = async (

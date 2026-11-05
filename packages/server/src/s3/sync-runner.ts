@@ -82,7 +82,7 @@ export async function runSync(
     );
 
     // 2. Upload media (only if not yet backed up per backed_up_at)
-    const localMedia = await db.listMedia();
+    const localMedia = await db.listMediaIncludingDeleted();
     const toUploadMedia: typeof localMedia = [];
     for (const m of localMedia) {
       if (
@@ -260,7 +260,9 @@ export async function runSync(
       });
     }
 
-    const mediaIds = new Set((await db.listMedia()).map((m) => m.id));
+    const mediaIds = new Set(
+      (await db.listMediaIncludingDeleted()).map((m) => m.id),
+    );
     tally.deletedOrphanThumbsS3 = await deleteOrphanS3Thumbnails(
       s3Client,
       bucket,

@@ -1,6 +1,7 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import path from "path";
 import { sendApiError } from "../../lib/api-error.js";
+import { canViewMediaRow } from "../../lib/media-soft-delete.js";
 import * as db from "../../db/media.js";
 import {
   ensureLocalMediaFile,
@@ -21,6 +22,19 @@ import {
 } from "../../validation/media-schemas.js";
 
 export const mediaReadRouter = Router();
+
+const rejectHiddenSoftDeleted = async (
+  req: Request,
+  res: Response,
+  mediaId: string,
+): Promise<boolean> => {
+  const item = await db.getMediaById(mediaId);
+  if (!item || !canViewMediaRow(item, req.jwtUser?.isAdmin)) {
+    sendApiError(res, 404, "Not found", "not_found");
+    return true;
+  }
+  return false;
+};
 
 mediaReadRouter.get("/", async (req, res) => {
   const { limit, offset, personId, sortBy } = mediaListQuerySchema.parse(
@@ -62,7 +76,7 @@ mediaReadRouter.get("/:id", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
   const item = await db.getMediaById(id);
 
-  if (!item) {
+  if (!item || !canViewMediaRow(item, req.jwtUser?.isAdmin)) {
     sendApiError(res, 404, "Not found", "not_found");
     return;
   }
@@ -84,6 +98,7 @@ mediaReadRouter.get("/:id", async (req, res) => {
 
 mediaReadRouter.get("/:id/faces", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
+  if (await rejectHiddenSoftDeleted(req, res, id)) return;
   const out = await getFacesPayloadForMedia(id);
 
   if (!out.ok) {
@@ -106,6 +121,7 @@ mediaReadRouter.get("/:id/faces", async (req, res) => {
 
 mediaReadRouter.get("/:id/face/:personId", async (req, res) => {
   const { id, personId } = mediaIdPersonIdParamSchema.parse(req.params);
+  if (await rejectHiddenSoftDeleted(req, res, id)) return;
   const out = await getFaceCropOrFullImage(id, personId);
 
   if (!out.ok) {
@@ -138,6 +154,7 @@ mediaReadRouter.get("/:id/face/:personId", async (req, res) => {
 
 mediaReadRouter.get("/:id/preview", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
+  if (await rejectHiddenSoftDeleted(req, res, id)) return;
   const out = await getMediaPreviewFile(id);
 
   if (!out.ok) {
@@ -180,6 +197,7 @@ mediaReadRouter.get("/:id/preview", async (req, res) => {
 
 mediaReadRouter.get("/:id/details", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
+  if (await rejectHiddenSoftDeleted(req, res, id)) return;
   const out = await getMediaDetailsEnriched(id);
 
   if (!out.ok) {
@@ -192,6 +210,7 @@ mediaReadRouter.get("/:id/details", async (req, res) => {
 
 mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
+  if (await rejectHiddenSoftDeleted(req, res, id)) return;
   const out = await getThumbnailResponse(id);
 
   if (!out.ok) {
@@ -241,6 +260,7 @@ mediaReadRouter.get("/:id/thumbnail", async (req, res) => {
 
 mediaReadRouter.get("/:id/content", async (req, res) => {
   const { id } = mediaIdParamSchema.parse(req.params);
+  if (await rejectHiddenSoftDeleted(req, res, id)) return;
   const out = await readTextMediaContent(id);
 
   if (!out.ok) {

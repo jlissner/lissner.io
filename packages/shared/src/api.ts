@@ -217,3 +217,38 @@ type AdminMediaFileIssueItem = {
 export type AdminMediaFileIssuesResponse = {
   items: AdminMediaFileIssueItem[];
 };
+
+/** GET /api/admin/recycle */
+export type AdminRecycleBinItem = {
+  id: string;
+  filename: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  uploadedAt: string;
+  deletedAt: string;
+  ownerId: number | null;
+};
+
+export type AdminRecycleBinListResponse = {
+  items: AdminRecycleBinItem[];
+  total: number;
+};
+
+/** POST /api/admin/recycle/bulk-delete */
+export type AdminRecycleBulkDeleteRequest = { mediaIds: string[] };
+
+type AdminRecycleBulkDeleteItemResult =
+  | { mediaId: string; ok: true }
+  | {
+      mediaId: string;
+      ok: false;
+      reason: "not_found" | "forbidden" | "delete_failed";
+    };
+
+export type AdminRecycleBulkDeleteResponse = {
+  results: AdminRecycleBulkDeleteItemResult[];
+};
+
+/** DELETE /api/admin/recycle (empty bin) */
+export type AdminRecycleEmptyResponse = AdminRecycleBulkDeleteResponse;

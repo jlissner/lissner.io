@@ -4,7 +4,7 @@ import {
   findDuplicatesForMedia,
   computeAndStoreHash,
 } from "../../services/duplicate-detection.js";
-import { deleteMediaItem } from "../../services/media-write-service.js";
+import { permanentlyDeleteMediaItem } from "../../services/media-write-service.js";
 import * as db from "../../db/media.js";
 import { hammingDistance } from "../../lib/perceptual-hash.js";
 import { adminDuplicatesBulkDeleteBodySchema } from "../../validation/admin-duplicates-schemas.js";
@@ -32,9 +32,9 @@ async function mapInBatches<T, R>(
 }
 
 export function createAdminDuplicatesBulkDeleteHandler(deps?: {
-  deleteMediaItem?: typeof deleteMediaItem;
+  deleteMediaItem?: typeof permanentlyDeleteMediaItem;
 }): RequestHandler {
-  const deleteFn = deps?.deleteMediaItem ?? deleteMediaItem;
+  const deleteFn = deps?.deleteMediaItem ?? permanentlyDeleteMediaItem;
 
   return async (req, res) => {
     const { mediaIds } = adminDuplicatesBulkDeleteBodySchema.parse(req.body);

@@ -6,6 +6,7 @@ import { adminDbBackupRouter } from "./admin/db-backup-routes.js";
 import { adminThumbnailsRouter } from "./admin/thumbnails-routes.js";
 import { adminPeopleDirectoryRouter } from "./admin/people-directory-routes.js";
 import { adminMediaFileIssuesRouter } from "./admin/media-file-issues-routes.js";
+import { adminRecycleRouter } from "./admin/recycle-routes.js";
 
 export const adminRouter = Router();
 
@@ -16,3 +17,4 @@ adminRouter.use(adminDataExplorerRouter);
 adminRouter.use(adminDbBackupRouter);
 adminRouter.use(adminPeopleDirectoryRouter);
 adminRouter.use(adminMediaFileIssuesRouter);
+adminRouter.use(adminRecycleRouter);
