@@ -1,8 +1,52 @@
 import { Given, Then, When } from "@cucumber/cucumber";
 import assert from "node:assert/strict";
 import { existsSync } from "node:fs";
+import { filterPersonOptions } from "../../packages/pics/src/features/people/components/filterPersonOptions.ts";
 
 // Step definitions for people-and-faces.feature scenarios added/modified by update-face-tagging-name-input
+
+type PersonSelectWorld = {
+  personSelectPeople?: Array<{ id: number; name: string }>;
+  personSelectQuery?: string;
+  personSelectSuggestions?: string[];
+};
+
+Given(
+  "people named {string} and {string} exist",
+  function (this: PersonSelectWorld, first: string, second: string) {
+    this.personSelectPeople = [
+      { id: 1, name: first },
+      { id: 2, name: second },
+    ];
+  },
+);
+
+When(
+  "I type {string} in the person selector",
+  function (this: PersonSelectWorld, query: string) {
+    assert.ok(this.personSelectPeople, "Expected people fixtures first");
+    this.personSelectQuery = query;
+    this.personSelectSuggestions = filterPersonOptions(
+      this.personSelectPeople,
+      query,
+    ).map((p) => p.name);
+  },
+);
+
+Then(
+  "{string} appears before {string} in the suggestions",
+  function (this: PersonSelectWorld, earlier: string, later: string) {
+    const names = this.personSelectSuggestions ?? [];
+    const earlierAt = names.indexOf(earlier);
+    const laterAt = names.indexOf(later);
+    assert.ok(earlierAt >= 0, `Expected ${earlier} in suggestions`);
+    assert.ok(laterAt >= 0, `Expected ${later} in suggestions`);
+    assert.ok(
+      earlierAt < laterAt,
+      `Expected ${earlier} before ${later}, got: ${names.join(", ")}`,
+    );
+  },
+);
 
 Given(
   "I have an image open in the media viewer with detected faces",

@@ -8,13 +8,9 @@ import {
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
+import { filterPersonOptions, type PersonOption } from "./filterPersonOptions";
 
 export type PersonSelectValue = number | { createName: string };
-
-type PersonOption = {
-  id: number;
-  name: string;
-};
 
 type PersonSelectProps = {
   people: PersonOption[];
@@ -87,20 +83,15 @@ export function PersonSelect({
   const wrapperRef = useRef<HTMLDivElement>(null);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
 
-  const sorted = useMemo(() => {
-    const exclude = new Set(excludeIds);
-    return [...people]
-      .filter((p) => !exclude.has(p.id))
-      .sort((a, b) =>
-        a.name.localeCompare(b.name, undefined, { sensitivity: "base" }),
-      );
-  }, [people, excludeIds]);
+  const sorted = useMemo(
+    () => filterPersonOptions(people, "", excludeIds),
+    [people, excludeIds],
+  );
 
-  const filtered = useMemo(() => {
-    if (!inputValue) return sorted;
-    const lower = inputValue.toLowerCase();
-    return sorted.filter((p) => p.name.toLowerCase().includes(lower));
-  }, [sorted, inputValue]);
+  const filtered = useMemo(
+    () => filterPersonOptions(people, inputValue, excludeIds),
+    [people, inputValue, excludeIds],
+  );
 
   const showCreateOption =
     inputValue.length > 0 &&
