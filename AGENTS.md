@@ -49,13 +49,13 @@ npm run nuke               # Delete all data (dangerous!)
 
 ### Docker / deploy
 
-The **`api`** image copies pre-built **`packages/server/dist`** only; the **`ui`** image copies **`packages/pics/dist`** (nginx); the **`graphql`** image copies **`packages/graphql/dist`**. **`npm run host`** runs **`npm run build`** first, then builds images and starts Compose. **`config/docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
+The **`api`** image copies pre-built **`packages/server/dist`** only; the **`ui`** image copies **`packages/pics/dist`** (nginx); the **`graphql`** image copies **`packages/graphql/dist`**. **`npm run host`** runs selective prepare + dirty image builds via **`scripts/host-build.sh`**, then starts Compose. **`config/docker-compose.yml` reserves an NVIDIA GPU for Ollama** — see **`HOST.md`**.
 
 ```bash
 npm run validate           # lint + test + docker compose config -q (host:config)
-npm run deploy             # validate → same as host (build + docker build + up)
-npm run host               # build (tsc + vite) → docker compose build --no-cache → docker compose up -d
-npm run host:build         # docker compose build --no-cache (run after npm run build)
+npm run deploy             # validate → same as host (prepare + selective docker build + up)
+npm run host               # selective prepare → dirty images only → docker compose up -d --wait
+npm run host:build         # dirty images only (fingerprints in .cache/host-build/); --force for --no-cache all
 npm run host:up            # docker compose up -d --wait (until app/ollama healthy)
 npm run host:down          # docker compose down
 npm run host:pull          # optional: re-pull nomic-embed-text + llava in running ollama container
@@ -65,7 +65,7 @@ npm run host:config        # docker compose config -q (validate compose + env in
 npm run host:local         # ollama + server + vite --host (no Docker)
 ```
 
-See **`HOST.md`** for **`config/.env*`**, Traefik, **NVIDIA GPU (required for Docker Ollama)**, and production notes. **`npm run host:*`** runs **`scripts/docker-compose.sh`** (`-f config/docker-compose.yml`), which adds **`--env-file config/.env`** / **`config/.env.prod`** when those files exist so **`${ACME_EMAIL}`** and other compose interpolations resolve. **`env_file:`** on a service does **not** substitute **`${…}`** in the compose file — only **`--env-file`** and the shell do. Prefer the wrapper over raw **`docker compose`**. Use **`npm run host:config`** to validate.
+See **`HOST.md`** for **`config/.env*`**, Traefik, **NVIDIA GPU (required for Docker Ollama)**, selective builds, and production notes. **`npm run host:*`** runs **`scripts/docker-compose.sh`** (`-f config/docker-compose.yml`), which adds **`--env-file config/.env`** / **`config/.env.prod`** when those files exist so **`${ACME_EMAIL}`** and other compose interpolations resolve. **`env_file:`** on a service does **not** substitute **`${…}`** in the compose file — only **`--env-file`** and the shell do. Prefer the wrapper over raw **`docker compose`**. Use **`npm run host:config`** to validate.
 
 ---
 
