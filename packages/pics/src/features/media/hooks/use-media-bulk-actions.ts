@@ -89,7 +89,13 @@ export function useMediaBulkActions({
 
   const handleBulkDeleteWrapped = useCallback(async () => {
     const ids = Array.from(selected);
-    if (!ids.length || !confirm(`Delete ${ids.length} file(s)?`)) return;
+    if (
+      !ids.length ||
+      !confirm(
+        `Move ${ids.length} file(s) to the recycle bin? An admin can restore them later.`,
+      )
+    )
+      return;
     setBulkAction("deleting");
     try {
       await handleBulkDelete(ids);

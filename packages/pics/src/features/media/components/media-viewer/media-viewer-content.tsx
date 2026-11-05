@@ -148,7 +148,12 @@ export function MediaViewerContent({
 
   const handleDelete = useCallback(async () => {
     if (!onDelete) return;
-    if (!confirm(`Delete "${item.originalName}"?`)) return;
+    if (
+      !confirm(
+        `Move “${item.originalName}” to the recycle bin? An admin can restore it later.`,
+      )
+    )
+      return;
     setDeleteError(null);
     setDeleting(true);
     try {

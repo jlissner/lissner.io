@@ -1,6 +1,6 @@
 import {
   execute,
-  galleryVisibleSql,
+  galleryVisibleSqlAliased,
   queryAll,
   queryOne,
   withTransaction,
@@ -345,7 +345,7 @@ export async function getMediaForPerson(
     `SELECT m.id, m.filename, m.original_name AS "originalName", m.mime_type AS "mimeType", m.size, m.uploaded_at AS "uploadedAt", m.date_taken AS "dateTaken", m.latitude, m.longitude, m.backed_up_at AS "backedUpAt", m.motion_companion_id AS "motionCompanionId", m.hide_from_gallery AS "hideFromGallery", (SELECT 1 FROM embeddings e WHERE e.media_id = m.id LIMIT 1) AS indexed, ip.x, ip.y, ip.width, ip.height
      FROM image_people ip
      JOIN media m ON m.id = ip.media_id
-     WHERE ip.person_id = ? AND ${galleryVisibleSql()}
+     WHERE ip.person_id = ? AND ${galleryVisibleSqlAliased("m")}
      ORDER BY m.uploaded_at DESC, m.filename ASC
      LIMIT ? OFFSET ?`,
     [personId, limit, offset],
@@ -406,7 +406,7 @@ export async function getRepresentativeMediaId(
      JOIN media m ON m.id = ip.media_id
      WHERE ip.person_id = ?
        AND ip.x IS NOT NULL AND ip.width IS NOT NULL
-       AND ${galleryVisibleSql()}
+       AND ${galleryVisibleSqlAliased("m")}
        AND m.mime_type LIKE 'image/%'
      ORDER BY ip.confidence DESC, m.uploaded_at DESC
      LIMIT 1`,

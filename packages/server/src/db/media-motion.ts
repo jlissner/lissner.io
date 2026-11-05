@@ -84,7 +84,9 @@ export async function clearMotionPairForPeer(mediaId: string): Promise<void> {
 
 /** Re-run pairing for every row (e.g. after restore). Idempotent. */
 export async function relinkAllMotionPairs(): Promise<void> {
-  const rows = await queryAll<{ id: string }>("SELECT id FROM media");
+  const rows = await queryAll<{ id: string }>(
+    "SELECT id FROM media WHERE deleted_at IS NULL",
+  );
   await rows.reduce(
     (chain, { id }) => chain.then(() => linkMotionPairForMedia(id)),
     Promise.resolve(),

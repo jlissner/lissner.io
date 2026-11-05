@@ -5,8 +5,16 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import type pg from "pg";
 import { getMediaPool } from "./pg-media.js";
 
+export const notDeletedSql = (): string => "deleted_at IS NULL";
+
 export const galleryVisibleSql = (): string =>
-  "COALESCE(hide_from_gallery, false) IS NOT TRUE";
+  `COALESCE(hide_from_gallery, false) IS NOT TRUE AND ${notDeletedSql()}`;
+
+/** Qualify bare column names for JOINs that alias `media` (e.g. `m`). */
+export const galleryVisibleSqlAliased = (alias: string): string =>
+  galleryVisibleSql()
+    .replaceAll("hide_from_gallery", `${alias}.hide_from_gallery`)
+    .replaceAll("deleted_at", `${alias}.deleted_at`);
 
 /** Rewrite `?` placeholders to `$1`, `$2`, … for node-pg. */
 const toPgParams = (sql: string): string => {

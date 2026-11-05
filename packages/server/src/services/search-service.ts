@@ -230,7 +230,7 @@ async function visibleItemsChronological(
   sortBy: MediaSortBy,
 ): Promise<MediaRow[]> {
   const items = (await db.getMediaByIds(mediaIds)).filter(
-    (x) => !x.hideFromGallery,
+    (x) => !x.hideFromGallery && x.deletedAt == null,
   );
   return [...items].sort(compareMediaChrono(sortBy));
 }
