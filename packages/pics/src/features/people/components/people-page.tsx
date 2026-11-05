@@ -45,6 +45,9 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     handleMergeFromSuggestion,
     previewMedia,
     previewLoading,
+    previewLoadingMore,
+    previewExhausted,
+    loadMorePreview,
     viewingMedia,
     setViewingMedia,
     setPreviewMedia,
@@ -62,6 +65,7 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
     handleSaveName,
     handleAddPerson,
     handleDeletePerson,
+    handleBulkRemoveFromPhotos,
     addModalOpen,
     setAddModalOpen,
   } = usePeoplePage(onUpdate);
@@ -145,11 +149,15 @@ export function PeoplePage({ onUpdate, onViewAllPhotos }: PeoplePageProps) {
           photoCount={photoCount}
           previewMedia={previewMedia}
           previewLoading={previewLoading}
+          previewLoadingMore={previewLoadingMore}
+          previewExhausted={previewExhausted}
           mergeSuggestions={mergeSuggestions}
           mergeSuggestionsLoading={mergeSuggestionsLoading}
           onMergeIntoSuggestion={handleMergeFromSuggestion}
           onViewAllPhotos={onViewAllPhotos}
           onPhotoClick={setViewingMedia}
+          onBulkRemoveTags={handleBulkRemoveFromPhotos}
+          onLoadMorePreview={loadMorePreview}
           onBack={isMobile ? handleBack : undefined}
         />
       )}

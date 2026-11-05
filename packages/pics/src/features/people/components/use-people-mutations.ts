@@ -123,6 +123,47 @@ export function usePeopleMutations({
     ],
   );
 
+  const handleBulkRemoveFromPhotos = useCallback(
+    async (mediaIds: string[]): Promise<boolean> => {
+      if (!selectedId || mediaIds.length === 0) return false;
+      const confirmed = confirm(`Remove tag from ${mediaIds.length} photo(s)?`);
+      if (!confirmed) return false;
+
+      const results = await Promise.allSettled(
+        mediaIds.map((mediaId) => removeTagFromMedia(mediaId, selectedId)),
+      );
+      const removedIds = mediaIds.filter(
+        (_, i) => results[i]?.status === "fulfilled",
+      );
+      const removed = new Set(removedIds);
+      const failed = results.some((r) => r.status === "rejected");
+
+      if (removed.size > 0) {
+        setPreviewMedia((prev) => prev.filter((m) => !removed.has(m.id)));
+        setViewingMedia((prev) => (prev && removed.has(prev.id) ? null : prev));
+        await fetchPeople();
+        onUpdate?.();
+      }
+      if (failed) {
+        showToast(
+          errorMessage(
+            results.find((r) => r.status === "rejected")?.reason,
+            "Failed to remove some tags",
+          ),
+        );
+      }
+      return removed.size > 0;
+    },
+    [
+      selectedId,
+      fetchPeople,
+      onUpdate,
+      setPreviewMedia,
+      setViewingMedia,
+      showToast,
+    ],
+  );
+
   const handleMerge = useCallback(
     async (mergeFrom: number, mergeInto: number) => {
       try {
@@ -229,6 +270,7 @@ export function usePeopleMutations({
   return {
     handleReassign,
     handleRemoveFromPhoto,
+    handleBulkRemoveFromPhotos,
     handleMerge,
     handleSaveName,
     handleAddPerson,

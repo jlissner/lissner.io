@@ -1,5 +1,5 @@
 import { prependApiUrl } from "@/api";
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   isImage,
@@ -9,9 +9,11 @@ import {
 import { PixelMpOrImageVideoPreview } from "@/features/media/components/media-viewer/pixel-mp-preview";
 import type { MergeSuggestion } from "./people-types";
 import type { PersonMediaItem } from "./use-people-preview";
-
-const INITIAL_GRID_SIZE = 50;
-const GRID_PAGE_SIZE = 50;
+import {
+  PERSON_PREVIEW_PAGE_SIZE,
+  hasMorePersonPhotos,
+  remainingPersonPhotos,
+} from "./person-preview-paging";
 
 interface PeopleDetailProps {
   selectedId: number | null;
@@ -19,11 +21,15 @@ interface PeopleDetailProps {
   photoCount: number;
   previewMedia: PersonMediaItem[];
   previewLoading: boolean;
+  previewLoadingMore: boolean;
+  previewExhausted: boolean;
   mergeSuggestions: MergeSuggestion[];
   mergeSuggestionsLoading: boolean;
   onMergeIntoSuggestion: (mergeIntoPersonId: number) => void;
   onViewAllPhotos?: (personId: number) => void;
   onPhotoClick: (m: MediaItem) => void;
+  onBulkRemoveTags: (mediaIds: string[]) => boolean | Promise<boolean>;
+  onLoadMorePreview: () => void | Promise<void>;
   onBack?: () => void;
 }
 
@@ -33,14 +39,24 @@ export function PeopleDetail({
   photoCount,
   previewMedia,
   previewLoading,
+  previewLoadingMore,
+  previewExhausted,
   mergeSuggestions,
   mergeSuggestionsLoading,
   onMergeIntoSuggestion,
   onViewAllPhotos,
   onPhotoClick,
+  onBulkRemoveTags,
+  onLoadMorePreview,
   onBack,
 }: PeopleDetailProps) {
-  const [visibleCount, setVisibleCount] = useState(INITIAL_GRID_SIZE);
+  const [visibleCount, setVisibleCount] = useState(PERSON_PREVIEW_PAGE_SIZE);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    setSelected(new Set());
+    setVisibleCount(PERSON_PREVIEW_PAGE_SIZE);
+  }, [selectedId]);
 
   const images = useMemo(
     () => previewMedia.filter((m) => isImage(m.mimeType, m.originalName)),
@@ -51,11 +67,80 @@ export function PeopleDetail({
     () => images.slice(0, visibleCount),
     [images, visibleCount],
   );
-  const hasMore = images.length > visibleCount;
+  const totalForPaging = previewExhausted ? images.length : photoCount;
+  const hasMore = hasMorePersonPhotos(totalForPaging, visibleCount);
+  const remaining = remainingPersonPhotos(totalForPaging, visibleCount);
+  const selectionMode = selected.size > 0;
+
+  useEffect(() => {
+    if (
+      visibleCount <= images.length ||
+      previewExhausted ||
+      previewLoadingMore ||
+      previewLoading
+    ) {
+      return;
+    }
+    void onLoadMorePreview();
+  }, [
+    visibleCount,
+    images.length,
+    previewExhausted,
+    previewLoadingMore,
+    previewLoading,
+    onLoadMorePreview,
+  ]);
 
   const handleLoadMore = useCallback(() => {
-    setVisibleCount((n) => n + GRID_PAGE_SIZE);
+    setVisibleCount((n) => n + PERSON_PREVIEW_PAGE_SIZE);
   }, []);
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelected(new Set());
+  }, []);
+
+  const visibleIds = useMemo(
+    () => visibleImages.map((m) => m.id),
+    [visibleImages],
+  );
+  const allVisibleSelected =
+    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+
+  const toggleSelectAllVisible = useCallback(() => {
+    setSelected((prev) => {
+      const allSelected =
+        visibleIds.length > 0 && visibleIds.every((id) => prev.has(id));
+      if (allSelected) return new Set();
+      return new Set(visibleIds);
+    });
+  }, [visibleIds]);
+
+  const handleRemoveTags = useCallback(() => {
+    const ids = [...selected];
+    void Promise.resolve(onBulkRemoveTags(ids)).then((removed) => {
+      if (removed) clearSelection();
+    });
+  }, [selected, onBulkRemoveTags, clearSelection]);
+
+  const handleThumbClick = useCallback(
+    (m: PersonMediaItem) => {
+      if (selectionMode) {
+        toggleSelect(m.id);
+        return;
+      }
+      onPhotoClick(m);
+    },
+    [selectionMode, toggleSelect, onPhotoClick],
+  );
 
   if (!selectedId) {
     return (
@@ -103,12 +188,43 @@ export function PeopleDetail({
             </p>
           </div>
         </div>
-        {onViewAllPhotos && (
-          <Button size="sm" onClick={() => onViewAllPhotos(selectedId)}>
-            View in gallery
-          </Button>
-        )}
+        <div className="detail__header-actions">
+          {!selectionMode && images.length > 0 && (
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={toggleSelectAllVisible}
+            >
+              Select
+            </Button>
+          )}
+          {onViewAllPhotos && (
+            <Button size="sm" onClick={() => onViewAllPhotos(selectedId)}>
+              View in gallery
+            </Button>
+          )}
+        </div>
       </div>
+      {selectionMode && (
+        <div className="bulk-actions bulk-actions--sticky detail__bulk">
+          <span className="bulk-actions__count">{selected.size} selected</span>
+          <div className="bulk-actions__buttons">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={toggleSelectAllVisible}
+            >
+              {allVisibleSelected ? "Select none" : "Select all visible"}
+            </Button>
+            <Button variant="danger" size="sm" onClick={handleRemoveTags}>
+              Remove tags
+            </Button>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
       {showMergeHints && (
         <section
           className="detail__merge-hints"
@@ -150,6 +266,7 @@ export function PeopleDetail({
           <div className="detail__grid">
             {visibleImages.map((m) => {
               const pm = m as PersonMediaItem;
+              const isSelected = selected.has(m.id);
               const hasBox =
                 selectedId && pm.x != null && pm.width != null && pm.width > 0;
               const thumbSrc = hasBox
@@ -162,33 +279,53 @@ export function PeopleDetail({
               const usePixelHybrid =
                 !hasBox && isPixelMotionPhotoBasename(m.originalName ?? "");
               return (
-                <button
+                <div
                   key={m.id}
-                  type="button"
-                  className={`detail__thumb ${m.backedUp ? "detail__thumb--backed-up" : ""}`}
-                  onClick={() => onPhotoClick(m)}
-                  title={
-                    m.backedUp ? "Backed up to cloud" : "Not backed up yet"
-                  }
+                  className={[
+                    "detail__thumb-wrap",
+                    selectionMode && "detail__thumb-wrap--selection-mode",
+                    isSelected && "detail__thumb-wrap--selected",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
                 >
-                  {usePixelHybrid ? (
-                    <PixelMpOrImageVideoPreview
-                      src={thumbSrc}
-                      alt={m.originalName ?? `Photo of ${selectedName}`}
+                  <div className="detail__thumb-checkbox-wrap">
+                    <input
+                      type="checkbox"
+                      className="detail__thumb-checkbox"
+                      checked={isSelected}
+                      onChange={() => toggleSelect(m.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Select photo ${m.originalName ?? m.id}`}
                     />
-                  ) : (
-                    <img
-                      src={thumbSrc}
-                      alt={m.originalName ?? `Photo of ${selectedName}`}
-                      loading="lazy"
-                    />
-                  )}
-                  {m.backedUp && (
-                    <span className="detail__thumb-backup" aria-hidden>
-                      ☁
-                    </span>
-                  )}
-                </button>
+                  </div>
+                  <button
+                    type="button"
+                    className={`detail__thumb ${m.backedUp ? "detail__thumb--backed-up" : ""}`}
+                    onClick={() => handleThumbClick(m)}
+                    title={
+                      m.backedUp ? "Backed up to cloud" : "Not backed up yet"
+                    }
+                  >
+                    {usePixelHybrid ? (
+                      <PixelMpOrImageVideoPreview
+                        src={thumbSrc}
+                        alt={m.originalName ?? `Photo of ${selectedName}`}
+                      />
+                    ) : (
+                      <img
+                        src={thumbSrc}
+                        alt={m.originalName ?? `Photo of ${selectedName}`}
+                        loading="lazy"
+                      />
+                    )}
+                    {m.backedUp && (
+                      <span className="detail__thumb-backup" aria-hidden>
+                        ☁
+                      </span>
+                    )}
+                  </button>
+                </div>
               );
             })}
             {images.length === 0 && (
@@ -202,8 +339,15 @@ export function PeopleDetail({
           </div>
           {hasMore && (
             <div className="detail__load-more">
-              <Button variant="ghost" size="sm" onClick={handleLoadMore}>
-                Show more photos ({images.length - visibleCount} remaining)
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLoadMore}
+                disabled={previewLoadingMore}
+              >
+                {previewLoadingMore
+                  ? "Loading…"
+                  : `Show more photos (${remaining} remaining)`}
               </Button>
             </div>
           )}

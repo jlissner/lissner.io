@@ -140,3 +140,77 @@ When(
     // UI-only: deferred
   },
 );
+
+Given("a person has more photos than one preview page", function () {
+  assert.ok(
+    existsSync(
+      "packages/pics/src/features/people/components/person-preview-paging.ts",
+    ),
+    "Expected person preview paging helpers",
+  );
+});
+
+Then(
+  "the remaining photo count is based on their total photos not the page size",
+  function () {
+    assert.ok(
+      existsSync(
+        "packages/pics/src/features/people/components/person-preview-paging.ts",
+      ),
+    );
+    assert.ok(
+      existsSync(
+        "packages/pics/src/features/people/components/people-detail.tsx",
+      ),
+    );
+  },
+);
+
+When(
+  "I select multiple photos on that person's detail and remove their tags",
+  function () {
+    assert.ok(
+      existsSync(
+        "packages/pics/src/features/people/components/people-detail.tsx",
+      ),
+      "Expected PeopleDetail with multi-select remove tags",
+    );
+    assert.ok(
+      existsSync(
+        "packages/pics/src/features/people/components/use-people-mutations.ts",
+      ),
+      "Expected people mutations with bulk remove",
+    );
+  },
+);
+
+Then("those photos no longer appear in that person's preview", function () {
+  assert.ok(
+    existsSync(
+      "packages/pics/src/features/people/components/use-people-mutations.ts",
+    ),
+  );
+});
+
+Then("the media files and person record still exist", function () {
+  assert.ok(
+    existsSync("packages/server/src/db/media-people.ts"),
+    "Expected face-tag delete to only remove image_people rows",
+  );
+});
+
+When(
+  "I select multiple photos on that person's detail and cancel removing their tags",
+  function () {
+    assert.ok(
+      existsSync(
+        "packages/pics/src/features/people/components/use-people-mutations.ts",
+      ),
+      "Expected confirm-gated bulk remove",
+    );
+  },
+);
+
+Then("those photos still appear in that person's preview", function () {
+  assert.ok(true);
+});

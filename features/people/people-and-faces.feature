@@ -29,6 +29,12 @@ Feature: People and face assignment
     When I view that person's detail
     Then I see thumbnails or previews for their photos
 
+  # Gap fill from bug: remaining count used loaded page size, not photoCount
+  Scenario: Person detail remaining count reflects total photo count
+    Given a person has more photos than one preview page
+    When I view that person's detail
+    Then the remaining photo count is based on their total photos not the page size
+
   # Gap fill from bug: person selector ranked alphabetical includes-matches only
   Scenario: Person selector ranks name-token prefix matches before substring matches
     Given people named "Ed Kelly" and "Ellie" exist
@@ -69,3 +75,14 @@ Feature: People and face assignment
     Given a face on media is linked to a person
     When I remove or reassign that link
     Then the face association updates accordingly
+
+  Scenario: Mass remove face tags from person detail
+    Given a person has associated media
+    When I select multiple photos on that person's detail and remove their tags
+    Then those photos no longer appear in that person's preview
+    And the media files and person record still exist
+
+  Scenario: Cancel mass remove face tags
+    Given a person has associated media
+    When I select multiple photos on that person's detail and cancel removing their tags
+    Then those photos still appear in that person's preview
