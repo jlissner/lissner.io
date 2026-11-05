@@ -29,6 +29,12 @@ Feature: People and face assignment
     When I view that person's detail
     Then I see thumbnails or previews for their photos
 
+  # Gap fill from bug: person selector ranked alphabetical includes-matches only
+  Scenario: Person selector ranks name-token prefix matches before substring matches
+    Given people named "Ed Kelly" and "Ellie" exist
+    When I type "ell" in the person selector
+    Then "Ellie" appears before "Ed Kelly" in the suggestions
+
   Scenario: Assign a face to an existing person from the viewer
     Given I have an image open in the media viewer with detected faces
     And people exist in the system

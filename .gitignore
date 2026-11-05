@@ -4,6 +4,7 @@ node_modules/
 dist/
 dist-types/
 *.tsbuildinfo
+.cache/
 .env
 .env.*
 !.env.example

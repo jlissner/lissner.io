@@ -89,25 +89,27 @@ GraphQL: dump remote → restore local → set **`POSTGRES_SERVER_URL`** + **`GR
 
 ## Build and deploy
 
-The Docker images **do not compile** TypeScript or Vite on their own: **`packages/server/Dockerfile`** copies **`packages/server/dist`**; **`packages/pics/Dockerfile`** copies **`packages/pics/dist`**; **`packages/graphql/Dockerfile`** copies **`packages/graphql/dist`**. Always run **`npm run build`** on the host first.
+The Docker images **do not compile** TypeScript or Vite on their own: **`packages/server/Dockerfile`** copies **`packages/server/dist`**; **`packages/pics/Dockerfile`** copies **`packages/pics/dist`**; **`packages/graphql/Dockerfile`** copies **`packages/graphql/dist`**. **`npm run host`** prepares `dist` selectively; for a one-off image build after a manual **`npm run build`**, use **`npm run host:build`**.
 
-| Command               | Description                                                                                                                         |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run deploy`      | **`npm run validate`** (lint, test, compose config) → **`npm run host`**                                                            |
-| `npm run validate`    | Lint, unit tests, `docker compose config -q`                                                                                        |
-| `npm run host`        | **`npm run build`** → Docker build (`--no-cache`) → `docker compose up -d`                                                          |
-| `npm run host:build`  | Build images only (`docker compose build --no-cache`)                                                                               |
-| `npm run host:up`     | Start containers and **wait** until services with healthchecks are **healthy** (so Traefik does not hit a still-starting **`api`**) |
-| `npm run host:down`   | Stop containers                                                                                                                     |
-| `npm run host:pull`   | Re-pull default Ollama models (`nomic-embed-text`, `llava`) into the running container (usually unnecessary; see First-time setup)  |
-| `npm run host:logs`   | Follow logs for all services                                                                                                        |
-| `npm run host:status` | `docker compose ps`                                                                                                                 |
-| `npm run host:local`  | Local dev without Docker (Ollama + server + Vite)                                                                                   |
+| Command               | Description                                                                                                                                |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run deploy`      | **`npm run validate`** (lint, test, compose config) → **`npm run host`**                                                                   |
+| `npm run validate`    | Lint, unit tests, `docker compose config -q`                                                                                               |
+| `npm run host`        | Selective prepare (`tsc -b` + Vite if pics/shared changed) → dirty Docker images only → `docker compose up -d --wait`                      |
+| `npm run host:build`  | Build dirty images only (fingerprints in **`.cache/host-build/`**). Force: **`npm run host:build -- --force`** or **`HOST_BUILD_FORCE=1`** |
+| `npm run host:up`     | Start containers and **wait** until services with healthchecks are **healthy** (so Traefik does not hit a still-starting **`api`**)        |
+| `npm run host:down`   | Stop containers                                                                                                                            |
+| `npm run host:pull`   | Re-pull default Ollama models (`nomic-embed-text`, `llava`) into the running container (usually unnecessary; see First-time setup)         |
+| `npm run host:logs`   | Follow logs for all services                                                                                                               |
+| `npm run host:status` | `docker compose ps`                                                                                                                        |
+| `npm run host:local`  | Local dev without Docker (Ollama + server + Vite)                                                                                          |
+
+**Selective builds** ([`scripts/host-build.sh`](scripts/host-build.sh)): fingerprints each image’s inputs (Dockerfiles, lock/workspace manifests, relevant `dist` trees, `docker/ollama`). Unchanged services are skipped. Shared `dist` changes rebuild **api** + **graphql**; Vite runs when pics/shared **sources** change so **ui** picks up the new bundle. First run (no cache) builds everything. Use **`--force`** / **`HOST_BUILD_FORCE=1`** for a clean **`--no-cache`** rebuild of all targeted services.
 
 ## First-time setup
 
 1. Configure **`config/.env`** (see above), especially **`ACME_EMAIL`** and **`TRAEFIK_RULE`** for your hostname. In **`config/.env.prod`**, set **`OLLAMA_VISION_MODEL`** (and optionally **`OLLAMA_EMBED_MODEL`**) if you do not want the defaults (**`llava`** and **`nomic-embed-text`**).
-2. Run **`npm run host`** (includes `npm run build`). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
+2. Run **`npm run host`** (selective prepare + image builds; first run builds everything). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
 3. Check **`npm run host:status`**
 
 The site is reachable on **`UI_HOST`** (static **`ui`** container), **`API_HOST`** (**`api`** container), and **`GRAPHQL_HOST`** (**`graphql`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
@@ -207,4 +209,4 @@ Requires **Docker Compose v2.20+** for `up --wait`. If your CLI errors on `--wai
 
 ### Stale UI or API after code changes
 
-Run **`npm run build`** before **`npm run host:build`** (or use **`npm run host`**, which builds first).
+Run **`npm run build`** (or **`bash scripts/host-build.sh prepare`**) before **`npm run host:build`** if `dist` is stale — or use **`npm run host`**, which prepares first.
