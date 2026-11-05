@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { execute, queryAll, queryOne } from "./client.js";
 import {
   deletePersonSafe,
+  getMediaForPerson,
   resetMediaPeopleStatementCache,
 } from "./media-people.js";
 import { resetMediaTestDb } from "./test-media-db.js";
@@ -44,6 +45,30 @@ describe("media-people delete semantics", () => {
       [1001],
     );
     expect(person).toBeUndefined();
+  });
+
+  it("pages person media with offset so previews can load past the first page", async () => {
+    await execute("INSERT INTO person_names (person_id, name) VALUES (?, ?)", [
+      1003,
+      "Carol",
+    ]);
+    await Promise.all(
+      [1, 2, 3].map(async (n) => {
+        const id = `m-page-${n}`;
+        await insertMinimalMedia(id);
+        await execute(
+          "INSERT INTO image_people (media_id, person_id) VALUES (?, ?)",
+          [id, 1003],
+        );
+      }),
+    );
+
+    const first = await getMediaForPerson(1003, 2, 0);
+    const second = await getMediaForPerson(1003, 2, 2);
+    expect(first).toHaveLength(2);
+    expect(second).toHaveLength(1);
+    expect(second[0]?.id).not.toBe(first[0]?.id);
+    expect(second[0]?.id).not.toBe(first[1]?.id);
   });
 
   it("allows delete for people linked to a user (keeps person_names while referenced)", async () => {

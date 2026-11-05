@@ -27,9 +27,12 @@ export function listPeople(): Promise<PersonSummary[]> {
 
 export function listPersonMediaPreviews(
   personId: number,
+  options: { limit?: number; offset?: number } = {},
 ): Promise<PersonMediaPreviewItem[]> {
+  const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
   return apiJson<PersonMediaPreviewItem[]>(
-    `people/${personId}/media?limit=100`,
+    `people/${personId}/media?limit=${limit}&offset=${offset}`,
   );
 }
 

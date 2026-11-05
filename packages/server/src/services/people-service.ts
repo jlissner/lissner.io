@@ -10,8 +10,9 @@ import type { ServiceFailure } from "./service-result.js";
 export async function getPersonMediaPreview(
   personId: number,
   limit: number,
+  offset = 0,
 ): Promise<PersonMediaPreviewItem[]> {
-  const media = await db.getMediaForPerson(personId, limit);
+  const media = await db.getMediaForPerson(personId, limit, offset);
   return media.map((m) => ({
     id: m.id,
     filename: m.filename,

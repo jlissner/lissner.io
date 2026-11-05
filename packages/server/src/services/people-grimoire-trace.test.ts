@@ -44,4 +44,12 @@ describe("Gherkin: People and face assignment (features/people/people-and-faces.
   it.todo(
     "Scenario: Remove or reassign a face link — see packages/pics/src/features/people/components/people-match-faces-wizard.tsx, packages/server/src/routes/people.ts",
   );
+
+  it.todo(
+    "Scenario: Mass remove face tags from person detail — see packages/pics/src/features/people/components/people-detail.tsx, use-people-mutations.ts",
+  );
+
+  it.todo(
+    "Scenario: Cancel mass remove face tags — see packages/pics/src/features/people/components/use-people-mutations.ts",
+  );
 });

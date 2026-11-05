@@ -339,6 +339,7 @@ type MediaForPerson = {
 export async function getMediaForPerson(
   personId: number,
   limit: number,
+  offset = 0,
 ): Promise<MediaForPerson[]> {
   const rows = await queryAll<MediaForPerson>(
     `SELECT m.id, m.filename, m.original_name AS "originalName", m.mime_type AS "mimeType", m.size, m.uploaded_at AS "uploadedAt", m.date_taken AS "dateTaken", m.latitude, m.longitude, m.backed_up_at AS "backedUpAt", m.motion_companion_id AS "motionCompanionId", m.hide_from_gallery AS "hideFromGallery", (SELECT 1 FROM embeddings e WHERE e.media_id = m.id LIMIT 1) AS indexed, ip.x, ip.y, ip.width, ip.height
@@ -346,8 +347,8 @@ export async function getMediaForPerson(
      JOIN media m ON m.id = ip.media_id
      WHERE ip.person_id = ? AND ${galleryVisibleSql()}
      ORDER BY m.uploaded_at DESC, m.filename ASC
-     LIMIT ?`,
-    [personId, limit],
+     LIMIT ? OFFSET ?`,
+    [personId, limit, offset],
   );
   return rows.map((r) => ({
     ...r,

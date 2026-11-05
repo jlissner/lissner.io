@@ -41,8 +41,9 @@ peopleRouter.get(
 peopleRouter.get("/:id/media", async (req, res) => {
   const { id } = personIdParamsSchema.parse(req.params);
   const q = personMediaQuerySchema.parse(req.query);
-  const limit = q.limit ?? 100;
-  res.json(await getPersonMediaPreview(id, limit));
+  const limit = q.limit ?? 50;
+  const offset = q.offset ?? 0;
+  res.json(await getPersonMediaPreview(id, limit, offset));
 });
 
 peopleRouter.get("/", async (_req, res) => {
