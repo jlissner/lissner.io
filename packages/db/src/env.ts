@@ -33,8 +33,10 @@ const requireEnv = (name: string): string => {
   return val;
 };
 
-const host = process.env.POSTGRES_HOST?.trim() || "127.0.0.1";
-const port = process.env.POSTGRES_PORT?.trim() || "5433";
+/** Host-side scripts talk to the published bind (INTERNAL_*), not Compose DNS. */
+const host = (): string =>
+  process.env.INTERNAL_POSTGRES_HOST?.trim() || "127.0.0.1";
+const port = (): string => process.env.INTERNAL_POSTGRES_PORT?.trim() || "5432";
 
 const graphqlDatabaseName = (): string =>
   process.env.GRAPHQL_DATABASE_NAME?.trim() || "lissner";
@@ -43,19 +45,14 @@ const mediaDatabaseName = (): string =>
   process.env.MEDIA_DATABASE_NAME?.trim() || "media";
 
 /**
- * Local / app Postgres URL for a named database.
- * Prefers POSTGRES_SERVER_URL + GRAPHQL_DATABASE_NAME / MEDIA_DATABASE_NAME;
- * falls back to POSTGRES_USER/PASSWORD/HOST/PORT for scripts.
+ * Local / app Postgres URL for a named database (host tools / migrations).
+ * Uses POSTGRES_USER/PASSWORD + INTERNAL_POSTGRES_* + GRAPHQL_/MEDIA_DATABASE_NAME.
  */
 export const localUrl = (kind: "lissner" | "media"): string => {
   const dbName = kind === "media" ? mediaDatabaseName() : graphqlDatabaseName();
-  const serverUrl = process.env.POSTGRES_SERVER_URL?.trim();
-  if (serverUrl) {
-    return buildDatabaseUrl(serverUrl, dbName);
-  }
   const user = encodeURIComponent(requireEnv("POSTGRES_USER"));
   const pass = encodeURIComponent(requireEnv("POSTGRES_PASSWORD"));
-  return `postgres://${user}:${pass}@${host}:${port}/${dbName}?sslmode=disable`;
+  return `postgres://${user}:${pass}@${host()}:${port()}/${dbName}?sslmode=disable`;
 };
 
 export const mediaDatabaseUrl = (): string => localUrl("media");

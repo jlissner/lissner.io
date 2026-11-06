@@ -36,13 +36,23 @@ const assertSslMode = (url: string, label: string): void => {
   );
 };
 
-const POSTGRES_SERVER_URL = getEnvVar("POSTGRES_SERVER_URL");
 const GRAPHQL_DATABASE_NAME = getEnvVar("GRAPHQL_DATABASE_NAME");
+const EXPOSED_POSTGRES_HOST = getEnvVar("EXPOSED_POSTGRES_HOST");
+const EXPOSED_POSTGRES_PORT = getEnvVar("EXPOSED_POSTGRES_PORT");
+const POSTGRES_PASSWORD = getEnvVar("POSTGRES_PASSWORD");
+const POSTGRES_USER = getEnvVar("POSTGRES_USER");
 
 export const DATABASE_URL = (() => {
-  assertSslMode(POSTGRES_SERVER_URL, "POSTGRES_SERVER_URL");
-  const url = buildDatabaseUrl(POSTGRES_SERVER_URL, GRAPHQL_DATABASE_NAME);
-  assertSslMode(url, "GRAPHQL database URL");
+  // assertSslMode(POSTGRES_SERVER_URL, "POSTGRES_SERVER_URL");
+  const url = buildDatabaseUrl({
+    host: EXPOSED_POSTGRES_HOST,
+    port: EXPOSED_POSTGRES_PORT,
+    password: POSTGRES_PASSWORD,
+    user: POSTGRES_USER,
+    databaseName: GRAPHQL_DATABASE_NAME,
+  });
+
+  // assertSslMode(url, "GRAPHQL database URL");
   return url;
 })();
 

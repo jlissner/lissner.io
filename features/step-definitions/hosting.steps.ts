@@ -237,10 +237,12 @@ Then("the response is served by the UI service", function () {
   );
   assert.ok(compose.includes("dockerfile: packages/pics/Dockerfile"));
   assert.ok(
-    compose.includes("traefik.http.routers.ui.rule=Host(`${UI_HOST}`)"),
+    compose.includes("traefik.http.routers.ui.rule=Host(`${PICS_UI_HOST}`)"),
   );
   assert.ok(
-    compose.includes("traefik.http.routers.ui-http.rule=Host(`${UI_HOST}`)"),
+    compose.includes(
+      "traefik.http.routers.ui-http.rule=Host(`${PICS_UI_HOST}`)",
+    ),
   );
   assert.ok(compose.includes("traefik.http.services.ui.loadbalancer"));
 });

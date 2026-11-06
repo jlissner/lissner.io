@@ -11,11 +11,12 @@ vi.mock("../config/env.js", () => ({
   OLLAMA_HOST: "http://127.0.0.1:11434",
   OLLAMA_VISION_MODEL: "llava",
   S3_BUCKET: "test-bucket",
-  API_HOST: "localhost",
+  VITE_API_HOST: "localhost",
   SERVER_PORT: 3000,
   SESSION_SECRET: "test-session-secret",
   SES_FROM_EMAIL: "ses@test.local",
-  UI_PORT: 8042,
+  PICS_UI_HOST: "localhost",
+  PICS_UI_PORT: 8042,
 }));
 
 describe("admin explorer env flags", () => {

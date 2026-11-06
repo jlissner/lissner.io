@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => {
   const apiPort = env.SERVER_PORT;
   const viteApiHost = env.VITE_API_HOST.trim();
   const apiProxyTarget = `http://${viteApiHost}:${apiPort}`;
-  const devPort = Number(env.UI_PORT);
+  const devPort = Number(env.PICS_UI_PORT);
   const apiProxy = {
     target: apiProxyTarget,
     changeOrigin: true,

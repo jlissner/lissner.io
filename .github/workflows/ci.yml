@@ -18,13 +18,16 @@ env:
   SERVER_PORT: ${{ vars.SERVER_PORT }}
   SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
   SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL }}
-  UI_HOST: ${{ vars.UI_HOST }}
-  UI_PORT: ${{ vars.UI_PORT }}
+  PICS_UI_HOST: ${{ vars.PICS_UI_HOST }}
+  PICS_UI_PORT: ${{ vars.PICS_UI_PORT }}
   VITE_API_HOST: ${{ vars.VITE_API_HOST }}
-  # Media API / Vitest (media_test). Server URL has no database path.
+  # Media API / Vitest (media_test) — apps use EXPOSED_*; host tools use INTERNAL_*.
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
-  POSTGRES_SERVER_URL: postgres://postgres:postgres@127.0.0.1:5432?sslmode=disable
+  INTERNAL_POSTGRES_HOST: 127.0.0.1
+  INTERNAL_POSTGRES_PORT: 5432
+  EXPOSED_POSTGRES_HOST: 127.0.0.1
+  EXPOSED_POSTGRES_PORT: 5432
   MEDIA_DATABASE_NAME: media_test
   GRAPHQL_DATABASE_NAME: lissner
 

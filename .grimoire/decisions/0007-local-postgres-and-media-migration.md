@@ -28,12 +28,13 @@ Chosen option: **2**, because local Postgres is validated by GraphQL dump/restor
 
 Defaults:
 
-- One Compose `postgres:16` instance
+- One Compose `postgres:16` instance **per lifecycle** (see ADR 0008 for on-machine dual dev/prod)
 - Databases: `lissner` (PostGraphile) and `media` (API auth + photos)
+
 - Embeddings stored as `TEXT` (JSON vector string, same as SQLite) for the first cut; revisit `pgvector` later
 - Migrations live in `packages/db/migrations/media/` as numbered SQL
-- API requires `POSTGRES_SERVER_URL` + `MEDIA_DATABASE_NAME` in all environments (SQLite retired in B5)
-- Connection config: one `POSTGRES_SERVER_URL` (no DB path) plus `GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` (see `@lissner/shared` `buildDatabaseUrl`)
+- API requires Postgres connection env + `MEDIA_DATABASE_NAME` in all environments (SQLite retired in B5)
+- Connection config (current): `POSTGRES_USER` / `POSTGRES_PASSWORD` + `EXPOSED_POSTGRES_*` + `GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` via `buildDatabaseUrl` (see ADR 0008). Earlier drafts used a single `POSTGRES_SERVER_URL`.
 
 ### Consequences
 
@@ -49,6 +50,6 @@ Defaults:
 ## Confirmation
 
 - A1: `npm run db:up` + `npm run db:checkpoint`
-- A2–A3: dump/restore + GraphQL `POSTGRES_SERVER_URL` + `GRAPHQL_DATABASE_NAME` local
+- A2–A3: dump/restore + GraphQL `EXPOSED_POSTGRES_*` + `GRAPHQL_DATABASE_NAME` local
 - B2–B5: `db:migrate:media`, cutover env, retire SQLite runtime/tests/deps
-- Env: `POSTGRES_SERVER_URL` + `GRAPHQL_DATABASE_NAME` + `MEDIA_DATABASE_NAME` (not a single `DATABASE_URL` per app)
+- Env: `EXPOSED_POSTGRES_*` + credentials + `GRAPHQL_DATABASE_NAME` + `MEDIA_DATABASE_NAME` (not a single `DATABASE_URL` per app); see ADR 0008

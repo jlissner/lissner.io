@@ -19,11 +19,14 @@ npm run build              # Full build: tsc + vite
 ### Development
 
 ```bash
-npm run dev               # Start all: ollama + server + ui + graphql
+npm run dev               # db:up then ollama + server + ui + graphql
 npm run dev:server        # Server only (tsx watch)
 npm run dev:ui            # UI only (vite)
 npm run dev:web           # Server + UI (no ollama)
 npm run dev:graphql       # PostGraphile GraphQL server only (tsx watch)
+npm run dev:stop          # Stop local Node/Ollama (not Postgres)
+npm run db:up             # Start dev Postgres (lissnerio-dev :5432)
+npm run db:down           # Stop dev Postgres only
 npm run start             # Production server
 npm run start:graphql     # Production GraphQL server (after build)
 ```
@@ -199,10 +202,11 @@ components/, config/, hooks/ → features/ → app/
 
 ## Database
 
-- **Media API:** async Postgres client in `packages/server/src/db/client.ts` — requires `POSTGRES_SERVER_URL` + `MEDIA_DATABASE_NAME`
+- **Media API:** async Postgres client in `packages/server/src/db/client.ts` — `EXPOSED_POSTGRES_*` + `POSTGRES_USER` / `POSTGRES_PASSWORD` + `MEDIA_DATABASE_NAME` → `buildDatabaseUrl`
 - **Media schema:** SQL in `packages/db/migrations/media/`; apply with `npm run db:migrate:media`
-- **GraphQL:** `POSTGRES_SERVER_URL` + `GRAPHQL_DATABASE_NAME` (built into a full URL via `buildDatabaseUrl`)
-- **Local Postgres:** `npm run db:up` — DBs named by `GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` (defaults `lissner` + `media`); Vitest uses `media_test`; ops in `packages/db` (ADR 0007)
+- **GraphQL:** same Postgres pieces with `GRAPHQL_DATABASE_NAME` (via `buildDatabaseUrl`)
+- **Local Postgres:** `npm run db:up` — Compose project `lissnerio-dev`, host bind **`INTERNAL_POSTGRES_PORT=5432`** (volume `lissnerio-dev_postgres-data`). On-machine **prod** is separate (`npm run host`, bind **5433**, volume `lissnerio_postgres-data`; containers use `EXPOSED_POSTGRES_HOST=postgres`). Vitest uses `media_test`. ADR 0007 / 0008.
+
 - **Backups:** S3 sync stores `media_*.dump` (`pg_dump`); admin restore uses `pg_restore`
 
 ---
