@@ -8,6 +8,7 @@ import {
   backupRouter,
   mediaRouter,
   peopleRouter,
+  picsRouter,
   searchRouter,
 } from "../routes/index.js";
 import { requireAuth, jwtMiddleware } from "../auth/middleware.js";
@@ -22,9 +23,6 @@ export function createConfiguredApp() {
   const app = express();
 
   app.set("trust proxy", true);
-  app.get("/health", (_req, res) => {
-    res.status(200).type("text/plain").send("ok");
-  });
 
   app.use(logRequests);
   app.use(
@@ -51,7 +49,11 @@ export function createConfiguredApp() {
   app.use(express.json());
   app.use(jwtMiddleware());
 
+  app.get("/health", (_req, res) => {
+    res.sendStatus(200);
+  });
   app.use("/auth", authRouter);
+  app.use("/pics", picsRouter);
   app.use("/admin", requireAuth, adminRouter);
   app.use("/activity", requireAuth, activityRouter);
   app.use("/media", requireAuth, mediaRouter);

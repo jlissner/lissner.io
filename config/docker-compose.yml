@@ -52,15 +52,15 @@ services:
       context: .
       dockerfile: packages/pics/Dockerfile
     ports:
-      - "${UI_PORT}:80"
+      - "${VITE_PICS_UI_PORT}:80"
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.ui.rule=Host(`${UI_HOST}`)"
+      - "traefik.http.routers.ui.rule=Host(`${VITE_PICS_UI_HOST}`)"
       - "traefik.http.routers.ui.entrypoints=web"
       - "traefik.http.routers.ui.service=ui"
       - "traefik.http.routers.ui.tls=true"
       - "traefik.http.routers.ui.tls.certResolver=letsencrypt"
-      - "traefik.http.routers.ui-http.rule=Host(`${UI_HOST}`)"
+      - "traefik.http.routers.ui-http.rule=Host(`${VITE_PICS_UI_HOST}`)"
       - "traefik.http.routers.ui-http.entrypoints=webhttp"
       - "traefik.http.routers.ui-http.middlewares=ui-redirect-https@docker"
       - "traefik.http.routers.ui-http.service=ui"
@@ -68,7 +68,7 @@ services:
       - "traefik.http.middlewares.ui-redirect-https.redirectscheme.permanent=true"
       - "traefik.http.services.ui.loadbalancer.server.port=80"
     healthcheck:
-      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = ok']
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = OK']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -83,13 +83,18 @@ services:
       # Required via config/.env.prod or config/.env (no defaults — never commit secrets).
       POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in config/.env.prod or config/.env}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in config/.env.prod or config/.env}
+      INTERNAL_POSTGRES_PORT: ${INTERNAL_POSTGRES_PORT:?Set INTERNAL_POSTGRES_PORT in config/.env.prod or config/.env}
       POSTGRES_DB: postgres
+      VITE_GRAPHQL_DATABASE_NAME: ${VITE_GRAPHQL_DATABASE_NAME:-lissner}
+      MEDIA_DATABASE_NAME: ${MEDIA_DATABASE_NAME:-media}
+      MEDIA_TEST_DATABASE_NAME: ${MEDIA_TEST_DATABASE_NAME:-media_test}
     ports:
-      # Host 5433 by default — avoids clash with a system Postgres on 5432.
-      - "127.0.0.1:${POSTGRES_PORT:-5433}:5432"
+      # Prod host bind — use 5433 in config/.env.prod so it does not clash with dev on 5432.
+      - "127.0.0.1:${INTERNAL_POSTGRES_PORT}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./packages/db/docker/init-databases.sh:/docker-entrypoint-initdb.d/01-init-databases.sh:ro
+
     healthcheck:
       test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d postgres']
       interval: 5s
@@ -106,32 +111,32 @@ services:
       context: .
       dockerfile: packages/graphql/Dockerfile
     ports:
-      - "${GRAPHQL_PORT}:${GRAPHQL_PORT}"
+      - "${VITE_GRAPHQL_PORT}:${VITE_GRAPHQL_PORT}"
     environment:
       - NODE_ENV=${NODE_ENV}
-      - GRAPHQL_PORT=${GRAPHQL_PORT}
+      - VITE_GRAPHQL_PORT=${VITE_GRAPHQL_PORT}
     depends_on:
       postgres:
         condition: service_healthy
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.graphql.rule=Host(`${GRAPHQL_HOST}`)"
+      - "traefik.http.routers.graphql.rule=Host(`${VITE_GRAPHQL_HOST}`)"
       - "traefik.http.routers.graphql.entrypoints=web"
       - "traefik.http.routers.graphql.service=graphql"
       - "traefik.http.routers.graphql.tls=true"
       - "traefik.http.routers.graphql.tls.certResolver=letsencrypt"
-      - "traefik.http.routers.graphql-http.rule=Host(`${GRAPHQL_HOST}`)"
+      - "traefik.http.routers.graphql-http.rule=Host(`${VITE_GRAPHQL_HOST}`)"
       - "traefik.http.routers.graphql-http.entrypoints=webhttp"
       - "traefik.http.routers.graphql-http.middlewares=graphql-redirect-https@docker"
       - "traefik.http.routers.graphql-http.service=graphql"
       - "traefik.http.middlewares.graphql-redirect-https.redirectscheme.scheme=https"
       - "traefik.http.middlewares.graphql-redirect-https.redirectscheme.permanent=true"
-      - "traefik.http.services.graphql.loadbalancer.server.port=${GRAPHQL_PORT}"
+      - "traefik.http.services.graphql.loadbalancer.server.port=${VITE_GRAPHQL_PORT}"
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          'node -e "fetch(''http://127.0.0.1:''+process.env.GRAPHQL_PORT+''/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
+          'node -e "fetch(''http://127.0.0.1:''+process.env.VITE_GRAPHQL_PORT+''/health'').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"',
         ]
       interval: 10s
       timeout: 5s
@@ -194,6 +199,36 @@ services:
     networks:
       - traefik
     restart: unless-stopped
+
+  admin-app:
+    build:
+      context: .
+      dockerfile: packages/admin/Dockerfile
+    ports:
+      - "${VITE_ADMIN_UI_PORT}:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin-app.rule=Host(`${VITE_ADMIN_UI_HOST}`)"
+      - "traefik.http.routers.admin-app.entrypoints=web"
+      - "traefik.http.routers.admin-app.service=admin-app"
+      - "traefik.http.routers.admin-app.tls=true"
+      - "traefik.http.routers.admin-app.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.admin-app-http.rule=Host(`${VITE_ADMIN_UI_HOST}`)"
+      - "traefik.http.routers.admin-app-http.entrypoints=webhttp"
+      - "traefik.http.routers.admin-app-http.middlewares=admin-app-redirect-https@docker"
+      - "traefik.http.routers.admin-app-http.service=admin-app"
+      - "traefik.http.middlewares.admin-app-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.admin-app-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.admin-app.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = OK']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - traefik
 
 volumes:
   app-data:

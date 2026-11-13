@@ -44,7 +44,7 @@ export function useMediaListQuery({
         sortBy,
       });
       if (personFilter != null) params.set("personId", String(personFilter));
-      const data = await apiJson<MediaListQueryResponse>(`media?${params}`);
+      const data = await apiJson<MediaListQueryResponse>(`/media?${params}`);
       return { ...data, __offset: pageParam } as PageWithOffset;
     },
     getNextPageParam: (_lastPage, allPages) => {

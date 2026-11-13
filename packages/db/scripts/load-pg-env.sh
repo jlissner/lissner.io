@@ -82,8 +82,9 @@ require_postgres_creds() {
     return 1
   fi
 
-  export POSTGRES_HOST="${POSTGRES_HOST:-127.0.0.1}"
-  export POSTGRES_PORT="${POSTGRES_PORT:-5433}"
+  export INTERNAL_POSTGRES_HOST="${INTERNAL_POSTGRES_HOST:-127.0.0.1}"
+  # Dev Compose publishes 5432 by default; prod host bind is 5433 (.env.prod).
+  export INTERNAL_POSTGRES_PORT="${INTERNAL_POSTGRES_PORT:-5432}"
 }
 
 require_remote_url() {

@@ -1,0 +1,228 @@
+*,
+*:before,
+*:after {
+  box-sizing: border-box;
+}
+
+:root {
+  --primary-color-light: #a5baab;
+  --primary-color: #5b8266;
+  --primary-color-dark: #223026;
+
+  --secondary-color-light: #d096a2;
+  --secondary-color: #a93f55;
+  --secondary-color-dark: #3e171f;
+
+  --accent1-color-light: #f5d29b;
+  --accent1-color: #edae49;
+  --accent1-color-dark: #57401b;
+
+  --accent2-color-light: #8ea9c1;
+  --accent2-color: #30638e;
+  --accent2-color-dark: #122434;
+
+  --white: #f5f5f5;
+  --gray-lightest: #efefef;
+  --gray-lighter: #c2c2c2;
+  --gray-light: #b3b3b3;
+  --gray: #999;
+  --gray-dark: #5f5f5f;
+  --gray-darker: #3a3a3a;
+  --gray-darkest: #222;
+  --black: #121212;
+  --text-color: light-dark(var(--black), var(--white));
+
+  --root-accent-color: 91, 130, 102;
+  --bg-color: light-dark(var(--gray-lightest), var(--gray-darkest));
+  --bg-border: 1px solid light-dark(var(--gray-lighter), var(--gray-darker));
+  --space-xs: 3px;
+  --space-sm: 6px;
+  --space-md: 12px;
+  --space-lg: 24px;
+  --space-xl: 48px;
+  --space-xxl: 96px;
+  font-family: sans-serif;
+  font-size: 20px;
+  color-scheme: light dark;
+  background: var(--bg-color);
+  color: var(--text-color);
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  width: 100vw;
+}
+
+/*
+Unauthenticated Layout
+
+*-------------------------------------*
+| lissner.io                          | // same for all apps
+*-------------------------------------*
+|                                     |
+|             *--------*              |
+|             |        |              |
+|             | log in |              | // same for all apps
+|             |        |              |
+|             *--------*              |
+|                                     |
+*-------------------------------------*
+|                                     |
+|              <footer>               | // same for all apps
+|                                     |
+*-------------------------------------*
+ */
+
+/*
+Authenticated Layout
+
+*-------------------------------------*
+| lissner.io      [apps] [my profile] | // same for all apps
+*-------------------------------------*
+|            |                        |
+| side <nav> |        <main>          |
+|            |                        |
+*-------------------------------------*
+|                                     |
+|             <footer>                | // same for all apps
+|                                     |
+*-------------------------------------*
+ */
+
+#root {
+  display: grid;
+  grid-template-rows: max-content 1fr max-content;
+  grid-template-areas: "header" "main" "footer";
+  grid-template-columns: 1fr;
+
+  &.--authenticated {
+    grid-template-areas: "header header" "aside main" "footer footer";
+    grid-template-columns: 320px 1fr;
+  }
+}
+
+header,
+main,
+footer {
+  height: 100%;
+  width: 100%;
+  overflow: auto;
+}
+header {
+  display: grid;
+  grid-template-columns: 1fr max-content max-content;
+  gap: var(--space-md);
+  border-bottom: var(--bg-border);
+  padding: var(--space-lg) var(--space-xl);
+  align-items: center;
+  background: var(--primary-color-dark);
+
+  a {
+    color: var(--white);
+    text-decoration: none;
+    font-size: 1.2em;
+  }
+
+  button {
+    padding: 0;
+    color: var(--white);
+    background: none;
+    border: none;
+  }
+}
+main {
+  padding: var(--space-md);
+}
+footer {
+  background: var(--accent2-color-dark);
+  border-top: var(--bg-border);
+  color: var(--white);
+  grid-area: footer;
+  padding: var(--space-lg) var(--space-xl);
+  text-align: right;
+}
+
+button {
+  cursor: pointer;
+  padding: var(--space-md);
+  background: var(--primary-color);
+  border: var(--bg-border);
+  border-radius: var(--space-sm);
+  font-weight: bold;
+  font-size: 1rem;
+}
+
+.mask {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: grid;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  grid-template-rows: 1fr 1fr 4fr;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-areas: ". . ." ". content ." ". . .";
+}
+
+.mask--content {
+  grid-area: content;
+  position: relative;
+}
+
+button.mask--close {
+  position: absolute;
+  top: -12px;
+  right: -12px;
+  height: 24px;
+  width: 24px;
+  display: flex;
+  align-items: center;
+  align-content: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-color);
+  border: var(--bg-border);
+
+  &:after {
+    content: "x";
+    font-size: 14px;
+    line-height: 14px;
+  }
+}
+
+.card {
+  padding: var(--space-lg);
+  background: var(--bg-color);
+  border: var(--bg-border);
+  border-radius: var(--space-sm);
+}
+
+.card--title {
+  margin: 0 calc(var(--space-lg) * -1) var(--space-lg);
+  padding: 0 var(--space-lg) var(--space-lg);
+  border-bottom: var(--bg-border);
+}
+
+@keyframes shimmer {
+  /*
+  background-image: linear-gradient(-45deg, var(--primary-color) 25%, var(--gray-darker) 50%, var(--primary-color) 75%, var(--gray-darker) 100%);
+  background-size: 400% 400%;
+  animation: shimmer 8s linear infinite;
+ */
+  0% {
+    background-position: 0% 0%;
+  }
+
+  100% {
+    background-position: 65% 65%;
+  }
+}

@@ -2,7 +2,7 @@
  * Central fetch helpers for the JSON API (JWT cookies, consistent errors, silent refresh).
  * ALWAYS use this over raw `fetch("/auth/...")` so credentials and error parsing stay consistent.
  */
-
+import { baseUrl, webSocketUrl } from "@lissner/ui-utils";
 import { ApiError } from "./errors";
 
 const AUTH_PATHS = new Set([
@@ -12,25 +12,13 @@ const AUTH_PATHS = new Set([
   "auth/config",
 ]);
 
-const { VITE_API_HOST } = import.meta.env;
-
-const apiUrl = VITE_API_HOST === "localhost" ? "" : `https://${VITE_API_HOST}`;
-const webSocketUrl =
-  VITE_API_HOST === "localhost"
-    ? `ws://${window.location.host}/ws`
-    : `wss://${VITE_API_HOST}/ws`;
-
 /** API path segment, e.g. `"activity"` → `/activity` locally or `https://api.example/activity` in production. */
 export function prependApiUrl(path: string): string {
-  const rel = path.startsWith("/") ? path : `/${path}`;
-
-  return `${apiUrl}${rel}`;
+  return `${baseUrl}${path}`;
 }
 
 export function prependWebSocketUrl(path: string): string {
-  const rel = path.startsWith("/") ? path : `/${path}`;
-
-  return `${webSocketUrl}${rel}`;
+  return `${webSocketUrl}${path}`;
 }
 
 const refreshState: { promise: Promise<boolean> | null } = { promise: null };

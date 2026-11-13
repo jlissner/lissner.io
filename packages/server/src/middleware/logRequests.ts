@@ -14,7 +14,10 @@ export function logRequests(req: Request, _res: Response, next: NextFunction) {
   const requestId = randomUUID();
   req.requestId = requestId;
   req.log = logger.child({ requestId });
-  req.log.info({ method: req.method, url: req.url }, "request received");
+  req.log.info(
+    { method: req.method, url: req.url, origin: req.headers.origin },
+    "request received",
+  );
 
   next();
 }

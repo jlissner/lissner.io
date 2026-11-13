@@ -9,7 +9,7 @@ cd "$ROOT"
 
 CACHE_DIR="$ROOT/.cache/host-build"
 COMPOSE_BUILD=(bash "$ROOT/scripts/docker-compose.sh" build)
-ALL_SERVICES=(api graphql ui ollama)
+ALL_SERVICES=(api graphql ui ollama admin-app)
 
 FORCE=0
 MODE="docker"
@@ -19,11 +19,11 @@ usage() {
   cat <<'EOF'
 Usage: scripts/host-build.sh [prepare|docker] [--force] [service...]
 
-  prepare   Run tsc -b; run Vite only when pics/shared sources changed
+  prepare   Run tsc -b; run Vite only when admin/pics/shared/ui-utils sources changed
   docker    Build dirty Compose images only (default)
 
   --force   Rebuild everything (prepare: always Vite; docker: all services + --no-cache)
-  service   Limit docker mode to these Compose services (api|graphql|ui|ollama)
+  service   Limit docker mode to these Compose services (admin-app|api|graphql|ui|ollama)
 
 Env: HOST_BUILD_FORCE=1 same as --force
 EOF
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    api | graphql | ui | ollama)
+    api | graphql | ui | ollama | admin-app)
       SERVICES+=("$1")
       shift
       ;;
@@ -117,9 +117,11 @@ WORKSPACE_MANIFESTS=(
   package.json
   package-lock.json
   packages/shared/package.json
+  packages/admin/package.json
   packages/server/package.json
   packages/graphql/package.json
   packages/pics/package.json
+  packages/ui-utils/package.json
   packages/db/package.json
 )
 
@@ -143,7 +145,14 @@ fingerprint_ui() {
   hash_paths \
     packages/pics/Dockerfile \
     packages/pics/dist \
-    packages/pics/nginx
+    config/nginx.conf
+}
+
+fingerprint_admin_app() {
+  hash_paths \
+    packages/admin/Dockerfile \
+    packages/admin/dist \
+    config/nginx.conf
 }
 
 fingerprint_ollama() {
@@ -162,7 +171,29 @@ fingerprint_pics_build() {
     packages/shared/package.json \
     packages/shared/tsconfig.json \
     packages/shared/tsconfig.base.json \
-    packages/shared/src
+    packages/shared/src \
+    packages/ui-utils/package.json \
+    packages/ui-utils/vite.config.ts \
+    packages/ui-utils/tsconfig.json \
+    packages/ui-utils/src
+}
+
+fingerprint_admin_build() {
+  hash_paths \
+    packages/admin/package.json \
+    packages/admin/vite.config.ts \
+    packages/admin/tsconfig.json \
+    packages/admin/index.html \
+    packages/admin/src \
+    packages/admin/public \
+    packages/shared/package.json \
+    packages/shared/tsconfig.json \
+    packages/shared/tsconfig.base.json \
+    packages/shared/src \
+    packages/ui-utils/package.json \
+    packages/ui-utils/vite.config.ts \
+    packages/ui-utils/tsconfig.json \
+    packages/ui-utils/src
 }
 
 run_prepare() {
@@ -171,10 +202,17 @@ run_prepare() {
 
   local pics_hash
   pics_hash="$(fingerprint_pics_build)"
-  if is_dirty pics-build "$pics_hash"; then
-    echo "host-build: prepare — Vite (pics/shared sources changed or --force)"
+
+  local admin_hash
+  admin_hash="$(fingerprint_admin_build)"
+
+  if is_dirty pics-build "$pics_hash" || is_dirty admin-build "$admin_hash"; then
+    echo "host-build: prepare — Vite (pics/admin/shared/ui-utils sources changed or --force)"
+    npm run build -w @lissner/ui-utils
+    npm run build -w @lissner/admin
     npm run build -w @lissner/pics
     write_fp pics-build "$pics_hash"
+    write_fp admin-build "$admin_hash"
   else
     echo "host-build: prepare — skip Vite (unchanged)"
   fi
@@ -198,6 +236,7 @@ run_docker() {
       api) hash="$(fingerprint_api)" ;;
       graphql) hash="$(fingerprint_graphql)" ;;
       ui) hash="$(fingerprint_ui)" ;;
+      admin-app) hash="$(fingerprint_admin_app)" ;;
       ollama) hash="$(fingerprint_ollama)" ;;
       *)
         echo "host-build: unknown service: $svc" >&2

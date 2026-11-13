@@ -1,6 +1,6 @@
 import {
   DATABASE_URL,
-  GRAPHQL_PORT,
+  VITE_GRAPHQL_PORT,
   IS_PRODUCTION,
   PG_JWT_SECRET,
   PG_SCHEMAS,
@@ -59,7 +59,7 @@ const preset: GraphileConfig.Preset = {
     },
   },
   grafserv: {
-    port: GRAPHQL_PORT,
+    port: VITE_GRAPHQL_PORT,
     host: "0.0.0.0",
   },
 };

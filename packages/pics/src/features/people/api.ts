@@ -22,7 +22,7 @@ async function toApiError(res: Response, fallback: string): Promise<ApiError> {
 }
 
 export function listPeople(): Promise<PersonSummary[]> {
-  return apiJson<PersonSummary[]>("people");
+  return apiJson<PersonSummary[]>("/people");
 }
 
 export function listPersonMediaPreviews(
@@ -32,7 +32,7 @@ export function listPersonMediaPreviews(
   const limit = options.limit ?? 50;
   const offset = options.offset ?? 0;
   return apiJson<PersonMediaPreviewItem[]>(
-    `people/${personId}/media?limit=${limit}&offset=${offset}`,
+    `/people/${personId}/media?limit=${limit}&offset=${offset}`,
   );
 }
 
@@ -40,7 +40,7 @@ export async function listMergeSuggestions(
   personId: number,
 ): Promise<MergeSuggestion[]> {
   const data = await apiJson<{ suggestions?: MergeSuggestion[] }>(
-    `people/${personId}/merge-suggestions`,
+    `/people/${personId}/merge-suggestions`,
   );
   return Array.isArray(data.suggestions) ? data.suggestions : [];
 }
@@ -49,7 +49,7 @@ export function mergePeople(
   mergeFrom: number,
   mergeInto: number,
 ): Promise<MergePeopleResponse> {
-  return apiJson<MergePeopleResponse>(`people/${mergeFrom}/merge`, {
+  return apiJson<MergePeopleResponse>(`/people/${mergeFrom}/merge`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mergeInto }),
@@ -57,7 +57,7 @@ export function mergePeople(
 }
 
 export function createPerson(name: string): Promise<CreatePersonResponse> {
-  return apiJson<CreatePersonResponse>("people", {
+  return apiJson<CreatePersonResponse>("/people", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -68,7 +68,7 @@ export function updatePerson(
   id: number,
   name: string,
 ): Promise<UpdatePersonResponse> {
-  return apiJson<UpdatePersonResponse>(`people/${id}`, {
+  return apiJson<UpdatePersonResponse>(`/people/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name }),
@@ -76,19 +76,19 @@ export function updatePerson(
 }
 
 export function deletePerson(id: number): Promise<DeletePersonResponse> {
-  return apiJson<DeletePersonResponse>(`people/${id}`, { method: "DELETE" });
+  return apiJson<DeletePersonResponse>(`/people/${id}`, { method: "DELETE" });
 }
 
 export function deletePersonViaDirectory(
   id: number,
 ): Promise<{ deleted: number }> {
-  return apiJson<{ deleted: number }>(`admin/people-directory/${id}`, {
+  return apiJson<{ deleted: number }>(`/admin/people-directory/${id}`, {
     method: "DELETE",
   });
 }
 
 export function runMatchFaces(): Promise<FaceMatchRunResponse> {
-  return apiJson<FaceMatchRunResponse>("people/match-faces", {
+  return apiJson<FaceMatchRunResponse>("/people/match-faces", {
     method: "POST",
   });
 }
@@ -97,7 +97,7 @@ export async function removeTagFromMedia(
   mediaId: string,
   personId: number,
 ): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}/people/${personId}`, {
+  const res = await apiFetch(`/media/${mediaId}/people/${personId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw await toApiError(res, "Failed to remove tag");
@@ -108,7 +108,7 @@ export async function reassignTagToPerson(
   personId: number,
   assignTo: number,
 ): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}/people/${personId}`, {
+  const res = await apiFetch(`/media/${mediaId}/people/${personId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ assignTo }),
@@ -121,7 +121,7 @@ export async function reassignTagToNewPerson(
   personId: number,
 ): Promise<{ newPersonId: number }> {
   return apiJson<{ newPersonId: number }>(
-    `media/${mediaId}/people/${personId}/reassign-new`,
+    `/media/${mediaId}/people/${personId}/reassign-new`,
     {
       method: "POST",
     },
