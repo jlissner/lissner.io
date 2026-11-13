@@ -24,7 +24,7 @@ export function createConfiguredApp() {
 
   app.set("trust proxy", true);
   app.get("/health", (_req, res) => {
-    res.status(200).type("text/plain").send("ok");
+    res.sendStatus(200);
   });
 
   app.use(logRequests);

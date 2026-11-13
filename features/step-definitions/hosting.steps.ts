@@ -147,7 +147,7 @@ Then(
   "the response is produced by the API service",
   function (this: HostingWorld) {
     assert.equal(this.lastStatus, 200);
-    assert.equal(this.lastBody, "ok");
+    assert.equal(this.lastBody, "OK");
   },
 );
 
