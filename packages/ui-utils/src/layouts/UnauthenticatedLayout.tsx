@@ -1,4 +1,6 @@
 import React from "react";
+import { Footer } from "./Footer";
+import { Header } from "./Header";
 
 export function UnauthenticatedLayout({
   children,
@@ -7,9 +9,9 @@ export function UnauthenticatedLayout({
 }) {
   return (
     <>
-      <nav>nav</nav>
+      <Header />
       <main>{children}</main>
-      <footer>footer</footer>
+      <Footer />
     </>
   );
 }

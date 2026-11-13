@@ -39,14 +39,14 @@ const host = (): string =>
 const port = (): string => process.env.INTERNAL_POSTGRES_PORT?.trim() || "5432";
 
 const graphqlDatabaseName = (): string =>
-  process.env.GRAPHQL_DATABASE_NAME?.trim() || "lissner";
+  process.env.VITE_GRAPHQL_DATABASE_NAME?.trim() || "lissner";
 
 const mediaDatabaseName = (): string =>
   process.env.MEDIA_DATABASE_NAME?.trim() || "media";
 
 /**
  * Local / app Postgres URL for a named database (host tools / migrations).
- * Uses POSTGRES_USER/PASSWORD + INTERNAL_POSTGRES_* + GRAPHQL_/MEDIA_DATABASE_NAME.
+ * Uses POSTGRES_USER/PASSWORD + INTERNAL_POSTGRES_* + VITE_GRAPHQL_/MEDIA_DATABASE_NAME.
  */
 export const localUrl = (kind: "lissner" | "media"): string => {
   const dbName = kind === "media" ? mediaDatabaseName() : graphqlDatabaseName();

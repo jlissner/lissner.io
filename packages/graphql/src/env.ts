@@ -25,18 +25,7 @@ function getOptionalEnvVar(name: string, fallback: string): string {
   return val == null || val === "" ? fallback : val;
 }
 
-const assertSslMode = (url: string, label: string): void => {
-  invariant(
-    !/[?&]ssl=false(?:&|$)/i.test(url),
-    `${label} must not use ssl=false — pg treats it as the string "false" and still enables TLS. For local Postgres without TLS use sslmode=disable. For RDS and other hosts that require TLS use sslmode=no-verify or sslmode=verify-full with a CA.`,
-  );
-  invariant(
-    !/[?&]ssl=true(?:&|$)/i.test(url),
-    `${label} must not use ssl=true — use sslmode=no-verify for RDS, or sslmode=verify-full with the RDS CA bundle.`,
-  );
-};
-
-const GRAPHQL_DATABASE_NAME = getEnvVar("GRAPHQL_DATABASE_NAME");
+const VITE_GRAPHQL_DATABASE_NAME = getEnvVar("VITE_GRAPHQL_DATABASE_NAME");
 const EXPOSED_POSTGRES_HOST = getEnvVar("EXPOSED_POSTGRES_HOST");
 const EXPOSED_POSTGRES_PORT = getEnvVar("EXPOSED_POSTGRES_PORT");
 const POSTGRES_PASSWORD = getEnvVar("POSTGRES_PASSWORD");
@@ -49,15 +38,20 @@ export const DATABASE_URL = (() => {
     port: EXPOSED_POSTGRES_PORT,
     password: POSTGRES_PASSWORD,
     user: POSTGRES_USER,
-    databaseName: GRAPHQL_DATABASE_NAME,
+    databaseName: VITE_GRAPHQL_DATABASE_NAME,
   });
 
-  // assertSslMode(url, "GRAPHQL database URL");
+  // assertSslMode(url, "VITE_GRAPHQL database URL");
   return url;
 })();
 
-export const GRAPHQL_PORT = Number(getOptionalEnvVar("GRAPHQL_PORT", "5678"));
-export const GRAPHQL_HOST = getOptionalEnvVar("GRAPHQL_HOST", "localhost");
+export const VITE_GRAPHQL_PORT = Number(
+  getOptionalEnvVar("VITE_GRAPHQL_PORT", "5678"),
+);
+export const VITE_GRAPHQL_HOST = getOptionalEnvVar(
+  "VITE_GRAPHQL_HOST",
+  "localhost",
+);
 export const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 export const PG_SCHEMAS = getOptionalEnvVar("PG_SCHEMAS", "public")

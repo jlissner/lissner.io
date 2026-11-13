@@ -15,8 +15,8 @@ vi.mock("../config/env.js", () => ({
   SERVER_PORT: 3000,
   SESSION_SECRET: "test-session-secret",
   SES_FROM_EMAIL: "ses@test.local",
-  PICS_UI_HOST: "localhost",
-  PICS_UI_PORT: 8042,
+  VITE_PICS_UI_HOST: "localhost",
+  VITE_PICS_UI_PORT: 8042,
 }));
 
 describe("admin explorer env flags", () => {

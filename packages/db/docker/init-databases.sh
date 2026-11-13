@@ -3,7 +3,7 @@
 # Creates app databases from env (defaults: lissner, media, media_test).
 set -euo pipefail
 
-graphql_db="${GRAPHQL_DATABASE_NAME:-lissner}"
+graphql_db="${VITE_GRAPHQL_DATABASE_NAME:-lissner}"
 media_db="${MEDIA_DATABASE_NAME:-media}"
 media_test_db="${MEDIA_TEST_DATABASE_NAME:-media_test}"
 

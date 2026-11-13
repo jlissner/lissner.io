@@ -19,7 +19,7 @@ usage() {
   cat <<'EOF'
 Usage: scripts/host-build.sh [prepare|docker] [--force] [service...]
 
-  prepare   Run tsc -b; run Vite only when pics/shared sources changed
+  prepare   Run tsc -b; run Vite only when pics/shared/ui-utils sources changed
   docker    Build dirty Compose images only (default)
 
   --force   Rebuild everything (prepare: always Vite; docker: all services + --no-cache)
@@ -120,6 +120,7 @@ WORKSPACE_MANIFESTS=(
   packages/server/package.json
   packages/graphql/package.json
   packages/pics/package.json
+  packages/ui-utils/package.json
   packages/db/package.json
 )
 
@@ -162,7 +163,11 @@ fingerprint_pics_build() {
     packages/shared/package.json \
     packages/shared/tsconfig.json \
     packages/shared/tsconfig.base.json \
-    packages/shared/src
+    packages/shared/src \
+    packages/ui-utils/package.json \
+    packages/ui-utils/vite.config.ts \
+    packages/ui-utils/tsconfig.json \
+    packages/ui-utils/src
 }
 
 run_prepare() {
@@ -172,7 +177,8 @@ run_prepare() {
   local pics_hash
   pics_hash="$(fingerprint_pics_build)"
   if is_dirty pics-build "$pics_hash"; then
-    echo "host-build: prepare — Vite (pics/shared sources changed or --force)"
+    echo "host-build: prepare — Vite (pics/shared/ui-utils sources changed or --force)"
+    npm run build -w @lissner/ui-utils
     npm run build -w @lissner/pics
     write_fp pics-build "$pics_hash"
   else

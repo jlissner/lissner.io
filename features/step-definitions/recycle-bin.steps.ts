@@ -13,7 +13,7 @@ const state = {
   baseUrl: null as string | null,
 };
 
-async function ensureServer(world: RecycleWorld): Promise<string> {
+async function ensureServer(_world: RecycleWorld): Promise<string> {
   if (state.baseUrl) {
     return state.baseUrl;
   }

@@ -9,21 +9,21 @@
 
 Databases **inside** each instance (names from env; defaults shown):
 
-| Database (default name) | Purpose                           | Consumers                                    |
-| ----------------------- | --------------------------------- | -------------------------------------------- |
-| `lissner`               | PostGraphile / GraphQL app schema | `@lissner/graphql` (`GRAPHQL_DATABASE_NAME`) |
-| `media`                 | Family media + API auth           | `@lissner/server` (`MEDIA_DATABASE_NAME`)    |
-| `media_test`            | Isolated Vitest media DB          | `@lissner/server` tests                      |
+| Database (default name) | Purpose                           | Consumers                                         |
+| ----------------------- | --------------------------------- | ------------------------------------------------- |
+| `lissner`               | PostGraphile / GraphQL app schema | `@lissner/graphql` (`VITE_GRAPHQL_DATABASE_NAME`) |
+| `media`                 | Family media + API auth           | `@lissner/server` (`MEDIA_DATABASE_NAME`)         |
+| `media_test`            | Isolated Vitest media DB          | `@lissner/server` tests                           |
 
 ## Connection env (gitignored)
 
 Apps (`@lissner/server`, `@lissner/graphql`) build URLs with `buildDatabaseUrl` from:
 
-| Variable                                          | Role                                            |
-| ------------------------------------------------- | ----------------------------------------------- |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD`             | Credentials (quote password if it contains `#`) |
-| `EXPOSED_POSTGRES_HOST` / `EXPOSED_POSTGRES_PORT` | Host/port the **Node process** uses             |
-| `GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME`   | Database name appended to the URL               |
+| Variable                                             | Role                                            |
+| ---------------------------------------------------- | ----------------------------------------------- |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD`                | Credentials (quote password if it contains `#`) |
+| `EXPOSED_POSTGRES_HOST` / `EXPOSED_POSTGRES_PORT`    | Host/port the **Node process** uses             |
+| `VITE_GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` | Database name appended to the URL               |
 
 Host-side tools (`db:checkpoint`, `db:restore-local`, Compose `ports:`) use:
 
@@ -40,7 +40,7 @@ INTERNAL_POSTGRES_HOST=127.0.0.1
 INTERNAL_POSTGRES_PORT=5432
 EXPOSED_POSTGRES_HOST=127.0.0.1
 EXPOSED_POSTGRES_PORT=5432
-GRAPHQL_DATABASE_NAME=dev_lissner
+VITE_GRAPHQL_DATABASE_NAME=dev_lissner
 MEDIA_DATABASE_NAME=dev_media
 ```
 
@@ -51,7 +51,7 @@ INTERNAL_POSTGRES_HOST=127.0.0.1
 INTERNAL_POSTGRES_PORT=5433
 EXPOSED_POSTGRES_HOST=postgres
 EXPOSED_POSTGRES_PORT=5432
-GRAPHQL_DATABASE_NAME=lissner
+VITE_GRAPHQL_DATABASE_NAME=lissner
 MEDIA_DATABASE_NAME=media
 ```
 
@@ -71,7 +71,7 @@ npm run db:migrate:media
 
 1. **`npm run db:up`**
 2. **`npm run db:dump-remote`** — `REMOTE_DATABASE_URL` (full URL including remote DB name; `sslmode=require` for libpq)
-3. **`npm run db:restore-local`** — roles + dump into local `GRAPHQL_DATABASE_NAME`
+3. **`npm run db:restore-local`** — roles + dump into local `VITE_GRAPHQL_DATABASE_NAME`
 4. Smoke GraphQL against `.env.local`
 
 ## Media DB

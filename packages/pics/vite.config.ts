@@ -22,22 +22,15 @@ export default defineConfig(({ mode }) => {
   const apiPort = env.SERVER_PORT;
   const viteApiHost = env.VITE_API_HOST.trim();
   const apiProxyTarget = `http://${viteApiHost}:${apiPort}`;
-  const devPort = Number(env.PICS_UI_PORT);
+  const devPort = Number(env.VITE_PICS_UI_PORT);
   const apiProxy = {
     target: apiProxyTarget,
     changeOrigin: true,
     timeout: 0,
     proxyTimeout: 0,
+    rewrite: (path: string) => path.replace(/^\/api/, ""),
   };
-  const apiProxyPrefixes = [
-    "/auth",
-    "/admin",
-    "/media",
-    "/people",
-    "/search",
-    "/backup",
-    "/activity",
-  ] as const;
+  const apiProxyPrefixes = ["/api"] as const;
 
   return {
     root: __dirname,
@@ -49,6 +42,7 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "src"),
         "@lissner/shared": path.resolve(__dirname, "../shared/src"),
+        "@lissner/ui-utils": path.resolve(__dirname, "../ui-utils/src"),
       },
     },
     plugins: [

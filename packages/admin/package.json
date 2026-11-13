@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "devDependencies": {
-    "dotenv": "17.3.1"
-  }
+  "dependencies": {
+    "@lissner/ui-utils": "*"
+  },
+  "devDependencies": {}
 }

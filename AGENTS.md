@@ -74,7 +74,7 @@ See **`HOST.md`** for **`config/.env*`**, Traefik, **NVIDIA GPU (required for Do
 
 ## Project Structure
 
-npm workspaces under `packages/*` (`@lissner/server`, `@lissner/pics`, `@lissner/graphql`, `@lissner/shared`, `@lissner/db`). Import shared code as `@lissner/shared`.
+npm workspaces under `packages/*` (`@lissner/server`, `@lissner/pics`, `@lissner/graphql`, `@lissner/shared`, `@lissner/ui-utils`, `@lissner/db`). Import shared code as `@lissner/shared`; SPA-only utils as `@lissner/ui-utils` (`VITE_*` only).
 
 ```
 packages/server/src/
@@ -97,6 +97,8 @@ packages/pics/src/
   config/          # Routing constants, nav (no feature imports)
 
 packages/shared/src/  # Types shared between server and UI
+
+packages/ui-utils/    # Vite-built SPA utils for pics/admin; VITE_* only (no secrets)
 ```
 
 ---
@@ -204,7 +206,7 @@ components/, config/, hooks/ → features/ → app/
 
 - **Media API:** async Postgres client in `packages/server/src/db/client.ts` — `EXPOSED_POSTGRES_*` + `POSTGRES_USER` / `POSTGRES_PASSWORD` + `MEDIA_DATABASE_NAME` → `buildDatabaseUrl`
 - **Media schema:** SQL in `packages/db/migrations/media/`; apply with `npm run db:migrate:media`
-- **GraphQL:** same Postgres pieces with `GRAPHQL_DATABASE_NAME` (via `buildDatabaseUrl`)
+- **GraphQL:** same Postgres pieces with `VITE_GRAPHQL_DATABASE_NAME` (via `buildDatabaseUrl`)
 - **Local Postgres:** `npm run db:up` — Compose project `lissnerio-dev`, host bind **`INTERNAL_POSTGRES_PORT=5432`** (volume `lissnerio-dev_postgres-data`). On-machine **prod** is separate (`npm run host`, bind **5433**, volume `lissnerio_postgres-data`; containers use `EXPOSED_POSTGRES_HOST=postgres`). Vitest uses `media_test`. ADR 0007 / 0008.
 
 - **Backups:** S3 sync stores `media_*.dump` (`pg_dump`); admin restore uses `pg_restore`

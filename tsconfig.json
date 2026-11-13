@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/shared" },
+    { "path": "./packages/ui-utils" },
     { "path": "./packages/server" },
     { "path": "./packages/pics" },
     { "path": "./packages/graphql" }

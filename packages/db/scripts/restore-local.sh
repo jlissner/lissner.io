@@ -14,7 +14,7 @@ USER="$POSTGRES_USER"
 PASS="$POSTGRES_PASSWORD"
 HOST="$INTERNAL_POSTGRES_HOST"
 PORT="$INTERNAL_POSTGRES_PORT"
-GQL_DB="${GRAPHQL_DATABASE_NAME:-lissner}"
+GQL_DB="${VITE_GRAPHQL_DATABASE_NAME:-lissner}"
 DUMP="${1:-data/db-dumps/lissner-remote.dump}"
 ROLES="${2:-data/db-dumps/lissner-remote-roles.sql}"
 export PGPASSWORD="$PASS"
@@ -100,4 +100,4 @@ run_psql "$GQL_DB" -c \
 run_psql postgres -c \
   "SELECT 1 AS unauthorized_ok FROM pg_roles WHERE rolname = 'unauthorized';"
 
-echo "OK: restore finished. Set EXPOSED_POSTGRES_* + GRAPHQL_DATABASE_NAME=${GQL_DB} and smoke GraphQL."
+echo "OK: restore finished. Set EXPOSED_POSTGRES_* + VITE_GRAPHQL_DATABASE_NAME=${GQL_DB} and smoke GraphQL."

@@ -34,7 +34,7 @@ Defaults:
 - Embeddings stored as `TEXT` (JSON vector string, same as SQLite) for the first cut; revisit `pgvector` later
 - Migrations live in `packages/db/migrations/media/` as numbered SQL
 - API requires Postgres connection env + `MEDIA_DATABASE_NAME` in all environments (SQLite retired in B5)
-- Connection config (current): `POSTGRES_USER` / `POSTGRES_PASSWORD` + `EXPOSED_POSTGRES_*` + `GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` via `buildDatabaseUrl` (see ADR 0008). Earlier drafts used a single `POSTGRES_SERVER_URL`.
+- Connection config (current): `POSTGRES_USER` / `POSTGRES_PASSWORD` + `EXPOSED_POSTGRES_*` + `VITE_GRAPHQL_DATABASE_NAME` / `MEDIA_DATABASE_NAME` via `buildDatabaseUrl` (see ADR 0008). Earlier drafts used a single `POSTGRES_SERVER_URL`.
 
 ### Consequences
 
@@ -50,6 +50,6 @@ Defaults:
 ## Confirmation
 
 - A1: `npm run db:up` + `npm run db:checkpoint`
-- A2–A3: dump/restore + GraphQL `EXPOSED_POSTGRES_*` + `GRAPHQL_DATABASE_NAME` local
+- A2–A3: dump/restore + GraphQL `EXPOSED_POSTGRES_*` + `VITE_GRAPHQL_DATABASE_NAME` local
 - B2–B5: `db:migrate:media`, cutover env, retire SQLite runtime/tests/deps
-- Env: `EXPOSED_POSTGRES_*` + credentials + `GRAPHQL_DATABASE_NAME` + `MEDIA_DATABASE_NAME` (not a single `DATABASE_URL` per app); see ADR 0008
+- Env: `EXPOSED_POSTGRES_*` + credentials + `VITE_GRAPHQL_DATABASE_NAME` + `MEDIA_DATABASE_NAME` (not a single `DATABASE_URL` per app); see ADR 0008

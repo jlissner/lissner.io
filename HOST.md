@@ -5,8 +5,8 @@ Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** 
 ### Public hostnames (example: Lissner)
 
 - **`VITE_API_HOST`** — e.g. `api.lissner.io` (Traefik routes TLS here to the **`api`** service).
-- **`PICS_UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
-- **`GRAPHQL_HOST`** — e.g. `query.lissner.io` (Traefik routes TLS here to the **`graphql`** PostGraphile service).
+- **`VITE_PICS_UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
+- **`VITE_GRAPHQL_HOST`** — e.g. `query.lissner.io` (Traefik routes TLS here to the **`graphql`** PostGraphile service).
 - The API and GraphQL services allow browser **CORS** from `https://lissner.io` and `https://*.lissner.io` when **`NODE_ENV=production`** (and whenever **`BDD_STRICT_CORS=1`** is set for tests).
 
 ## Prerequisites
@@ -44,13 +44,13 @@ At minimum in **`config/.env`** and/or **`config/.env.prod`** (for compose **var
 | ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                                  |
 | `VITE_API_HOST`                       | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                                        |
-| `PICS_UI_HOST`                        | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly                    |
-| `GRAPHQL_HOST`                        | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                                 |
-| `GRAPHQL_PORT`                        | Yes for graphql service         | Container listen port (default **5678**)                                                                            |
+| `VITE_PICS_UI_HOST`                   | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly                    |
+| `VITE_GRAPHQL_HOST`                   | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                                 |
+| `VITE_GRAPHQL_PORT`                   | Yes for graphql service         | Container listen port (default **5678**)                                                                            |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes                             | Compose Postgres + apps. Quote password if it contains `#`. No defaults.                                            |
 | `INTERNAL_POSTGRES_HOST` / `_PORT`    | Yes for Compose port bind       | Host publish (`127.0.0.1:${INTERNAL_POSTGRES_PORT}:5432`). Prod typically **5433**.                                 |
 | `EXPOSED_POSTGRES_HOST` / `_PORT`     | Yes for api/graphql             | What Node uses to connect. Inside Compose: **`postgres`** / **`5432`**. On the laptop: **`127.0.0.1`** / bind port. |
-| `GRAPHQL_DATABASE_NAME`               | Yes for GraphQL                 | Database name for PostGraphile (e.g. `lissner`).                                                                    |
+| `VITE_GRAPHQL_DATABASE_NAME`          | Yes for GraphQL                 | Database name for PostGraphile (e.g. `lissner`).                                                                    |
 | `MEDIA_DATABASE_NAME`                 | Yes                             | Media API DB name (e.g. `media`). Vitest uses `media_test`.                                                         |
 
 The **`api`** and **`graphql`** services use **`env_file: config/.env.prod`** so AWS, **`SESSION_SECRET`**, **`EXPOSED_POSTGRES_*`**, DB names, and related keys are set in the container’s **`process.env`**. Compose also forces **`OLLAMA_HOST=http://ollama:11434`** on **`api`**.
@@ -94,7 +94,7 @@ npm run db:down        # stop dev Postgres (does not touch prod)
 
 Safe local wipe: `docker volume rm lissnerio-dev_postgres-data` only. **Never** remove `lissnerio_postgres-data` unless you intend to destroy on-machine prod DB data.
 
-GraphQL: dump remote → restore into **dev** → set **`GRAPHQL_DATABASE_NAME`**. Media: **`npm run db:migrate:media`**. Details: **`packages/db/README.md`**, ADR **0007** / **0008**.
+GraphQL: dump remote → restore into **dev** → set **`VITE_GRAPHQL_DATABASE_NAME`**. Media: **`npm run db:migrate:media`**. Details: **`packages/db/README.md`**, ADR **0007** / **0008**.
 
 ## Build and deploy
 
@@ -121,7 +121,7 @@ The Docker images **do not compile** TypeScript or Vite on their own: **`package
 2. Run **`npm run host`** (selective prepare + image builds; first run builds everything). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
 3. Check **`npm run host:status`**
 
-The site is reachable on **`PICS_UI_HOST`** (static **`ui`** container), **`VITE_API_HOST`** (**`api`** container), and **`GRAPHQL_HOST`** (**`graphql`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
+The site is reachable on **`VITE_PICS_UI_HOST`** (static **`ui`** container), **`VITE_API_HOST`** (**`api`** container), and **`VITE_GRAPHQL_HOST`** (**`graphql`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
 
 ## Manual commands
 

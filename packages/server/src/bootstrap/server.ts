@@ -8,6 +8,7 @@ import {
   backupRouter,
   mediaRouter,
   peopleRouter,
+  picsRouter,
   searchRouter,
 } from "../routes/index.js";
 import { requireAuth, jwtMiddleware } from "../auth/middleware.js";
@@ -52,6 +53,7 @@ export function createConfiguredApp() {
   app.use(jwtMiddleware());
 
   app.use("/auth", authRouter);
+  app.use("/pics", picsRouter);
   app.use("/admin", requireAuth, adminRouter);
   app.use("/activity", requireAuth, activityRouter);
   app.use("/media", requireAuth, mediaRouter);

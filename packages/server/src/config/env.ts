@@ -59,11 +59,11 @@ export const OLLAMA_EMBED_MODEL = getOptionalEnvVar(
 );
 export const S3_BUCKET = getEnvVar("S3_BUCKET");
 export const VITE_API_HOST = getEnvVar("VITE_API_HOST");
-export const PICS_UI_HOST = getEnvVar("PICS_UI_HOST");
+export const VITE_PICS_UI_HOST = getEnvVar("VITE_PICS_UI_HOST");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
-export const PICS_UI_PORT = Number(getEnvVar("PICS_UI_PORT"));
+export const VITE_PICS_UI_PORT = Number(getEnvVar("VITE_PICS_UI_PORT"));
 
 /**
  * Shared Postgres server URL (no database path). With MEDIA_DATABASE_NAME,

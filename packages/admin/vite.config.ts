@@ -19,15 +19,24 @@ export default defineConfig(({ mode }) => {
       Object.assign(env, parseDotenv(readFileSync(prodPath)));
     }
   }
+  const viteApiHost = env.VITE_API_HOST;
   const apiPort = env.SERVER_PORT;
-  const viteApiHost = env.VITE_API_HOST.trim();
-  const apiProxyTarget = `http://${viteApiHost}:${apiPort}`;
-  const devPort = Number(env.ADMIN_UI_PORT);
   const apiProxy = {
-    target: apiProxyTarget,
+    target: `http://${viteApiHost}:${apiPort}`,
     changeOrigin: true,
     timeout: 0,
     proxyTimeout: 0,
+    rewrite: (path: string) => path.replace(/^\/api/, ""),
+  };
+
+  const graphqlHost = env.VITE_GRAPHQL_HOST;
+  const graphqlPort = env.VITE_GRAPHQL_PORT;
+  const graphqlProxy = {
+    target: `http://${graphqlHost}:${graphqlPort}`,
+    changeOrigin: true,
+    timeout: 0,
+    proxyTimeout: 0,
+    rewrite: (path: string) => path.replace(/^\/graphql/, ""),
   };
 
   return {
@@ -40,13 +49,15 @@ export default defineConfig(({ mode }) => {
       alias: {
         "@": path.resolve(__dirname, "src"),
         "@lissner/shared": path.resolve(__dirname, "../shared/src"),
+        "@lissner/ui-utils": path.resolve(__dirname, "../ui-utils/src"),
       },
     },
     plugins: [react()],
     server: {
-      port: devPort,
+      port: Number(env.ADMIN_UI_PORT),
       proxy: {
         "/api": apiProxy,
+        "/graphql": graphqlProxy,
       },
     },
   };

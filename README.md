@@ -126,13 +126,13 @@ Copy **`config/.env.example`** → **`config/.env.local`** (dev) and/or **`confi
 | `OLLAMA_EMBED_MODEL`                                | `nomic-embed-text`       | Ollama model for text/image embeddings                                                            |
 | `OLLAMA_VISION_MODEL`                               | `llava`                  | Ollama model for face detection / image analysis                                                  |
 | `SERVER_PORT`                                       | —                        | Express listen port (required)                                                                    |
-| `PICS_UI_HOST` / `PICS_UI_PORT`                     | —                        | Pics UI host/port (Vite + magic-link emails; required by API)                                     |
+| `VITE_PICS_UI_HOST` / `VITE_PICS_UI_PORT`           | —                        | Pics UI host/port (Vite + magic-link emails; required by API)                                     |
 | `VITE_API_HOST`                                     | —                        | API host for Vite proxy / Traefik                                                                 |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD`               | —                        | Postgres credentials (quote password if it contains `#`)                                          |
 | `INTERNAL_POSTGRES_HOST` / `INTERNAL_POSTGRES_PORT` | —                        | Host bind for Compose + laptop `psql` / `db:*` scripts                                            |
 | `EXPOSED_POSTGRES_HOST` / `EXPOSED_POSTGRES_PORT`   | —                        | What Node apps use (`127.0.0.1` locally; `postgres` / `5432` in Compose)                          |
 | `MEDIA_DATABASE_NAME`                               | —                        | Media API database name (Vitest: `media_test`)                                                    |
-| `GRAPHQL_DATABASE_NAME`                             | —                        | PostGraphile database name                                                                        |
+| `VITE_GRAPHQL_DATABASE_NAME`                        | —                        | PostGraphile database name                                                                        |
 | `AWS_ACCESS_KEY_ID`                                 | —                        | AWS access key for S3 backup                                                                      |
 | `AWS_SECRET_ACCESS_KEY`                             | —                        | AWS secret key for S3 backup                                                                      |
 | `AWS_REGION`                                        | —                        | AWS region for S3 / SES                                                                           |

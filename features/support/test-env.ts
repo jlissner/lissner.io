@@ -27,8 +27,8 @@ setIfMissing("BDD_FACE_MATCH_STUB", "1");
 setIfMissing("OLLAMA_VISION_MODEL", "llava");
 setIfMissing("S3_BUCKET", "bdd-bucket");
 setIfMissing("VITE_API_HOST", "localhost");
-setIfMissing("PICS_UI_HOST", "localhost");
-setIfMissing("PICS_UI_PORT", "0");
+setIfMissing("VITE_PICS_UI_HOST", "localhost");
+setIfMissing("VITE_PICS_UI_PORT", "0");
 setIfMissing("SERVER_PORT", "0");
 setIfMissing("SESSION_SECRET", "bdd-session-secret");
 setIfMissing("SES_FROM_EMAIL", "ses@test.local");
@@ -36,7 +36,7 @@ setIfMissing("INTERNAL_POSTGRES_HOST", "127.0.0.1");
 setIfMissing("INTERNAL_POSTGRES_PORT", "5432");
 setIfMissing("EXPOSED_POSTGRES_HOST", "127.0.0.1");
 setIfMissing("EXPOSED_POSTGRES_PORT", "5432");
-setIfMissing("GRAPHQL_DATABASE_NAME", "lissner");
+setIfMissing("VITE_GRAPHQL_DATABASE_NAME", "lissner");
 // Isolate BDD from the live media DB (env.ts dotenv uses override:false).
 // Credentials come from config/.env.local (or CI env); do not hardcode them here.
 process.env.MEDIA_DATABASE_NAME = "media_test";

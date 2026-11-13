@@ -237,11 +237,13 @@ Then("the response is served by the UI service", function () {
   );
   assert.ok(compose.includes("dockerfile: packages/pics/Dockerfile"));
   assert.ok(
-    compose.includes("traefik.http.routers.ui.rule=Host(`${PICS_UI_HOST}`)"),
+    compose.includes(
+      "traefik.http.routers.ui.rule=Host(`${VITE_PICS_UI_HOST}`)",
+    ),
   );
   assert.ok(
     compose.includes(
-      "traefik.http.routers.ui-http.rule=Host(`${PICS_UI_HOST}`)",
+      "traefik.http.routers.ui-http.rule=Host(`${VITE_PICS_UI_HOST}`)",
     ),
   );
   assert.ok(compose.includes("traefik.http.services.ui.loadbalancer"));
@@ -330,7 +332,11 @@ Then(
       join(repoRoot, "packages/pics/src/api/client.ts"),
       "utf8",
     );
-    assert.ok(clientTs.includes("VITE_API_HOST"));
+    const uiUtilsClient = readFileSync(
+      join(repoRoot, "packages/ui-utils/src/utils/client.ts"),
+      "utf8",
+    );
+    assert.ok(uiUtilsClient.includes("VITE_API_HOST"));
     assert.ok(clientTs.includes("prependApiUrl"));
     const hostMd = readFileSync(join(repoRoot, "HOST.md"), "utf8");
     assert.ok(hostMd.includes("VITE_API_HOST"));

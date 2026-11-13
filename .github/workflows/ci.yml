@@ -18,8 +18,8 @@ env:
   SERVER_PORT: ${{ vars.SERVER_PORT }}
   SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
   SES_FROM_EMAIL: ${{ vars.SES_FROM_EMAIL }}
-  PICS_UI_HOST: ${{ vars.PICS_UI_HOST }}
-  PICS_UI_PORT: ${{ vars.PICS_UI_PORT }}
+  VITE_PICS_UI_HOST: ${{ vars.VITE_PICS_UI_HOST }}
+  VITE_PICS_UI_PORT: ${{ vars.VITE_PICS_UI_PORT }}
   VITE_API_HOST: ${{ vars.VITE_API_HOST }}
   # Media API / Vitest (media_test) — apps use EXPOSED_*; host tools use INTERNAL_*.
   POSTGRES_USER: postgres
@@ -29,7 +29,7 @@ env:
   EXPOSED_POSTGRES_HOST: 127.0.0.1
   EXPOSED_POSTGRES_PORT: 5432
   MEDIA_DATABASE_NAME: media_test
-  GRAPHQL_DATABASE_NAME: lissner
+  VITE_GRAPHQL_DATABASE_NAME: lissner
 
 jobs:
   build:
