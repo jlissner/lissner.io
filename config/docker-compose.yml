@@ -68,7 +68,7 @@ services:
       - "traefik.http.middlewares.ui-redirect-https.redirectscheme.permanent=true"
       - "traefik.http.services.ui.loadbalancer.server.port=80"
     healthcheck:
-      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = ok']
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = OK']
       interval: 10s
       timeout: 5s
       retries: 3
@@ -199,6 +199,36 @@ services:
     networks:
       - traefik
     restart: unless-stopped
+
+  admin-app:
+    build:
+      context: .
+      dockerfile: packages/admin/Dockerfile
+    ports:
+      - "${VITE_ADMIN_UI_PORT}:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin-app.rule=Host(`${VITE_ADMIN_UI_HOST}`)"
+      - "traefik.http.routers.admin-app.entrypoints=web"
+      - "traefik.http.routers.admin-app.service=admin-app"
+      - "traefik.http.routers.admin-app.tls=true"
+      - "traefik.http.routers.admin-app.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.admin-app-http.rule=Host(`${VITE_ADMIN_UI_HOST}`)"
+      - "traefik.http.routers.admin-app-http.entrypoints=webhttp"
+      - "traefik.http.routers.admin-app-http.middlewares=admin-app-redirect-https@docker"
+      - "traefik.http.routers.admin-app-http.service=admin-app"
+      - "traefik.http.middlewares.admin-app-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.admin-app-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.admin-app.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = OK']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - traefik
 
 volumes:
   app-data:

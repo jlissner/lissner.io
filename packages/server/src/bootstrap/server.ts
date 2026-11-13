@@ -23,9 +23,6 @@ export function createConfiguredApp() {
   const app = express();
 
   app.set("trust proxy", true);
-  app.get("/health", (_req, res) => {
-    res.sendStatus(200);
-  });
 
   app.use(logRequests);
   app.use(
@@ -52,6 +49,9 @@ export function createConfiguredApp() {
   app.use(express.json());
   app.use(jwtMiddleware());
 
+  app.get("/health", (_req, res) => {
+    res.sendStatus(200);
+  });
   app.use("/auth", authRouter);
   app.use("/pics", picsRouter);
   app.use("/admin", requireAuth, adminRouter);

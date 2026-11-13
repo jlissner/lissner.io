@@ -1,9 +1,9 @@
-import { VITE_GRAPHQL_HOST, VITE_GRAPHQL_PORT } from "../config";
+import { VITE_GRAPHQL_HOST } from "../config";
 
 const baseUrl =
   VITE_GRAPHQL_HOST === "localhost"
     ? "/graphql"
-    : `https://${VITE_GRAPHQL_HOST}:${VITE_GRAPHQL_PORT}`;
+    : `https://${VITE_GRAPHQL_HOST}`;
 
 function withBase(url: string) {
   return baseUrl + url;

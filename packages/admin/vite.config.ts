@@ -54,7 +54,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     server: {
-      port: Number(env.ADMIN_UI_PORT),
+      port: Number(env.VITE_ADMIN_UI_PORT),
       proxy: {
         "/api": apiProxy,
         "/graphql": graphqlProxy,

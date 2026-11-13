@@ -127,6 +127,7 @@ Copy **`config/.env.example`** → **`config/.env.local`** (dev) and/or **`confi
 | `OLLAMA_VISION_MODEL`                               | `llava`                  | Ollama model for face detection / image analysis                                                  |
 | `SERVER_PORT`                                       | —                        | Express listen port (required)                                                                    |
 | `VITE_PICS_UI_HOST` / `VITE_PICS_UI_PORT`           | —                        | Pics UI host/port (Vite + magic-link emails; required by API)                                     |
+| `VITE_ADMIN_UI_HOST` / `VITE_ADMIN_UI_PORT`         | —                        | Admin UI host/port (Vite + magic-link emails; required by API)                                    |
 | `VITE_API_HOST`                                     | —                        | API host for Vite proxy / Traefik                                                                 |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD`               | —                        | Postgres credentials (quote password if it contains `#`)                                          |
 | `INTERNAL_POSTGRES_HOST` / `INTERNAL_POSTGRES_PORT` | —                        | Host bind for Compose + laptop `psql` / `db:*` scripts                                            |

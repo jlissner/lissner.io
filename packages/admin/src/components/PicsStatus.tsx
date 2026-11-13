@@ -1,8 +1,9 @@
+import { getStatus } from "@/utils";
 import { Card, client } from "@lissner/ui-utils";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
 export function PicsStatus() {
-  const status = useSuspenseQuery(client.getPicsHealth());
+  const status = useQuery(client.getPicsHealth());
 
-  return <Card title="Pics">{status.data.status < 400 ? "✅" : "❌"}</Card>;
+  return <Card title="Pics">{getStatus(status)}</Card>;
 }

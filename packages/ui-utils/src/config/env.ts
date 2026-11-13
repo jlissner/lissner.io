@@ -8,6 +8,7 @@ function getEnvVar(name: string) {
   return val;
 }
 
+export const NODE_ENV = getEnvVar("MODE");
 export const VITE_API_HOST = getEnvVar("VITE_API_HOST");
 export const VITE_PICS_UI_HOST = getEnvVar("VITE_PICS_UI_HOST");
 export const VITE_GRAPHQL_HOST = getEnvVar("VITE_GRAPHQL_HOST");

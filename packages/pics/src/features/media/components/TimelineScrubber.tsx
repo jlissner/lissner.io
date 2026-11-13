@@ -83,8 +83,8 @@ export function TimelineScrubber({
             params.set("q", searchQuery.trim());
             return "search/timeline";
           })()
-        : "media/timeline";
-    apiJson<SearchTimelineResponse>(`${timelinePath}?${params}`)
+        : "/media/timeline";
+    apiJson<SearchTimelineResponse>(`/${timelinePath}?${params}`)
       .then((data) => setMonths(data.months))
       .catch((err) => {
         console.error(
@@ -221,9 +221,9 @@ export function TimelineScrubber({
         searchQuery != null && searchQuery.trim() !== ""
           ? (() => {
               offsetParams.set("q", searchQuery.trim());
-              return "search/timeline/offset";
+              return "/search/timeline/offset";
             })()
-          : "media/timeline/offset";
+          : "/media/timeline/offset";
       apiJson<SearchTimelineOffsetResponse>(`${offsetPath}?${offsetParams}`)
         .then(({ offset }) => {
           onJumpToMonth(offset);

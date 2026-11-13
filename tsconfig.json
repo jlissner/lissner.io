@@ -1,10 +1,11 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/shared" },
-    { "path": "./packages/ui-utils" },
-    { "path": "./packages/server" },
+    { "path": "./packages/admin" },
+    { "path": "./packages/graphql" },
     { "path": "./packages/pics" },
-    { "path": "./packages/graphql" }
+    { "path": "./packages/server" },
+    { "path": "./packages/shared" },
+    { "path": "./packages/ui-utils" }
   ]
 }

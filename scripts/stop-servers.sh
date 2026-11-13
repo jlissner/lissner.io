@@ -77,7 +77,7 @@ mapfile -t MATCH_PIDS < <(unique_pids $(pids_matching "$PATTERN"))
 PORTS=(
   "$(env_get SERVER_PORT)"
   "$(env_get VITE_PICS_UI_PORT)"
-  "$(env_get ADMIN_UI_PORT)"
+  "$(env_get VITE_ADMIN_UI_PORT)"
   "$(env_get VITE_GRAPHQL_PORT)"
 )
 

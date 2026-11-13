@@ -207,7 +207,7 @@ button.mask--close {
 }
 
 .card--title {
-  margin: 0 calc(var(--space-lg) * -1);
+  margin: 0 calc(var(--space-lg) * -1) var(--space-lg);
   padding: 0 var(--space-lg) var(--space-lg);
   border-bottom: var(--bg-border);
 }
