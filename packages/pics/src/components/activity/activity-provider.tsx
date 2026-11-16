@@ -42,7 +42,7 @@ export function ActivityProvider({ children }: { children: ReactNode }) {
 
     const fetchSnapshot = async (): Promise<void> => {
       try {
-        const res = await apiFetch("activity", {
+        const res = await apiFetch("/activity", {
           // Avoid stale cached GET overwriting live WebSocket updates after refresh.
           cache: "no-store",
         });

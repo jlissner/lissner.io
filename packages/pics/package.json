@@ -9,17 +9,7 @@
   },
   "dependencies": {
     "@lissner/shared": "*",
-    "@tanstack/react-query": "5.91.3",
-    "react": "19.2.0",
-    "react-dom": "19.2.0",
-    "workbox-window": "^7.4.0"
+    "@lissner/ui-utils": "*"
   },
-  "devDependencies": {
-    "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
-    "@vitejs/plugin-react": "6.0.1",
-    "dotenv": "17.3.1",
-    "vite": "8.0.9",
-    "vite-plugin-pwa": "^1.2.0"
-  }
+  "devDependencies": {}
 }

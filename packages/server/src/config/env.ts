@@ -59,21 +59,27 @@ export const OLLAMA_EMBED_MODEL = getOptionalEnvVar(
 );
 export const S3_BUCKET = getEnvVar("S3_BUCKET");
 export const VITE_API_HOST = getEnvVar("VITE_API_HOST");
-export const UI_HOST = getEnvVar("UI_HOST");
+export const VITE_PICS_UI_HOST = getEnvVar("VITE_PICS_UI_HOST");
 export const SERVER_PORT = Number(getEnvVar("SERVER_PORT"));
 export const SESSION_SECRET = getEnvVar("SESSION_SECRET");
 export const SES_FROM_EMAIL = getEnvVar("SES_FROM_EMAIL");
-export const UI_PORT = Number(getEnvVar("UI_PORT"));
+export const VITE_PICS_UI_PORT = Number(getEnvVar("VITE_PICS_UI_PORT"));
 
 /**
  * Shared Postgres server URL (no database path). With MEDIA_DATABASE_NAME,
  * builds the media API connection. Required in all environments.
  */
-const POSTGRES_SERVER_URL = getEnvVar("POSTGRES_SERVER_URL");
 export const MEDIA_DATABASE_NAME = getEnvVar("MEDIA_DATABASE_NAME");
+const EXPOSED_POSTGRES_HOST = getEnvVar("EXPOSED_POSTGRES_HOST");
+const EXPOSED_POSTGRES_PORT = getEnvVar("EXPOSED_POSTGRES_PORT");
+const POSTGRES_PASSWORD = getEnvVar("POSTGRES_PASSWORD");
+const POSTGRES_USER = getEnvVar("POSTGRES_USER");
 
 /** Full connection string for the media DB. */
-export const MEDIA_DATABASE_URL = buildDatabaseUrl(
-  POSTGRES_SERVER_URL,
-  MEDIA_DATABASE_NAME,
-);
+export const MEDIA_DATABASE_URL = buildDatabaseUrl({
+  host: EXPOSED_POSTGRES_HOST,
+  port: EXPOSED_POSTGRES_PORT,
+  password: POSTGRES_PASSWORD,
+  user: POSTGRES_USER,
+  databaseName: MEDIA_DATABASE_NAME,
+});

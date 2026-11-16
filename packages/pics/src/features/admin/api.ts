@@ -30,7 +30,7 @@ export interface DataExplorerColumn {
 }
 
 export function listPeopleDirectory(): Promise<PeopleDirectoryEntry[]> {
-  return apiJson<PeopleDirectoryEntry[]>("admin/people-directory");
+  return apiJson<PeopleDirectoryEntry[]>("/admin/people-directory");
 }
 
 export function createDirectoryPerson(input: {
@@ -38,7 +38,7 @@ export function createDirectoryPerson(input: {
   email?: string;
   isAdmin?: boolean;
 }): Promise<PeopleDirectoryEntry> {
-  return apiJson<PeopleDirectoryEntry>("admin/people-directory", {
+  return apiJson<PeopleDirectoryEntry>("/admin/people-directory", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -49,7 +49,7 @@ export function updateDirectoryPerson(
   personId: number,
   input: { name: string; email?: string; isAdmin?: boolean },
 ): Promise<PeopleDirectoryEntry> {
-  return apiJson<PeopleDirectoryEntry>(`admin/people-directory/${personId}`, {
+  return apiJson<PeopleDirectoryEntry>(`/admin/people-directory/${personId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -59,17 +59,17 @@ export function updateDirectoryPerson(
 export function deleteDirectoryPerson(personId: number): Promise<{
   deleted: number;
 }> {
-  return apiJson<{ deleted: number }>(`admin/people-directory/${personId}`, {
+  return apiJson<{ deleted: number }>(`/admin/people-directory/${personId}`, {
     method: "DELETE",
   });
 }
 
 export function getDataExplorerAvailable(): Promise<{ available: boolean }> {
-  return apiJson<{ available: boolean }>("admin/data-explorer-available");
+  return apiJson<{ available: boolean }>("/admin/data-explorer-available");
 }
 
 export function listDataExplorerTables(): Promise<string[]> {
-  return apiJson<string[]>("admin/data-explorer/tables");
+  return apiJson<string[]>("/admin/data-explorer/tables");
 }
 
 export function getDataExplorerSchema(
@@ -101,7 +101,7 @@ export function insertDataExplorerRow(
   table: string,
   data: Record<string, unknown>,
 ): Promise<unknown> {
-  return apiJson(`admin/data-explorer/tables/${table}`, {
+  return apiJson(`/admin/data-explorer/tables/${table}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
@@ -112,7 +112,7 @@ export function updateDataExplorerRow(
   table: string,
   body: Record<string, unknown>,
 ): Promise<unknown> {
-  return apiJson(`admin/data-explorer/tables/${table}`, {
+  return apiJson(`/admin/data-explorer/tables/${table}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -123,7 +123,7 @@ export function deleteDataExplorerRow(
   table: string,
   body: Record<string, unknown>,
 ): Promise<unknown> {
-  return apiJson(`admin/data-explorer/tables/${table}`, {
+  return apiJson(`/admin/data-explorer/tables/${table}`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -148,7 +148,7 @@ export function computeAllHashes(): Promise<{
 }
 
 export function getAllDuplicates(): Promise<{ duplicates: DuplicateMatch[] }> {
-  return apiJson<{ duplicates: DuplicateMatch[] }>("admin/duplicates");
+  return apiJson<{ duplicates: DuplicateMatch[] }>("/admin/duplicates");
 }
 
 export function bulkDeleteMediaByIds(
@@ -169,7 +169,7 @@ export function repairAdminThumbnails(
   body: AdminThumbnailRepairRequest = {},
 ): Promise<AdminThumbnailRepairResponse> {
   const payload: AdminThumbnailRepairRequest = { ...body };
-  return apiJson<AdminThumbnailRepairResponse>("admin/thumbnails/repair", {
+  return apiJson<AdminThumbnailRepairResponse>("/admin/thumbnails/repair", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -177,7 +177,7 @@ export function repairAdminThumbnails(
 }
 
 export function listMediaFileIssues(): Promise<AdminMediaFileIssuesResponse> {
-  return apiJson<AdminMediaFileIssuesResponse>("admin/media-file-issues");
+  return apiJson<AdminMediaFileIssuesResponse>("/admin/media-file-issues");
 }
 
 export function listRecycleBin(params?: {
@@ -194,13 +194,13 @@ export function listRecycleBin(params?: {
 }
 
 export function restoreRecycleBinItem(mediaId: string): Promise<{ ok: true }> {
-  return apiJson<{ ok: true }>(`admin/recycle/${mediaId}/restore`, {
+  return apiJson<{ ok: true }>(`/admin/recycle/${mediaId}/restore`, {
     method: "POST",
   });
 }
 
 export async function permanentlyDeleteMedia(mediaId: string): Promise<void> {
-  const res = await apiFetch(`admin/recycle/${mediaId}`, { method: "DELETE" });
+  const res = await apiFetch(`/admin/recycle/${mediaId}`, { method: "DELETE" });
   if (!res.ok) {
     throw new Error(`Permanent delete failed (${res.status})`);
   }
@@ -210,7 +210,7 @@ export function bulkPermanentlyDeleteMedia(
   mediaIds: string[],
 ): Promise<AdminRecycleBulkDeleteResponse> {
   const body: AdminRecycleBulkDeleteRequest = { mediaIds };
-  return apiJson<AdminRecycleBulkDeleteResponse>("admin/recycle/bulk-delete", {
+  return apiJson<AdminRecycleBulkDeleteResponse>("/admin/recycle/bulk-delete", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -218,25 +218,25 @@ export function bulkPermanentlyDeleteMedia(
 }
 
 export function emptyRecycleBin(): Promise<AdminRecycleEmptyResponse> {
-  return apiJson<AdminRecycleEmptyResponse>("admin/recycle", {
+  return apiJson<AdminRecycleEmptyResponse>("/admin/recycle", {
     method: "DELETE",
   });
 }
 
 export function clearMediaFileIssue(mediaId: string): Promise<{ ok: true }> {
-  return apiJson<{ ok: true }>(`admin/media-file-issues/${mediaId}/clear`, {
+  return apiJson<{ ok: true }>(`/admin/media-file-issues/${mediaId}/clear`, {
     method: "POST",
   });
 }
 
 export function listDbBackups(): Promise<AdminDbBackupsResponse> {
-  return apiJson<AdminDbBackupsResponse>("admin/db-backups");
+  return apiJson<AdminDbBackupsResponse>("/admin/db-backups");
 }
 
 export function restoreDbFromBackup(
   key: string,
 ): Promise<AdminDbRestoreResponse> {
-  return apiJson<AdminDbRestoreResponse>("admin/db-restore", {
+  return apiJson<AdminDbRestoreResponse>("/admin/db-restore", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ key }),
@@ -246,7 +246,7 @@ export function restoreDbFromBackup(
 export function bulkDeleteUntaggedPlaceholders(): Promise<{
   deleted: number[];
 }> {
-  return apiJson<{ deleted: number[] }>("admin/people/untagged-placeholders", {
+  return apiJson<{ deleted: number[] }>("/admin/people/untagged-placeholders", {
     method: "DELETE",
   });
 }

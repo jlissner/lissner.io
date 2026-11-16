@@ -2,30 +2,27 @@ import { describe, expect, it } from "vitest";
 import { buildDatabaseUrl } from "./buildDatabaseUrl.js";
 
 describe("buildDatabaseUrl", () => {
-  it("inserts the database name before query params", () => {
+  it("builds a postgres URL from connection parts", () => {
     expect(
-      buildDatabaseUrl(
-        "postgres://u:p@127.0.0.1:5433?sslmode=disable",
-        "media",
-      ),
-    ).toBe("postgres://u:p@127.0.0.1:5433/media?sslmode=disable");
+      buildDatabaseUrl({
+        user: "u",
+        password: "p",
+        host: "127.0.0.1",
+        port: "5433",
+        databaseName: "media",
+      }),
+    ).toBe("postgres://u:p@127.0.0.1:5433/media");
   });
 
-  it("accepts a trailing slash with no db name", () => {
-    expect(buildDatabaseUrl("postgres://u:p@host:5432/", "lissner")).toBe(
-      "postgres://u:p@host:5432/lissner",
-    );
-  });
-
-  it("rejects a server URL that already has a database path", () => {
-    expect(() =>
-      buildDatabaseUrl("postgres://u:p@host:5432/lissner", "media"),
-    ).toThrow(/must not include a database path/);
-  });
-
-  it("rejects an empty database name", () => {
-    expect(() => buildDatabaseUrl("postgres://u:p@host:5432", "  ")).toThrow(
-      /non-empty/,
-    );
+  it("percent-encodes special characters in the password", () => {
+    expect(
+      buildDatabaseUrl({
+        user: "lissner",
+        password: "Xi3xi3jo#SQL",
+        host: "127.0.0.1",
+        port: "5432",
+        databaseName: "dev_media",
+      }),
+    ).toBe("postgres://lissner:Xi3xi3jo%23SQL@127.0.0.1:5432/dev_media");
   });
 });

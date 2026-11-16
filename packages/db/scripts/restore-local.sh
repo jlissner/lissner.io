@@ -12,8 +12,9 @@ require_postgres_creds
 
 USER="$POSTGRES_USER"
 PASS="$POSTGRES_PASSWORD"
-HOST="$POSTGRES_HOST"
-PORT="$POSTGRES_PORT"
+HOST="$INTERNAL_POSTGRES_HOST"
+PORT="$INTERNAL_POSTGRES_PORT"
+GQL_DB="${VITE_GRAPHQL_DATABASE_NAME:-lissner}"
 DUMP="${1:-data/db-dumps/lissner-remote.dump}"
 ROLES="${2:-data/db-dumps/lissner-remote-roles.sql}"
 export PGPASSWORD="$PASS"
@@ -29,7 +30,7 @@ run_psql() {
   if command -v psql >/dev/null 2>&1; then
     psql -h "$HOST" -p "$PORT" -U "$USER" -d "$db" "$@"
   else
-    bash scripts/docker-compose.sh exec -T -e PGPASSWORD="$PASS" postgres \
+    bash scripts/docker-compose-dev.sh exec -T -e PGPASSWORD="$PASS" postgres \
       psql -U "$USER" -d "$db" "$@"
   fi
 }
@@ -40,7 +41,7 @@ run_psql_file() {
   if command -v psql >/dev/null 2>&1; then
     psql -h "$HOST" -p "$PORT" -U "$USER" -d "$db" -v ON_ERROR_STOP=0 -f "$file"
   else
-    bash scripts/docker-compose.sh exec -T -e PGPASSWORD="$PASS" postgres \
+    bash scripts/docker-compose-dev.sh exec -T -e PGPASSWORD="$PASS" postgres \
       psql -U "$USER" -d "$db" -v ON_ERROR_STOP=0 <"$file"
   fi
 }
@@ -53,20 +54,20 @@ else
   echo "WARN: PostGraphile needs at least role \"unauthorized\"." >&2
 fi
 
-echo "==> drop/recreate local lissner (destructive for local only)"
-run_psql postgres -v ON_ERROR_STOP=1 <<-EOSQL
-	SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = 'lissner' AND pid <> pg_backend_pid();
-	DROP DATABASE IF EXISTS lissner;
-	CREATE DATABASE lissner OWNER ${USER};
+echo "==> drop/recreate local ${GQL_DB} (destructive for dev Postgres only)"
+run_psql postgres -v ON_ERROR_STOP=1 -v db="$GQL_DB" -v owner="$USER" <<-EOSQL
+	SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = :'db' AND pid <> pg_backend_pid();
+	SELECT format('DROP DATABASE IF EXISTS %I', :'db') \gexec
+	SELECT format('CREATE DATABASE %I OWNER %I', :'db', :'owner') \gexec
 EOSQL
 
-echo "==> pg_restore → lissner from $DUMP (preserves ACLs; --no-owner)"
+echo "==> pg_restore → ${GQL_DB} from $DUMP (preserves ACLs; --no-owner)"
 if command -v pg_restore >/dev/null 2>&1; then
   pg_restore --no-owner \
-    --dbname="postgres://${USER}:${PASS}@${HOST}:${PORT}/lissner" "$DUMP" || true
+    --dbname="postgres://${USER}:${PASS}@${HOST}:${PORT}/${GQL_DB}" "$DUMP" || true
 else
-  bash scripts/docker-compose.sh exec -T -e PGPASSWORD="$PASS" postgres \
-    pg_restore --no-owner -U "$USER" -d lissner <"$DUMP" || true
+  bash scripts/docker-compose-dev.sh exec -T -e PGPASSWORD="$PASS" postgres \
+    pg_restore --no-owner -U "$USER" -d "$GQL_DB" <"$DUMP" || true
 fi
 
 echo "==> grant non-superuser roles to ${USER} (SET ROLE for PostGraphile)"
@@ -94,9 +95,9 @@ run_psql postgres -v ON_ERROR_STOP=1 <<-EOSQL
 	\$\$;
 EOSQL
 
-run_psql lissner -c \
+run_psql "$GQL_DB" -c \
   "SELECT COUNT(*) AS table_count FROM information_schema.tables WHERE table_schema = 'public';"
 run_psql postgres -c \
   "SELECT 1 AS unauthorized_ok FROM pg_roles WHERE rolname = 'unauthorized';"
 
-echo "OK: restore finished. Set POSTGRES_SERVER_URL + GRAPHQL_DATABASE_NAME and smoke GraphQL."
+echo "OK: restore finished. Set EXPOSED_POSTGRES_* + VITE_GRAPHQL_DATABASE_NAME=${GQL_DB} and smoke GraphQL."

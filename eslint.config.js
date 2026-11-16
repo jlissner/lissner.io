@@ -22,6 +22,7 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     languageOptions: {
       parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
         ecmaFeatures: { jsx: true },
       },
     },
@@ -107,7 +108,11 @@ export default tseslint.config(
   },
 
   {
-    files: ["packages/pics/**/*.{ts,tsx}"],
+    files: [
+      "packages/pics/**/*.{ts,tsx}",
+      "packages/admin/**/*.{ts,tsx}",
+      "packages/ui-utils/**/*.{ts,tsx}",
+    ],
     languageOptions: {
       globals: globals.browser,
       parserOptions: {
@@ -119,9 +124,6 @@ export default tseslint.config(
     },
     settings: {
       react: { version: "detect" },
-      "import/resolver": {
-        typescript: { project: "./packages/pics/tsconfig.json" },
-      },
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
@@ -138,6 +140,24 @@ export default tseslint.config(
         ...globals.node,
         ...globals.browser,
       },
+    },
+  },
+
+  {
+    files: ["packages/ui-utils/src/**/*.{ts,tsx}"],
+    languageOptions: {
+      globals: globals.browser,
+    },
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "MemberExpression[computed=false][object.object.name='process'][object.property.name='env']",
+          message:
+            "@lissner/ui-utils is a Vite SPA library: only VITE_* via import.meta.env (or pure args) — never process.env / secrets.",
+        },
+      ],
     },
   },
 );

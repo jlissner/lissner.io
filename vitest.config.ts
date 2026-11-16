@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       "@": path.resolve(__dirname, "packages/pics/src"),
       "@lissner/shared": path.resolve(__dirname, "packages/shared/src"),
+      "@lissner/ui-utils": path.resolve(__dirname, "packages/ui-utils/src"),
     },
   },
   test: {
@@ -18,6 +19,7 @@ export default defineConfig({
       "packages/pics/src/**/*.test.ts",
       "packages/shared/src/**/*.test.ts",
       "packages/graphql/src/**/*.test.ts",
+      "packages/ui-utils/src/**/*.test.ts",
     ],
     /** Quiet TensorFlow native INFO logs when tests import `faces` → tfjs-node. */
     env: {

@@ -4,9 +4,9 @@ Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** 
 
 ### Public hostnames (example: Lissner)
 
-- **`API_HOST`** — e.g. `api.lissner.io` (Traefik routes TLS here to the **`api`** service).
-- **`UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
-- **`GRAPHQL_HOST`** — e.g. `query.lissner.io` (Traefik routes TLS here to the **`graphql`** PostGraphile service).
+- **`VITE_API_HOST`** — e.g. `api.lissner.io` (Traefik routes TLS here to the **`api`** service).
+- **`VITE_PICS_UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
+- **`VITE_GRAPHQL_HOST`** — e.g. `query.lissner.io` (Traefik routes TLS here to the **`graphql`** PostGraphile service).
 - The API and GraphQL services allow browser **CORS** from `https://lissner.io` and `https://*.lissner.io` when **`NODE_ENV=production`** (and whenever **`BDD_STRICT_CORS=1`** is set for tests).
 
 ## Prerequisites
@@ -40,22 +40,20 @@ If you run **`docker compose`** yourself, prefer **`bash scripts/docker-compose.
 
 At minimum in **`config/.env`** and/or **`config/.env.prod`** (for compose **variable substitution**):
 
-| Variable                              | Required                        | Purpose                                                                                                              |
-| ------------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                                   |
-| `API_HOST`                            | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                                         |
-| `UI_HOST`                             | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly                     |
-| `GRAPHQL_HOST`                        | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                                  |
-| `GRAPHQL_PORT`                        | Yes for graphql service         | Container listen port (default **5678**)                                                                             |
-| `POSTGRES_SERVER_URL`                 | Yes (GraphQL; prod media)       | Host/user/password/port + `sslmode` — **no** database name in the path.                                              |
-| `GRAPHQL_DATABASE_NAME`               | Yes for GraphQL                 | Database name for PostGraphile (e.g. `lissner`).                                                                     |
-| `MEDIA_DATABASE_NAME`                 | Yes                             | Media API DB name (e.g. `media`). Required with `POSTGRES_SERVER_URL` in all environments. Vitest uses `media_test`. |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes for local Postgres          | Required for Compose `postgres` (gitignored `.env` / `.env.prod`). No defaults.                                      |
-| `POSTGRES_PORT`                       | No                              | Host bind port (default `5433`)                                                                                      |
+| Variable                              | Required                        | Purpose                                                                                                             |
+| ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                                  |
+| `VITE_API_HOST`                       | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                                        |
+| `VITE_PICS_UI_HOST`                   | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly                    |
+| `VITE_GRAPHQL_HOST`                   | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                                 |
+| `VITE_GRAPHQL_PORT`                   | Yes for graphql service         | Container listen port (default **5678**)                                                                            |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes                             | Compose Postgres + apps. Quote password if it contains `#`. No defaults.                                            |
+| `INTERNAL_POSTGRES_HOST` / `_PORT`    | Yes for Compose port bind       | Host publish (`127.0.0.1:${INTERNAL_POSTGRES_PORT}:5432`). Prod typically **5433**.                                 |
+| `EXPOSED_POSTGRES_HOST` / `_PORT`     | Yes for api/graphql             | What Node uses to connect. Inside Compose: **`postgres`** / **`5432`**. On the laptop: **`127.0.0.1`** / bind port. |
+| `VITE_GRAPHQL_DATABASE_NAME`          | Yes for GraphQL                 | Database name for PostGraphile (e.g. `lissner`).                                                                    |
+| `MEDIA_DATABASE_NAME`                 | Yes                             | Media API DB name (e.g. `media`). Vitest uses `media_test`.                                                         |
 
-The **`api`** service uses **`env_file: config/.env.prod`** (optional if the file is absent) so AWS, **`SESSION_SECRET`**, and other keys are set in the container’s **`process.env`**.
-
-The **`graphql`** service uses **`env_file: config/.env.prod`** for **`POSTGRES_SERVER_URL`**, **`GRAPHQL_DATABASE_NAME`**, **`PG_SCHEMAS`**, and related settings.
+The **`api`** and **`graphql`** services use **`env_file: config/.env.prod`** so AWS, **`SESSION_SECRET`**, **`EXPOSED_POSTGRES_*`**, DB names, and related keys are set in the container’s **`process.env`**. Compose also forces **`OLLAMA_HOST=http://ollama:11434`** on **`api`**.
 
 **Compose `${VAR}` substitution** (used in **`config/docker-compose.yml`** for Traefik’s **`ACME_EMAIL`**, router rules, ports, etc.) comes **only** from: **`config/.env`** (via **`--env-file`**), your **shell environment**, and files passed as **`docker compose --env-file …`**. It does **not** read **`env_file:`** on services — those keys are injected **into containers** at runtime, not used to replace **`${…}`** in the compose file.
 
@@ -76,16 +74,27 @@ You only need **`ACME_EMAIL`** in **one** of those files for **`config/docker-co
 
 Keep app secrets in **`config/.env.prod`** (do not commit). See **`config/.env.example`**.
 
-## Local Postgres
+## Local vs on-machine Postgres (ADR 0008)
 
-Compose service **`postgres`** (Postgres 16) creates databases **`lissner`** (GraphQL) and **`media`** (future API). Data volume: **`postgres-data`**.
+This host can run **two** Postgres containers:
+
+|                                      | Dev                                             | Prod (Compose host stack)               |
+| ------------------------------------ | ----------------------------------------------- | --------------------------------------- |
+| Lifecycle                            | `npm run db:up` / `npm run dev`                 | `npm run host`                          |
+| Wrapper                              | `scripts/docker-compose-dev.sh`                 | `scripts/docker-compose.sh`             |
+| Project / volume                     | `lissnerio-dev` / `lissnerio-dev_postgres-data` | `lissnerio` / `lissnerio_postgres-data` |
+| `INTERNAL_POSTGRES_PORT` (host bind) | **5432** (`.env.local`)                         | **5433** (`.env.prod`)                  |
+| `EXPOSED_POSTGRES_*` (apps)          | `127.0.0.1:5432`                                | `postgres:5432` (Compose DNS)           |
 
 ```bash
-npm run db:up          # start Postgres only
-npm run db:checkpoint  # A1: version + both DBs exist
+npm run db:up          # start dev Postgres only
+npm run db:checkpoint  # A1: version + app DBs exist
+npm run db:down        # stop dev Postgres (does not touch prod)
 ```
 
-GraphQL: dump remote → restore local → set **`POSTGRES_SERVER_URL`** + **`GRAPHQL_DATABASE_NAME=lissner`**. Media: **`npm run db:migrate:media`**, then set **`POSTGRES_SERVER_URL`** + **`MEDIA_DATABASE_NAME=media`**. Details: **`packages/db/README.md`** and ADR **0007**.
+Safe local wipe: `docker volume rm lissnerio-dev_postgres-data` only. **Never** remove `lissnerio_postgres-data` unless you intend to destroy on-machine prod DB data.
+
+GraphQL: dump remote → restore into **dev** → set **`VITE_GRAPHQL_DATABASE_NAME`**. Media: **`npm run db:migrate:media`**. Details: **`packages/db/README.md`**, ADR **0007** / **0008**.
 
 ## Build and deploy
 
@@ -112,7 +121,7 @@ The Docker images **do not compile** TypeScript or Vite on their own: **`package
 2. Run **`npm run host`** (selective prepare + image builds; first run builds everything). The **`ollama`** image (built from **`docker/ollama/`**) starts **`ollama serve`**, pulls those models into the **`ollama-models`** volume on first boot, then **`api`** waits until that finishes (**healthcheck** uses **`start_period: 1200s`** so large downloads can complete).
 3. Check **`npm run host:status`**
 
-The site is reachable on **`UI_HOST`** (static **`ui`** container), **`API_HOST`** (**`api`** container), and **`GRAPHQL_HOST`** (**`graphql`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
+The site is reachable on **`VITE_PICS_UI_HOST`** (static **`ui`** container), **`VITE_API_HOST`** (**`api`** container), and **`VITE_GRAPHQL_HOST`** (**`graphql`** container) via Traefik. **HTTP** on port **80** redirects to **HTTPS** on **443**.
 
 ## Manual commands
 

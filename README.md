@@ -10,7 +10,7 @@ An image and media management solution for family use.
 
 ## Prerequisites
 
-- Ubuntu 24 (or run `./scripts/setup.sh` to install Node.js 24, the **`ollama`** system binary ([Ollama](https://ollama.ai)), and models: `nomic-embed-text`, `llava` for image search)
+- Ubuntu 24 (or run `./scripts/setup.sh` to install Node.js 24, the **`ollama`** system binary ([Ollama](https://ollama.ai)), models, npm deps, and **dev** Postgres)
 
 ## Project State
 
@@ -118,19 +118,31 @@ The UI proxies `/api` to **port 3000**. That error means the **Express API is no
 
 ## Environment Variables
 
-| Variable                | Default                  | Description                                                                                                                                   |
-| ----------------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `OLLAMA_HOST`           | `http://localhost:11434` | Base URL for the Ollama API (embeddings and vision)                                                                                           |
-| `OLLAMA_EMBED_MODEL`    | `nomic-embed-text`       | Ollama model used for text/image embeddings (AI search)                                                                                       |
-| `OLLAMA_VISION_MODEL`   | `llava`                  | Ollama model used for face detection and image analysis                                                                                       |
-| `AWS_ACCESS_KEY_ID`     | —                        | AWS access key for S3 backup                                                                                                                  |
-| `AWS_SECRET_ACCESS_KEY` | —                        | AWS secret key for S3 backup                                                                                                                  |
-| `AWS_REGION`            | —                        | AWS region (e.g. `us-east-1`) for S3 backup                                                                                                   |
-| `S3_BUCKET`             | —                        | S3 bucket name for media sync                                                                                                                 |
-| `FIRST_ADMIN_EMAIL`     | —                        | Bootstrap admin email (whitelisted, receives magic links).                                                                                    |
-| `SESSION_SECRET`        | (dev default)            | Secret for session cookies                                                                                                                    |
-| `DATA_EXPLORER_ENABLED` | —                        | Set to `true` to enable Data Explorer (CRUD UI for all tables). **Only works when NODE_ENV ≠ production**. Auto-discovers tables and columns. |
-| `SES_FROM_EMAIL`        | —                        | Verified sender email for magic links (must be verified in AWS SES). If unset with AWS configured, link is logged to console.                 |
+Copy **`config/.env.example`** → **`config/.env.local`** (dev) and/or **`config/.env.prod`** (Compose host). Full Postgres dual-instance notes: **`packages/db/README.md`**, **`HOST.md`**, ADR **0008**.
+
+| Variable                                            | Default                  | Description                                                                                       |
+| --------------------------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------- |
+| `OLLAMA_HOST`                                       | `http://localhost:11434` | Base URL for the Ollama API (embeddings and vision). Compose overrides api→`http://ollama:11434`. |
+| `OLLAMA_EMBED_MODEL`                                | `nomic-embed-text`       | Ollama model for text/image embeddings                                                            |
+| `OLLAMA_VISION_MODEL`                               | `llava`                  | Ollama model for face detection / image analysis                                                  |
+| `SERVER_PORT`                                       | —                        | Express listen port (required)                                                                    |
+| `VITE_PICS_UI_HOST` / `VITE_PICS_UI_PORT`           | —                        | Pics UI host/port (Vite + magic-link emails; required by API)                                     |
+| `VITE_ADMIN_UI_HOST` / `VITE_ADMIN_UI_PORT`         | —                        | Admin UI host/port (Vite + magic-link emails; required by API)                                    |
+| `VITE_API_HOST`                                     | —                        | API host for Vite proxy / Traefik                                                                 |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD`               | —                        | Postgres credentials (quote password if it contains `#`)                                          |
+| `INTERNAL_POSTGRES_HOST` / `INTERNAL_POSTGRES_PORT` | —                        | Host bind for Compose + laptop `psql` / `db:*` scripts                                            |
+| `EXPOSED_POSTGRES_HOST` / `EXPOSED_POSTGRES_PORT`   | —                        | What Node apps use (`127.0.0.1` locally; `postgres` / `5432` in Compose)                          |
+| `MEDIA_DATABASE_NAME`                               | —                        | Media API database name (Vitest: `media_test`)                                                    |
+| `VITE_GRAPHQL_DATABASE_NAME`                        | —                        | PostGraphile database name                                                                        |
+| `AWS_ACCESS_KEY_ID`                                 | —                        | AWS access key for S3 backup                                                                      |
+| `AWS_SECRET_ACCESS_KEY`                             | —                        | AWS secret key for S3 backup                                                                      |
+| `AWS_REGION`                                        | —                        | AWS region for S3 / SES                                                                           |
+| `S3_BUCKET`                                         | —                        | S3 bucket name for media sync                                                                     |
+| `FIRST_ADMIN_EMAIL`                                 | —                        | Bootstrap admin email (whitelisted, receives magic links)                                         |
+| `SESSION_SECRET`                                    | —                        | Secret for session / JWT-related signing                                                          |
+| `DATA_DIR`                                          | —                        | Data directory (e.g. `./data`)                                                                    |
+| `DATA_EXPLORER_ENABLED`                             | —                        | `true` enables Data Explorer when `NODE_ENV ≠ production`                                         |
+| `SES_FROM_EMAIL`                                    | —                        | Verified SES sender for magic links                                                               |
 
 If S3 variables are missing, the server logs a warning on startup and the UI shows an alert banner. All four S3 variables must be set to enable sync.
 
@@ -144,14 +156,7 @@ If S3 variables are missing, the server logs a warning on startup and the UI sho
 
 **Auth (magic link):** Add `FIRST_ADMIN_EMAIL=you@example.com` to bootstrap. Only whitelisted emails can receive magic links. Admins manage access from the Directory tab (which maintains the allowlist) and can link users to People (face recognition). Magic links are sent via AWS SES (uses same `AWS_*` credentials as S3). Set `SES_FROM_EMAIL` to a verified SES sender; otherwise the link is logged to the server console.
 
-The server loads environment variables from `config/.env.local` (or `config/.env.prod` in production). Create `config/.env.local` for local development; it is gitignored.
-
-**Planned** (for future features):
-
-| Variable      | Description                                     |
-| ------------- | ----------------------------------------------- |
-| `SERVER_PORT` | Server port (currently hardcoded to 3000)       |
-| `DATA_DIR`    | Override for data directory (default: `./data`) |
+The server loads environment variables from `config/.env.local` (or `config/.env.prod` when `NODE_ENV=production`). Create `config/.env.local` for local development; it is gitignored.
 
 ---
 
@@ -176,17 +181,17 @@ The codebase today assumes a **trusted, single-machine** setup (local disk, opti
 
 ### SHOULD change (reliability, abuse, scale)
 
-| Area                           | Why                                                                                                                                                                                                          |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **`SERVER_PORT` / `DATA_DIR`** | Port and data paths are **hardcoded** (`SERVER_PORT = 3000` in `packages/server/src/index.ts`, paths in `packages/server/src/config/paths.ts`). Environment-driven values simplify PaaS and mounted volumes. |
-| **Rate limiting**              | Protect `POST /api/auth/magic-link`, uploads, and expensive routes from abuse and accidents.                                                                                                                 |
-| **Security headers**           | Add something like **Helmet** (CSP, HSTS, etc.) in front of or on Express.                                                                                                                                   |
-| **DB connection pooling**      | Media API uses a `pg` pool against Postgres. Size the pool and Postgres `max_connections` for concurrent indexing + API traffic.                                                                             |
-| **Indexing & ML load**         | Face pipeline uses **TensorFlow.js on Node** (`packages/server/src/faces.ts`) — CPU/RAM heavy. Consider background workers, queues, or larger instances so uploads don’t stall the API.                      |
-| **Observability**              | Structured logging, error tracking, uptime checks, alerts, and log aggregation for production.                                                                                                               |
-| **Backups & DR**               | Define RPO/RTO; automate DB + object storage backups; test restore. S3 sync is not a substitute for a full backup strategy.                                                                                  |
-| **Privacy / compliance**       | Photos and email addresses are sensitive; document who can access data, retention, and (if needed) consent for your group.                                                                                   |
-| **Tests & CI**                 | `npm test` is a placeholder; add smoke tests and a CI pipeline before you rely on deploys at scale.                                                                                                          |
+| Area                           | Why                                                                                                                                                                                     |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`SERVER_PORT` / `DATA_DIR`** | Already env-driven via `packages/server/src/config/env.ts` / `paths.ts` — keep them set in `.env.prod` for Compose and PaaS.                                                            |
+| **Rate limiting**              | Protect `POST /api/auth/magic-link`, uploads, and expensive routes from abuse and accidents.                                                                                            |
+| **Security headers**           | Add something like **Helmet** (CSP, HSTS, etc.) in front of or on Express.                                                                                                              |
+| **DB connection pooling**      | Media API uses a `pg` pool against Postgres. Size the pool and Postgres `max_connections` for concurrent indexing + API traffic.                                                        |
+| **Indexing & ML load**         | Face pipeline uses **TensorFlow.js on Node** (`packages/server/src/faces.ts`) — CPU/RAM heavy. Consider background workers, queues, or larger instances so uploads don’t stall the API. |
+| **Observability**              | Structured logging, error tracking, uptime checks, alerts, and log aggregation for production.                                                                                          |
+| **Backups & DR**               | Define RPO/RTO; automate DB + object storage backups; test restore. S3 sync is not a substitute for a full backup strategy.                                                             |
+| **Privacy / compliance**       | Photos and email addresses are sensitive; document who can access data, retention, and (if needed) consent for your group.                                                              |
+| **Tests & CI**                 | `npm test` is a placeholder; add smoke tests and a CI pipeline before you rely on deploys at scale.                                                                                     |
 
 ### Checklist: publishing (getting live)
 

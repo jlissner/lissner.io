@@ -6,16 +6,18 @@ import { MEDIA_DATABASE_URL } from "../config/env.js";
 
 const state: { pool: pg.Pool | null } = { pool: null };
 
-export const getMediaPool = (): pg.Pool => {
+export function getMediaPool(): pg.Pool {
   if (state.pool == null) {
     state.pool = new pg.Pool({ connectionString: MEDIA_DATABASE_URL });
   }
-  return state.pool;
-};
 
-export const closeMediaPool = async (): Promise<void> => {
+  return state.pool;
+}
+
+export async function closeMediaPool(): Promise<void> {
   if (state.pool != null) {
     await state.pool.end();
-    state.pool = null;
   }
-};
+
+  state.pool = null;
+}

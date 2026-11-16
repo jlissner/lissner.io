@@ -4,3 +4,4 @@ export * from "./api.js";
 export * from "./buildDatabaseUrl.js";
 export * from "./lissner-cors.js";
 export * from "./text-document.js";
+export * from "./utils.js";

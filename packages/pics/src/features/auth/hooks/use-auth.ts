@@ -15,7 +15,7 @@ export function useAuth() {
     queryKey: ["auth", "session"],
     queryFn: async () => {
       try {
-        const meRes = await apiFetch("auth/me");
+        const meRes = await apiFetch("/auth/me");
         const user = meRes.ok ? ((await meRes.json()) as AuthUser) : null;
 
         return user;
@@ -31,7 +31,7 @@ export function useAuth() {
   }, [queryClient]);
 
   const logout = useCallback(async () => {
-    const res = await apiFetch("auth/logout", { method: "POST" });
+    const res = await apiFetch("/auth/logout", { method: "POST" });
     if (!res.ok) {
       return;
     }

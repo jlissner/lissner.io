@@ -1,4 +1,4 @@
-import { GRAPHQL_HOST, GRAPHQL_PORT } from "./env.js";
+import { VITE_GRAPHQL_HOST, VITE_GRAPHQL_PORT } from "./env.js";
 import { handleCors } from "./apply-cors.js";
 import {
   createServer,
@@ -28,7 +28,7 @@ const isHealthRequest = (req: IncomingMessage): boolean =>
 
 const writeHealth = (res: ServerResponse): void => {
   res.writeHead(200, { "Content-Type": "text/plain" });
-  res.end("ok");
+  res.end("OK");
 };
 
 const pgl = postgraphile(preset);
@@ -45,7 +45,7 @@ const server = createServer(async (req, res) => {
   }
 
   aliasRootPostToGraphql(req);
-  await graphqlHandler(req, res);
+  graphqlHandler(req, res);
 });
 
 server.on("error", (err) => {
@@ -65,9 +65,9 @@ if (upgradeHandler) {
   });
 }
 
-server.listen(GRAPHQL_PORT, "0.0.0.0", () => {
+server.listen(VITE_GRAPHQL_PORT, "0.0.0.0", () => {
   console.info(
-    { host: GRAPHQL_HOST, port: GRAPHQL_PORT },
+    { host: VITE_GRAPHQL_HOST, port: VITE_GRAPHQL_PORT },
     "GraphQL server listening",
   );
 });

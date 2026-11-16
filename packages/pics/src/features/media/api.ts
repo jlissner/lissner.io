@@ -27,18 +27,18 @@ async function toApiError(res: Response, fallback: string): Promise<ApiError> {
 export function getMediaDetails(
   mediaId: string,
 ): Promise<MediaDetailsApiResponse> {
-  return apiJson<MediaDetailsApiResponse>(`media/${mediaId}/details`);
+  return apiJson<MediaDetailsApiResponse>(`/media/${mediaId}/details`);
 }
 
 export function listMediaTags(): Promise<MediaTagsListResponse> {
-  return apiJson<MediaTagsListResponse>("media/tags");
+  return apiJson<MediaTagsListResponse>("/media/tags");
 }
 
 export function patchMediaDateTaken(
   mediaId: string,
   body: MediaPatchRequest,
 ): Promise<Response> {
-  return apiFetch(`media/${mediaId}`, {
+  return apiFetch(`/media/${mediaId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -49,7 +49,7 @@ export async function putMediaTags(
   mediaId: string,
   body: MediaTagsPutRequest,
 ): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}/tags`, {
+  const res = await apiFetch(`/media/${mediaId}/tags`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -58,20 +58,20 @@ export async function putMediaTags(
 }
 
 export async function deleteMediaById(id: string): Promise<void> {
-  const res = await apiFetch(`media/${id}`, { method: "DELETE" });
+  const res = await apiFetch(`/media/${id}`, { method: "DELETE" });
   if (!res.ok) throw await toApiError(res, "Delete failed");
 }
 
 export async function postRotateMedia90(
   mediaId: string,
 ): Promise<{ ok: true; size: number }> {
-  const res = await apiFetch(`media/${mediaId}/rotate`, { method: "POST" });
+  const res = await apiFetch(`/media/${mediaId}/rotate`, { method: "POST" });
   if (!res.ok) throw await toApiError(res, "Could not rotate image");
   return (await res.json()) as { ok: true; size: number };
 }
 
 export async function runBulkIndex(mediaIds: string[]): Promise<void> {
-  await apiJson("search/index?force=true", {
+  await apiJson("/search/index?force=true", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ mediaIds }),
@@ -81,7 +81,7 @@ export async function runBulkIndex(mediaIds: string[]): Promise<void> {
 export async function triggerIndex(
   force = false,
 ): Promise<{ started?: boolean; error?: string }> {
-  const path = force ? "search/index?force=true" : "search/index";
+  const path = force ? "/search/index?force=true" : "/search/index";
   return apiJson<{ started?: boolean; error?: string }>(path, {
     method: "POST",
   });
@@ -94,14 +94,14 @@ export function listMediaFaces(mediaId: string): Promise<{
   return apiJson<{
     detected?: FaceBox[];
     tagged?: TaggedFace[];
-  }>(`media/${mediaId}/faces`);
+  }>(`/media/${mediaId}/faces`);
 }
 
 export function addPersonToMedia(
   mediaId: string,
   body: { createNew?: true; personId?: number; box?: FaceBox },
 ): Promise<unknown> {
-  return apiJson(`media/${mediaId}/people`, {
+  return apiJson(`/media/${mediaId}/people`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -112,7 +112,7 @@ export async function removePersonFromMedia(
   mediaId: string,
   personId: number,
 ): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}/people/${personId}`, {
+  const res = await apiFetch(`/media/${mediaId}/people/${personId}`, {
     method: "DELETE",
   });
   if (!res.ok) throw await toApiError(res, "Failed to remove tag");
@@ -123,7 +123,7 @@ export async function reassignPersonInMedia(
   personId: number,
   assignTo: number,
 ): Promise<void> {
-  const res = await apiFetch(`media/${mediaId}/people/${personId}`, {
+  const res = await apiFetch(`/media/${mediaId}/people/${personId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ assignTo }),
@@ -136,7 +136,7 @@ export function reassignPersonToNewInMedia(
   personId: number,
 ): Promise<{ newPersonId: number }> {
   return apiJson<{ newPersonId: number }>(
-    `media/${mediaId}/people/${personId}/reassign-new`,
+    `/media/${mediaId}/people/${personId}/reassign-new`,
     {
       method: "POST",
     },
@@ -144,7 +144,7 @@ export function reassignPersonToNewInMedia(
 }
 
 export function listPeopleForTagging(): Promise<Person[]> {
-  return apiJson<Person[]>("people");
+  return apiJson<Person[]>("/people");
 }
 
 export async function bulkPatchDateTaken(
@@ -153,7 +153,7 @@ export async function bulkPatchDateTaken(
 ): Promise<{ succeeded: number; failed: number }> {
   const acc = { succeeded: 0, failed: 0 };
   for (const id of mediaIds) {
-    const res = await apiFetch(`media/${id}`, {
+    const res = await apiFetch(`/media/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dateTaken }),
@@ -169,7 +169,7 @@ export function bulkAddMediaTags(
   tags: string[],
 ): Promise<MediaTagsBulkAddResponse> {
   const body: MediaTagsBulkAddRequest = { mediaIds, tags };
-  return apiJson<MediaTagsBulkAddResponse>("media/tags/bulk-add", {
+  return apiJson<MediaTagsBulkAddResponse>("/media/tags/bulk-add", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
@@ -181,7 +181,7 @@ export function bulkRemoveMediaTags(
   tags: string[],
 ): Promise<MediaTagsBulkAddResponse> {
   const body: MediaTagsBulkAddRequest = { mediaIds, tags };
-  return apiJson<MediaTagsBulkAddResponse>("media/tags/bulk-remove", {
+  return apiJson<MediaTagsBulkAddResponse>("/media/tags/bulk-remove", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

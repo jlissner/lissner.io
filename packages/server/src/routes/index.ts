@@ -1,4 +1,5 @@
 export { activityRouter } from "./activity.js";
+export { picsRouter } from "./pics.js";
 export { mediaRouter } from "./media.js";
 export { peopleRouter } from "./people.js";
 export { searchRouter } from "./search.js";
