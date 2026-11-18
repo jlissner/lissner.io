@@ -34,9 +34,9 @@ const txAls = new AsyncLocalStorage<pg.PoolClient>();
 const pgCell = (v: unknown): unknown =>
   v instanceof Date ? v.toISOString() : v;
 
-const pgRow = <T>(row: T): T =>
+const pgRow = <T extends Record<string, unknown>>(row: T): T =>
   Object.fromEntries(
-    Object.entries(row as Record<string, unknown>).map(([k, v]) => [
+    Object.entries(row).map(([k, v]) => [
       k,
       pgCell(v),
     ]),

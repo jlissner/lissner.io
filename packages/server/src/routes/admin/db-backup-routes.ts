@@ -2,7 +2,7 @@ import { Router } from "express";
 import { sendApiError } from "../../lib/api-error.js";
 import {
   listDbBackupsForAdmin,
-  restoreDbFromS3BackupKey,
+  restoreMediaDbFromS3BackupKey,
 } from "../../services/db-backup-admin-service.js";
 import { dbRestoreBodySchema } from "../../validation/admin-schemas.js";
 
@@ -41,7 +41,7 @@ adminDbBackupRouter.get("/db-backups", async (_req, res, next) => {
 adminDbBackupRouter.post("/db-restore", async (req, res, next) => {
   try {
     const { key } = dbRestoreBodySchema.parse(req.body);
-    const result = await restoreDbFromS3BackupKey(key);
+    const result = await restoreMediaDbFromS3BackupKey(key);
     if (result.ok) {
       res.json({ restored: true });
       return;

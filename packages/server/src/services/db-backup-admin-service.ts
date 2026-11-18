@@ -65,7 +65,7 @@ type RestoreDbResult =
         | "invalid_db";
     };
 
-export async function restoreDbFromS3BackupKey(
+export async function restoreMediaDbFromS3BackupKey(
   key: string,
 ): Promise<RestoreDbResult> {
   if (!isValidDbBackupKey(key)) return { ok: false, reason: "invalid_key" };
