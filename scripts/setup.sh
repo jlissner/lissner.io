@@ -2,10 +2,42 @@
 set -euo pipefail
 
 # Family Media Manager - Setup script for Ubuntu 24
-# Installs Node.js, Ollama, nomic-embed-text, npm deps, and ensures dev Postgres.
+# Installs Node.js, Ollama, embedding/vision models, npm deps, and ensures dev Postgres.
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+env_get() {
+  local key="$1" file value=""
+  for file in "$ROOT/config/.env.local" "$ROOT/config/.env"; do
+    [[ -f "$file" ]] || continue
+    value="$(grep -E "^${key}=" "$file" | tail -1 | cut -d= -f2- | tr -d '\r"' || true)"
+    if [[ -n "$value" ]]; then
+      printf '%s' "$value"
+      return 0
+    fi
+  done
+  printf ''
+}
+
+# Exported env → config files → defaults (same as host:pull / docker/ollama).
+resolve_model() {
+  local key="$1" default="$2" from_env
+  from_env="$(printenv "$key" 2>/dev/null || true)"
+  if [[ -n "$from_env" ]]; then
+    printf '%s' "$from_env"
+    return 0
+  fi
+  from_env="$(env_get "$key")"
+  if [[ -n "$from_env" ]]; then
+    printf '%s' "$from_env"
+    return 0
+  fi
+  printf '%s' "$default"
+}
+
+EMBED_MODEL="$(resolve_model OLLAMA_EMBED_MODEL nomic-embed-text)"
+VISION_MODEL="$(resolve_model OLLAMA_VISION_MODEL llava)"
 
 echo "==> lissner.io (Ubuntu 24)"
 echo ""
@@ -27,8 +59,8 @@ else
   echo "==> Ollama already installed"
 fi
 
-# Ensure Ollama is running and pull embedding model
-echo "==> Ensuring Ollama is running and pulling nomic-embed-text..."
+# Ensure Ollama is running and pull configured models
+echo "==> Ensuring Ollama is running and pulling ${EMBED_MODEL} + ${VISION_MODEL}..."
 if ! pgrep -x ollama &>/dev/null; then
   (systemctl --user start ollama 2>/dev/null || systemctl start ollama 2>/dev/null) || true
   sleep 2
@@ -37,8 +69,8 @@ if ! pgrep -x ollama &>/dev/null; then
   nohup ollama serve >/dev/null 2>&1 &
   sleep 3
 fi
-ollama pull nomic-embed-text
-ollama pull llava
+ollama pull "$EMBED_MODEL"
+ollama pull "$VISION_MODEL"
 
 # npm dependencies
 echo "==> Installing npm dependencies..."

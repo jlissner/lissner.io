@@ -45,7 +45,6 @@ npm run format:check      # Check formatting
 ### Utilities
 
 ```bash
-npm run clear-index        # Clear search index via API
 npm run servers            # List running servers
 npm run nuke               # Delete all data (dangerous!)
 ```

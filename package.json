@@ -16,7 +16,6 @@
     "build": "tsc -b && npm run build -w @lissner/ui-utils && npm run build -w @lissner/admin && npm run build -w @lissner/pics",
     "build:graphql": "tsc -b packages/shared packages/graphql",
     "build:server": "tsc -b packages/shared packages/server",
-    "clear-index": "tsx scripts/clear-search-index.ts",
     "db:up": "bash scripts/docker-compose-dev.sh up -d --wait postgres",
     "db:down": "bash scripts/docker-compose-dev.sh stop postgres",
     "db:checkpoint": "npm run checkpoint -w @lissner/db",
