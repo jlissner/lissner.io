@@ -127,16 +127,16 @@ authRouter.get("/me", (req, res) => {
 authRouter.get("/me/people", requireAuth, async (req, res) => {
   const userId = req.jwtUser!.id;
   const personIds = await authDb.getUserPeople(userId);
+
   res.json({ personIds });
 });
 
 authRouter.put("/me/people", requireAuth, async (req, res) => {
   const userId = req.jwtUser!.id;
   const { personIds } = updateMyPeopleBodySchema.parse(req.body);
-  const ids = personIds ?? [];
-
-  await authDb.setUserPeople(userId, ids);
+  await authDb.setUserPeople(userId, personIds);
   const stored = await authDb.getUserPeople(userId);
+
   res.json({ personIds: stored });
 });
 
