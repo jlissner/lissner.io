@@ -81,7 +81,7 @@ export function TimelineScrubber({
       searchQuery != null && searchQuery.trim() !== ""
         ? (() => {
             params.set("q", searchQuery.trim());
-            return "search/timeline";
+            return "/search/timeline";
           })()
         : "/media/timeline";
     apiJson<SearchTimelineResponse>(`/${timelinePath}?${params}`)

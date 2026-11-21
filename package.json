@@ -13,7 +13,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "tsc -b && npm run build -w @lissner/ui-utils && npm run build -w @lissner/admin && npm run build -w @lissner/pics",
+    "build": "tsc -b && npm run build -w @lissner/ui-utils && npm run build -w @lissner/admin && npm run build -w @lissner/pics && npm run build -w @lissner/cookbook",
     "build:graphql": "tsc -b packages/shared packages/graphql",
     "build:server": "tsc -b packages/shared packages/server",
     "db:up": "bash scripts/docker-compose-dev.sh up -d --wait postgres",
@@ -26,6 +26,7 @@
     "dev:graphql": "npm run dev -w @lissner/graphql",
     "dev:server": "npm run dev -w @lissner/server",
     "dev:ui": "npm run dev -w @lissner/pics",
+    "dev:cookbook": "npm run dev -w @lissner/cookbook",
     "dev:admin": "npm run dev -w @lissner/admin",
     "dev:web": "concurrently -n server,ui \"npm run dev:server\" \"npm run dev:ui\"",
     "dev:stop": "bash scripts/stop-servers.sh",
@@ -79,6 +80,7 @@
     "eslint-import-resolver-typescript": "4.4.4",
     "eslint-plugin-react-hooks": "7.1.1",
     "globals": "17.13.0",
+    "jsdom": "28.1.0",
     "prettier": "3.8.3",
     "tsx": "4.21.0",
     "typescript": "6.0.3",
