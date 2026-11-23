@@ -35,12 +35,7 @@ const pgCell = (v: unknown): unknown =>
   v instanceof Date ? v.toISOString() : v;
 
 const pgRow = <T extends Record<string, unknown>>(row: T): T =>
-  Object.fromEntries(
-    Object.entries(row).map(([k, v]) => [
-      k,
-      pgCell(v),
-    ]),
-  ) as T;
+  Object.fromEntries(Object.entries(row).map(([k, v]) => [k, pgCell(v)])) as T;
 
 const querier = (): pg.Pool | pg.PoolClient =>
   txAls.getStore() ?? getMediaPool();
