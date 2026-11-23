@@ -1,4 +1,6 @@
+import { attemptRefresh } from "@/api";
 import {
+  isUnauthorizedUploadError,
   postMediaUploadWithProgress,
   type MediaUploadProgress,
 } from "./post-media-upload-with-progress.js";
@@ -29,6 +31,7 @@ async function uploadWithRetry(
   onRetry: (attempt: number) => void,
 ): Promise<void> {
   let lastError: Error | null = null;
+  const auth = { refreshed: false };
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (controller.isAborted()) throw new Error("Upload cancelled");
     try {
@@ -41,6 +44,11 @@ async function uploadWithRetry(
         throw err;
       }
       lastError = e instanceof Error ? e : new Error(String(e));
+      if (isUnauthorizedUploadError(e) && !auth.refreshed) {
+        auth.refreshed = true;
+        if (await attemptRefresh()) continue;
+        throw lastError;
+      }
       if (attempt < MAX_RETRIES) {
         onRetry(attempt + 1);
         await new Promise((r) =>

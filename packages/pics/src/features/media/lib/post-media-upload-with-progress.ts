@@ -11,6 +11,14 @@ export type MediaUploadProgress = {
   retryAttempt?: number;
 };
 
+/** Upload rejections carry the HTTP status so callers can spot an expired session. */
+export function isUnauthorizedUploadError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    (error as Error & { status?: number }).status === 401
+  );
+}
+
 interface AbortControllerLike {
   abort: () => void;
   isAborted: () => boolean;
@@ -60,11 +68,11 @@ export function postMediaUploadWithProgress(
       }
       clearActiveAbort();
       const body = xhr.response as { error?: string } | null;
-      const err =
+      const message =
         body && typeof body.error === "string"
           ? body.error
           : `Upload failed (${xhr.status})`;
-      reject(new Error(err));
+      reject(Object.assign(new Error(message), { status: xhr.status }));
     });
     xhr.addEventListener("error", () => {
       if (controller?.isAborted()) return;
