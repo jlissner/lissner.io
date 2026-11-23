@@ -36,7 +36,6 @@ export default defineConfig(({ mode }) => {
   }
 
   if (!env.VITE_GRAPHQL_HOST) {
-    console.log(env);
     throw new Error("Missing required VITE_GRAPHQL_HOST env variable");
   }
 
