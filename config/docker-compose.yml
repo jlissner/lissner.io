@@ -230,6 +230,36 @@ services:
     networks:
       - traefik
 
+  cookbook-app:
+    build:
+      context: .
+      dockerfile: packages/cookbook/Dockerfile
+    ports:
+      - "${VITE_COOKBOOK_UI_PORT}:80"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.cookbook-app.rule=Host(`${VITE_COOKBOOK_UI_HOST}`)"
+      - "traefik.http.routers.cookbook-app.entrypoints=web"
+      - "traefik.http.routers.cookbook-app.service=cookbook-app"
+      - "traefik.http.routers.cookbook-app.tls=true"
+      - "traefik.http.routers.cookbook-app.tls.certResolver=letsencrypt"
+      - "traefik.http.routers.cookbook-app-http.rule=Host(`${VITE_COOKBOOK_UI_HOST}`)"
+      - "traefik.http.routers.cookbook-app-http.entrypoints=webhttp"
+      - "traefik.http.routers.cookbook-app-http.middlewares=cookbook-app-redirect-https@docker"
+      - "traefik.http.routers.cookbook-app-http.service=cookbook-app"
+      - "traefik.http.middlewares.cookbook-app-redirect-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.cookbook-app-redirect-https.redirectscheme.permanent=true"
+      - "traefik.http.services.cookbook-app.loadbalancer.server.port=80"
+    healthcheck:
+      test: ["CMD-SHELL", 'test "$(wget -qO- http://127.0.0.1/health)" = OK']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - traefik
+
 volumes:
   app-data:
   ollama-models:

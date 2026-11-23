@@ -9,7 +9,7 @@ cd "$ROOT"
 
 CACHE_DIR="$ROOT/.cache/host-build"
 COMPOSE_BUILD=(bash "$ROOT/scripts/docker-compose.sh" build)
-ALL_SERVICES=(api graphql ui ollama admin-app)
+ALL_SERVICES=(api graphql ui ollama admin-app cookbook-app)
 
 FORCE=0
 MODE="docker"
@@ -19,11 +19,11 @@ usage() {
   cat <<'EOF'
 Usage: scripts/host-build.sh [prepare|docker] [--force] [service...]
 
-  prepare   Run tsc -b; run Vite only when admin/pics/shared/ui-utils sources changed
+  prepare   Run tsc -b; run Vite only when admin/cookbook/pics/shared/ui-utils sources changed
   docker    Build dirty Compose images only (default)
 
   --force   Rebuild everything (prepare: always Vite; docker: all services + --no-cache)
-  service   Limit docker mode to these Compose services (admin-app|api|graphql|ui|ollama)
+  service   Limit docker mode to these Compose services (admin-app|cookbook-app|api|graphql|ui|ollama)
 
 Env: HOST_BUILD_FORCE=1 same as --force
 EOF
@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
       usage
       exit 0
       ;;
-    api | graphql | ui | ollama | admin-app)
+    api | graphql | ui | ollama | admin-app | cookbook-app)
       SERVICES+=("$1")
       shift
       ;;
@@ -118,6 +118,7 @@ WORKSPACE_MANIFESTS=(
   package-lock.json
   packages/shared/package.json
   packages/admin/package.json
+  packages/cookbook/package.json
   packages/server/package.json
   packages/graphql/package.json
   packages/pics/package.json
@@ -152,6 +153,13 @@ fingerprint_admin_app() {
   hash_paths \
     packages/admin/Dockerfile \
     packages/admin/dist \
+    config/nginx.conf
+}
+
+fingerprint_cookbook_app() {
+  hash_paths \
+    packages/cookbook/Dockerfile \
+    packages/cookbook/dist \
     config/nginx.conf
 }
 
@@ -196,6 +204,15 @@ fingerprint_admin_build() {
     packages/ui-utils/src
 }
 
+fingerprint_cookbook_build() {
+  hash_paths \
+    packages/cookbook/package.json \
+    packages/cookbook/vite.config.mjs \
+    packages/cookbook/index.html \
+    packages/cookbook/src \
+    packages/cookbook/public
+}
+
 run_prepare() {
   echo "host-build: prepare — tsc -b"
   npx tsc -b
@@ -206,13 +223,18 @@ run_prepare() {
   local admin_hash
   admin_hash="$(fingerprint_admin_build)"
 
-  if is_dirty pics-build "$pics_hash" || is_dirty admin-build "$admin_hash"; then
-    echo "host-build: prepare — Vite (pics/admin/shared/ui-utils sources changed or --force)"
+  local cookbook_hash
+  cookbook_hash="$(fingerprint_cookbook_build)"
+
+  if is_dirty pics-build "$pics_hash" || is_dirty admin-build "$admin_hash" || is_dirty cookbook-build "$cookbook_hash"; then
+    echo "host-build: prepare — Vite (pics/admin/cookbook/shared/ui-utils sources changed or --force)"
     npm run build -w @lissner/ui-utils
     npm run build -w @lissner/admin
     npm run build -w @lissner/pics
+    npm run build -w @lissner/cookbook
     write_fp pics-build "$pics_hash"
     write_fp admin-build "$admin_hash"
+    write_fp cookbook-build "$cookbook_hash"
   else
     echo "host-build: prepare — skip Vite (unchanged)"
   fi
@@ -237,6 +259,7 @@ run_docker() {
       graphql) hash="$(fingerprint_graphql)" ;;
       ui) hash="$(fingerprint_ui)" ;;
       admin-app) hash="$(fingerprint_admin_app)" ;;
+      cookbook-app) hash="$(fingerprint_cookbook_app)" ;;
       ollama) hash="$(fingerprint_ollama)" ;;
       *)
         echo "host-build: unknown service: $svc" >&2

@@ -134,6 +134,41 @@ export default tseslint.config(
   },
 
   {
+    files: ["packages/cookbook/**/*.{js,mjs}"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+      },
+      parserOptions: {
+        ecmaFeatures: { jsx: true },
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+      "no-console": "off",
+    },
+  },
+
+  {
+    files: ["packages/cookbook/**/*.{test,spec}.{js,mjs}"],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        ...globals.vitest,
+      },
+    },
+  },
+
+  {
     files: ["packages/shared/**/*.ts"],
     languageOptions: {
       globals: {

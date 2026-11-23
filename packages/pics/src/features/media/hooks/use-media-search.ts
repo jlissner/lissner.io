@@ -42,7 +42,7 @@ export function useMediaSearch({
         offset: String(pageParam),
         sortBy,
       });
-      const data = await apiJson<SearchMediaResponse>(`search?${params}`);
+      const data = await apiJson<SearchMediaResponse>(`/search?${params}`);
       return { ...data, __offset: pageParam } as SearchPage;
     },
     getNextPageParam: (lastPage, allPages) => {
