@@ -21,6 +21,8 @@ env:
   VITE_PICS_UI_HOST: ${{ vars.VITE_PICS_UI_HOST }}
   VITE_PICS_UI_PORT: ${{ vars.VITE_PICS_UI_PORT }}
   VITE_API_HOST: ${{ vars.VITE_API_HOST }}
+  VITE_GRAPHQL_HOST: ${{ vars.VITE_GRAPHQL_HOST }}
+
   # Media API / Vitest (media_test) — apps use EXPOSED_*; host tools use INTERNAL_*.
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
