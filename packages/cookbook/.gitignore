@@ -10,9 +10,6 @@
 /build
 /dist
 
-# credentails
-config.js
-
 # misc
 .DS_Store
 .env.local

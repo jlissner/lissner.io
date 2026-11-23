@@ -5,7 +5,7 @@ Deploy stack: **Traefik** (TLS) → **`api`** (Node API + WebSocket) + **`ui`** 
 ### Public hostnames (example: Lissner)
 
 - **`VITE_API_HOST`** — e.g. `api.lissner.io` (Traefik routes TLS here to the **`api`** service).
-- **`VITE_PICS_UI_HOST`** — hostname for the static UI only (e.g. `lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
+- **`VITE_PICS_UI_HOST`** — hostname for the static UI only (e.g. `pics.lissner.io`); Traefik routes **only** this exact host to the **`ui`** service.
 - **`VITE_GRAPHQL_HOST`** — e.g. `query.lissner.io` (Traefik routes TLS here to the **`graphql`** PostGraphile service).
 - The API and GraphQL services allow browser **CORS** from `https://lissner.io` and `https://*.lissner.io` when **`NODE_ENV=production`** (and whenever **`BDD_STRICT_CORS=1`** is set for tests).
 
@@ -44,7 +44,7 @@ At minimum in **`config/.env`** and/or **`config/.env.prod`** (for compose **var
 | ------------------------------------- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
 | `ACME_EMAIL`                          | Yes for Traefik + Let’s Encrypt | Email for certificate registration                                                                                  |
 | `VITE_API_HOST`                       | Yes for routers                 | Hostname for the API (e.g. `api.lissner.io`)                                                                        |
-| `VITE_PICS_UI_HOST`                   | Yes for routers                 | Hostname for the static UI (e.g. `lissner.io`); must match the browser **`Host`** header exactly                    |
+| `VITE_PICS_UI_HOST`                   | Yes for routers                 | Hostname for the static UI (e.g. `pics.lissner.io`); must match the browser **`Host`** header exactly               |
 | `VITE_GRAPHQL_HOST`                   | Yes for routers                 | Hostname for PostGraphile (e.g. `query.lissner.io`)                                                                 |
 | `VITE_GRAPHQL_PORT`                   | Yes for graphql service         | Container listen port (default **5678**)                                                                            |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` | Yes                             | Compose Postgres + apps. Quote password if it contains `#`. No defaults.                                            |
