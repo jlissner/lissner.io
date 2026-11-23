@@ -17,7 +17,7 @@ import _get from "lodash/get";
 import LoaderButton from "../../LoaderButton/LoaderButton";
 import SectionListsForm from "../../SectionListsForm/SectionListsForm";
 import RecipeTagsForm from "../RecipeTagsForm/RecipeTagsForm";
-import * as tags from "../../../data/recipeTagOptions";
+import { tags } from "../../../data/recipeTagOptions";
 import ConfirmDialog from "../../utils/ConfirmDialog";
 import useActions from "../../../hooks/useActions";
 
