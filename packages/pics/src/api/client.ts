@@ -23,9 +23,10 @@ export function prependWebSocketUrl(path: string): string {
 
 const refreshState: { promise: Promise<boolean> | null } = { promise: null };
 
-function attemptRefresh(): Promise<boolean> {
+/** Single-flight silent refresh; shared with the XHR upload path so both recover from a 401. */
+export function attemptRefresh(): Promise<boolean> {
   if (refreshState.promise) return refreshState.promise;
-  refreshState.promise = fetch(prependApiUrl("auth/refresh"), {
+  refreshState.promise = fetch(prependApiUrl("/auth/refresh"), {
     method: "POST",
     credentials: "include",
   })
